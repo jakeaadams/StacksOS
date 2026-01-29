@@ -60,7 +60,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
       </div>
 
       {/* Header */}
-      <header className="relative z-10 bg-white/80 backdrop-blur-md border-b-4 border-rainbow sticky top-0"
+      <header className="relative z-10 bg-card/80 backdrop-blur-md border-b-4 border-rainbow sticky top-0"
               style={{ borderImage: "linear-gradient(90deg, #FF6B6B, #FFE66D, #4ECDC4, #A78BFA, #FF6B6B) 1" }}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16 md:h-20">
@@ -188,7 +188,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
 
         {/* Mobile Nav Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-border py-4 px-4">
+          <div className="md:hidden bg-card border-t border-border py-4 px-4">
             <nav className="flex flex-col gap-2">
               {navItems.map((item) => (
                 <Link
@@ -244,7 +244,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 bg-white/80 backdrop-blur-md border-t-4 mt-12 py-8"
+      <footer className="relative z-10 bg-card/80 backdrop-blur-md border-t-4 mt-12 py-8"
               style={{ borderImage: "linear-gradient(90deg, #FF6B6B, #FFE66D, #4ECDC4, #A78BFA, #FF6B6B) 1" }}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">

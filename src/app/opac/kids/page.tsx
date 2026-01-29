@@ -168,7 +168,7 @@ export default function KidsHomePage() {
         <div className="relative max-w-4xl mx-auto px-4 text-center">
           {/* Welcome message for logged in users */}
           {isLoggedIn && patron && (
-            <div className="mb-6 inline-flex items-center gap-2 px-6 py-3 bg-white/90 rounded-full shadow-lg">
+            <div className="mb-6 inline-flex items-center gap-2 px-6 py-3 bg-card/90 rounded-full shadow-lg">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 
                             flex items-center justify-center text-white font-bold text-sm">
                 {patron.firstName?.[0]}
@@ -211,7 +211,7 @@ export default function KidsHomePage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="What do you want to read about?"
                   className="w-full pl-6 pr-16 py-5 text-xl rounded-full border-2 border-purple-200 
-                           text-foreground placeholder:text-muted-foreground/70 bg-white
+                           text-foreground placeholder:text-muted-foreground/70 bg-card
                            focus:outline-none focus:border-purple-400"
                 />
                 <button type="submit"
@@ -242,7 +242,7 @@ export default function KidsHomePage() {
               <Link
                 key={category.label}
                 href={`/opac/kids/search?${category.query}`}
-                className="flex flex-col items-center gap-2 p-3 md:p-4 rounded-2xl bg-white 
+                className="flex flex-col items-center gap-2 p-3 md:p-4 rounded-2xl bg-card 
                          shadow-sm hover:shadow-lg border-2 border-transparent
                          hover:border-purple-200 transition-all group"
               >
@@ -270,7 +270,7 @@ export default function KidsHomePage() {
             <div className="absolute inset-0 bg-black/5" />
             <div className="relative flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="p-4 bg-white/20 backdrop-blur-sm rounded-2xl">
+                <div className="p-4 bg-card/20 backdrop-blur-sm rounded-2xl">
                   <Trophy className="h-10 w-10 md:h-12 md:w-12 text-white" />
                 </div>
                 <div className="text-white text-center md:text-left">
@@ -278,8 +278,8 @@ export default function KidsHomePage() {
                   <p className="text-white/90">Complete challenges, earn badges, and win prizes!</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-6 py-3 bg-white/20 backdrop-blur-sm rounded-full 
-                            text-white font-bold group-hover:bg-white/30 transition-colors">
+              <div className="flex items-center gap-2 px-6 py-3 bg-card/20 backdrop-blur-sm rounded-full 
+                            text-white font-bold group-hover:bg-card/30 transition-colors">
                 <Medal className="h-5 w-5" />
                 <span>See Challenges</span>
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -325,7 +325,7 @@ export default function KidsHomePage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 bg-white rounded-2xl">
+            <div className="text-center py-12 bg-card rounded-2xl">
               <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
               <p className="text-muted-foreground">Search for books to get started!</p>
             </div>
@@ -369,7 +369,7 @@ export default function KidsHomePage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 bg-white rounded-2xl">
+            <div className="text-center py-12 bg-card rounded-2xl">
               <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
               <p className="text-muted-foreground">Check back for new books!</p>
             </div>
@@ -385,19 +385,19 @@ export default function KidsHomePage() {
               Did You Know?
             </h3>
             <div className="grid md:grid-cols-3 gap-4">
-              <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-4 text-center">
+              <div className="bg-card/70 backdrop-blur-sm rounded-2xl p-4 text-center">
                 <BookOpen className="h-8 w-8 text-purple-500 mx-auto mb-2" />
                 <p className="text-sm text-foreground/80">
                   Reading for just 20 minutes a day can help you learn 1.8 million words a year!
                 </p>
               </div>
-              <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-4 text-center">
+              <div className="bg-card/70 backdrop-blur-sm rounded-2xl p-4 text-center">
                 <Trophy className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
                 <p className="text-sm text-foreground/80">
                   Complete reading challenges to earn cool badges and prizes!
                 </p>
               </div>
-              <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-4 text-center">
+              <div className="bg-card/70 backdrop-blur-sm rounded-2xl p-4 text-center">
                 <Star className="h-8 w-8 text-pink-500 mx-auto mb-2" />
                 <p className="text-sm text-foreground/80">
                   You can request any book in our catalog to be held for you!
@@ -437,7 +437,7 @@ function KidsBookCard({ book }: { book: FeaturedBook }) {
         
         {/* Reading level badge */}
         {book.readingLevel && (
-          <div className="absolute top-2 left-2 px-2 py-1 bg-white/90 backdrop-blur-sm 
+          <div className="absolute top-2 left-2 px-2 py-1 bg-card/90 backdrop-blur-sm 
                         rounded-full text-xs font-medium text-purple-700 shadow-sm">
             {book.readingLevel}
           </div>

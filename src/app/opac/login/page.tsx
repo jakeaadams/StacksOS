@@ -97,7 +97,7 @@ function LoginForm() {
         </div>
 
         {/* Login card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-border p-8">
+        <div className="bg-card rounded-2xl shadow-xl border border-border p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Error message */}
             {error && (
@@ -210,7 +210,7 @@ function LoginForm() {
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-muted-foreground">New to the library?</span>
+              <span className="px-4 bg-card text-muted-foreground">New to the library?</span>
             </div>
           </div>
 

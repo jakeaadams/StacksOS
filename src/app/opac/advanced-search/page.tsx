@@ -148,7 +148,7 @@ export default function AdvancedSearchPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-card border-b">
         <div className="max-w-3xl mx-auto px-4 py-8">
           <Link
             href="/opac/search"
@@ -167,7 +167,7 @@ export default function AdvancedSearchPage() {
       <div className="max-w-3xl mx-auto px-4 py-8">
         <form onSubmit={handleSubmit}>
           {/* Search Fields */}
-          <div className="bg-white rounded-xl border border-border p-6 mb-6">
+          <div className="bg-card rounded-xl border border-border p-6 mb-6">
             <h2 className="text-lg font-semibold text-foreground mb-4">Search Terms</h2>
             
             <div className="space-y-4">
@@ -236,7 +236,7 @@ export default function AdvancedSearchPage() {
           </div>
 
           {/* Filters */}
-          <div className="bg-white rounded-xl border border-border p-6 mb-6">
+          <div className="bg-card rounded-xl border border-border p-6 mb-6">
             <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <Filter className="h-5 w-5" />
               Filters

@@ -115,7 +115,7 @@ export default function NewTitlesPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-card border-b">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-primary-100 rounded-lg">
@@ -130,7 +130,7 @@ export default function NewTitlesPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white border-b sticky top-0 z-10">
+      <div className="bg-card border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex flex-wrap items-center gap-4">
             {/* Format filter */}

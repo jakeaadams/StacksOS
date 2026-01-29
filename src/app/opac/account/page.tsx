@@ -82,7 +82,7 @@ export default function AccountDashboard() {
   }) => (
     <Link
       href={href}
-      className={`block p-6 bg-white rounded-xl shadow-sm border border-border 
+      className={`block p-6 bg-card rounded-xl shadow-sm border border-border 
                 hover:shadow-md hover:border-primary-300 transition-all group
                 ${alert ? "ring-2 ring-amber-400 ring-offset-2" : ""}`}
     >
@@ -195,7 +195,7 @@ export default function AccountDashboard() {
           {/* Account info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Recent checkouts */}
-            <div className="bg-white rounded-xl shadow-sm border border-border p-6">
+            <div className="bg-card rounded-xl shadow-sm border border-border p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-foreground">Recent Checkouts</h2>
                 <Link 
@@ -244,7 +244,7 @@ export default function AccountDashboard() {
             {/* Reading stats (StacksOS enhanced feature) */}
             <div className="bg-gradient-to-br from-primary-600 to-primary-700 rounded-xl shadow-sm p-6 text-white">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-white/20 rounded-lg">
+                <div className="p-2 bg-card/20 rounded-lg">
                   <TrendingUp className="h-6 w-6" />
                 </div>
                 <h2 className="text-lg font-semibold">Your Reading Stats</h2>
@@ -271,9 +271,9 @@ export default function AccountDashboard() {
                     <span>Progress to goal</span>
                     <span>{Math.round(((patron.booksReadThisYear || 0) / patron.readingGoal) * 100)}%</span>
                   </div>
-                  <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                  <div className="h-2 bg-card/20 rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-white rounded-full transition-all"
+                      className="h-full bg-card rounded-full transition-all"
                       style={{ width: `${Math.min(100, ((patron.booksReadThisYear || 0) / patron.readingGoal) * 100)}%` }}
                     />
                   </div>
@@ -285,7 +285,7 @@ export default function AccountDashboard() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Account info card */}
-            <div className="bg-white rounded-xl shadow-sm border border-border p-6">
+            <div className="bg-card rounded-xl shadow-sm border border-border p-6">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
                   <User className="h-8 w-8 text-primary-600" />
@@ -336,7 +336,7 @@ export default function AccountDashboard() {
             </div>
 
             {/* Quick links */}
-            <div className="bg-white rounded-xl shadow-sm border border-border p-6">
+            <div className="bg-card rounded-xl shadow-sm border border-border p-6">
               <h3 className="font-semibold text-foreground mb-4">Quick Links</h3>
               <nav className="space-y-2">
                 <Link

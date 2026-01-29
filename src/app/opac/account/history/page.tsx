@@ -170,7 +170,7 @@ export default function ReadingHistoryPage() {
         {/* Stats cards */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-xl border border-border p-4">
+            <div className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <BookOpen className="h-5 w-5 text-blue-600" />
@@ -181,7 +181,7 @@ export default function ReadingHistoryPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-xl border border-border p-4">
+            <div className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-green-100 rounded-lg">
                   <Calendar className="h-5 w-5 text-green-600" />
@@ -192,7 +192,7 @@ export default function ReadingHistoryPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-xl border border-border p-4">
+            <div className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-100 rounded-lg">
                   <TrendingUp className="h-5 w-5 text-purple-600" />
@@ -203,7 +203,7 @@ export default function ReadingHistoryPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-xl border border-border p-4">
+            <div className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-amber-100 rounded-lg">
                   <Star className="h-5 w-5 text-amber-600" />
@@ -218,7 +218,7 @@ export default function ReadingHistoryPage() {
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-xl border border-border p-4 mb-6">
+        <div className="bg-card rounded-xl border border-border p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
             <form onSubmit={handleSearch} className="flex-1 min-w-[200px]">
               <div className="relative">
@@ -277,7 +277,7 @@ export default function ReadingHistoryPage() {
             <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
           </div>
         ) : history.length === 0 ? (
-          <div className="bg-white rounded-xl border border-border p-12 text-center">
+          <div className="bg-card rounded-xl border border-border p-12 text-center">
             <History className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">
               No reading history yet
@@ -303,7 +303,7 @@ export default function ReadingHistoryPage() {
               {history.map((item) => (
                 <div
                   key={item.id}
-                  className="bg-white rounded-xl border border-border p-4 flex gap-4"
+                  className="bg-card rounded-xl border border-border p-4 flex gap-4"
                 >
                   {/* Cover */}
                   <div className="w-16 h-24 bg-muted/50 rounded-lg shrink-0 overflow-hidden">

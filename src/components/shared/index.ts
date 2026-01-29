@@ -182,3 +182,22 @@ export type { CoverArtPickerProps } from './cover-art-picker';
 export { PatronPhotoUpload } from './patron-photo-upload';
 
 export { InlineEdit } from './inline-edit';
+
+// ============================================================================
+// Session Management
+// ============================================================================
+
+export { SessionTimeoutWarning } from "./session-timeout-warning";
+export type { default as SessionTimeoutWarningProps } from "./session-timeout-warning";
+
+// ============================================================================
+// Lazy-Loaded Components (use for better bundle splitting)
+// ============================================================================
+
+export {
+  LazyMarcDiff,
+  LazyCoverArtPicker,
+  LazyPatronCockpit,
+  LazyRecordCockpit,
+  LazyUniversalSearch,
+} from "./lazy";

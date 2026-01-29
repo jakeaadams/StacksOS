@@ -186,7 +186,7 @@ export function BookCard({
   if (variant === "grid") {
     return (
       <div
-        className={`group relative bg-white rounded-xl shadow-sm border border-border 
+        className={`group relative bg-card rounded-xl shadow-sm border border-border 
                    overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary-300
                    ${isKidsMode ? "rounded-2xl" : ""}`}
         onMouseEnter={() => setIsHovered(true)}
@@ -234,7 +234,7 @@ export function BookCard({
                       e.preventDefault();
                       onAddToList();
                     }}
-                    className="p-2 bg-white rounded-full shadow-lg hover:bg-muted/50 transition-colors"
+                    className="p-2 bg-card rounded-full shadow-lg hover:bg-muted/50 transition-colors"
                     aria-label="Add to list"
                   >
                     <Heart className="h-5 w-5 text-foreground/80" />
@@ -303,7 +303,7 @@ export function BookCard({
   // List variant
   if (variant === "list") {
     return (
-      <div className="group flex gap-4 p-4 bg-white rounded-xl shadow-sm border border-border 
+      <div className="group flex gap-4 p-4 bg-card rounded-xl shadow-sm border border-border 
                      hover:shadow-md hover:border-primary-300 transition-all">
         <Link 
           href={isKidsMode ? `/opac/kids/record/${id}` : `/opac/record/${id}`}

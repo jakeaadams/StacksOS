@@ -80,7 +80,7 @@ export default function KidsAccountPage() {
       {/* Welcome header */}
       <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 rounded-3xl p-6 mb-8 text-white">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-3xl">
+          <div className="w-16 h-16 bg-card/20 rounded-full flex items-center justify-center text-3xl">
             {patron?.firstName?.[0] || "🌟"}
           </div>
           <div>
@@ -91,21 +91,21 @@ export default function KidsAccountPage() {
 
         {/* Quick stats */}
         <div className="grid grid-cols-3 gap-4 mt-6">
-          <div className="bg-white/10 rounded-2xl p-3 text-center">
+          <div className="bg-card/10 rounded-2xl p-3 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Flame className="h-5 w-5 text-orange-300" />
               <span className="text-2xl font-bold">{readingStats.currentStreak}</span>
             </div>
             <p className="text-xs text-white/80">Day Streak</p>
           </div>
-          <div className="bg-white/10 rounded-2xl p-3 text-center">
+          <div className="bg-card/10 rounded-2xl p-3 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <BookOpen className="h-5 w-5 text-blue-300" />
               <span className="text-2xl font-bold">{readingStats.booksThisMonth}</span>
             </div>
             <p className="text-xs text-white/80">Books This Month</p>
           </div>
-          <div className="bg-white/10 rounded-2xl p-3 text-center">
+          <div className="bg-card/10 rounded-2xl p-3 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Trophy className="h-5 w-5 text-yellow-300" />
               <span className="text-2xl font-bold">{readingStats.totalBadges}</span>
@@ -214,7 +214,7 @@ export default function KidsAccountPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 bg-white rounded-2xl">
+          <div className="text-center py-8 bg-card rounded-2xl">
             <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
             <p className="text-muted-foreground mb-4">No books checked out yet!</p>
             <Link
@@ -232,7 +232,7 @@ export default function KidsAccountPage() {
       {/* Menu items */}
       <section>
         <h2 className="text-lg font-bold text-foreground mb-4">My Stuff</h2>
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden divide-y divide-border/50">
+        <div className="bg-card rounded-2xl shadow-sm overflow-hidden divide-y divide-border/50">
           <MenuLink
             href="/opac/kids/account/checkouts"
             icon={BookOpen}
@@ -296,7 +296,7 @@ function BookCard({ book }: { book: RecentBook }) {
           <div className={`absolute bottom-2 left-2 right-2 px-2 py-1 rounded-lg text-xs font-medium text-center
                         ${book.isOverdue 
                           ? "bg-red-100 text-red-700" 
-                          : "bg-white/90 text-foreground/80"
+                          : "bg-card/90 text-foreground/80"
                         }`}>
             {book.isOverdue ? "Overdue!" : `Due ${book.dueDate}`}
           </div>

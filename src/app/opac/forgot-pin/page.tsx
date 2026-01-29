@@ -74,7 +74,7 @@ export default function ForgotPinPage() {
         </Link>
 
         {/* Main card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-border p-8">
+        <div className="bg-card rounded-2xl shadow-xl border border-border p-8">
           {step === "request" && (
             <>
               {/* Header */}

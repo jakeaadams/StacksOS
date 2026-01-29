@@ -129,7 +129,7 @@ function KidsSearchContent() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search for books..."
               className="w-full pl-5 pr-14 py-4 text-lg rounded-full border-2 border-purple-200 
-                       text-foreground placeholder:text-muted-foreground/70 bg-white
+                       text-foreground placeholder:text-muted-foreground/70 bg-card
                        focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
             />
             <button type="submit"
@@ -168,7 +168,7 @@ function KidsSearchContent() {
             </button>
 
             {/* View toggle */}
-            <div className="flex bg-white rounded-xl border-2 border-border overflow-hidden">
+            <div className="flex bg-card rounded-xl border-2 border-border overflow-hidden">
               <button type="button"
                 onClick={() => setViewMode("grid")}
                 className={`p-2 ${viewMode === "grid" ? "bg-purple-100 text-purple-700" : "text-muted-foreground"}`}
@@ -187,7 +187,7 @@ function KidsSearchContent() {
 
         {/* Filters panel */}
         {showFilters && (
-          <div className="mt-4 p-4 bg-white rounded-2xl border-2 border-purple-100 shadow-sm">
+          <div className="mt-4 p-4 bg-card rounded-2xl border-2 border-purple-100 shadow-sm">
             <div className="flex flex-wrap gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground/80 mb-1">Format</label>
@@ -254,7 +254,7 @@ function KidsSearchContent() {
               <button type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="flex items-center gap-1 px-4 py-2 rounded-xl bg-white border-2 border-border
+                className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border
                          text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed
                          hover:border-purple-200 transition-colors"
               >
@@ -269,7 +269,7 @@ function KidsSearchContent() {
               <button type="button"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="flex items-center gap-1 px-4 py-2 rounded-xl bg-white border-2 border-border
+                className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border
                          text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed
                          hover:border-purple-200 transition-colors"
               >
@@ -280,7 +280,7 @@ function KidsSearchContent() {
           )}
         </>
       ) : query || initialQuery ? (
-        <div className="text-center py-20 bg-white rounded-3xl">
+        <div className="text-center py-20 bg-card rounded-3xl">
           <div className="w-20 h-20 mx-auto mb-4 bg-purple-100 rounded-full flex items-center justify-center">
             <Search className="h-10 w-10 text-purple-300" />
           </div>
@@ -296,7 +296,7 @@ function KidsSearchContent() {
           </Link>
         </div>
       ) : (
-        <div className="text-center py-20 bg-white rounded-3xl">
+        <div className="text-center py-20 bg-card rounded-3xl">
           <div className="w-20 h-20 mx-auto mb-4 bg-purple-100 rounded-full flex items-center justify-center">
             <BookOpen className="h-10 w-10 text-purple-300" />
           </div>
@@ -340,7 +340,7 @@ function KidsSearchResultCard({ book }: { book: SearchResult }) {
 
         {/* Reading level */}
         {book.readingLevel && (
-          <div className="absolute top-2 left-2 px-2 py-1 bg-white/90 backdrop-blur-sm 
+          <div className="absolute top-2 left-2 px-2 py-1 bg-card/90 backdrop-blur-sm 
                         rounded-full text-xs font-medium text-purple-700">
             {book.readingLevel}
           </div>
@@ -366,7 +366,7 @@ function KidsSearchResultListItem({ book }: { book: SearchResult }) {
   return (
     <Link
       href={`/opac/kids/record/${book.id}`}
-      className="flex gap-4 p-4 bg-white rounded-2xl border-2 border-transparent 
+      className="flex gap-4 p-4 bg-card rounded-2xl border-2 border-transparent 
                hover:border-purple-200 hover:shadow-md transition-all group"
     >
       <div className="w-20 h-28 shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100">

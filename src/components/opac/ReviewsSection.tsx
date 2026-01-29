@@ -197,7 +197,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
       </h2>
 
       {/* Stats summary */}
-      <div className="bg-white rounded-xl border border-border p-6 mb-6">
+      <div className="bg-card rounded-xl border border-border p-6 mb-6">
         <div className="flex flex-col md:flex-row gap-8">
           {/* Average rating */}
           <div className="text-center md:text-left">
@@ -253,7 +253,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
 
       {/* Write review form */}
       {showWriteReview && (
-        <div className="bg-white rounded-xl border border-border p-6 mb-6">
+        <div className="bg-card rounded-xl border border-border p-6 mb-6">
           <h3 className="text-lg font-semibold text-foreground mb-4">
             Write Your Review of &quot;{title}&quot;
           </h3>
@@ -368,7 +368,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
           <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
         </div>
       ) : reviews.length === 0 ? (
-        <div className="bg-white rounded-xl border border-border p-12 text-center">
+        <div className="bg-card rounded-xl border border-border p-12 text-center">
           <MessageSquare className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-foreground mb-2">No reviews yet</h3>
           <p className="text-muted-foreground">
@@ -380,7 +380,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
           {reviews.map((review) => (
             <div
               key={review.id}
-              className="bg-white rounded-xl border border-border p-6"
+              className="bg-card rounded-xl border border-border p-6"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">

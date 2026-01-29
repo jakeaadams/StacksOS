@@ -120,7 +120,7 @@ export default function FinesPage() {
             <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
           </div>
         ) : fines.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-border p-12 text-center">
+          <div className="bg-card rounded-xl shadow-sm border border-border p-12 text-center">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">No fines</h2>
             <p className="text-muted-foreground">Your account is in good standing.</p>
@@ -129,7 +129,7 @@ export default function FinesPage() {
           <div className="space-y-6">
             {/* Unpaid fines */}
             {unpaidFines.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm border border-border overflow-hidden">
+              <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
                 <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                   <h2 className="font-semibold text-foreground">
                     Outstanding ({unpaidFines.length})
@@ -177,7 +177,7 @@ export default function FinesPage() {
 
             {/* Paid fines history */}
             {paidFines.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm border border-border overflow-hidden">
+              <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
                 <div className="px-6 py-4 border-b border-border">
                   <h2 className="font-semibold text-foreground flex items-center gap-2">
                     <Receipt className="h-5 w-5 text-muted-foreground/70" />

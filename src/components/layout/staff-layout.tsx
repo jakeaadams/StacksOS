@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { KeyboardProvider } from "@/components/keyboard/keyboard-shortcuts";
 import { AlertTriangle, Loader2 } from "lucide-react";
-import { KeyboardShortcutsOverlay } from "@/components/shared";
+import { KeyboardShortcutsOverlay, SessionTimeoutWarning } from "@/components/shared";
 import { useApi } from "@/hooks";
 
 interface StaffLayoutProps {
@@ -80,6 +80,13 @@ export function StaffLayout({ children }: StaffLayoutProps) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
+  // Handle session expiring - could save drafts here
+  const handleSessionExpiring = useCallback(async () => {
+    // This is where we could save any unsaved work
+    // For now, we just log it - individual components can listen to this event
+    console.log("[StacksOS] Session expiring soon - consider saving work");
+  }, []);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -88,7 +95,7 @@ export function StaffLayout({ children }: StaffLayoutProps) {
             <span className="text-white font-semibold text-sm">SO</span>
           </div>
           <Loader2 className="h-6 w-6 animate-spin text-[hsl(var(--brand-1))]" />
-          <p className="text-sm text-muted-foreground">Loading StacksOS…</p>
+          <p className="text-sm text-muted-foreground">Loading StacksOS...</p>
         </div>
       </div>
     );
@@ -154,6 +161,11 @@ export function StaffLayout({ children }: StaffLayoutProps) {
         </div>
         <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
         <KeyboardShortcutsOverlay />
+        <SessionTimeoutWarning
+          sessionDurationMinutes={480}
+          warningBeforeMinutes={5}
+          onSessionExpiring={handleSessionExpiring}
+        />
         <Toaster position="top-right" richColors />
       </div>
     </KeyboardProvider>

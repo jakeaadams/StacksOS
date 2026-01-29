@@ -162,7 +162,7 @@ export default function RegisterPage() {
   if (success) {
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+        <div className="max-w-md w-full bg-card rounded-2xl shadow-lg p-8 text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="h-8 w-8 text-green-600" />
           </div>
@@ -223,15 +223,15 @@ export default function RegisterPage() {
 
         {/* Benefits */}
         <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-xl p-4 text-center border border-border">
+          <div className="bg-card rounded-xl p-4 text-center border border-border">
             <BookOpen className="h-6 w-6 text-blue-600 mx-auto mb-2" />
             <p className="text-sm font-medium text-foreground">Unlimited Books</p>
           </div>
-          <div className="bg-white rounded-xl p-4 text-center border border-border">
+          <div className="bg-card rounded-xl p-4 text-center border border-border">
             <Smartphone className="h-6 w-6 text-purple-600 mx-auto mb-2" />
             <p className="text-sm font-medium text-foreground">Digital Access</p>
           </div>
-          <div className="bg-white rounded-xl p-4 text-center border border-border">
+          <div className="bg-card rounded-xl p-4 text-center border border-border">
             <Users className="h-6 w-6 text-green-600 mx-auto mb-2" />
             <p className="text-sm font-medium text-foreground">Free Programs</p>
           </div>
@@ -260,7 +260,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-border p-6 md:p-8">
+        <form onSubmit={handleSubmit} className="bg-card rounded-2xl shadow-sm border border-border p-6 md:p-8">
           {submitError && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-red-600" />

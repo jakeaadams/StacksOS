@@ -166,7 +166,7 @@ export default function HelpPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
-      <section className="bg-white border-b border-border py-12">
+      <section className="bg-card border-b border-border py-12">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
             <HelpCircle className="h-8 w-8 text-primary-600" />
@@ -253,7 +253,7 @@ export default function HelpPage() {
           {/* FAQ content */}
           <div className="md:col-span-3">
             {filteredFaqs.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-xl border border-border">
+              <div className="text-center py-12 bg-card rounded-xl border border-border">
                 <AlertCircle className="h-12 w-12 text-muted-foreground/70 mx-auto mb-4" />
                 <p className="text-muted-foreground">No results found for &quot;{searchQuery}&quot;</p>
                 <button type="button"
@@ -268,7 +268,7 @@ export default function HelpPage() {
                 {filteredFaqs.map((faq, index) => (
                   <div
                     key={index}
-                    className="bg-white rounded-xl border border-border overflow-hidden"
+                    className="bg-card rounded-xl border border-border overflow-hidden"
                   >
                     <button type="button"
                       onClick={() => toggleItem(index)}
@@ -295,7 +295,7 @@ export default function HelpPage() {
         </div>
 
         {/* Contact section */}
-        <section className="mt-16 bg-white rounded-xl border border-border p-8">
+        <section className="mt-16 bg-card rounded-xl border border-border p-8">
           <h2 className="text-2xl font-bold text-foreground mb-6 text-center">
             Still Need Help?
           </h2>

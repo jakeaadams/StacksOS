@@ -155,7 +155,7 @@ export default function CheckoutsPage() {
             <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
           </div>
         ) : checkouts.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-border p-12 text-center">
+          <div className="bg-card rounded-xl shadow-sm border border-border p-12 text-center">
             <BookOpen className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">No checkouts</h2>
             <p className="text-muted-foreground mb-6">You don&apos;t have any items checked out right now.</p>
@@ -229,7 +229,7 @@ function CheckoutCard({
   const canRenew = checkout.renewals < checkout.maxRenewals;
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border p-4 flex gap-4
+    <div className={`bg-card rounded-xl shadow-sm border p-4 flex gap-4
                    ${checkout.isOverdue ? "border-red-200 bg-red-50/50" : "border-border"}`}>
       {/* Cover */}
       <div className="w-16 h-24 bg-muted rounded-lg overflow-hidden shrink-0">

@@ -380,7 +380,7 @@ export default function ReadingChallengesPage() {
             className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium whitespace-nowrap transition-all
                      ${activeTab === tab.id
                        ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg"
-                       : "bg-white text-muted-foreground hover:bg-muted/30"
+                       : "bg-card text-muted-foreground hover:bg-muted/30"
                      }`}
           >
             <tab.icon className="h-5 w-5" />
@@ -414,7 +414,7 @@ export default function ReadingChallengesPage() {
                   <BadgeCard key={badge.id} badge={badge} />
                 ))}
               {badges.filter((b) => b.isEarned).length === 0 && (
-                <div className="col-span-full text-center py-8 bg-white rounded-2xl">
+                <div className="col-span-full text-center py-8 bg-card rounded-2xl">
                   <p className="text-muted-foreground">
                     Complete challenges to earn your first badge!
                   </p>
@@ -442,7 +442,7 @@ export default function ReadingChallengesPage() {
 
       {/* Leaderboard tab */}
       {activeTab === "leaderboard" && (
-        <div className="bg-white rounded-3xl p-6 shadow-lg">
+        <div className="bg-card rounded-3xl p-6 shadow-lg">
           <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
             <Trophy className="h-5 w-5 text-yellow-500" />
             Top Readers This Month
@@ -511,7 +511,7 @@ function ChallengeCard({ challenge }: { challenge: Challenge }) {
   const Icon = challenge.icon;
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border-2 border-transparent 
+    <div className="bg-card rounded-2xl p-5 shadow-sm border-2 border-transparent 
                   hover:border-purple-200 transition-all">
       <div className="flex items-start gap-4">
         <div className={`p-3 rounded-2xl ${challenge.bgColor} shrink-0`}>
@@ -573,7 +573,7 @@ function BadgeCard({ badge }: { badge: Badge }) {
     <div
       className={`relative p-4 rounded-2xl text-center transition-all
                 ${badge.isEarned
-                  ? "bg-white shadow-md hover:shadow-lg"
+                  ? "bg-card shadow-md hover:shadow-lg"
                   : "bg-muted/50 opacity-60"
                 }`}
     >

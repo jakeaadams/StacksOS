@@ -135,7 +135,7 @@ export default function HoldsPage() {
             <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
           </div>
         ) : holds.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-border p-12 text-center">
+          <div className="bg-card rounded-xl shadow-sm border border-border p-12 text-center">
             <Clock className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">No holds</h2>
             <p className="text-muted-foreground mb-6">You don&apos;t have any items on hold.</p>
@@ -266,7 +266,7 @@ function HoldCard({
   };
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border p-4 flex gap-4
+    <div className={`bg-card rounded-xl shadow-sm border p-4 flex gap-4
                    ${hold.status === "ready" ? "border-green-200 bg-green-50/50" : "border-border"}`}>
       <div className="w-16 h-24 bg-muted rounded-lg overflow-hidden shrink-0">
         {hold.coverUrl ? (

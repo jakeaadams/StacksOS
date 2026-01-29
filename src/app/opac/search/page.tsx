@@ -281,7 +281,7 @@ function SearchContent() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Search header */}
-      <div className="bg-white border-b border-border sticky top-[73px] z-40">
+      <div className="bg-card border-b border-border sticky top-[73px] z-40">
         <div className="max-w-7xl mx-auto px-4 py-4">
           {/* Search form */}
           <form 
@@ -363,7 +363,7 @@ function SearchContent() {
           {/* Filters sidebar */}
           {showFilters && (
             <aside className="w-64 shrink-0">
-              <div className="bg-white rounded-lg shadow-sm border border-border p-4 sticky top-[200px]">
+              <div className="bg-card rounded-lg shadow-sm border border-border p-4 sticky top-[200px]">
                 <h3 className="font-semibold text-foreground mb-4">Filters</h3>
 
                 {/* Format filter */}

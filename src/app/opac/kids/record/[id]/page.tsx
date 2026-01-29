@@ -236,7 +236,7 @@ export default function KidsRecordDetailPage() {
       </button>
 
       {/* Main content */}
-      <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
+      <div className="bg-card rounded-3xl shadow-lg overflow-hidden">
         <div className="md:flex">
           {/* Cover image */}
           <div className="md:w-1/3 p-6 md:p-8 bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100">
@@ -262,12 +262,12 @@ export default function KidsRecordDetailPage() {
             {(book.lexile || book.arLevel) && (
               <div className="flex flex-wrap justify-center gap-2 mt-4">
                 {book.lexile && (
-                  <span className="px-3 py-1 bg-white/80 rounded-full text-sm font-medium text-purple-700">
+                  <span className="px-3 py-1 bg-card/80 rounded-full text-sm font-medium text-purple-700">
                     Lexile {book.lexile}
                   </span>
                 )}
                 {book.arLevel && (
-                  <span className="px-3 py-1 bg-white/80 rounded-full text-sm font-medium text-blue-700">
+                  <span className="px-3 py-1 bg-card/80 rounded-full text-sm font-medium text-blue-700">
                     AR Level {book.arLevel}
                   </span>
                 )}
@@ -478,7 +478,7 @@ export default function KidsRecordDetailPage() {
       {/* Hold Modal */}
       {showHoldModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl">
+          <div className="bg-card rounded-3xl max-w-md w-full p-6 shadow-2xl">
             {holdSuccess ? (
               <div className="text-center py-8">
                 <div className="w-20 h-20 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">

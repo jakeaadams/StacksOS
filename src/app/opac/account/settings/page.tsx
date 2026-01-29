@@ -182,7 +182,7 @@ export default function AccountSettingsPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-card border-b">
         <div className="max-w-3xl mx-auto px-4 py-6">
           <Link
             href="/opac/account"
@@ -199,7 +199,7 @@ export default function AccountSettingsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border-b">
+      <div className="bg-card border-b">
         <div className="max-w-3xl mx-auto px-4">
           <nav className="flex gap-8">
             {[
@@ -241,7 +241,7 @@ export default function AccountSettingsPage() {
 
         {/* Profile Tab */}
         {activeTab === "profile" && (
-          <div className="bg-white rounded-xl border border-border p-6">
+          <div className="bg-card rounded-xl border border-border p-6">
             <h2 className="text-lg font-semibold text-foreground mb-6">Contact Information</h2>
             
             <div className="space-y-4">
@@ -314,7 +314,7 @@ export default function AccountSettingsPage() {
 
         {/* Notifications Tab */}
         {activeTab === "notifications" && (
-          <div className="bg-white rounded-xl border border-border p-6">
+          <div className="bg-card rounded-xl border border-border p-6">
             <h2 className="text-lg font-semibold text-foreground mb-6">Notification Preferences</h2>
             
             <div className="space-y-6">
@@ -386,7 +386,7 @@ export default function AccountSettingsPage() {
         {activeTab === "privacy" && (
           <div className="space-y-6">
             {/* PIN Change */}
-            <div className="bg-white rounded-xl border border-border p-6">
+            <div className="bg-card rounded-xl border border-border p-6">
               <h2 className="text-lg font-semibold text-foreground mb-2">Change PIN</h2>
               <p className="text-muted-foreground text-sm mb-4">
                 Update your account PIN for added security.
@@ -489,7 +489,7 @@ export default function AccountSettingsPage() {
             </div>
 
             {/* Reading History */}
-            <div className="bg-white rounded-xl border border-border p-6">
+            <div className="bg-card rounded-xl border border-border p-6">
               <h2 className="text-lg font-semibold text-foreground mb-2">Reading History</h2>
               <p className="text-muted-foreground text-sm mb-4">
                 Control whether your checkout history is saved.

@@ -118,7 +118,7 @@ export default function BrowsePage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-card border-b">
         <div className="max-w-6xl mx-auto px-4 py-8">
           <h1 className="text-3xl font-bold text-foreground">Browse the Catalog</h1>
           <p className="mt-2 text-muted-foreground">
@@ -136,7 +136,7 @@ export default function BrowsePage() {
               <Link
                 key={list.name}
                 href={list.href}
-                className="flex items-center gap-3 p-4 bg-white rounded-xl border border-border 
+                className="flex items-center gap-3 p-4 bg-card rounded-xl border border-border 
                          hover:border-primary-300 hover:shadow-md transition-all"
               >
                 <div className="p-2 bg-primary-100 rounded-lg">
@@ -156,7 +156,7 @@ export default function BrowsePage() {
               <Link
                 key={format.name}
                 href={`/opac/search?${format.query}`}
-                className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-border 
+                className="flex flex-col items-center gap-2 p-4 bg-card rounded-xl border border-border 
                          hover:border-primary-300 hover:shadow-md transition-all text-center"
               >
                 <div className="p-3 bg-muted/50 rounded-full">
@@ -178,7 +178,7 @@ export default function BrowsePage() {
               return (
                 <div
                   key={category.name}
-                  className="bg-white rounded-xl border border-border overflow-hidden"
+                  className="bg-card rounded-xl border border-border overflow-hidden"
                 >
                   <button type="button"
                     onClick={() => setExpandedCategory(isExpanded ? null : category.name)}
@@ -227,7 +227,7 @@ export default function BrowsePage() {
         {/* Authors A-Z */}
         <section className="mt-12">
           <h2 className="text-xl font-semibold text-foreground mb-4">Browse Authors A-Z</h2>
-          <div className="bg-white rounded-xl border border-border p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex flex-wrap gap-2">
               {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((letter) => (
                 <Link

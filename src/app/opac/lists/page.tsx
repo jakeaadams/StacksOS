@@ -192,7 +192,7 @@ export default function ListsPage() {
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-border p-8 text-center">
+        <div className="max-w-md w-full bg-card rounded-2xl shadow-sm border border-border p-8 text-center">
           <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Heart className="h-8 w-8 text-primary-600" />
           </div>
@@ -240,7 +240,7 @@ export default function ListsPage() {
         <div className="grid lg:grid-cols-4 gap-8">
           {/* Lists sidebar */}
           <div className="lg:col-span-1">
-            <nav className="bg-white rounded-xl border border-border overflow-hidden">
+            <nav className="bg-card rounded-xl border border-border overflow-hidden">
               <div className="p-4 border-b border-border">
                 <h2 className="font-semibold text-foreground">Your Lists</h2>
               </div>
@@ -276,7 +276,7 @@ export default function ListsPage() {
             </nav>
 
             {/* Staff Picks & Community Lists */}
-            <div className="mt-6 bg-white rounded-xl border border-border overflow-hidden">
+            <div className="mt-6 bg-card rounded-xl border border-border overflow-hidden">
               <div className="p-4 border-b border-border">
                 <h2 className="font-semibold text-foreground">Discover</h2>
               </div>
@@ -306,7 +306,7 @@ export default function ListsPage() {
           {/* List content */}
           <div className="lg:col-span-3">
             {selectedList ? (
-              <div className="bg-white rounded-xl border border-border">
+              <div className="bg-card rounded-xl border border-border">
                 {/* List header */}
                 <div className="p-6 border-b border-border">
                   <div className="flex items-start justify-between gap-4">
@@ -398,7 +398,7 @@ export default function ListsPage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-xl border border-border p-12 text-center">
+              <div className="bg-card rounded-xl border border-border p-12 text-center">
                 <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <List className="h-8 w-8 text-primary-600" />
                 </div>
@@ -417,7 +417,7 @@ export default function ListsPage() {
       {/* Create List Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+          <div className="bg-card rounded-2xl shadow-xl max-w-md w-full">
             <div className="p-6 border-b border-border flex items-center justify-between">
               <h2 className="text-xl font-semibold text-foreground">Create New List</h2>
               <button type="button"

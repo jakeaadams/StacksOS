@@ -330,7 +330,7 @@ export default function RecordDetailPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Back button */}
-      <div className="bg-white border-b border-border">
+      <div className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <button type="button"
             onClick={() => router.back()}
@@ -354,7 +354,7 @@ export default function RecordDetailPage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left column - Cover and actions */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-border overflow-hidden">
+            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
               {/* Cover image */}
               <div className="aspect-[2/3] bg-muted/50 relative">
                 {record.coverUrl && !imageError ? (
@@ -435,7 +435,7 @@ export default function RecordDetailPage() {
 
             {/* Reading level info */}
             {(record.lexileLevel || record.arLevel) && (
-              <div className="mt-4 bg-white rounded-xl shadow-sm border border-border p-4">
+              <div className="mt-4 bg-card rounded-xl shadow-sm border border-border p-4">
                 <h3 className="font-semibold text-foreground mb-3">Reading Level</h3>
                 <div className="space-y-2">
                   {record.lexileLevel && (
@@ -458,7 +458,7 @@ export default function RecordDetailPage() {
           {/* Right column - Details */}
           <div className="lg:col-span-2 space-y-6">
             {/* Title and basic info */}
-            <div className="bg-white rounded-xl shadow-sm border border-border p-6">
+            <div className="bg-card rounded-xl shadow-sm border border-border p-6">
               <div className="flex items-start gap-3 mb-4">
                 <div className="p-2 bg-primary-100 rounded-lg">
                   <FormatIcon className="h-6 w-6 text-primary-600" />
@@ -545,7 +545,7 @@ export default function RecordDetailPage() {
 
             {/* Summary */}
             {record.summary && (
-              <div className="bg-white rounded-xl shadow-sm border border-border p-6">
+              <div className="bg-card rounded-xl shadow-sm border border-border p-6">
                 <h2 className="text-lg font-semibold text-foreground mb-3">Summary</h2>
                 <p className="text-foreground/80 leading-relaxed whitespace-pre-line">
                   {record.summary}
@@ -555,7 +555,7 @@ export default function RecordDetailPage() {
 
             {/* Subjects */}
             {record.subjects && record.subjects.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm border border-border p-6">
+              <div className="bg-card rounded-xl shadow-sm border border-border p-6">
                 <h2 className="text-lg font-semibold text-foreground mb-3">Subjects</h2>
                 <div className="flex flex-wrap gap-2">
                   {record.subjects.map((subject, i) => (
@@ -573,7 +573,7 @@ export default function RecordDetailPage() {
             )}
 
             {/* Copy availability */}
-            <div className="bg-white rounded-xl shadow-sm border border-border p-6">
+            <div className="bg-card rounded-xl shadow-sm border border-border p-6">
               <h2 className="text-lg font-semibold text-foreground mb-4">
                 Availability ({record.availableCopies} of {record.totalCopies} available)
               </h2>
@@ -635,7 +635,7 @@ export default function RecordDetailPage() {
 
             {/* Related titles */}
             {record.relatedTitles && record.relatedTitles.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm border border-border p-6">
+              <div className="bg-card rounded-xl shadow-sm border border-border p-6">
                 <h2 className="text-lg font-semibold text-foreground mb-4">You May Also Like</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {record.relatedTitles.slice(0, 4).map((related) => (
@@ -660,7 +660,7 @@ export default function RecordDetailPage() {
       {/* Hold modal */}
       {showHoldModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="bg-card rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-semibold text-foreground mb-4">Place Hold</h3>
             
             <div className="mb-4">

@@ -83,7 +83,7 @@ export function GroupedWorkCard({
 
   if (variant === "grid") {
     return (
-      <div className="bg-white rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow">
+      <div className="bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow">
         <Link href={`/opac/record/${work.primaryBibId}`}>
           <div className="aspect-[2/3] bg-muted/50 relative">
             {work.coverUrl && !imageError ? (
@@ -106,7 +106,7 @@ export function GroupedWorkCard({
                 return (
                   <div
                     key={type}
-                    className="p-1.5 bg-white/90 rounded-full shadow-sm"
+                    className="p-1.5 bg-card/90 rounded-full shadow-sm"
                     title={formatLabels[type]}
                   >
                     <Icon className="h-3 w-3 text-foreground/80" />
@@ -114,7 +114,7 @@ export function GroupedWorkCard({
                 );
               })}
               {formatTypes.length > 3 && (
-                <div className="px-1.5 py-1 bg-white/90 rounded-full shadow-sm text-xs text-muted-foreground">
+                <div className="px-1.5 py-1 bg-card/90 rounded-full shadow-sm text-xs text-muted-foreground">
                   +{formatTypes.length - 3}
                 </div>
               )}
@@ -149,7 +149,7 @@ export function GroupedWorkCard({
 
   // List variant
   return (
-    <div className="bg-white rounded-xl border border-border overflow-hidden">
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
       <div className="p-4 flex gap-4">
         {/* Cover */}
         <Link
@@ -284,7 +284,7 @@ export function GroupedWorkCard({
                   className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white rounded-lg">
+                    <div className="p-2 bg-card rounded-lg">
                       <Icon className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>

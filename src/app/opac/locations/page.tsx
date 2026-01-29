@@ -195,7 +195,7 @@ export default function LocationsPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-card border-b">
         <div className="max-w-4xl mx-auto px-4 py-8">
           <h1 className="text-3xl font-bold text-foreground">Library Locations</h1>
           <p className="mt-2 text-muted-foreground">
@@ -245,7 +245,7 @@ export default function LocationsPage() {
               return (
                 <div
                   key={location.id}
-                  className="bg-white rounded-xl shadow-sm border border-border overflow-hidden"
+                  className="bg-card rounded-xl shadow-sm border border-border overflow-hidden"
                 >
                   {/* Header */}
                   <button type="button"

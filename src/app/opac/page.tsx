@@ -125,7 +125,7 @@ export default function OPACHomePage() {
   const QuickSearchChip = ({ label, query }: { label: string; query: string }) => (
     <Link
       href={`/opac/search?q=${encodeURIComponent(query)}`}
-      className="px-4 py-2 bg-white rounded-full text-sm font-medium text-foreground/80 
+      className="px-4 py-2 bg-card rounded-full text-sm font-medium text-foreground/80 
                hover:bg-primary-50 hover:text-primary-700 transition-colors shadow-sm"
     >
       {label}
@@ -145,7 +145,7 @@ export default function OPACHomePage() {
   }) => (
     <Link
       href={href}
-      className="flex flex-col items-center gap-3 p-6 bg-white rounded-xl shadow-sm border 
+      className="flex flex-col items-center gap-3 p-6 bg-card rounded-xl shadow-sm border 
                border-border hover:shadow-md hover:border-primary-300 transition-all group"
     >
       <div className={`p-4 rounded-full ${color} group-hover:scale-110 transition-transform`}>
@@ -210,7 +210,7 @@ export default function OPACHomePage() {
 
       {/* Logged in user quick access */}
       {isLoggedIn && patron && (
-        <section className="bg-white border-b border-border py-4">
+        <section className="bg-card border-b border-border py-4">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4">
@@ -276,7 +276,7 @@ export default function OPACHomePage() {
       </section>
 
       {/* New Arrivals */}
-      <section className="py-12 md:py-16 bg-white">
+      <section className="py-12 md:py-16 bg-card">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
@@ -388,7 +388,7 @@ export default function OPACHomePage() {
 
       {/* Staff Picks */}
       {staffPicks.length > 0 && (
-        <section className="py-12 md:py-16 bg-white">
+        <section className="py-12 md:py-16 bg-card">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">

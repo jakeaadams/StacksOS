@@ -181,7 +181,7 @@ export default function ReadingLogPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 bg-white rounded-2xl">
+          <div className="text-center py-12 bg-card rounded-2xl">
             <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
             <p className="text-muted-foreground mb-4">No reading logged yet!</p>
             <button type="button"
@@ -214,7 +214,7 @@ export default function ReadingLogPage() {
 
 function ReadingEntryCard({ entry }: { entry: ReadingEntry }) {
   return (
-    <div className="flex gap-4 p-4 bg-white rounded-2xl shadow-sm">
+    <div className="flex gap-4 p-4 bg-card rounded-2xl shadow-sm">
       {/* Book cover placeholder */}
       <div className="w-16 h-20 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 
                     flex items-center justify-center shrink-0">
@@ -346,7 +346,7 @@ function AddReadingModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl">
+      <div className="bg-card rounded-3xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border/50">
           <h2 className="text-xl font-bold text-foreground">

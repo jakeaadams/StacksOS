@@ -162,7 +162,7 @@ function BrowseContent() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 bg-white rounded-3xl">
+          <div className="text-center py-20 bg-card rounded-3xl">
             <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
             <p className="text-muted-foreground">No books found in this category.</p>
           </div>
@@ -188,7 +188,7 @@ function BrowseContent() {
             <Link
               key={category.id}
               href={`/opac/kids/browse?category=${category.id}`}
-              className="flex flex-col items-center gap-3 p-6 bg-white rounded-2xl shadow-sm 
+              className="flex flex-col items-center gap-3 p-6 bg-card rounded-2xl shadow-sm 
                        border-2 border-transparent hover:border-purple-200 hover:shadow-md 
                        transition-all group"
             >
@@ -238,7 +238,7 @@ function BookCard({ book }: { book: Book }) {
         )}
 
         {book.readingLevel && (
-          <div className="absolute top-2 left-2 px-2 py-1 bg-white/90 backdrop-blur-sm 
+          <div className="absolute top-2 left-2 px-2 py-1 bg-card/90 backdrop-blur-sm 
                         rounded-full text-xs font-medium text-purple-700">
             {book.readingLevel}
           </div>
