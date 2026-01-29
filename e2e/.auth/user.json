@@ -1,0 +1,41 @@
+{
+  "cookies": [
+    {
+      "name": "authtoken",
+      "value": "61de1252137d47c51bd68e75e419fb93",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1769413111.507231,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "stacksos_workstation_org",
+          "value": "101"
+        },
+        {
+          "name": "stacksos_sidebar_collapsed",
+          "value": "false"
+        },
+        {
+          "name": "stacksos_username",
+          "value": "jake"
+        },
+        {
+          "name": "stacksos_workstation",
+          "value": "STACKSOS-STACKSB-02D80979"
+        },
+        {
+          "name": "stacksos_device_id",
+          "value": "02d80979"
+        }
+      ]
+    }
+  ]
+}

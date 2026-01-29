@@ -1,0 +1,501 @@
+"use client";
+
+import { fetchWithAuth } from "@/lib/client-fetch";
+import { useCallback, useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  PageContainer,
+  PageHeader,
+  PageContent,
+  LoadingSpinner,
+  EmptyState,
+  StatusBadge,
+  DataTable,
+  ErrorBoundary,
+} from "@/components/shared";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
+import { ColumnDef } from "@tanstack/react-table";
+import {
+  ArrowLeft,
+  Package,
+  MapPin,
+  Building,
+  Barcode,
+  BookOpen,
+  Edit,
+  Save,
+  X,
+  Clock,
+  User,
+  AlertTriangle,
+  CheckCircle,
+  History,
+} from "lucide-react";
+
+interface ItemDetail {
+  id: number;
+  barcode: string;
+  statusId: number;
+  statusName: string;
+  callNumber: string;
+  callNumberId?: number;
+  recordId?: number;
+  location: string;
+  locationId?: number;
+  circLib: string;
+  circLibId?: number;
+  owningLib: string;
+  owningLibId?: number;
+  copyNumber: number;
+  price?: number;
+  depositAmount?: number;
+  holdable: boolean;
+  circulate: boolean;
+  refItem: boolean;
+  opacVisible: boolean;
+  title: string;
+  author: string;
+  isbn?: string;
+  createDate?: string;
+  editDate?: string;
+  activeDate?: string;
+  alertMessage?: string;
+  notes?: string;
+}
+
+interface CircHistory {
+  id: number;
+  patronId?: number;
+  patronBarcode?: string;
+  checkoutDate?: string;
+  dueDate?: string;
+  checkinDate?: string | null;
+  renewCount?: number;
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString(undefined, { 
+    year: "numeric", 
+    month: "short", 
+    day: "numeric" 
+  });
+}
+
+function getStatusColor(statusId: number) {
+  switch (statusId) {
+    case 0: return "text-green-600 bg-green-50 border-green-200";
+    case 1: return "text-blue-600 bg-blue-50 border-blue-200";
+    case 6: return "text-amber-600 bg-amber-50 border-amber-200";
+    case 8: return "text-purple-600 bg-purple-50 border-purple-200";
+    case 3: return "text-red-600 bg-red-50 border-red-200"; // Lost
+    case 4: return "text-orange-600 bg-orange-50 border-orange-200"; // Missing
+    default: return "text-muted-foreground bg-muted border-border";
+  }
+}
+
+export default function ItemDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const itemId = params.id as string;
+
+  const [item, setItem] = useState<ItemDetail | null>(null);
+  const [history, setHistory] = useState<CircHistory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Editable fields
+  const [editBarcode, setEditBarcode] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editHoldable, setEditHoldable] = useState(true);
+  const [editCirculate, setEditCirculate] = useState(true);
+  const [editOpacVisible, setEditOpacVisible] = useState(true);
+  const [editAlertMessage, setEditAlertMessage] = useState("");
+
+  const loadItem = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetchWithAuth(`/api/evergreen/items?id=${itemId}&include=bib,history`);
+      const data = await res.json();
+      
+      if (data.ok && data.item) {
+        setItem(data.item);
+        setHistory(data.item.history || []);
+        // Initialize edit fields
+        setEditBarcode(data.item.barcode);
+        setEditPrice(data.item.price?.toString() || "");
+        setEditHoldable(data.item.holdable);
+        setEditCirculate(data.item.circulate);
+        setEditOpacVisible(data.item.opacVisible !== false);
+        setEditAlertMessage(data.item.alertMessage || "");
+      } else {
+        setError(data.error || "Item not found");
+      }
+    } catch (err) {
+      setError("Failed to load item");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [itemId]);
+
+  useEffect(() => {
+    loadItem();
+  }, [loadItem]);
+
+  const handleSave = async () => {
+    if (!item) return;
+    setIsSaving(true);
+    try {
+      const res = await fetchWithAuth(`/api/evergreen/items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          barcode: editBarcode,
+          price: editPrice ? parseFloat(editPrice) : null,
+          holdable: editHoldable,
+          circulate: editCirculate,
+          opac_visible: editOpacVisible,
+          alert_message: editAlertMessage || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast.success("Item updated");
+        setIsEditing(false);
+        loadItem();
+      } else {
+        toast.error(data.error || "Update failed");
+      }
+    } catch (err) {
+      toast.error("Failed to update item");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const historyColumns: ColumnDef<CircHistory>[] = [
+    {
+      accessorKey: "checkoutDate",
+      header: "Checked Out",
+      cell: ({ row }) => formatDate(row.original.checkoutDate),
+    },
+    {
+      accessorKey: "dueDate",
+      header: "Due Date",
+      cell: ({ row }) => formatDate(row.original.dueDate),
+    },
+    {
+      accessorKey: "checkinDate",
+      header: "Returned",
+      cell: ({ row }) => row.original.checkinDate ? formatDate(row.original.checkinDate) : (
+        <Badge variant="outline" className="text-blue-600">Active</Badge>
+      ),
+    },
+    {
+      accessorKey: "renewCount",
+      header: "Renewals",
+      cell: ({ row }) => row.original.renewCount || 0,
+    },
+  ];
+
+  if (isLoading) {
+    return <LoadingSpinner message="Loading item..." />;
+  }
+
+  if (error || !item) {
+    return (
+      <PageContainer>
+        <PageContent>
+          <EmptyState
+            title="Item not found"
+            description={error || "The requested item could not be found."}
+            action={{
+              label: "Back to Catalog",
+              onClick: () => router.push("/staff/catalog"),
+              icon: ArrowLeft,
+            }}
+          />
+        </PageContent>
+      </PageContainer>
+    );
+  }
+
+  return (
+    <ErrorBoundary onReset={() => router.refresh()}>
+      <PageContainer>
+        <PageHeader
+          title={`Item: ${item.barcode}`}
+        subtitle={item.title}
+        breadcrumbs={[
+          { label: "Catalog", href: "/staff/catalog" },
+          { label: "Item Status", href: "/staff/catalog/item-status" },
+          { label: item.barcode },
+        ]}
+        actions={[
+          {
+            label: isEditing ? "Cancel" : "Edit Item",
+            onClick: () => setIsEditing(!isEditing),
+            icon: isEditing ? X : Edit,
+            variant: isEditing ? "outline" : "default",
+          },
+          ...(isEditing ? [{
+            label: "Save Changes",
+            onClick: handleSave,
+            icon: Save,
+            disabled: isSaving,
+          }] : []),
+          {
+            label: "View Record",
+            onClick: () => item.recordId && router.push(`/staff/catalog/record/${item.recordId}`),
+            icon: BookOpen,
+            variant: "outline" as const,
+            disabled: !item.recordId,
+          },
+        ]}
+      />
+
+      <PageContent className="space-y-6">
+        {/* Status Banner */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`h-16 w-16 rounded-xl flex items-center justify-center ${getStatusColor(item.statusId)}`}>
+                  <Package className="h-8 w-8" />
+                </div>
+                <div>
+                  <Badge variant="outline" className={`text-sm ${getStatusColor(item.statusId)}`}>
+                    {item.statusName}
+                  </Badge>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Copy #{item.copyNumber} • {item.circLib}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold font-mono">{item.barcode}</p>
+                <p className="text-sm text-muted-foreground">{item.callNumber}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Item Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Item Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isEditing ? (
+                <>
+                  <div className="space-y-2">
+                    <Label>Barcode</Label>
+                    <Input 
+                      value={editBarcode} 
+                      onChange={(e) => setEditBarcode(e.target.value)}
+                      className="font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Price</Label>
+                    <Input 
+                      type="number"
+                      step="0.01"
+                      value={editPrice} 
+                      onChange={(e) => setEditPrice(e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Alert Message</Label>
+                    <Input 
+                      value={editAlertMessage} 
+                      onChange={(e) => setEditAlertMessage(e.target.value)}
+                      placeholder="Optional alert for staff"
+                    />
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <Label>Holdable</Label>
+                    <Switch checked={editHoldable} onCheckedChange={setEditHoldable} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>Circulates</Label>
+                    <Switch checked={editCirculate} onCheckedChange={setEditCirculate} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>OPAC Visible</Label>
+                    <Switch checked={editOpacVisible} onCheckedChange={setEditOpacVisible} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Barcode</p>
+                      <p className="font-mono font-medium">{item.barcode}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Call Number</p>
+                      <p className="font-medium">{item.callNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Price</p>
+                      <p className="font-medium">{item.price ? `$${item.price.toFixed(2)}` : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Copy Number</p>
+                      <p className="font-medium">{item.copyNumber}</p>
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant={item.holdable ? "default" : "secondary"}>
+                      {item.holdable ? "Holdable" : "Not Holdable"}
+                    </Badge>
+                    <Badge variant={item.circulate ? "default" : "secondary"}>
+                      {item.circulate ? "Circulates" : "Non-Circ"}
+                    </Badge>
+                    <Badge variant={item.opacVisible ? "default" : "secondary"}>
+                      {item.opacVisible ? "OPAC Visible" : "Hidden from OPAC"}
+                    </Badge>
+                    {item.refItem && <Badge variant="outline">Reference</Badge>}
+                  </div>
+                  {item.alertMessage && (
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+                      <AlertTriangle className="h-4 w-4 mt-0.5" />
+                      <p className="text-sm">{item.alertMessage}</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Location Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Location
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Circulating Library</p>
+                  <p className="font-medium flex items-center gap-1">
+                    <Building className="h-3.5 w-3.5" />
+                    {item.circLib}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Owning Library</p>
+                  <p className="font-medium flex items-center gap-1">
+                    <Building className="h-3.5 w-3.5" />
+                    {item.owningLib}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Shelving Location</p>
+                  <p className="font-medium">{item.location}</p>
+                </div>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Created</p>
+                  <p className="font-medium">{formatDate(item.createDate)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Last Edited</p>
+                  <p className="font-medium">{formatDate(item.editDate)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Active Since</p>
+                  <p className="font-medium">{formatDate(item.activeDate)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Bibliographic Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Bibliographic Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-start gap-4">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold">{item.title}</h3>
+                {item.author && <p className="text-muted-foreground">{item.author}</p>}
+                {item.isbn && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    ISBN: <span className="font-mono">{item.isbn}</span>
+                  </p>
+                )}
+              </div>
+              {item.recordId && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/staff/catalog/record/${item.recordId}`}>
+                    <BookOpen className="h-4 w-4 mr-1" />
+                    Full Record
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Circulation History */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Circulation History
+            </CardTitle>
+            <CardDescription>Recent checkout activity for this item</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {history.length > 0 ? (
+              <DataTable columns={historyColumns} data={history} />
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No circulation history available
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </PageContent>
+      </PageContainer>
+    </ErrorBoundary>
+  );
+}

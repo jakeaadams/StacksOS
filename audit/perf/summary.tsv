@@ -1,0 +1,7 @@
+metric	samples	p50_ms	p95_ms	budget_p95_ms	pass
+checkout	30	223.57	238.22	350	1
+checkin	30	276.3	286.12	350	1
+patron_search	30	37.87	51.02	200	1
+catalog_search	30	111.52	132.64	200	1
+holds_patron	30	29.34	32.08	250	1
+bills	30	23.75	27.4	400	1

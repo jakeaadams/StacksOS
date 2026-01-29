@@ -1,0 +1,96 @@
+-- StackOS Email Notification System
+-- Evergreen Database Setup
+--
+-- Run this SQL script in your Evergreen database to create the
+-- user setting types needed for email notification preferences.
+--
+-- Usage:
+--   psql -U evergreen -d evergreen -f setup-evergreen-settings.sql
+
+BEGIN;
+
+-- Create email notification preference setting types
+INSERT INTO config.usr_setting_type (name, opac_visible, label, description, datatype, reg_default)
+VALUES
+  (
+    'stacksos.email.notices.enabled',
+    TRUE,
+    'Email Notices Enabled',
+    'Master switch to enable or disable all email notifications from the library',
+    'bool',
+    'true'
+  ),
+  (
+    'stacksos.email.notices.hold_ready',
+    TRUE,
+    'Hold Ready Email Notification',
+    'Send email notification when a hold is ready for pickup',
+    'bool',
+    'true'
+  ),
+  (
+    'stacksos.email.notices.overdue',
+    TRUE,
+    'Overdue Email Notification',
+    'Send email notification for overdue items',
+    'bool',
+    'true'
+  ),
+  (
+    'stacksos.email.notices.pre_overdue',
+    TRUE,
+    'Pre-Overdue Courtesy Email',
+    'Send courtesy reminder email when items are due soon',
+    'bool',
+    'true'
+  ),
+  (
+    'stacksos.email.notices.card_expiration',
+    TRUE,
+    'Card Expiration Email Notification',
+    'Send email reminder when library card is expiring soon',
+    'bool',
+    'true'
+  ),
+  (
+    'stacksos.email.notices.fine_bill',
+    TRUE,
+    'Fine/Bill Email Notification',
+    'Send email notification for outstanding fines or bills',
+    'bool',
+    'true'
+  )
+ON CONFLICT (name) DO UPDATE
+  SET
+    opac_visible = EXCLUDED.opac_visible,
+    label = EXCLUDED.label,
+    description = EXCLUDED.description,
+    datatype = EXCLUDED.datatype,
+    reg_default = EXCLUDED.reg_default;
+
+COMMIT;
+
+-- Verify the settings were created
+SELECT
+  name,
+  label,
+  datatype,
+  reg_default,
+  opac_visible
+FROM config.usr_setting_type
+WHERE name LIKE 'stacksos.email.notices.%'
+ORDER BY name;
+
+-- Example: Set a patron's preference
+-- UPDATE actor.usr_setting
+-- SET value = 'false'
+-- WHERE usr = <patron_id>
+--   AND name = 'stacksos.email.notices.overdue';
+
+-- Example: Get a patron's preferences
+-- SELECT
+--   name,
+--   value
+-- FROM actor.usr_setting
+-- WHERE usr = <patron_id>
+--   AND name LIKE 'stacksos.email.notices.%';

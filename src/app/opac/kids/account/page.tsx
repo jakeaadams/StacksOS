@@ -1,0 +1,344 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { usePatronSession } from "@/hooks/usePatronSession";
+import {
+  BookOpen,
+  Star,
+  Trophy,
+  Flame,
+  Clock,
+  CalendarDays,
+  ChevronRight,
+  Heart,
+  BookmarkCheck,
+  AlertCircle,
+  Sparkles,
+  Gift,
+} from "lucide-react";
+
+interface RecentBook {
+  id: number;
+  title: string;
+  author: string;
+  coverUrl?: string;
+  dueDate?: string;
+  isOverdue?: boolean;
+}
+
+export default function KidsAccountPage() {
+  const router = useRouter();
+  const { patron, isLoggedIn, checkouts, holds } = usePatronSession();
+  const [recentBooks, setRecentBooks] = useState<RecentBook[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push("/opac/login?redirect=/opac/kids/account");
+      return;
+    }
+    loadData();
+  }, [isLoggedIn, checkouts]);
+
+  const loadData = () => {
+    // Transform checkouts to recent books
+    if (checkouts) {
+      const books = checkouts.slice(0, 4).map((checkout: any) => ({
+        id: checkout.recordId || checkout.id,
+        title: checkout.title,
+        author: checkout.author,
+        coverUrl: checkout.isbn
+          ? `https://covers.openlibrary.org/b/isbn/${checkout.isbn}-M.jpg`
+          : undefined,
+        dueDate: checkout.dueDate,
+        isOverdue: checkout.isOverdue,
+      }));
+      setRecentBooks(books);
+    }
+    setIsLoading(false);
+  };
+
+  if (!isLoggedIn) {
+    return null; // Will redirect
+  }
+
+  const overdueCount = checkouts?.filter((c: any) => c.isOverdue)?.length || 0;
+  const readyHoldsCount = holds?.filter((h: any) => h.status === "ready")?.length || 0;
+
+  // Sample reading stats - would come from StacksOS API
+  const readingStats = {
+    booksThisMonth: 3,
+    currentStreak: 7,
+    totalBadges: 5,
+    nextBadgeProgress: 75,
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      {/* Welcome header */}
+      <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 rounded-3xl p-6 mb-8 text-white">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-3xl">
+            {patron?.firstName?.[0] || "🌟"}
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Hi {patron?.firstName}!</h1>
+            <p className="text-white/90">Here is what is happening with your reading!</p>
+          </div>
+        </div>
+
+        {/* Quick stats */}
+        <div className="grid grid-cols-3 gap-4 mt-6">
+          <div className="bg-white/10 rounded-2xl p-3 text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Flame className="h-5 w-5 text-orange-300" />
+              <span className="text-2xl font-bold">{readingStats.currentStreak}</span>
+            </div>
+            <p className="text-xs text-white/80">Day Streak</p>
+          </div>
+          <div className="bg-white/10 rounded-2xl p-3 text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <BookOpen className="h-5 w-5 text-blue-300" />
+              <span className="text-2xl font-bold">{readingStats.booksThisMonth}</span>
+            </div>
+            <p className="text-xs text-white/80">Books This Month</p>
+          </div>
+          <div className="bg-white/10 rounded-2xl p-3 text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Trophy className="h-5 w-5 text-yellow-300" />
+              <span className="text-2xl font-bold">{readingStats.totalBadges}</span>
+            </div>
+            <p className="text-xs text-white/80">Badges</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Alerts */}
+      {(overdueCount > 0 || readyHoldsCount > 0) && (
+        <div className="space-y-3 mb-8">
+          {overdueCount > 0 && (
+            <div className="flex items-center gap-3 p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-red-700">
+                  {overdueCount} book{overdueCount > 1 ? "s" : ""} overdue!
+                </p>
+                <p className="text-sm text-red-600">Please return them soon</p>
+              </div>
+              <Link
+                href="/opac/kids/account/checkouts"
+                className="px-4 py-2 bg-red-100 text-red-700 rounded-xl font-medium hover:bg-red-200"
+              >
+                View
+              </Link>
+            </div>
+          )}
+
+          {readyHoldsCount > 0 && (
+            <div className="flex items-center gap-3 p-4 bg-green-50 border-2 border-green-200 rounded-2xl">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center shrink-0">
+                <Gift className="h-5 w-5 text-green-500" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-green-700">
+                  {readyHoldsCount} book{readyHoldsCount > 1 ? "s" : ""} ready to pick up!
+                </p>
+                <p className="text-sm text-green-600">Go get them at the library</p>
+              </div>
+              <Link
+                href="/opac/kids/account/holds"
+                className="px-4 py-2 bg-green-100 text-green-700 rounded-xl font-medium hover:bg-green-200"
+              >
+                View
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Quick actions */}
+      <div className="grid grid-cols-2 gap-4 mb-8">
+        <Link
+          href="/opac/kids/account/reading-log"
+          className="flex items-center gap-3 p-4 bg-gradient-to-br from-green-50 to-emerald-50 
+                   rounded-2xl border-2 border-green-100 hover:border-green-300 transition-colors"
+        >
+          <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+            <BookOpen className="h-6 w-6 text-green-600" />
+          </div>
+          <div>
+            <p className="font-bold text-green-800">Log Reading</p>
+            <p className="text-sm text-green-600">Record what you read</p>
+          </div>
+        </Link>
+
+        <Link
+          href="/opac/kids/challenges"
+          className="flex items-center gap-3 p-4 bg-gradient-to-br from-purple-50 to-pink-50 
+                   rounded-2xl border-2 border-purple-100 hover:border-purple-300 transition-colors"
+        >
+          <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+            <Trophy className="h-6 w-6 text-purple-600" />
+          </div>
+          <div>
+            <p className="font-bold text-purple-800">Challenges</p>
+            <p className="text-sm text-purple-600">Earn badges and prizes</p>
+          </div>
+        </Link>
+      </div>
+
+      {/* Currently reading */}
+      <section className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <BookmarkCheck className="h-5 w-5 text-blue-500" />
+            Your Books
+          </h2>
+          <Link
+            href="/opac/kids/account/checkouts"
+            className="text-purple-600 hover:text-purple-700 font-medium text-sm flex items-center gap-1"
+          >
+            See All
+            <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {recentBooks.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {recentBooks.map((book) => (
+              <BookCard key={book.id} book={book} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 bg-white rounded-2xl">
+            <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+            <p className="text-muted-foreground mb-4">No books checked out yet!</p>
+            <Link
+              href="/opac/kids"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 
+                       rounded-xl font-medium hover:bg-purple-200"
+            >
+              <Sparkles className="h-4 w-4" />
+              Find Books
+            </Link>
+          </div>
+        )}
+      </section>
+
+      {/* Menu items */}
+      <section>
+        <h2 className="text-lg font-bold text-foreground mb-4">My Stuff</h2>
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden divide-y divide-border/50">
+          <MenuLink
+            href="/opac/kids/account/checkouts"
+            icon={BookOpen}
+            label="Checked Out Books"
+            count={checkouts?.length || 0}
+            color="text-blue-500"
+          />
+          <MenuLink
+            href="/opac/kids/account/holds"
+            icon={Clock}
+            label="Books on Hold"
+            count={holds?.length || 0}
+            color="text-orange-500"
+          />
+          <MenuLink
+            href="/opac/kids/account/reading-log"
+            icon={CalendarDays}
+            label="Reading Log"
+            color="text-green-500"
+          />
+          <MenuLink
+            href="/opac/kids/account/lists"
+            icon={Heart}
+            label="My Lists"
+            color="text-pink-500"
+          />
+          <MenuLink
+            href="/opac/kids/challenges"
+            icon={Star}
+            label="Badges & Achievements"
+            color="text-yellow-500"
+          />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function BookCard({ book }: { book: RecentBook }) {
+  const [imageError, setImageError] = useState(false);
+
+  return (
+    <Link href={`/opac/kids/record/${book.id}`} className="group block">
+      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
+                    shadow-sm group-hover:shadow-md transition-all">
+        {book.coverUrl && !imageError ? (
+          <img
+            src={book.coverUrl}
+            alt={book.title}
+            className="w-full h-full object-cover"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <BookOpen className="h-10 w-10 text-purple-300" />
+          </div>
+        )}
+
+        {/* Due date badge */}
+        {book.dueDate && (
+          <div className={`absolute bottom-2 left-2 right-2 px-2 py-1 rounded-lg text-xs font-medium text-center
+                        ${book.isOverdue 
+                          ? "bg-red-100 text-red-700" 
+                          : "bg-white/90 text-foreground/80"
+                        }`}>
+            {book.isOverdue ? "Overdue!" : `Due ${book.dueDate}`}
+          </div>
+        )}
+      </div>
+      <div className="mt-2">
+        <h3 className="font-medium text-foreground text-sm line-clamp-2 group-hover:text-purple-600">
+          {book.title}
+        </h3>
+      </div>
+    </Link>
+  );
+}
+
+function MenuLink({
+  href,
+  icon: Icon,
+  label,
+  count,
+  color,
+}: {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+  count?: number;
+  color: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors"
+    >
+      <div className={`w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center`}>
+        <Icon className={`h-5 w-5 ${color}`} />
+      </div>
+      <span className="flex-1 font-medium text-foreground">{label}</span>
+      {count !== undefined && count > 0 && (
+        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+          {count}
+        </span>
+      )}
+      <ChevronRight className="h-5 w-5 text-muted-foreground/70" />
+    </Link>
+  );
+}

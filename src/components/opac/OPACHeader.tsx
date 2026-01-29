@@ -1,0 +1,500 @@
+"use client";
+import { DEBOUNCE_DELAY_MS } from "@/lib/constants";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useLibrary } from "@/hooks/useLibrary";
+import { usePatronSession } from "@/hooks/usePatronSession";
+import { useDebounce } from "@/hooks/use-debounce";
+import {
+  Search,
+  Menu,
+  X,
+  User,
+  BookOpen,
+  Heart,
+  Clock,
+  LogOut,
+  ChevronDown,
+  Loader2
+} from "lucide-react";
+
+interface SearchResult {
+  id: number;
+  title: string;
+  author?: string;
+  coverUrl?: string;
+  format?: string;
+}
+
+export function OPACHeader() {
+  const router = useRouter();
+  const { library, isLoading: libraryLoading } = useLibrary();
+  const { patron, isLoggedIn, logout } = usePatronSession();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const debouncedQuery = useDebounce(searchQuery, DEBOUNCE_DELAY_MS);
+
+  // Live search as user types
+  useEffect(() => {
+    const doSearch = async () => {
+      if (!debouncedQuery || debouncedQuery.trim().length < 2) {
+        setSearchResults([]);
+        setShowResults(false);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const res = await fetch(
+          `/api/evergreen/catalog?q=${encodeURIComponent(debouncedQuery)}&limit=6`,
+          { credentials: "include" }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const records = data.records || [];
+          setSearchResults(
+            records.map((r: any) => ({
+              id: r.id,
+              title: r.title || "Unknown Title",
+              author: r.author,
+              coverUrl: r.coverUrl || (r.isbn ? `https://covers.openlibrary.org/b/isbn/${r.isbn}-S.jpg` : undefined),
+              format: r.format,
+            }))
+          );
+          setShowResults(true);
+        }
+      } catch (err) {
+        console.error("Search error:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+    doSearch();
+  }, [debouncedQuery]);
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowResults(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setShowResults(false);
+      router.push(`/opac/search?q=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+
+  const handleResultClick = (id: number) => {
+    setShowResults(false);
+    setSearchQuery("");
+    router.push(`/opac/record/${id}`);
+  };
+
+  // Close account menu on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && accountMenuOpen) {
+        setAccountMenuOpen(false);
+        accountButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [accountMenuOpen]);
+
+  // Focus trap for account menu
+  useEffect(() => {
+    if (accountMenuOpen && accountMenuRef.current) {
+      const focusableElements = accountMenuRef.current.querySelectorAll(
+        'a[href], button:not([disabled])');
+      if (focusableElements.length > 0) {
+        (focusableElements[0] as HTMLElement).focus();
+      }
+    }
+  }, [accountMenuOpen]);
+
+  return (
+    <header className="bg-white border-b border-border sticky top-0 z-50">
+      {/* Top bar with library info */}
+      <div className="bg-primary-600 text-white px-4 py-2 text-sm">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            {library?.phone && (
+              <span className="hidden sm:inline">
+                <span aria-hidden="true">📞</span>
+                <span className="sr-only">Phone:</span> {library.phone}
+              </span>
+            )}
+            {library?.hours && (
+              <span className="hidden md:inline">
+                <span aria-hidden="true">🕐</span>
+                <span className="sr-only">Hours:</span> {library.hours}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            {library?.locations && library.locations.length > 1 && (
+              <Link href="/opac/locations" className="hover:underline">
+                {library.locations.length} Locations
+              </Link>
+            )}
+            <Link href="/opac/kids" className="hover:underline font-medium">
+              <span aria-hidden="true">👶</span>
+              <span className="sr-only">Kids</span>
+              <span aria-hidden="true"> Kids</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Main header */}
+      <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="flex items-center justify-between gap-4">
+          {/* Logo and library name */}
+          <Link href="/opac" className="flex items-center gap-3 shrink-0">
+            {library?.logoUrl ? (
+              <img 
+                src={library.logoUrl} 
+                alt="Decorative image" 
+                className="h-10 w-auto"
+                aria-hidden="true"
+              />
+            ) : (
+              <div className="h-10 w-10 bg-primary-600 rounded-lg flex items-center justify-center" aria-hidden="true">
+                <BookOpen className="h-6 w-6 text-white" />
+              </div>
+            )}
+            <div className="hidden sm:block">
+              <h1 className="font-bold text-lg text-foreground leading-tight">
+                {libraryLoading ? "Loading..." : (library?.name || "Library Catalog")}
+              </h1>
+              {library?.tagline && (
+                <p className="text-xs text-muted-foreground">{library.tagline}</p>
+              )}
+            </div>
+          </Link>
+
+          {/* Search bar - desktop with live results */}
+          <div ref={searchContainerRef} className="hidden md:flex flex-1 max-w-2xl relative" role="search">
+            <form onSubmit={handleSearchSubmit} className="w-full">
+              <div className="relative">
+                <label htmlFor="desktop-search" className="sr-only">
+                  Search the library catalog
+                </label>
+                <input
+                  type="text"
+                  id="desktop-search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => searchResults.length > 0 && setShowResults(true)}
+                  placeholder="Search books, movies, music..."
+                  className="w-full pl-4 pr-12 py-3 border border-border rounded-full
+                           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                           text-foreground placeholder:text-muted-foreground"
+                  autoComplete="off"
+                />
+                <button type="submit"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary-600
+                           text-white rounded-full hover:bg-primary-700 transition-colors"
+                  aria-label="Search"
+                >
+                  {isSearching ? (
+                    <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Search className="h-5 w-5" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {/* Live search results dropdown */}
+            {showResults && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-border overflow-hidden z-50">
+                {searchResults.map((result) => (
+                  <button type="button"
+                    key={result.id}
+                    onClick={() => handleResultClick(result.id)}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-muted/30 text-left border-b border-border/50 last:border-0"
+                  >
+                    {result.coverUrl ? (
+                      <img src={result.coverUrl} alt="Decorative image" className="w-10 h-14 object-cover rounded" />
+                    ) : (
+                      <div className="w-10 h-14 bg-muted rounded flex items-center justify-center">
+                        <BookOpen className="h-5 w-5 text-muted-foreground/70" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">{result.title}</p>
+                      {result.author && <p className="text-sm text-muted-foreground truncate">{result.author}</p>}
+                      {result.format && <span className="text-xs text-muted-foreground/70">{result.format}</span>}
+                    </div>
+                  </button>
+                ))}
+                <Link
+                  href={`/opac/search?q=${encodeURIComponent(searchQuery)}`}
+                  onClick={() => setShowResults(false)}
+                  className="block p-3 text-center text-primary-600 hover:bg-primary-50 font-medium text-sm"
+                >
+                  See all results for "{searchQuery}"
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* User actions */}
+          <div className="flex items-center gap-2">
+            {isLoggedIn ? (
+              <div className="relative">
+                <button type="button"
+                  ref={accountButtonRef}
+                  onClick={() => setAccountMenuOpen(!accountMenuOpen)}
+                  aria-expanded={accountMenuOpen}
+                  aria-haspopup="true"
+                  aria-controls="account-menu"
+                  className="flex items-center gap-2 px-4 py-2 rounded-full border border-border
+                           hover:bg-muted/30 transition-colors"
+                >
+                  <User className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                  <span className="hidden sm:inline text-sm font-medium text-foreground/80">
+                    {patron?.firstName || "My Account"}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground/70" aria-hidden="true" />
+                </button>
+
+                {accountMenuOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-10" 
+                      onClick={() => setAccountMenuOpen(false)}
+                      aria-hidden="true"
+                    />
+                    <div 
+                      ref={accountMenuRef}
+                      id="account-menu"
+                      role="menu"
+                      aria-label="Account options"
+                      className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg 
+                                border border-border py-2 z-20"
+                    >
+                      <div className="px-4 py-2 border-b border-border/50">
+                        <p className="font-medium text-foreground">{patron?.firstName} {patron?.lastName}</p>
+                        <p className="text-sm text-muted-foreground">{patron?.cardNumber}</p>
+                      </div>
+                      <Link
+                        href="/opac/account"
+                        role="menuitem"
+                        className="flex items-center gap-3 px-4 py-2 text-foreground/80 hover:bg-muted/30"
+                        onClick={() => setAccountMenuOpen(false)}
+                      >
+                        <User className="h-4 w-4" aria-hidden="true" />
+                        My Account
+                      </Link>
+                      <Link
+                        href="/opac/account/checkouts"
+                        role="menuitem"
+                        className="flex items-center gap-3 px-4 py-2 text-foreground/80 hover:bg-muted/30"
+                        onClick={() => setAccountMenuOpen(false)}
+                      >
+                        <BookOpen className="h-4 w-4" aria-hidden="true" />
+                        Checkouts
+                        {(patron?.checkoutCount ?? 0) > 0 && (
+                          <span className="ml-auto bg-primary-100 text-primary-700 text-xs px-2 py-0.5 rounded-full">
+                            {patron?.checkoutCount}
+                            <span className="sr-only"> items checked out</span>
+                          </span>
+                        )}
+                      </Link>
+                      <Link
+                        href="/opac/account/holds"
+                        role="menuitem"
+                        className="flex items-center gap-3 px-4 py-2 text-foreground/80 hover:bg-muted/30"
+                        onClick={() => setAccountMenuOpen(false)}
+                      >
+                        <Clock className="h-4 w-4" aria-hidden="true" />
+                        Holds
+                        {(patron?.holdCount ?? 0) > 0 && (
+                          <span className="ml-auto bg-primary-100 text-primary-700 text-xs px-2 py-0.5 rounded-full">
+                            {patron?.holdCount}
+                            <span className="sr-only"> items on hold</span>
+                          </span>
+                        )}
+                      </Link>
+                      <Link
+                        href="/opac/account/lists"
+                        role="menuitem"
+                        className="flex items-center gap-3 px-4 py-2 text-foreground/80 hover:bg-muted/30"
+                        onClick={() => setAccountMenuOpen(false)}
+                      >
+                        <Heart className="h-4 w-4" aria-hidden="true" />
+                        My Lists
+                      </Link>
+                      <div className="border-t border-border/50 mt-2 pt-2">
+                        <button type="button"
+                          onClick={() => {
+                            logout();
+                            setAccountMenuOpen(false);
+                          }}
+                          role="menuitem"
+                          className="flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 w-full"
+                        >
+                          <LogOut className="h-4 w-4" aria-hidden="true" />
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <Link
+                href="/opac/login"
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white 
+                         rounded-full hover:bg-primary-700 transition-colors font-medium"
+              >
+                <User className="h-5 w-5" aria-hidden="true" />
+                <span className="hidden sm:inline">Sign In</span>
+              </Link>
+            )}
+
+            {/* Mobile menu button */}
+            <button type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 text-muted-foreground hover:bg-muted/50 rounded-lg"
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-menu"
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" aria-hidden="true" /> : <Menu className="h-6 w-6" aria-hidden="true" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile search bar with live results */}
+        <div className="md:hidden mt-4 relative" role="search">
+          <form onSubmit={handleSearchSubmit}>
+            <div className="relative">
+              <label htmlFor="mobile-search" className="sr-only">
+                Search the library catalog
+              </label>
+              <input
+                type="text"
+                id="mobile-search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => searchResults.length > 0 && setShowResults(true)}
+                placeholder="Search books, movies, music..."
+                className="w-full pl-4 pr-12 py-3 border border-border rounded-full
+                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                         text-foreground placeholder:text-muted-foreground"
+                autoComplete="off"
+              />
+              <button type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary-600
+                         text-white rounded-full hover:bg-primary-700 transition-colors"
+                aria-label="Search"
+              >
+                {isSearching ? (
+                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Search className="h-5 w-5" aria-hidden="true" />
+                )}
+              </button>
+            </div>
+          </form>
+
+          {/* Mobile live search results */}
+          {showResults && searchResults.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-border overflow-hidden z-50">
+              {searchResults.slice(0, 4).map((result) => (
+                <button type="button"
+                  key={result.id}
+                  onClick={() => handleResultClick(result.id)}
+                  className="w-full flex items-center gap-3 p-3 hover:bg-muted/30 text-left border-b border-border/50 last:border-0"
+                >
+                  <div className="w-8 h-12 bg-muted rounded flex items-center justify-center shrink-0">
+                    <BookOpen className="h-4 w-4 text-muted-foreground/70" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate text-sm">{result.title}</p>
+                    {result.author && <p className="text-xs text-muted-foreground truncate">{result.author}</p>}
+                  </div>
+                </button>
+              ))}
+              <Link
+                href={`/opac/search?q=${encodeURIComponent(searchQuery)}`}
+                onClick={() => setShowResults(false)}
+                className="block p-3 text-center text-primary-600 hover:bg-primary-50 font-medium text-sm"
+              >
+                See all results
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile menu */}
+      {mobileMenuOpen && (
+        <div id="mobile-menu" className="md:hidden border-t border-border bg-white">
+          <nav className="px-4 py-4 space-y-2" aria-label="Mobile navigation">
+            <Link
+              href="/opac"
+              className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Home
+            </Link>
+            <Link
+              href="/opac/search"
+              className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Browse Catalog
+            </Link>
+            <Link
+              href="/opac/kids"
+              className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <span aria-hidden="true">👶 </span>Kids Catalog
+            </Link>
+            {isLoggedIn && (
+              <>
+                <div className="border-t border-border my-2" role="separator" />
+                <Link
+                  href="/opac/account/checkouts"
+                  className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  My Checkouts
+                </Link>
+                <Link
+                  href="/opac/account/holds"
+                  className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  My Holds
+                </Link>
+              </>
+            )}
+          </nav>
+        </div>
+      )}
+    </header>
+  );
+}

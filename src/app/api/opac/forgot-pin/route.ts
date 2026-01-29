@@ -1,0 +1,121 @@
+import { NextRequest } from "next/server";
+import {
+  callOpenSRF,
+  successResponse,
+  errorResponse,
+  serverErrorResponse,
+} from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { logAuditEvent } from "@/lib/audit";
+
+function maskEmail(email: string): string {
+  if (!email || !email.includes("@")) return "your registered email";
+  const [localPart, domain] = email.split("@");
+  const maskedLocal = localPart.length > 2 
+    ? localPart[0] + "*".repeat(Math.min(localPart.length - 2, 5)) + localPart[localPart.length - 1]
+    : "**";
+  const domainParts = domain.split(".");
+  const maskedDomain = domainParts[0].length > 2
+    ? domainParts[0][0] + "***" + domainParts[0][domainParts[0].length - 1]
+    : "***";
+  return maskedLocal + "@" + maskedDomain + "." + domainParts.slice(1).join(".");
+}
+
+/**
+ * POST /api/opac/forgot-pin
+ * Request a PIN reset email via Evergreen's password reset system
+ */
+export async function POST(req: NextRequest) {
+  let identifier: string | undefined;
+  try {
+    const body = await req.json();
+    identifier = body.identifier;
+    const method = body.method;
+
+    if (!identifier) {
+      return errorResponse("Please provide your library card number or username");
+    }
+
+    const username = identifier.trim();
+
+    // Call Evergreen's password reset request method
+    // This sends an email to the patron with a reset link
+    const resetResponse = await callOpenSRF(
+      "open-ils.actor",
+      "open-ils.actor.patron.password_reset.request",
+      [username]
+    );
+
+    const result = resetResponse?.payload?.[0];
+
+    // Check for errors
+    if (result?.ilsevent && result.ilsevent !== 0) {
+      // SECURITY FIX: Log failed reset attempt
+      await logAuditEvent({
+        action: "patron.pin.reset.request",
+        status: "failure",
+        actor: { username },
+        ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip"),
+        userAgent: req.headers.get("user-agent"),
+        details: {
+          method: method || "unknown",
+          textcode: result.textcode,
+        },
+      });
+      
+      // Do not reveal if user exists for security
+      if (result.textcode === "PATRON_NOT_FOUND" || 
+          result.textcode === "ACTOR_USR_NOT_FOUND") {
+        // Return success anyway to not reveal user existence
+        return successResponse({
+          success: true,
+          maskedEmail: "your registered email",
+          message: "If an account exists with this information, reset instructions have been sent.",
+        });
+      }
+
+      if (result.textcode === "PATRON_NO_EMAIL_ADDRESS") {
+        return errorResponse("No email address is on file for this account. Please visit the library to reset your PIN.");
+      }
+
+      logger.error({ error: String(result) }, "Password reset error");
+      return errorResponse("Unable to process your request. Please try again or contact the library.", 500);
+    }
+
+    // SECURITY FIX: Log successful reset request
+    await logAuditEvent({
+      action: "patron.pin.reset.request",
+      status: "success",
+      actor: { username },
+      ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip"),
+      userAgent: req.headers.get("user-agent"),
+      details: {
+        method: method || "email",
+        maskedEmail: maskEmail(result?.email || ""),
+      },
+    });
+
+    logger.info({ username, method }, "PIN reset request successful");
+
+    // Success - Evergreen has sent the reset email
+    return successResponse({
+      success: true,
+      maskedEmail: maskEmail(result?.email || ""),
+      message: "PIN reset instructions have been sent to your email.",
+    });
+
+  } catch (error) {
+    // SECURITY FIX: Log exception during reset
+    await logAuditEvent({
+      action: "patron.pin.reset.request",
+      status: "failure",
+      actor: { username: identifier || "unknown" },
+      ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip"),
+      userAgent: req.headers.get("user-agent"),
+      details: { error: String(error) },
+    });
+    
+    logger.error({ error: String(error) }, "Forgot PIN error");
+    return serverErrorResponse(error, "Forgot PIN POST", req);
+  }
+}

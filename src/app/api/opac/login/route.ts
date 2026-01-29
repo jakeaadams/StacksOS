@@ -1,0 +1,123 @@
+import { NextRequest } from "next/server";
+import {
+  callOpenSRF,
+  successResponse,
+  errorResponse,
+  serverErrorResponse,
+} from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { cookies } from "next/headers";
+
+import * as crypto from "crypto";
+
+/**
+ * OPAC Patron Login
+ * POST /api/opac/login
+ * 
+ * Authenticates patron using library card barcode and PIN
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const { barcode, pin, rememberMe } = await req.json();
+
+    if (!barcode || !pin) {
+      return errorResponse("Library card number and PIN are required", 400);
+    }
+
+    const cleanBarcode = String(barcode).trim();
+    const cleanPin = String(pin).trim();
+
+    logger.info({ route: "api.opac.login", barcode: cleanBarcode }, "OPAC login attempt");
+
+    // Step 1: Get the username from barcode
+    // In Evergreen, we can authenticate with barcode directly using "barcode" type
+    
+    // Step 2: Get auth seed using barcode
+    const seedResponse = await callOpenSRF(
+      "open-ils.auth",
+      "open-ils.auth.authenticate.init",
+      [cleanBarcode]
+    );
+
+    const seed = seedResponse?.payload?.[0];
+    if (!seed) {
+      logger.warn({ route: "api.opac.login", barcode: cleanBarcode }, "Failed to get auth seed");
+      return errorResponse("Invalid library card number or PIN", 401);
+    }
+
+    // Step 3: Hash PIN (same as password: md5(seed + md5(pin)))
+    const pinMd5 = crypto.createHash("md5").update(cleanPin).digest("hex");
+    const finalHash = crypto
+      .createHash("md5")
+      .update(seed + pinMd5)
+      .digest("hex");
+
+    // Step 4: Authenticate as OPAC user
+    const authResponse = await callOpenSRF(
+      "open-ils.auth",
+      "open-ils.auth.authenticate.complete",
+      [{
+        username: cleanBarcode,
+        password: finalHash,
+        type: "opac",  // OPAC login type (not staff)
+        identifier: "barcode",  // Tell Evergreen this is a barcode
+      }]
+    );
+
+    const authResult = authResponse?.payload?.[0];
+
+    if (authResult?.ilsevent === 0 && authResult?.payload?.authtoken) {
+      const cookieStore = await cookies();
+      const cookieSecure = process.env.NODE_ENV === "production";
+      
+      // Set patron auth cookie (separate from staff cookie)
+      cookieStore.set("patron_authtoken", authResult.payload.authtoken, {
+        httpOnly: true,
+        secure: cookieSecure,
+        sameSite: "lax",
+        maxAge: rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 8, // 30 days or 8 hours
+      });
+
+      // Get patron details
+      const userResponse = await callOpenSRF(
+        "open-ils.auth",
+        "open-ils.auth.session.retrieve",
+        [authResult.payload.authtoken]
+      );
+
+      const user = userResponse?.payload?.[0];
+
+      if (user && !user.ilsevent) {
+        // Get full patron data
+        const patronResponse = await callOpenSRF(
+          "open-ils.actor",
+          "open-ils.actor.user.fleshed.retrieve",
+          [authResult.payload.authtoken, user.id, ["card", "home_ou", "profile"]]
+        );
+
+        const patron = patronResponse?.payload?.[0];
+
+        logger.info({ route: "api.opac.login", patronId: user.id }, "OPAC login successful");
+
+        return successResponse({
+          success: true,
+          patron: {
+            id: patron?.id || user.id,
+            firstName: patron?.first_given_name || user.first_given_name,
+            lastName: patron?.family_name || user.family_name,
+            email: patron?.email,
+            barcode: cleanBarcode,
+            homeLibrary: patron?.home_ou,
+            profileName: patron?.profile?.name,
+          },
+        });
+      }
+    }
+
+    // Authentication failed
+    logger.warn({ route: "api.opac.login", barcode: cleanBarcode, error: authResult?.textcode }, "OPAC login failed");
+    return errorResponse("Invalid library card number or PIN", 401);
+  } catch (error) {
+    return serverErrorResponse(error, "OPAC Login POST", req);
+  }
+}

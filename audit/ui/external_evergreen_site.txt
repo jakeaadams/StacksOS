@@ -1,0 +1,2 @@
+/home/jake/projects/stacksos/src/app/staff/cataloging/z3950/page.tsx:373:            docsUrl="https://docs.evergreen-ils.org/eg/docs/latest/cataloging/z3950.html"
+/home/jake/projects/stacksos/src/app/staff/acquisitions/receiving/page.tsx:558:            docsUrl="https://docs.evergreen-ils.org/eg/docs/latest/acquisitions.html"

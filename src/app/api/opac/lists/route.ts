@@ -1,0 +1,144 @@
+import { NextRequest } from "next/server";
+import {
+  callOpenSRF,
+  successResponse,
+  errorResponse,
+  serverErrorResponse,
+} from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { cookies } from "next/headers";
+
+// In a production app, lists would be stored in a database (PostgreSQL)
+// For now, we store in Evergreen user settings or a custom table
+
+// GET /api/opac/lists - Get all user lists
+export async function GET(req: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const patronToken = cookieStore.get("patron_authtoken")?.value;
+    const patronId = cookieStore.get("patron_id")?.value;
+
+    if (!patronToken || !patronId) {
+      return errorResponse("Not authenticated", 401);
+    }
+
+    // Get user bookbags (Evergreen term for lists)
+    const bagsResponse = await callOpenSRF(
+      "open-ils.actor",
+      "open-ils.actor.container.flesh",
+      [patronToken, "user", "biblio", parseInt(patronId)]
+    );
+
+    const bags = bagsResponse.payload?.[0] || [];
+
+    // Transform to our list format
+    const lists = Array.isArray(bags)
+      ? bags.map((bag: any) => ({
+          id: bag.id,
+          name: bag.name,
+          description: bag.description || "",
+          visibility: bag.pub === "t" ? "public" : "private",
+          itemCount: bag.items?.length || 0,
+          items: (bag.items || []).map((item: any) => ({
+            id: item.id,
+            bibId: item.target_biblio_record_entry,
+            dateAdded: item.create_time,
+            notes: item.notes || "",
+          })),
+          createdAt: bag.create_time,
+          updatedAt: bag.edit_time || bag.create_time,
+          isDefault: bag.name === "Want to Read" || bag.name === "Currently Reading" || bag.name === "Completed",
+          icon: bag.name === "Want to Read" ? "heart" 
+              : bag.name === "Currently Reading" ? "book" 
+              : bag.name === "Completed" ? "check" 
+              : "list",
+        }))
+      : [];
+
+    // Add default lists if they dont exist
+    const defaultNames = ["Want to Read", "Currently Reading", "Completed"];
+    for (const name of defaultNames) {
+      if (!lists.find((l: any) => l.name === name)) {
+        lists.unshift({
+          id: `default-${name.toLowerCase().replace(/\s+/g, "-")}`,
+          name,
+          description: "",
+          visibility: "private",
+          itemCount: 0,
+          items: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isDefault: true,
+          icon: name === "Want to Read" ? "heart" 
+              : name === "Currently Reading" ? "book" 
+              : "check",
+        });
+      }
+    }
+
+    return successResponse({ lists });
+  } catch (error) {
+    logger.error({ error: String(error) }, "Error fetching lists");
+    return serverErrorResponse(error, "Failed to fetch lists");
+  }
+}
+
+// POST /api/opac/lists - Create a new list
+export async function POST(req: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const patronToken = cookieStore.get("patron_authtoken")?.value;
+    const patronId = cookieStore.get("patron_id")?.value;
+
+    if (!patronToken || !patronId) {
+      return errorResponse("Not authenticated", 401);
+    }
+
+    const { name, description, visibility } = await req.json();
+
+    if (!name?.trim()) {
+      return errorResponse("List name required");
+    }
+
+    // Create bookbag in Evergreen
+    const createResponse = await callOpenSRF(
+      "open-ils.actor",
+      "open-ils.actor.container.create",
+      [
+        patronToken,
+        "biblio",
+        {
+          owner: parseInt(patronId),
+          btype: "bookbag",
+          name: name.trim(),
+          description: description || "",
+          pub: visibility === "public" ? "t" : "f",
+        },
+      ]
+    );
+
+    const result = createResponse.payload?.[0];
+
+    if (result?.ilsevent) {
+      return errorResponse(result.textcode || "Failed to create list" );
+    }
+
+    const newList = {
+      id: result,
+      name: name.trim(),
+      description: description || "",
+      visibility: visibility || "private",
+      itemCount: 0,
+      items: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isDefault: false,
+      icon: "list",
+    };
+
+    return successResponse({ list: newList });
+  } catch (error) {
+    logger.error({ error: String(error) }, "Error creating list");
+    return serverErrorResponse(error, "Failed to create list");
+  }
+}
