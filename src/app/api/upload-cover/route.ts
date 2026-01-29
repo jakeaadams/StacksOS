@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { requirePermissions } from "@/lib/permissions";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
       filename,
     });
   } catch (error) {
-    console.error("Upload error:", error);
+    logger.error("Upload error:", error);
     return NextResponse.json(
       { error: "Failed to upload file" },
       { status: 500 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { requirePermissions } from "@/lib/permissions";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
@@ -67,9 +68,9 @@ export async function POST(request: NextRequest) {
         `UPDATE actor.usr SET photo_url = $1 WHERE id = $2`,
         [publicUrl, parseInt(patronId)]
       );
-      console.log(`[Patron Photo] Updated photo_url for patron ${patronId}: ${publicUrl}`);
+      logger.info(`[Patron Photo] Updated photo_url for patron ${patronId}: ${publicUrl}`);
     } catch (dbError) {
-      console.error("Failed to update photo_url in database:", dbError);
+      logger.error("Failed to update photo_url in database:", dbError);
       // Still return success since file was uploaded
       return NextResponse.json({
         success: true,
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
       filename,
     });
   } catch (error) {
-    console.error("Upload error:", error);
+    logger.error("Upload error:", error);
     return NextResponse.json(
       {
         error: "Failed to upload file",

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { requirePermissions } from "@/lib/permissions";
 import { query } from "@/lib/db/evergreen";
 
@@ -33,8 +34,8 @@ export async function POST(request: NextRequest) {
     // await query('UPDATE metabib.full_rec SET value = $1 WHERE record = $2 AND tag = $3 AND subfield = $4',
     //   [title, recordId, '245', 'a']);
 
-    console.log(`[Record Title Update] Record ${recordId}: "${title}"`);
-    console.log(`  NOTE: MARC update not yet implemented. Title change logged only.`);
+    logger.info(`[Record Title Update] Record ${recordId}: "${title}"`);
+    logger.info(`  NOTE: MARC update not yet implemented. Title change logged only.`);
 
     return NextResponse.json({
       success: true,
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
       warning: "MARC record was not actually updated. This feature requires MARC XML parsing implementation.",
     });
   } catch (error) {
-    console.error("Update record title error:", error);
+    logger.error("Update record title error:", error);
     return NextResponse.json(
       {
         error: "Failed to update title",

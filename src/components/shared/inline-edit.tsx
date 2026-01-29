@@ -1,4 +1,5 @@
 "use client";
+import { logger } from "@/lib/logger";
 
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
@@ -58,7 +59,7 @@ export function InlineEdit({
       await onSave(editValue);
       setIsEditing(false);
     } catch (error) {
-      console.error("Save error:", error);
+      logger.error("Save error:", error);
       // Revert on error
       setEditValue(value);
     } finally {

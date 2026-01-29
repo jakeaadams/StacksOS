@@ -1,4 +1,5 @@
 "use client";
+import { logger } from "@/lib/logger";
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -172,7 +173,7 @@ export default function SettingsPage() {
         }));
       }
     } catch (err) {
-      console.error("Failed to load settings:", err);
+      logger.error("Failed to load settings:", err);
     }
   }, [user]);
 
@@ -243,7 +244,7 @@ export default function SettingsPage() {
       setHasChanges(false);
     } catch (err) {
       toast.error("Failed to save settings");
-      console.error(err);
+      logger.error(err);
     } finally {
       setIsSaving(false);
     }

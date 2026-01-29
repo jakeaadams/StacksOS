@@ -1,4 +1,5 @@
 "use client";
+import { logger } from "@/lib/logger";
 
 import * as React from "react";
 import { useState } from "react";
@@ -83,7 +84,7 @@ export function PatronPhotoUpload({
       setUploadFile(null);
       setPreview(null);
     } catch (error) {
-      console.error("Upload error:", error);
+      logger.error("Upload error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to upload photo");
     } finally {
       setLoading(false);

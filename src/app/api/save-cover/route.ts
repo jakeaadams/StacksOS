@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { requirePermissions } from "@/lib/permissions";
 import { query, ensureCustomTables } from "@/lib/db/evergreen";
 
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
       [parseInt(recordId), coverUrl, source]
     );
 
-    console.log(`[Cover Saved] Record ${recordId}: ${coverUrl} (Source: ${source})`);
+    logger.info(`[Cover Saved] Record ${recordId}: ${coverUrl} (Source: ${source})`);
 
     return NextResponse.json({
       success: true,
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
       coverUrl,
     });
   } catch (error) {
-    console.error("Save cover error:", error);
+    logger.error("Save cover error:", error);
     return NextResponse.json(
       {
         error: "Failed to save cover",
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
       source: result[0].source,
     });
   } catch (error) {
-    console.error("Get cover error:", error);
+    logger.error("Get cover error:", error);
     return NextResponse.json(
       {
         error: "Failed to get cover",

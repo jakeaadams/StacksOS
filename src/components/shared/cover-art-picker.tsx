@@ -1,4 +1,5 @@
 "use client";
+import { logger } from "@/lib/logger";
 
 import * as React from "react";
 import { useState, useEffect } from "react";
@@ -116,7 +117,7 @@ export function CoverArtPicker({
             });
           }
         } catch (err) {
-          console.error("Google Books API error:", err);
+          logger.error("Google Books API error:", err);
         }
       }
 
@@ -128,7 +129,7 @@ export function CoverArtPicker({
 
       setCovers(uniqueCovers);
     } catch (err) {
-      console.error("Error fetching covers:", err);
+      logger.error("Error fetching covers:", err);
       toast.error("Failed to fetch cover options");
     } finally {
       setLoading(false);
@@ -224,7 +225,7 @@ export function CoverArtPicker({
       onCoverSelected(data.url, "Uploaded File");
       onOpenChange(false);
     } catch (error) {
-      console.error("Upload error:", error);
+      logger.error("Upload error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to upload cover");
     } finally {
       setLoading(false);

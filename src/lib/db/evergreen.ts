@@ -1,4 +1,5 @@
 import { Pool, PoolClient } from 'pg';
+import { logger } from "@/lib/logger";
 
 let pool: Pool | null = null;
 
@@ -16,7 +17,7 @@ export function getEvergreenPool(): Pool {
     });
 
     pool.on('error', (err) => {
-      console.error('Unexpected error on idle Evergreen database client', err);
+      logger.error('Unexpected error on idle Evergreen database client', err);
     });
   }
 
@@ -89,9 +90,9 @@ export async function ensureCustomTables(): Promise<void> {
     `);
 
     tablesInitialized = true;
-    console.log('Custom tables initialized successfully');
+    logger.info('Custom tables initialized successfully');
   } catch (error) {
-    console.error('Error initializing custom tables:', error);
+    logger.error('Error initializing custom tables:', error);
     throw error;
   }
 }

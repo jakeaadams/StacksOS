@@ -1,4 +1,5 @@
 "use client";
+import { logger } from "@/lib/logger";
 import { DEBOUNCE_DELAY_MS } from "@/lib/constants";
 
 import Link from "next/link";
@@ -73,7 +74,7 @@ export function OPACHeader() {
           setShowResults(true);
         }
       } catch (err) {
-        console.error("Search error:", err);
+        logger.error("Search error:", err);
       } finally {
         setIsSearching(false);
       }
