@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   callOpenSRF,
   successResponse,
   errorResponse,
   serverErrorResponse,
+  getRequestMeta,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
@@ -16,7 +18,32 @@ import { hashPassword } from "@/lib/password";
  * Authenticates patron using library card barcode and PIN
  */
 export async function POST(req: NextRequest) {
-  try {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+
+  // Rate limiting - 10 attempts per 15 minutes per IP
+  const rateLimit = checkRateLimit(ip || "unknown", {
+    maxAttempts: 10,
+    windowMs: 15 * 60 * 1000,
+    endpoint: "patron-auth",
+  });
+
+  if (\!rateLimit.allowed) {
+    const waitMinutes = Math.ceil(rateLimit.resetIn / 60000);
+    logger.warn({ ip, requestId, rateLimit }, "Patron auth rate limit exceeded");
+    
+    return errorResponse(
+      `Too many login attempts. Please try again in ${waitMinutes} minute(s).`,
+      429,
+      {
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+        limit: rateLimit.limit,
+        resetTime: new Date(rateLimit.resetTime).toISOString(),
+      }
+    );
+  }
+
+
+
     const { barcode, pin, rememberMe } = await req.json();
 
     if (!barcode || !pin) {

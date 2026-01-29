@@ -11,10 +11,33 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { hashPassword } from "@/lib/password";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // POST - Login
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+
+  // Rate limiting - 5 attempts per 15 minutes per IP
+  const rateLimit = checkRateLimit(ip || "unknown", {
+    maxAttempts: 5,
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    endpoint: "staff-auth",
+  });
+
+  if (!rateLimit.allowed) {
+    const waitMinutes = Math.ceil(rateLimit.resetIn / 60000);
+    logger.warn({ ip, requestId, rateLimit }, "Staff auth rate limit exceeded");
+    
+    return errorResponse(
+      `Too many login attempts. Please try again in ${waitMinutes} minute(s).`,
+      429,
+      {
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+        limit: rateLimit.limit,
+        resetTime: new Date(rateLimit.resetTime).toISOString(),
+      }
+    );
+  }
 
   try {
     const { username: rawUsername, password, workstation: rawWorkstation } = await req.json();
