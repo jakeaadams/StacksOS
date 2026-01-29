@@ -173,9 +173,17 @@ export async function GET(req: NextRequest) {
         orgId,
       });
     } else if (type === "holdings") {
-      // Holdings templates - using a custom table or org unit settings
-      // For now, we'll use a simplified approach storing in org settings
-      // In a real implementation, this would query a holdings template table
+      // Fetch holdings templates from org unit settings
+      const settingsRes = await callOpenSRF(
+        "open-ils.actor",
+        "open-ils.actor.org_unit.settings.retrieve",
+        [authtoken, orgId, ["ui.staff.catalog.holdings_templates"]]
+      );
+
+      const rawTemplates = settingsRes?.payload?.[0]?.["ui.staff.catalog.holdings_templates"];
+      const parsedTemplates = rawTemplates 
+        ? (typeof rawTemplates === "string" ? JSON.parse(rawTemplates) : rawTemplates)
+        : [];
       
       // Fetch call number classifications
       const classificationsRes = await callOpenSRF(
@@ -227,9 +235,18 @@ export async function GET(req: NextRequest) {
         owningLib: s?.owning_lib as number ?? 1,
       }));
 
-      // Holdings templates would be stored in a custom table
-      // For now, return empty array - would need backend table setup
-      const templates: HoldingsTemplate[] = [];
+      const templates: HoldingsTemplate[] = Array.isArray(parsedTemplates)
+        ? parsedTemplates.map((t, idx) => ({
+            id: t?.id ?? idx,
+            name: t?.name ?? "",
+            owningLib: t?.owningLib ?? orgId,
+            owningLibName: t?.owningLibName ?? null,
+            callNumberPrefix: t?.callNumberPrefix ?? null,
+            callNumberSuffix: t?.callNumberSuffix ?? null,
+            classification: t?.classification ?? null,
+            classificationName: t?.classificationName ?? null,
+          }))
+        : [];
 
       return successResponse({
         templates,
@@ -369,9 +386,55 @@ export async function POST(req: NextRequest) {
           return errorResponse("Invalid action. Must be 'create', 'update', or 'delete'.", 400);
       }
     } else if (type === "holdings") {
-      // Holdings templates would require a custom backend table
-      // For now, return a placeholder response
-      return errorResponse("Holdings templates not yet implemented in backend", 501);
+      // Holdings templates stored in org unit settings as JSON
+      const targetOrgId = data.owningLib || orgId;
+      
+      if (action === "create" || action === "update") {
+        const settingsRes = await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.settings.retrieve",
+          [authtoken, targetOrgId, ["ui.staff.catalog.holdings_templates"]]);
+        const rawTemplates = settingsRes?.payload?.[0]?.["ui.staff.catalog.holdings_templates"];
+        let templates = rawTemplates ? (typeof rawTemplates === "string" ? JSON.parse(rawTemplates) : rawTemplates) : [];
+        
+        if (action === "create") {
+          const newId = Math.max(0, ...templates.map(t => t.id || 0)) + 1;
+          templates.push({
+            id: newId,
+            name: data.name,
+            owningLib: targetOrgId,
+            callNumberPrefix: data.callNumberPrefix || null,
+            callNumberSuffix: data.callNumberSuffix || null,
+            classification: data.classification || null,
+          });
+          await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.settings.update",
+            [authtoken, targetOrgId, "ui.staff.catalog.holdings_templates", JSON.stringify(templates)]);
+          return successResponse({ id: newId, message: "Holdings template created" });
+        } else {
+          const idx = templates.findIndex(t => t.id === data.id);
+          if (idx === -1) return errorResponse("Template not found", 404);
+          templates[idx] = {
+            ...templates[idx],
+            name: data.name,
+            callNumberPrefix: data.callNumberPrefix || null,
+            callNumberSuffix: data.callNumberSuffix || null,
+            classification: data.classification || null,
+          };
+          await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.settings.update",
+            [authtoken, targetOrgId, "ui.staff.catalog.holdings_templates", JSON.stringify(templates)]);
+          return successResponse({ id: data.id, message: "Holdings template updated" });
+        }
+      } else if (action === "delete") {
+        if (!data.id) return errorResponse("Template ID required", 400);
+        const settingsRes = await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.settings.retrieve",
+          [authtoken, targetOrgId, ["ui.staff.catalog.holdings_templates"]]);
+        const rawTemplates = settingsRes?.payload?.[0]?.["ui.staff.catalog.holdings_templates"];
+        let templates = rawTemplates ? (typeof rawTemplates === "string" ? JSON.parse(rawTemplates) : rawTemplates) : [];
+        templates = templates.filter(t => t.id !== data.id);
+        await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.settings.update",
+          [authtoken, targetOrgId, "ui.staff.catalog.holdings_templates", JSON.stringify(templates)]);
+        return successResponse({ message: "Holdings template deleted" });
+      } else {
+        return errorResponse("Invalid action", 400);
+      }
     } else {
       return errorResponse("Invalid type. Must be 'copy' or 'holdings'.", 400);
     }
