@@ -5,7 +5,11 @@ import {
   errorResponse,
   notFoundResponse,
   serverErrorResponse,
+  isOpenSRFEvent,
+  getErrorMessage,
+  getRequestMeta,
 } from "@/lib/api";
+import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 
 function normalizeWhitespace(value: string) {
@@ -459,16 +463,148 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/**
+ * Create a new bibliographic record
+ * Accepts either MARC XML or a simplified form
+ */
 export async function POST(req: NextRequest) {
+  const { requestId } = getRequestMeta(req);
+
   try {
-    const { action } = await req.json();
+    const body = await req.json();
+    const { action, marcXml, simplified } = body;
+
+    const { authtoken, actor } = await requirePermissions(["CREATE_BIB_RECORD"]);
 
     if (action === "create") {
-      return errorResponse("Record creation requires MARC XML - use MARC editor", 501);
+      let finalMarcXml: string;
+
+      if (marcXml) {
+        // Use provided MARC XML directly
+        finalMarcXml = marcXml;
+      } else if (simplified) {
+        // Generate MARC XML from simplified form
+        const { title, author, isbn, publisher, pubYear, subjects, format } = simplified;
+
+        if (!title) {
+          return errorResponse("Title is required", 400);
+        }
+
+        // Build minimal MARC21 XML
+        finalMarcXml = buildSimpleMarcXml({
+          title,
+          author,
+          isbn,
+          publisher,
+          pubYear,
+          subjects: subjects || [],
+          format: format || "book",
+        });
+      } else {
+        return errorResponse("Either marcXml or simplified form data required", 400);
+      }
+
+      // Validate MARC XML has required fields
+      if (!finalMarcXml.includes("<datafield tag="245"")) {
+        return errorResponse("MARC record must include 245 (title) field", 400);
+      }
+
+      // Create the record via pcrud
+      const createResponse = await callOpenSRF(
+        "open-ils.cat",
+        "open-ils.cat.biblio.record.xml.create",
+        [authtoken, finalMarcXml, 1] // source = 1 (native catalog)
+      );
+
+      const result = createResponse?.payload?.[0];
+
+      if (isOpenSRFEvent(result) || result?.ilsevent) {
+        const errMsg = getErrorMessage(result, "Failed to create record");
+        logger.error({ requestId, result }, errMsg);
+        return errorResponse(errMsg, 400, result);
+      }
+
+      const recordId = typeof result === "number" ? result : result?.id;
+
+      logger.info({ requestId, recordId, actor: actor?.id }, "Created bibliographic record");
+
+      return successResponse({ 
+        id: recordId, 
+        message: "Record created successfully" 
+      });
     }
 
-    return errorResponse("Invalid action", 400);
+    return errorResponse("Invalid action. Use: create", 400);
   } catch (error) {
     return serverErrorResponse(error, "Catalog POST", req);
   }
+}
+
+/**
+ * Build simple MARC21 XML from form data
+ */
+function buildSimpleMarcXml(data: {
+  title: string;
+  author?: string;
+  isbn?: string;
+  publisher?: string;
+  pubYear?: string;
+  subjects?: string[];
+  format?: string;
+}): string {
+  const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  
+  const lines: string[] = [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+    "<record xmlns=\"http://www.loc.gov/MARC21/slim\">",
+    "  <leader>00000nam a2200000 a 4500</leader>",
+  ];
+
+  // 008 - Fixed length data
+  const year = data.pubYear || new Date().getFullYear().toString();
+  const date008 = new Date().toISOString().slice(2, 8).replace(/-/g, "");
+  lines.push(`  <controlfield tag="008">${date008}s${year}    xx            000 0 eng d</controlfield>`);
+
+  // 020 - ISBN
+  if (data.isbn) {
+    lines.push(`  <datafield tag="020" ind1=" " ind2=" ">`);
+    lines.push(`    <subfield code="a">${escape(data.isbn)}</subfield>`);
+    lines.push("  </datafield>");
+  }
+
+  // 100 - Author
+  if (data.author) {
+    lines.push(`  <datafield tag="100" ind1="1" ind2=" ">`);
+    lines.push(`    <subfield code="a">${escape(data.author)}</subfield>`);
+    lines.push("  </datafield>");
+  }
+
+  // 245 - Title (required)
+  lines.push(`  <datafield tag="245" ind1="${data.author ? "1" : "0"}" ind2="0">`);
+  lines.push(`    <subfield code="a">${escape(data.title)}</subfield>`);
+  lines.push("  </datafield>");
+
+  // 260/264 - Publication info
+  if (data.publisher || data.pubYear) {
+    lines.push(`  <datafield tag="264" ind1=" " ind2="1">`);
+    if (data.publisher) {
+      lines.push(`    <subfield code="b">${escape(data.publisher)}</subfield>`);
+    }
+    if (data.pubYear) {
+      lines.push(`    <subfield code="c">${escape(data.pubYear)}</subfield>`);
+    }
+    lines.push("  </datafield>");
+  }
+
+  // 650 - Subjects
+  for (const subject of data.subjects || []) {
+    if (subject.trim()) {
+      lines.push(`  <datafield tag="650" ind1=" " ind2="0">`);
+      lines.push(`    <subfield code="a">${escape(subject.trim())}</subfield>`);
+      lines.push("  </datafield>");
+    }
+  }
+
+  lines.push("</record>");
+  return lines.join("\n");
 }

@@ -1,0 +1,214 @@
+/* Print styles for library receipts and reports */
+@media print {
+  /* Hide non-essential elements */
+  header,
+  footer,
+  nav,
+  aside,
+  .no-print,
+  .sidebar,
+  .navigation,
+  .breadcrumbs,
+  [role="navigation"],
+  button:not(.print-button),
+  .toast,
+  .dialog-overlay,
+  .modal {
+    display: none !important;
+  }
+
+  /* Reset page margins */
+  @page {
+    margin: 0.5in;
+    size: auto;
+  }
+
+  /* Body styling */
+  body {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 10pt;
+    line-height: 1.4;
+    color: black;
+    background: white;
+  }
+
+  /* Receipt header */
+  .receipt-header {
+    text-align: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dashed black;
+  }
+
+  .receipt-header h1 {
+    font-size: 14pt;
+    margin: 0;
+  }
+
+  .receipt-header .library-name {
+    font-size: 12pt;
+    font-weight: bold;
+  }
+
+  .receipt-header .date {
+    font-size: 9pt;
+  }
+
+  /* Receipt items table */
+  .receipt-items {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .receipt-items th,
+  .receipt-items td {
+    padding: 4px 8px;
+    text-align: left;
+    border-bottom: 1px solid #ccc;
+  }
+
+  .receipt-items th {
+    font-weight: bold;
+    border-bottom: 2px solid black;
+  }
+
+  /* Due date emphasis */
+  .due-date {
+    font-weight: bold;
+  }
+
+  .due-date.overdue {
+    color: black;
+    text-decoration: underline;
+  }
+
+  /* Hold slip */
+  .hold-slip {
+    border: 2px solid black;
+    padding: 1rem;
+    max-width: 3in;
+  }
+
+  .hold-slip .patron-name {
+    font-size: 14pt;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+
+  .hold-slip .item-title {
+    font-weight: bold;
+  }
+
+  .hold-slip .pickup-location {
+    margin-top: 0.5rem;
+    font-size: 12pt;
+  }
+
+  .hold-slip .hold-date {
+    font-size: 9pt;
+    color: #666;
+  }
+
+  /* Transit slip */
+  .transit-slip {
+    border: 2px solid black;
+    padding: 1rem;
+    max-width: 4in;
+  }
+
+  .transit-slip .destination {
+    font-size: 16pt;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    border: 1px solid black;
+  }
+
+  /* Reports */
+  .report-title {
+    font-size: 14pt;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .report-date {
+    text-align: center;
+    font-size: 9pt;
+    margin-bottom: 1rem;
+  }
+
+  .report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+  }
+
+  .report-table th,
+  .report-table td {
+    padding: 4px;
+    border: 1px solid black;
+    text-align: left;
+  }
+
+  .report-table th {
+    background: #f0f0f0;
+  }
+
+  .report-table tfoot {
+    font-weight: bold;
+  }
+
+  /* Patron account summary */
+  .patron-summary {
+    margin-bottom: 1rem;
+  }
+
+  .patron-summary h2 {
+    font-size: 12pt;
+    border-bottom: 1px solid black;
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Barcode (text representation) */
+  .barcode {
+    font-family: "Libre Barcode 39", "Courier New", monospace;
+    font-size: 24pt;
+    text-align: center;
+  }
+
+  /* Page breaks */
+  .page-break {
+    page-break-after: always;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Links - show URL */
+  a[href]:after {
+    content: none; /* Don't show URLs on receipts */
+  }
+
+  /* Compact mode for long lists */
+  .compact-print .receipt-items td {
+    padding: 2px 4px;
+    font-size: 8pt;
+  }
+
+  /* Footer signature line */
+  .signature-line {
+    margin-top: 2rem;
+    border-top: 1px solid black;
+    width: 3in;
+    display: inline-block;
+  }
+
+  .signature-label {
+    font-size: 8pt;
+    margin-top: 0.25rem;
+  }
+}

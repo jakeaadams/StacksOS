@@ -477,3 +477,6 @@ body {
   background: hsl(38 92% 97%);
   border-left: 3px solid hsl(38 92% 50%);
 }
+
+/* Print styles */
+@import "./print.css";
