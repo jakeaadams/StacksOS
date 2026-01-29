@@ -1,0 +1,1365 @@
+openapi: 3.0.3
+info:
+  title: StacksOS API
+  description: |
+    StacksOS Library Management System API - A modern interface for Evergreen ILS.
+    
+    ## Authentication
+    Most endpoints require authentication via session cookie (`authtoken`). 
+    Staff authentication is done via POST to `/api/evergreen/auth`, 
+    patron authentication via POST to `/api/opac/login`.
+    
+    ## Rate Limiting
+    - Staff auth: 5 attempts per 15 minutes per IP
+    - Patron auth: 10 attempts per 15 minutes per IP
+    
+    ## Error Responses
+    All endpoints return a consistent error format with `ok: false` and an `error` message.
+  version: 1.0.0
+  contact:
+    name: StacksOS Support
+    url: https://github.com/stacksos/stacksos
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: /api
+    description: Local API server
+
+tags:
+  - name: Authentication
+    description: Staff and patron authentication endpoints
+  - name: Catalog
+    description: Bibliographic record search and retrieval
+  - name: Circulation
+    description: Checkout, checkin, holds, and fines
+  - name: Patrons
+    description: Patron management
+  - name: Health
+    description: System health monitoring
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Returns system health status including database and Evergreen connectivity
+      operationId: getHealth
+      responses:
+        "200":
+          description: System is healthy or degraded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: System is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /evergreen/auth:
+    post:
+      tags:
+        - Authentication
+      summary: Staff login
+      description: Authenticate staff user with username, password, and optional workstation
+      operationId: staffLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffLoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffLoginResponse"
+        "400":
+          description: Missing credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateLimitResponse"
+    get:
+      tags:
+        - Authentication
+      summary: Check session
+      description: Verify current session is valid and retrieve user info
+      operationId: checkSession
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Session status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+    delete:
+      tags:
+        - Authentication
+      summary: Staff logout
+      description: Invalidate current session
+      operationId: staffLogout
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /opac/login:
+    post:
+      tags:
+        - Authentication
+      summary: Patron login
+      description: Authenticate patron with library card barcode and PIN
+      operationId: patronLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatronLoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatronLoginResponse"
+        "400":
+          description: Missing credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateLimitResponse"
+
+  /evergreen/catalog:
+    get:
+      tags:
+        - Catalog
+      summary: Search catalog or get record details
+      description: |
+        Search for bibliographic records or retrieve specific record details.
+        Use `action=search` for searching, `action=record` for single record, 
+        `action=holdings` for copy information.
+      operationId: catalogSearch
+      parameters:
+        - name: action
+          in: query
+          description: Action type (search, record, holdings)
+          schema:
+            type: string
+            enum: [search, record, holdings]
+            default: search
+        - name: q
+          in: query
+          description: Search query
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: Search type
+          schema:
+            type: string
+            enum: [keyword, title, author, subject, isbn, tcn, series]
+            default: keyword
+        - name: id
+          in: query
+          description: Bib record ID (for action=record or action=holdings)
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: Maximum results (max 100)
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          description: Result offset for pagination
+          schema:
+            type: integer
+            default: 0
+        - name: sort
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [relevance, title, title_desc, author, author_desc, pubdate, pubdate_asc, popularity]
+        - name: format
+          in: query
+          description: Filter by format
+          schema:
+            type: string
+        - name: audience
+          in: query
+          description: Filter by audience (juvenile, young_adult, general)
+          schema:
+            type: string
+        - name: available
+          in: query
+          description: Filter to available items only
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Search results or record details
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/CatalogSearchResponse"
+                  - $ref: "#/components/schemas/CatalogRecordResponse"
+                  - $ref: "#/components/schemas/CatalogHoldingsResponse"
+        "404":
+          description: Record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - Catalog
+      summary: Create bibliographic record
+      description: Create a new MARC bibliographic record
+      operationId: createBibRecord
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBibRequest"
+      responses:
+        "200":
+          description: Record created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateBibResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /evergreen/circ:
+    get:
+      tags:
+        - Circulation
+      summary: Get circulation data
+      description: Retrieve patron checkouts, holds, bills, or item status
+      operationId: getCirculation
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: action
+          in: query
+          description: Action type
+          schema:
+            type: string
+            enum: [holds, bills, holds_shelf]
+        - name: patron_id
+          in: query
+          description: Patron ID
+          schema:
+            type: integer
+        - name: itemBarcode
+          in: query
+          description: Item barcode for status lookup
+          schema:
+            type: string
+        - name: org_id
+          in: query
+          description: Organization ID (for holds_shelf)
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Circulation data
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/CheckoutsResponse"
+                  - $ref: "#/components/schemas/HoldsResponse"
+                  - $ref: "#/components/schemas/BillsResponse"
+                  - $ref: "#/components/schemas/ItemStatusResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Item or patron not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - Circulation
+      summary: Perform circulation action
+      description: |
+        Perform circulation operations: checkout, checkin, renew, holds management,
+        bill payment, or in-house use recording.
+      operationId: circulationAction
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CirculationRequest"
+      responses:
+        "200":
+          description: Action successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CirculationResponse"
+        "400":
+          description: Invalid request or action failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Conflict (e.g., checkout blocked)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CirculationErrorResponse"
+
+  /evergreen/patrons:
+    get:
+      tags:
+        - Patrons
+      summary: Search or retrieve patrons
+      description: Search for patrons or retrieve by ID/barcode
+      operationId: getPatrons
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: action
+          in: query
+          description: Action type
+          schema:
+            type: string
+            enum: [groups]
+        - name: q
+          in: query
+          description: Search query
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: Search type
+          schema:
+            type: string
+            enum: [name, barcode, email, phone]
+            default: name
+        - name: barcode
+          in: query
+          description: Patron barcode for direct lookup
+          schema:
+            type: string
+        - name: id
+          in: query
+          description: Patron ID for direct lookup
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: Maximum results
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          description: Result offset
+          schema:
+            type: integer
+            default: 0
+        - name: inactive
+          in: query
+          description: Include inactive patrons
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Patron data
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/PatronSearchResponse"
+                  - $ref: "#/components/schemas/PatronDetailResponse"
+                  - $ref: "#/components/schemas/PatronGroupsResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Patron not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - Patrons
+      summary: Create new patron
+      description: Register a new patron account
+      operationId: createPatron
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePatronRequest"
+      responses:
+        "200":
+          description: Patron created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatePatronResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Barcode or username already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      tags:
+        - Patrons
+      summary: Update patron
+      description: Update an existing patron account
+      operationId: updatePatron
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePatronRequest"
+      responses:
+        "200":
+          description: Patron updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatronDetailResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Patron not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      tags:
+        - Patrons
+      summary: Manage patron blocks and notes
+      description: Add/remove blocks (penalties) or notes on patron accounts
+      operationId: managePatronBlocks
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatronBlockRequest"
+      responses:
+        "200":
+          description: Action successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: authtoken
+      description: Session authentication cookie set after successful login
+
+  schemas:
+    # Common Response Schemas
+    SuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+        message:
+          type: string
+      required:
+        - ok
+
+    ErrorResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: false
+        error:
+          type: string
+        details:
+          type: object
+      required:
+        - ok
+        - error
+
+    RateLimitResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: false
+        error:
+          type: string
+        retryAfter:
+          type: integer
+          description: Seconds until rate limit resets
+        limit:
+          type: integer
+        resetTime:
+          type: string
+          format: date-time
+
+    # Health Schemas
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        version:
+          type: string
+        uptime:
+          type: integer
+          description: Uptime in seconds
+        timestamp:
+          type: string
+          format: date-time
+        checks:
+          type: object
+          properties:
+            database:
+              $ref: "#/components/schemas/HealthCheck"
+            evergreen:
+              $ref: "#/components/schemas/HealthCheck"
+
+    HealthCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [up, down]
+        latency:
+          type: integer
+          description: Response time in milliseconds
+        error:
+          type: string
+
+    # Authentication Schemas
+    StaffLoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Staff username
+        password:
+          type: string
+          format: password
+        workstation:
+          type: string
+          description: Registered workstation name (optional)
+      required:
+        - username
+        - password
+
+    StaffLoginResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        authtoken:
+          type: string
+        user:
+          $ref: "#/components/schemas/StaffUser"
+        workstation:
+          type: string
+          nullable: true
+        needsWorkstation:
+          type: boolean
+
+    StaffUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        usrname:
+          type: string
+        first_given_name:
+          type: string
+        family_name:
+          type: string
+        email:
+          type: string
+        home_ou:
+          type: integer
+        ws_ou:
+          type: integer
+
+    SessionResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        authenticated:
+          type: boolean
+        user:
+          $ref: "#/components/schemas/StaffUser"
+
+    PatronLoginRequest:
+      type: object
+      properties:
+        barcode:
+          type: string
+          description: Library card barcode
+        pin:
+          type: string
+          format: password
+          description: Patron PIN
+        rememberMe:
+          type: boolean
+          default: false
+      required:
+        - barcode
+        - pin
+
+    PatronLoginResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        success:
+          type: boolean
+        patron:
+          type: object
+          properties:
+            id:
+              type: integer
+            firstName:
+              type: string
+            lastName:
+              type: string
+            email:
+              type: string
+            barcode:
+              type: string
+            homeLibrary:
+              type: integer
+            profileName:
+              type: string
+
+    # Catalog Schemas
+    CatalogSearchResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        count:
+          type: integer
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/BibRecord"
+        facets:
+          type: object
+          properties:
+            formats:
+              type: object
+              additionalProperties:
+                type: integer
+            audiences:
+              type: object
+              additionalProperties:
+                type: integer
+        filters:
+          type: object
+
+    CatalogRecordResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        record:
+          $ref: "#/components/schemas/BibRecordDetail"
+
+    CatalogHoldingsResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        bibId:
+          type: string
+        copyCounts:
+          type: array
+          items:
+            type: object
+        copies:
+          type: array
+          items:
+            $ref: "#/components/schemas/CopyHolding"
+
+    BibRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        tcn:
+          type: string
+        title:
+          type: string
+        author:
+          type: string
+        pubdate:
+          type: string
+        publisher:
+          type: string
+        isbn:
+          type: string
+        format:
+          type: string
+        audience:
+          type: string
+        coverUrl:
+          type: string
+          nullable: true
+        availability:
+          type: object
+          properties:
+            total:
+              type: integer
+            available:
+              type: integer
+
+    BibRecordDetail:
+      allOf:
+        - $ref: "#/components/schemas/BibRecord"
+        - type: object
+          properties:
+            edition:
+              type: string
+            physical_description:
+              type: string
+            marc_xml:
+              type: string
+              nullable: true
+
+    CopyHolding:
+      type: object
+      properties:
+        id:
+          type: integer
+        barcode:
+          type: string
+        callNumber:
+          type: string
+        status:
+          type: string
+        statusId:
+          type: integer
+        location:
+          type: string
+        circLib:
+          type: string
+        price:
+          type: number
+        circCount:
+          type: integer
+
+    CreateBibRequest:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [create]
+        marcXml:
+          type: string
+          description: Full MARC XML record
+        simplified:
+          type: object
+          description: Simplified form for record creation
+          properties:
+            title:
+              type: string
+            author:
+              type: string
+            isbn:
+              type: string
+            publisher:
+              type: string
+            pubYear:
+              type: string
+            subjects:
+              type: array
+              items:
+                type: string
+            format:
+              type: string
+
+    CreateBibResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        id:
+          type: integer
+        message:
+          type: string
+
+    # Circulation Schemas
+    CirculationRequest:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [checkout, checkin, renew, place_hold, cancel_hold, suspend_hold, activate_hold, pay_bills, in_house_use]
+        patronBarcode:
+          type: string
+        itemBarcode:
+          type: string
+        copyId:
+          type: integer
+        hold_id:
+          type: integer
+        patron_id:
+          type: integer
+        target_id:
+          type: integer
+        pickup_lib:
+          type: integer
+        hold_type:
+          type: string
+          enum: [T, C]
+          description: T=Title hold, C=Copy hold
+        override:
+          type: boolean
+        overrideReason:
+          type: string
+        payments:
+          type: array
+          items:
+            type: object
+            properties:
+              billId:
+                type: integer
+              amount:
+                type: number
+        payment_type:
+          type: string
+          enum: [cash_payment, credit_card_payment, check_payment, forgive_payment]
+        count:
+          type: integer
+          description: Count for in-house use
+        orgId:
+          type: integer
+      required:
+        - action
+
+    CirculationResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        action:
+          type: string
+        circulation:
+          type: object
+          properties:
+            id:
+              type: integer
+            dueDate:
+              type: string
+              format: date-time
+            copyBarcode:
+              type: string
+            title:
+              type: string
+            author:
+              type: string
+            callNumber:
+              type: string
+
+    CirculationErrorResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: false
+        error:
+          type: string
+        code:
+          type: string
+          description: Evergreen event code
+        desc:
+          type: string
+        overridePerm:
+          type: string
+          nullable: true
+        overrideEligible:
+          type: boolean
+
+    CheckoutsResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        checkouts:
+          type: object
+          properties:
+            out:
+              type: array
+              items:
+                $ref: "#/components/schemas/Checkout"
+            overdue:
+              type: array
+              items:
+                $ref: "#/components/schemas/Checkout"
+            claims_returned:
+              type: array
+              items:
+                $ref: "#/components/schemas/Checkout"
+            long_overdue:
+              type: array
+              items:
+                $ref: "#/components/schemas/Checkout"
+            lost:
+              type: array
+              items:
+                $ref: "#/components/schemas/Checkout"
+
+    Checkout:
+      type: object
+      properties:
+        id:
+          type: integer
+        circId:
+          type: integer
+        barcode:
+          type: string
+        title:
+          type: string
+        author:
+          type: string
+        callNumber:
+          type: string
+        checkoutDate:
+          type: string
+          format: date-time
+        dueDate:
+          type: string
+          format: date-time
+        isOverdue:
+          type: boolean
+
+    HoldsResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        holds:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              hold_type:
+                type: string
+              target:
+                type: integer
+              title:
+                type: string
+              author:
+                type: string
+              pickup_lib:
+                type: integer
+              request_time:
+                type: string
+              frozen:
+                type: boolean
+
+    BillsResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        bills:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              xact_type:
+                type: string
+              total_owed:
+                type: number
+              total_paid:
+                type: number
+              balance_owed:
+                type: number
+              xact_start:
+                type: string
+
+    ItemStatusResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        copy:
+          type: object
+          properties:
+            id:
+              type: integer
+            barcode:
+              type: string
+            status:
+              type: integer
+            location:
+              type: integer
+            callNumber:
+              type: integer
+            circLib:
+              type: integer
+
+    # Patron Schemas
+    PatronSearchResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        count:
+          type: integer
+        patrons:
+          type: array
+          items:
+            $ref: "#/components/schemas/PatronSummary"
+
+    PatronSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        barcode:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        homeLibrary:
+          type: integer
+        patronType:
+          type: string
+        isActive:
+          type: boolean
+        cardExpiry:
+          type: string
+
+    PatronDetailResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        patron:
+          $ref: "#/components/schemas/PatronDetail"
+
+    PatronDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        barcode:
+          type: string
+        first_given_name:
+          type: string
+        family_name:
+          type: string
+        email:
+          type: string
+        day_phone:
+          type: string
+        home_ou:
+          type: integer
+        profile:
+          type: integer
+        active:
+          type: boolean
+        barred:
+          type: boolean
+        expire_date:
+          type: string
+        standing_penalties:
+          type: array
+          items:
+            type: object
+
+    PatronGroupsResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        groups:
+          type: object
+          description: Hierarchical permission group tree
+
+    CreatePatronRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        barcode:
+          type: string
+          description: If not provided, will be auto-generated
+        username:
+          type: string
+          description: If not provided, will be auto-generated
+        password:
+          type: string
+          description: If not provided, will be auto-generated
+        homeLibrary:
+          type: integer
+        profile:
+          type: integer
+          description: Permission group ID
+        expireDate:
+          type: string
+          format: date
+        address:
+          type: object
+          properties:
+            street1:
+              type: string
+            street2:
+              type: string
+            city:
+              type: string
+            state:
+              type: string
+            post_code:
+              type: string
+            country:
+              type: string
+      required:
+        - firstName
+        - lastName
+        - address
+
+    CreatePatronResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        patron:
+          $ref: "#/components/schemas/PatronDetail"
+        generated:
+          type: object
+          description: Auto-generated values
+          properties:
+            barcode:
+              type: string
+            username:
+              type: string
+            password:
+              type: string
+
+    UpdatePatronRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        homeLibrary:
+          type: integer
+        profile:
+          type: integer
+        expireDate:
+          type: string
+        active:
+          type: boolean
+        barred:
+          type: boolean
+      required:
+        - id
+
+    PatronBlockRequest:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [addBlock, removeBlock, addNote, deleteNote, getNotes, getPenaltyTypes]
+        patronId:
+          type: integer
+        penaltyType:
+          type: integer
+          description: For addBlock action
+        penaltyId:
+          type: integer
+          description: For removeBlock action
+        note:
+          type: string
+        title:
+          type: string
+          description: Note title for addNote
+        value:
+          type: string
+          description: Note content for addNote
+        public:
+          type: boolean
+          description: Whether note is patron-visible
+        noteId:
+          type: integer
+          description: For deleteNote action
+        orgUnit:
+          type: integer
+      required:
+        - action
+        - patronId
