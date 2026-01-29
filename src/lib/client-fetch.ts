@@ -1,5 +1,7 @@
 "use client";
 
+import { clientLogger } from "./client-logger";
+
 /**
  * Client-side fetch helpers with CSRF protection.
  *
@@ -66,7 +68,7 @@ export async function fetchWithAuth(url: string, init?: RequestInit): Promise<Re
       const token = await getCSRFToken();
       headers.set("x-csrf-token", token);
     } catch (error) {
-      console.error("Failed to get CSRF token:", error);
+      clientLogger.error("Failed to get CSRF token:", error);
       // Continue without CSRF token - server will reject if needed
     }
   }
