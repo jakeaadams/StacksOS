@@ -505,7 +505,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Validate MARC XML has required fields
-      if (!finalMarcXml.includes("<datafield tag="245"")) {
+      if (!finalMarcXml.includes("<datafield tag=\"245\"")) {
         return errorResponse("MARC record must include 245 (title) field", 400);
       }
 
@@ -580,7 +580,7 @@ function buildSimpleMarcXml(data: {
   }
 
   // 245 - Title (required)
-  lines.push(`  <datafield tag="245" ind1="${data.author ? "1" : "0"}" ind2="0">`);
+  lines.push(`  <datafield tag=\"245\" ind1="${data.author ? "1" : "0"}" ind2="0">`);
   lines.push(`    <subfield code="a">${escape(data.title)}</subfield>`);
   lines.push("  </datafield>");
 

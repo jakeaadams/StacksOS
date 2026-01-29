@@ -387,7 +387,7 @@ export async function POST(req: NextRequest) {
       }
     } else if (type === "holdings") {
       // Holdings templates stored in org unit settings as JSON
-      const targetOrgId = data.owningLib || orgId;
+      const targetOrgId = data.owningLib || data.orgId || 1;
       
       if (action === "create" || action === "update") {
         const settingsRes = await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.settings.retrieve",
@@ -396,7 +396,7 @@ export async function POST(req: NextRequest) {
         let templates = rawTemplates ? (typeof rawTemplates === "string" ? JSON.parse(rawTemplates) : rawTemplates) : [];
         
         if (action === "create") {
-          const newId = Math.max(0, ...templates.map(t => t.id || 0)) + 1;
+          const newId = Math.max(0, ...templates.map((t: any) => t.id || 0)) + 1;
           templates.push({
             id: newId,
             name: data.name,
@@ -409,7 +409,7 @@ export async function POST(req: NextRequest) {
             [authtoken, targetOrgId, "ui.staff.catalog.holdings_templates", JSON.stringify(templates)]);
           return successResponse({ id: newId, message: "Holdings template created" });
         } else {
-          const idx = templates.findIndex(t => t.id === data.id);
+          const idx = templates.findIndex((t: any) => t.id === data.id);
           if (idx === -1) return errorResponse("Template not found", 404);
           templates[idx] = {
             ...templates[idx],
@@ -428,7 +428,7 @@ export async function POST(req: NextRequest) {
           [authtoken, targetOrgId, ["ui.staff.catalog.holdings_templates"]]);
         const rawTemplates = settingsRes?.payload?.[0]?.["ui.staff.catalog.holdings_templates"];
         let templates = rawTemplates ? (typeof rawTemplates === "string" ? JSON.parse(rawTemplates) : rawTemplates) : [];
-        templates = templates.filter(t => t.id !== data.id);
+        templates = templates.filter((t: any) => t.id !== data.id);
         await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.settings.update",
           [authtoken, targetOrgId, "ui.staff.catalog.holdings_templates", JSON.stringify(templates)]);
         return successResponse({ message: "Holdings template deleted" });

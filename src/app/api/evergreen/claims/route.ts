@@ -42,17 +42,17 @@ async function updateClaimCounts(
   }
 ) {
   const patron = await getPatronById(authtoken, patronId);
-  if (\!patron || patron.ilsevent) {
+  if (!patron || patron.ilsevent) {
     throw new Error("Patron not found");
   }
 
   const claimsReturnedCount =
-    patch.claimsReturnedCount \!== undefined
+    patch.claimsReturnedCount !== undefined
       ? patch.claimsReturnedCount
       : Number(patron.claims_returned_count || 0);
 
   const claimsNeverCheckedOutCount =
-    patch.claimsNeverCheckedOutCount \!== undefined
+    patch.claimsNeverCheckedOutCount !== undefined
       ? patch.claimsNeverCheckedOutCount
       : Number(patron.claims_never_checked_out_count || 0);
 
@@ -70,7 +70,7 @@ async function updateClaimCounts(
   );
 
   const result = updateResponse?.payload?.[0];
-  if (\!isSuccessResult(result)) {
+  if (!isSuccessResult(result)) {
     throw new Error(getErrorMessage(result, "Failed to update claim counts"));
   }
 
@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
 
     if (patronId) {
       const pid = toInt(patronId);
-      if (\!pid) return errorResponse("Invalid patron_id", 400);
+      if (!pid) return errorResponse("Invalid patron_id", 400);
 
       const checkoutsResponse = await callOpenSRF(
         "open-ils.circ",
@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
       const detailedClaims: Record<string, unknown>[] = [];
       for (const claim of claimsReturned) {
         const circIdVal = claim.id || claim.__p?.[0];
-        if (\!circIdVal) continue;
+        if (!circIdVal) continue;
 
         const copyId = claim.target_copy || claim.__p?.[2];
         if (copyId) {
@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
       );
       const allBills = billsResponse?.payload?.[0] || [];
       const claimBills = (Array.isArray(allBills) ? allBills : []).filter(
-        (bill: Record<string, unknown>) =>
+        (bill: any) =>
           bill.billing_type?.toLowerCase().includes("claim") ||
           bill.billing_type?.toLowerCase().includes("lost")
       );
@@ -184,7 +184,7 @@ export async function GET(req: NextRequest) {
 
     if (circId) {
       const cid = toInt(circId);
-      if (\!cid) return errorResponse("Invalid circ_id", 400);
+      if (!cid) return errorResponse("Invalid circ_id", 400);
 
       const circResponse = await callOpenSRF(
         "open-ils.circ",
@@ -193,7 +193,7 @@ export async function GET(req: NextRequest) {
       );
 
       const circ = circResponse?.payload?.[0];
-      if (\!circ || circ.ilsevent) {
+      if (!circ || circ.ilsevent) {
         return notFoundResponse("Circulation not found");
       }
 
@@ -224,7 +224,7 @@ export async function GET(req: NextRequest) {
     if (itemBarcode) {
       const copy = await getCopyByBarcode(itemBarcode);
 
-      if (\!copy || copy.ilsevent) {
+      if (!copy || copy.ilsevent) {
         return notFoundResponse("Item not found");
       }
 
@@ -236,7 +236,7 @@ export async function GET(req: NextRequest) {
 
       const circs = circResponse?.payload?.[0] || [];
       const claimsReturnedCircs = (Array.isArray(circs) ? circs : []).filter(
-        (c: Record<string, unknown>) => (c.stop_fines || c.__p?.[7]) === "CLAIMSRETURNED"
+        (c: any) => (c.stop_fines || c.__p?.[7]) === "CLAIMSRETURNED"
       );
 
       return successResponse({
@@ -249,7 +249,7 @@ export async function GET(req: NextRequest) {
           isLost: copy.status === 3,
           isDamaged: copy.status === 14,
         },
-        claimsReturnedHistory: claimsReturnedCircs.map((c: Record<string, unknown>) => ({
+        claimsReturnedHistory: claimsReturnedCircs.map((c: any) => ({
           circId: c.id || c.__p?.[0],
           patronId: c.usr || c.__p?.[1],
           claimDate: c.stop_fines_time || c.__p?.[8],
@@ -292,7 +292,7 @@ export async function POST(req: NextRequest) {
 
       if (action === "claims_returned") {
         const cid = toInt(circId);
-        if (\!cid) {
+        if (!cid) {
           return errorResponse("circId required", 400);
         }
 
@@ -303,7 +303,7 @@ export async function POST(req: NextRequest) {
         );
         const circ = circResponse?.payload?.[0];
 
-        if (\!circ || circ.ilsevent) {
+        if (!circ || circ.ilsevent) {
           return notFoundResponse("Circulation not found");
         }
 
@@ -328,7 +328,7 @@ export async function POST(req: NextRequest) {
           let fineAdjustment = null;
           if (claimDate) {
             const voidedFines = (Array.isArray(bills) ? bills : []).filter(
-              (b: Record<string, unknown>) => b.voided === "t" || b.voided === true
+              (b: any) => b.voided === "t" || b.voided === true
             );
             fineAdjustment = {
               backdatedTo: claimDate,
@@ -376,7 +376,7 @@ export async function POST(req: NextRequest) {
       if (action === "claims_never_checked_out") {
         const cid = toInt(circId);
         const pid = toInt(patronId);
-        if (\!cid || \!copyBarcode || \!pid) {
+        if (!cid || !copyBarcode || !pid) {
           return errorResponse(
             "circId, copyBarcode, and patronId required for claims_never_checked_out",
             400
@@ -391,7 +391,7 @@ export async function POST(req: NextRequest) {
           );
 
           const checkinResult = checkinResponse?.payload?.[0];
-          if (checkinResult?.ilsevent && checkinResult.ilsevent \!== 0) {
+          if (checkinResult?.ilsevent && checkinResult.ilsevent !== 0) {
             logger.warn(
               { requestId, route: "api.evergreen.claims", checkinResult },
               "Claims: checkin returned an event; continuing"
@@ -422,7 +422,7 @@ export async function POST(req: NextRequest) {
           let finesVoided = 0;
 
           if (Array.isArray(bills) && bills.length > 0) {
-            const billIds = bills.map((b: Record<string, unknown>) => b.id).filter(Boolean);
+            const billIds = bills.map((b: any) => b.id).filter(Boolean);
             if (billIds.length > 0) {
               await callOpenSRF("open-ils.circ", "open-ils.circ.money.billing.void", [
                 authtoken,
@@ -458,7 +458,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (action === "resolve_claim") {
-        if (\!copyBarcode) {
+        if (!copyBarcode) {
           return errorResponse("copyBarcode required", 400);
         }
 
@@ -491,8 +491,8 @@ export async function POST(req: NextRequest) {
 
               if (Array.isArray(bills) && bills.length > 0) {
                 const unpaidBillIds = bills
-                  .filter((b: Record<string, unknown>) => parseFloat(b.balance_owed || 0) > 0)
-                  .map((b: Record<string, unknown>) => b.id)
+                  .filter((b: any) => parseFloat(b.balance_owed || 0) > 0)
+                  .map((b: any) => b.id)
                   .filter(Boolean);
 
                 if (unpaidBillIds.length > 0) {
@@ -518,7 +518,7 @@ export async function POST(req: NextRequest) {
 
       if (action === "void_claim_fines") {
         const cid = toInt(circId);
-        if (\!cid) {
+        if (!cid) {
           return errorResponse("circId required", 400);
         }
 
@@ -529,7 +529,7 @@ export async function POST(req: NextRequest) {
         );
         const bills = billsResponse?.payload?.[0] || [];
 
-        if (\!Array.isArray(bills) || bills.length === 0) {
+        if (!Array.isArray(bills) || bills.length === 0) {
           return successResponse({
             action: "void_claim_fines",
             circId: cid,
@@ -539,8 +539,8 @@ export async function POST(req: NextRequest) {
         }
 
         const unpaidBillIds = bills
-          .filter((b: Record<string, unknown>) => parseFloat(b.balance_owed || 0) > 0)
-          .map((b: Record<string, unknown>) => b.id)
+          .filter((b: any) => parseFloat(b.balance_owed || 0) > 0)
+          .map((b: any) => b.id)
           .filter(Boolean);
 
         if (unpaidBillIds.length === 0) {
@@ -562,7 +562,7 @@ export async function POST(req: NextRequest) {
 
         if (isSuccessResult(voidResult)) {
           const totalVoided = bills
-            .filter((b: Record<string, unknown>) => unpaidBillIds.includes(b.id))
+            .filter((b: any) => unpaidBillIds.includes(b.id))
             .reduce((sum: number, b: any) => sum + parseFloat(b.amount || 0), 0);
 
           await audit("success", { circId: cid, finesVoided: unpaidBillIds.length, totalVoided });
@@ -599,21 +599,21 @@ export async function PUT(req: NextRequest) {
       const body = await req.json();
       const patronId = toInt(body.patronId);
       const claimsReturnedCount =
-        body.claimsReturnedCount \!== undefined ? toInt(body.claimsReturnedCount) : undefined;
+        body.claimsReturnedCount !== undefined ? toInt(body.claimsReturnedCount) : undefined;
       const claimsNeverCheckedOutCount =
-        body.claimsNeverCheckedOutCount \!== undefined
+        body.claimsNeverCheckedOutCount !== undefined
           ? toInt(body.claimsNeverCheckedOutCount)
           : undefined;
 
-      if (body.claimsReturnedCount \!== undefined && claimsReturnedCount === null) {
+      if (body.claimsReturnedCount !== undefined && claimsReturnedCount === null) {
         return errorResponse("Invalid claimsReturnedCount", 400);
       }
 
-      if (body.claimsNeverCheckedOutCount \!== undefined && claimsNeverCheckedOutCount === null) {
+      if (body.claimsNeverCheckedOutCount !== undefined && claimsNeverCheckedOutCount === null) {
         return errorResponse("Invalid claimsNeverCheckedOutCount", 400);
       }
 
-      if (\!patronId) {
+      if (!patronId) {
         return errorResponse("patronId required", 400);
       }
 

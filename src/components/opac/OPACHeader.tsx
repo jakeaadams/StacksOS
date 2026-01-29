@@ -82,7 +82,7 @@ export function OPACHeader() {
           setShowResults(true);
         }
       } catch (err) {
-        logger.error("Search error:", err);
+        logger.error({ error: String(err) }, "Search error");
       } finally {
         setIsSearching(false);
       }

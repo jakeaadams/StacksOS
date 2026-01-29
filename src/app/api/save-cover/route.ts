@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       [parseInt(recordId), coverUrl, source]
     );
 
-    logger.info(`[Cover Saved] Record ${recordId}: ${coverUrl} (Source: ${source})`);
+    logger.info({ recordId, coverUrl, source }, "Cover saved");
 
     return NextResponse.json({
       success: true,
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       coverUrl,
     });
   } catch (error) {
-    logger.error("Save cover error:", error);
+    logger.error({ error: String(error) }, "Save cover error");
     return NextResponse.json(
       {
         error: "Failed to save cover",
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       source: result[0].source,
     });
   } catch (error) {
-    logger.error("Get cover error:", error);
+    logger.error({ error: String(error) }, "Get cover error");
     return NextResponse.json(
       {
         error: "Failed to get cover",

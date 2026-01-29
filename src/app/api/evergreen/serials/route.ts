@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
         ]
       );
 
-      const subscriptions = (response?.payload?.[0] || []).map(sub => ({
+      const subscriptions = (response?.payload?.[0] || []).map((sub: any) => ({
         id: sub?.id,
         start_date: sub?.start_date,
         end_date: sub?.end_date,
@@ -149,7 +149,7 @@ export async function GET(req: NextRequest) {
         ]
       );
 
-      const distributions = (response?.payload?.[0] || []).map(dist => ({
+      const distributions = (response?.payload?.[0] || []).map((dist: any) => ({
         id: dist?.id,
         label: dist?.label,
         holding_lib: dist?.holding_lib?.id || dist?.holding_lib,

@@ -68,12 +68,12 @@ export async function GET(req: NextRequest) {
 
     // Filter out deleted messages and sort by date (newest first)
     const activeMessages = messages
-      .filter((m: Record<string, unknown>) => !m.isDeleted)
-      .sort((a: Record<string, unknown>, b: Record<string, unknown>) => 
+      .filter((m: any) => !m.isDeleted)
+      .sort((a: any, b: any) => 
         new Date(b.createDate).getTime() - new Date(a.createDate).getTime()
       );
 
-    const unreadCount = activeMessages.filter((m: Record<string, unknown>) => !m.isRead).length;
+    const unreadCount = activeMessages.filter((m: any) => !m.isRead).length;
 
     return successResponse({
       messages: activeMessages,
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
 }
 
 // Helper function to determine message type based on content/context
-function determineMessageType(msg: Record<string, unknown>): string {
+function determineMessageType(msg: any): string {
   const title = (msg.title || "").toLowerCase();
   const content = (msg.message || msg.content || "").toLowerCase();
   

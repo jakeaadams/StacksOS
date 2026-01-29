@@ -17,7 +17,7 @@ export function getEvergreenPool(): Pool {
     });
 
     pool.on('error', (err) => {
-      logger.error('Unexpected error on idle Evergreen database client', err);
+      logger.error({ error: String(err) }, "Unexpected error on idle Evergreen database client");
     });
   }
 
@@ -90,9 +90,9 @@ export async function ensureCustomTables(): Promise<void> {
     `);
 
     tablesInitialized = true;
-    logger.info('Custom tables initialized successfully');
+    logger.info({}, "Custom tables initialized successfully");
   } catch (error) {
-    logger.error('Error initializing custom tables:', error);
+    logger.error({ error: String(error) }, "Error initializing custom tables");
     throw error;
   }
 }

@@ -42,7 +42,7 @@ export function downloadFile(content: string, filename: string, mimeType: string
   URL.revokeObjectURL(url);
 }
 
-export function exportToCSV<Teqôends Record<string, any>>(
+export function exportToCSV<T extends Record<string, any>>(
   data: T[],
   columns: ExportColumn[],
   filename: string

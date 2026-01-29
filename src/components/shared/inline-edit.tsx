@@ -59,7 +59,7 @@ export function InlineEdit({
       await onSave(editValue);
       setIsEditing(false);
     } catch (error) {
-      logger.error("Save error:", error);
+      logger.error({ error: String(error) }, "Save error");
       // Revert on error
       setEditValue(value);
     } finally {

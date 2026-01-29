@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
 
             const bills = billsResponse?.payload?.[0] || [];
             const longOverdueBills = (Array.isArray(bills) ? bills : []).filter(
-              (b: Record<string, unknown>) =>
+              (b: any) =>
                 b.billing_type?.toLowerCase().includes("long") ||
                 b.billing_type?.toLowerCase().includes("overdue") ||
                 b.billing_type?.toLowerCase().includes("replacement")
@@ -282,13 +282,13 @@ export async function POST(req: NextRequest) {
 
               // Void long overdue processing fees if item is returned
               const longOverdueBills = (Array.isArray(bills) ? bills : []).filter(
-                (b: Record<string, unknown>) =>
+                (b: any) =>
                   b.billing_type?.toLowerCase().includes("long") &&
                   b.billing_type?.toLowerCase().includes("overdue")
               );
 
               if (longOverdueBills.length > 0 && voidFines) {
-                const billIds = longOverdueBills.map((b: Record<string, unknown>) => b.id);
+                const billIds = longOverdueBills.map((b: any) => b.id);
 
                 const voidResponse = await callOpenSRF(
                   "open-ils.circ",
@@ -755,7 +755,7 @@ export async function POST(req: NextRequest) {
                   result.status = "in_transit";
                 }
 
-                results.push(result);
+                results.push(result as { barcode: string; success: boolean; status?: string; holdCaptured?: boolean; transitTo?: string; });
               } else {
                 results.push({
                   barcode,
@@ -833,7 +833,7 @@ export async function GET(req: NextRequest) {
 
         const overdueCircs = overdueResponse?.payload?.[0] || [];
 
-        const items = (Array.isArray(overdueCircs) ? overdueCircs : []).map((circ: Record<string, unknown>) => ({
+        const items = (Array.isArray(overdueCircs) ? overdueCircs : []).map((circ: any) => ({
           circId: circ.id || circ.__p?.[0],
           patronId: circ.usr || circ.__p?.[1],
           copyId: circ.target_copy || circ.__p?.[2],
@@ -868,7 +868,7 @@ export async function GET(req: NextRequest) {
 
           const sessions = sessionsResponse?.payload?.[0] || [];
 
-          const formattedSessions = (Array.isArray(sessions) ? sessions : []).map((s: Record<string, unknown>) => ({
+          const formattedSessions = (Array.isArray(sessions) ? sessions : []).map((s: any) => ({
             id: s.id || s.__p?.[0],
             name: s.description || s.__p?.[1],
             creator: s.creator || s.__p?.[2],
@@ -917,7 +917,7 @@ export async function GET(req: NextRequest) {
           },
           transactionCount: Array.isArray(transactions) ? transactions.length : 0,
           transactions: Array.isArray(transactions)
-            ? transactions.slice(0, 50).map((t: Record<string, unknown>) => ({
+            ? transactions.slice(0, 50).map((t: any) => ({
                 id: t.id || t.__p?.[0],
                 type: t.type || t.__p?.[1],
                 data: t.data || t.__p?.[2],

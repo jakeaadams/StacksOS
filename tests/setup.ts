@@ -4,7 +4,7 @@
  * Global test configuration and mocks
  */
 
-import { vi } from "vitest";
+import { vi, beforeAll, afterAll, afterEach } from "vitest";
 
 // Mock Next.js request/response for API route testing
 vi.mock("next/headers", () => ({

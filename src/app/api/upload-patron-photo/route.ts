@@ -68,9 +68,9 @@ export async function POST(request: NextRequest) {
         `UPDATE actor.usr SET photo_url = $1 WHERE id = $2`,
         [publicUrl, parseInt(patronId)]
       );
-      logger.info(`[Patron Photo] Updated photo_url for patron ${patronId}: ${publicUrl}`);
+      logger.info({ patronId, publicUrl }, "Patron photo updated");
     } catch (dbError) {
-      logger.error("Failed to update photo_url in database:", dbError);
+      logger.error({ error: String(dbError) }, "Failed to update photo_url in database");
       // Still return success since file was uploaded
       return NextResponse.json({
         success: true,
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       filename,
     });
   } catch (error) {
-    logger.error("Upload error:", error);
+    logger.error({ error: String(error) }, "Upload error");
     return NextResponse.json(
       {
         error: "Failed to upload file",

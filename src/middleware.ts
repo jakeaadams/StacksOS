@@ -55,7 +55,8 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 }
 
 export function middleware(request: NextRequest) {
-  const { pathname, method } = new URL(request.url);
+  const { pathname } = new URL(request.url);
+  const method = request.method;
 
   // Skip CSRF for:
   // 1. GET/HEAD/OPTIONS requests (safe methods)

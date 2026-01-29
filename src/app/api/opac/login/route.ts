@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     endpoint: "patron-auth",
   });
 
-  if (\!rateLimit.allowed) {
+  if (!rateLimit.allowed) {
     const waitMinutes = Math.ceil(rateLimit.resetIn / 60000);
     logger.warn({ ip, requestId, rateLimit }, "Patron auth rate limit exceeded");
     
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   try {
     const { barcode, pin, rememberMe } = await req.json();
 
-    if (\!barcode || \!pin) {
+    if (!barcode || !pin) {
       return errorResponse("Library card number and PIN are required", 400);
     }
 
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     );
 
     const seed = seedResponse?.payload?.[0];
-    if (\!seed) {
+    if (!seed) {
       logger.warn({ route: "api.opac.login", barcode: cleanBarcode }, "Failed to get auth seed");
       return errorResponse("Invalid library card number or PIN", 401);
     }
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
 
       const user = userResponse?.payload?.[0];
 
-      if (user && \!user.ilsevent) {
+      if (user && !user.ilsevent) {
         const patronResponse = await callOpenSRF(
           "open-ils.actor",
           "open-ils.actor.user.fleshed.retrieve",

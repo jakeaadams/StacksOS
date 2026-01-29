@@ -56,7 +56,7 @@ async function resolveCopyId(
     return { copyId: item.copyId, barcode: item.barcode || `copy:${item.copyId}` };
   }
 
-  if (\!item.barcode) {
+  if (!item.barcode) {
     return { copyId: null, barcode: "", error: "No copyId or barcode provided" };
   }
 
@@ -67,7 +67,7 @@ async function resolveCopyId(
   );
 
   const copy = copyResponse?.payload?.[0];
-  if (\!copy || copy.ilsevent) {
+  if (!copy || copy.ilsevent) {
     return { copyId: null, barcode: item.barcode, error: `Item not found: ${item.barcode}` };
   }
 
@@ -83,11 +83,11 @@ export async function POST(req: NextRequest) {
       const body = await req.json();
       const { action, items, confirm } = body;
 
-      if (\!action) {
+      if (!action) {
         return errorResponse("Action required", 400);
       }
 
-      if (\!items || \!Array.isArray(items) || items.length === 0) {
+      if (!items || !Array.isArray(items) || items.length === 0) {
         return errorResponse("Items array required", 400);
       }
 
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
           for (const item of items as BatchItem[]) {
             const { copyId, barcode, error } = await resolveCopyId(authtoken, item);
 
-            if (error || \!copyId) {
+            if (error || !copyId) {
               results.push({ success: false, barcode, error: error || "Unknown error" });
               failCount++;
               continue;
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
 
               const result = updateResponse?.payload?.[0];
 
-              if (isSuccessResult(result) || (result && \!result.ilsevent)) {
+              if (isSuccessResult(result) || (result && !result.ilsevent)) {
                 results.push({ success: true, copyId, barcode, details: { newStatus: statusId } });
                 successCount++;
               } else {
@@ -186,7 +186,7 @@ export async function POST(req: NextRequest) {
         case "update_call_number": {
           const { callNumber, prefix, suffix } = body;
 
-          if (\!callNumber) {
+          if (!callNumber) {
             return errorResponse("callNumber required for update_call_number", 400);
           }
 
@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
           for (const item of items as BatchItem[]) {
             const { copyId, barcode, error } = await resolveCopyId(authtoken, item);
 
-            if (error || \!copyId) {
+            if (error || !copyId) {
               results.push({ success: false, barcode, error: error || "Unknown error" });
               failCount++;
               continue;
@@ -212,7 +212,7 @@ export async function POST(req: NextRequest) {
               );
 
               const copy = copyResponse?.payload?.[0];
-              if (\!copy || copy.ilsevent) {
+              if (!copy || copy.ilsevent) {
                 results.push({ success: false, copyId, barcode, error: "Copy not found" });
                 failCount++;
                 continue;
@@ -228,10 +228,10 @@ export async function POST(req: NextRequest) {
                 label: callNumber,
               };
 
-              if (prefix \!== undefined) {
+              if (prefix !== undefined) {
                 volumeUpdate.prefix = prefix;
               }
-              if (suffix \!== undefined) {
+              if (suffix !== undefined) {
                 volumeUpdate.suffix = suffix;
               }
 
@@ -243,7 +243,7 @@ export async function POST(req: NextRequest) {
 
               const result = updateResponse?.payload?.[0];
 
-              if (isSuccessResult(result) || (result && \!result.ilsevent)) {
+              if (isSuccessResult(result) || (result && !result.ilsevent)) {
                 results.push({ 
                   success: true, 
                   copyId, 
@@ -279,14 +279,14 @@ export async function POST(req: NextRequest) {
          * Deletes multiple copies (requires confirmation)
          */
         case "delete": {
-          if (\!confirm) {
+          if (!confirm) {
             // Return preview of what would be deleted
             const preview: Array<{ copyId?: number; barcode?: string; title?: string }> = [];
 
             for (const item of items as BatchItem[]) {
               const { copyId, barcode, error } = await resolveCopyId(authtoken, item);
 
-              if (error || \!copyId) {
+              if (error || !copyId) {
                 preview.push({ barcode, copyId: undefined });
                 continue;
               }
@@ -334,7 +334,7 @@ export async function POST(req: NextRequest) {
           for (const item of items as BatchItem[]) {
             const { copyId, barcode, error } = await resolveCopyId(authtoken, item);
 
-            if (error || \!copyId) {
+            if (error || !copyId) {
               results.push({ success: false, barcode, error: error || "Unknown error" });
               failCount++;
               continue;
@@ -401,7 +401,7 @@ export async function POST(req: NextRequest) {
         case "transfer": {
           const { targetOrgId, targetLocation } = body;
 
-          if (\!targetOrgId && \!targetLocation) {
+          if (!targetOrgId && !targetLocation) {
             return errorResponse(
               "targetOrgId or targetLocation required for transfer",
               400
@@ -415,7 +415,7 @@ export async function POST(req: NextRequest) {
           for (const item of items as BatchItem[]) {
             const { copyId, barcode, error } = await resolveCopyId(authtoken, item);
 
-            if (error || \!copyId) {
+            if (error || !copyId) {
               results.push({ success: false, barcode, error: error || "Unknown error" });
               failCount++;
               continue;
@@ -441,7 +441,7 @@ export async function POST(req: NextRequest) {
 
               const result = updateResponse?.payload?.[0];
 
-              if (isSuccessResult(result) || (result && \!result.ilsevent)) {
+              if (isSuccessResult(result) || (result && !result.ilsevent)) {
                 results.push({
                   success: true,
                   copyId,
@@ -480,7 +480,7 @@ export async function POST(req: NextRequest) {
         case "update_location": {
           const { locationId } = body;
 
-          if (\!locationId) {
+          if (!locationId) {
             return errorResponse("locationId required for update_location", 400);
           }
 
@@ -491,7 +491,7 @@ export async function POST(req: NextRequest) {
           for (const item of items as BatchItem[]) {
             const { copyId, barcode, error } = await resolveCopyId(authtoken, item);
 
-            if (error || \!copyId) {
+            if (error || !copyId) {
               results.push({ success: false, barcode, error: error || "Unknown error" });
               failCount++;
               continue;
@@ -506,7 +506,7 @@ export async function POST(req: NextRequest) {
 
               const result = updateResponse?.payload?.[0];
 
-              if (isSuccessResult(result) || (result && \!result.ilsevent)) {
+              if (isSuccessResult(result) || (result && !result.ilsevent)) {
                 results.push({ 
                   success: true, 
                   copyId, 
@@ -555,7 +555,7 @@ export async function POST(req: NextRequest) {
           for (const item of items as BatchItem[]) {
             const { copyId, barcode, error } = await resolveCopyId(authtoken, item);
 
-            if (error || \!copyId) {
+            if (error || !copyId) {
               results.push({ success: false, barcode, error: error || "Unknown error" });
               failCount++;
               continue;
@@ -570,7 +570,7 @@ export async function POST(req: NextRequest) {
 
               const result = updateResponse?.payload?.[0];
 
-              if (isSuccessResult(result) || (result && \!result.ilsevent)) {
+              if (isSuccessResult(result) || (result && !result.ilsevent)) {
                 results.push({
                   success: true,
                   copyId,
@@ -669,7 +669,7 @@ export async function GET(req: NextRequest) {
         const modResponse = await callOpenSRF(
           "open-ils.pcrud",
           "open-ils.pcrud.search.ccm.atomic",
-          [authtoken, { code: { "\!=" : null } }, { limit: 500 }]
+          [authtoken, { code: { "!=" : null } }, { limit: 500 }]
         );
 
         const modifiers = modResponse?.payload?.[0] || [];
@@ -692,7 +692,7 @@ export async function GET(req: NextRequest) {
 
         const tree = orgResponse?.payload?.[0];
         const flattenOrgs = (node: any, depth = 0): any[] => {
-          if (\!node) return [];
+          if (!node) return [];
           const org = {
             id: node.id || node.__p?.[0],
             shortname: node.shortname || node.__p?.[1] || node.__p?.[2],

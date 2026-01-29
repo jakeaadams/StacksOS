@@ -84,7 +84,7 @@ export function PatronPhotoUpload({
       setUploadFile(null);
       setPreview(null);
     } catch (error) {
-      logger.error("Upload error:", error);
+      logger.error({ error: String(error) }, "Upload error");
       toast.error(error instanceof Error ? error.message : "Failed to upload photo");
     } finally {
       setLoading(false);

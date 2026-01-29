@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
 
   // Experimental optimizations
   experimental: {
-    // Optimize package imports for faster builds
+    // Optimize package imports for faster builds and smaller bundles
     optimizePackageImports: [
       "lucide-react",
       "@radix-ui/react-alert-dialog",
@@ -32,6 +32,12 @@ const nextConfig: NextConfig = {
       "@radix-ui/react-tabs",
       "@radix-ui/react-toast",
       "@radix-ui/react-tooltip",
+      "@tanstack/react-table",
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
+      "date-fns",
+      "zod",
+      "react-hook-form",
     ],
   },
 
@@ -44,22 +50,9 @@ const nextConfig: NextConfig = {
 
   // Production build optimizations
   productionBrowserSourceMaps: false,
-  swcMinify: true,
 
-  // Bundle analyzer (enable with ANALYZE=true)
-  ...(process.env.ANALYZE === "true" && {
-    webpack(config: any) {
-      const { BundleAnalyzerPlugin } = require("@next/bundle-analyzer")();
-      config.plugins.push(
-        new BundleAnalyzerPlugin({
-          analyzerMode: "static",
-          reportFilename: "./analyze/client.html",
-          openAnalyzer: false,
-        })
-      );
-      return config;
-    },
-  }),
+  // Turbopack configuration (Next.js 16+)
+  turbopack: {},
 };
 
 export default nextConfig;

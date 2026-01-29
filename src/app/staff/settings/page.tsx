@@ -173,7 +173,7 @@ export default function SettingsPage() {
         }));
       }
     } catch (err) {
-      logger.error("Failed to load settings:", err);
+      logger.error({ error: String(err) }, "Failed to load settings");
     }
   }, [user]);
 
@@ -244,7 +244,7 @@ export default function SettingsPage() {
       setHasChanges(false);
     } catch (err) {
       toast.error("Failed to save settings");
-      logger.error(err);
+      logger.error({ error: String(err) }, "Failed to save settings");
     } finally {
       setIsSaving(false);
     }

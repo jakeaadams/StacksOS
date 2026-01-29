@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const axis = searchParams.get("axis") || ""; // author, subject, title, etc.
 
   try {
-    if (\!query) {
+    if (!query) {
       return errorResponse("Query required", 400);
     }
 

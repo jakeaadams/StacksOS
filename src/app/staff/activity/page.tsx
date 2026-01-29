@@ -1,5 +1,5 @@
+"use client";
 /**
-import { DEBOUNCE_DELAY_MS } from "@/lib/constants";
  * Activity Log Page - Staff activity feed interface
  * 
  * Displays a reverse chronological feed of all system activities including:
@@ -9,7 +9,6 @@ import { DEBOUNCE_DELAY_MS } from "@/lib/constants";
  * - Payment transactions
  */
 
-"use client";
 
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
@@ -22,6 +21,7 @@ import {
 } from "@/components/shared";
 
 import { useApi, useDebounce } from "@/hooks";
+import { DEBOUNCE_DELAY_MS } from "@/lib/constants";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

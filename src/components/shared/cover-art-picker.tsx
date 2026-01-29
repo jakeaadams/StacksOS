@@ -117,7 +117,7 @@ export function CoverArtPicker({
             });
           }
         } catch (err) {
-          logger.error("Google Books API error:", err);
+          logger.error({ error: String(err) }, "Google Books API error");
         }
       }
 
@@ -129,7 +129,7 @@ export function CoverArtPicker({
 
       setCovers(uniqueCovers);
     } catch (err) {
-      logger.error("Error fetching covers:", err);
+      logger.error({ error: String(err) }, "Error fetching covers");
       toast.error("Failed to fetch cover options");
     } finally {
       setLoading(false);
@@ -225,7 +225,7 @@ export function CoverArtPicker({
       onCoverSelected(data.url, "Uploaded File");
       onOpenChange(false);
     } catch (error) {
-      logger.error("Upload error:", error);
+      logger.error({ error: String(error) }, "Upload error");
       toast.error(error instanceof Error ? error.message : "Failed to upload cover");
     } finally {
       setLoading(false);

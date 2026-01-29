@@ -1,12 +1,12 @@
+"use client";
 /**
-import { STATUS_CHECK_INTERVAL_MS } from "@/lib/constants";
  * Status HUD Footer - Persistent status bar for power users
  * Shows: connection status, current branch, scanner status, latency
  */
 
-"use client";
 
 import { useEffect, useState } from "react";
+import { STATUS_CHECK_INTERVAL_MS } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { 
   WifiOff, 
