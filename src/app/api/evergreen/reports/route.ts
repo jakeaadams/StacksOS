@@ -7,6 +7,7 @@ import {
   serverErrorResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { query } from "@/lib/db/evergreen";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -78,27 +79,62 @@ export async function GET(req: NextRequest) {
     };
 
     if (action === "dashboard" || action === "stats") {
-      const [holdsSummary, overdueCount] = await Promise.all([
+      // Fetch all dashboard metrics in parallel
+      const [
+        holdsSummary,
+        overdueCount,
+        checkoutsToday,
+        checkinsToday,
+        finesCollectedToday,
+        newPatronsToday,
+      ] = await Promise.all([
         computePickupHoldsSummary(orgId),
         getOverdueCount(orgId),
+        // Checkouts today - count circulations created today for this org
+        query<{ count: string }>(
+          `SELECT COUNT(*) FROM action.circulation 
+           WHERE circ_lib = $1 
+           AND xact_start::date = $2::date`,
+          [orgId, today]
+        ).then(rows => parseInt(rows[0]?.count || "0", 10)).catch(() => null),
+        // Checkins today - count circulations with checkin_time today for this org
+        query<{ count: string }>(
+          `SELECT COUNT(*) FROM action.circulation 
+           WHERE circ_lib = $1 
+           AND checkin_time::date = $2::date`,
+          [orgId, today]
+        ).then(rows => parseInt(rows[0]?.count || "0", 10)).catch(() => null),
+        // Fines collected today - sum of payments made today for this org
+        query<{ total: string }>(
+          `SELECT COALESCE(SUM(amount), 0) as total 
+           FROM money.payment 
+           WHERE payment_ts::date = $1::date`,
+          [today]
+        ).then(rows => parseFloat(rows[0]?.total || "0")).catch(() => null),
+        // New patrons today - count users created today for this org
+        query<{ count: string }>(
+          `SELECT COUNT(*) FROM actor.usr 
+           WHERE home_ou = $1 
+           AND create_date::date = $2::date 
+           AND NOT deleted`,
+          [orgId, today]
+        ).then(rows => parseInt(rows[0]?.count || "0", 10)).catch(() => null),
       ]);
 
       return successResponse({
         stats: {
-          checkouts_today: null, // Requires Reporter templates
-          checkins_today: null,  // Requires Reporter templates
+          checkouts_today: checkoutsToday,
+          checkins_today: checkinsToday,
           active_holds: holdsSummary.total,
           holds_ready: holdsSummary.available,
           holds_in_transit: holdsSummary.in_transit,
           overdue_items: overdueCount,
-          fines_collected_today: null, // Requires Reporter templates
-          new_patrons_today: null,     // Requires Reporter templates
+          fines_collected_today: finesCollectedToday,
+          new_patrons_today: newPatronsToday,
         },
         date: today,
         org_id: orgId,
-        message: overdueCount !== null 
-          ? "Dashboard showing available metrics. Configure Evergreen Reporter for full KPIs."
-          : "Limited metrics. Some APIs may require additional permissions.",
+        message: "Dashboard KPIs powered by Evergreen database queries",
       });
     }
 
