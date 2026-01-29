@@ -379,6 +379,22 @@ export default function AccountDashboard() {
                   <Award className="h-5 w-5 text-muted-foreground/70" />
                   Reading Challenges
                 </Link>
+                <Link
+                  href="/opac/account/messages"
+                  className="flex items-center gap-3 px-3 py-2 text-foreground/80 hover:bg-muted/30 
+                           rounded-lg transition-colors"
+                >
+                  <Mail className="h-5 w-5 text-muted-foreground/70" />
+                  Messages
+                </Link>
+                <Link
+                  href="/opac/account/history"
+                  className="flex items-center gap-3 px-3 py-2 text-foreground/80 hover:bg-muted/30 
+                           rounded-lg transition-colors"
+                >
+                  <Clock className="h-5 w-5 text-muted-foreground/70" />
+                  Reading History
+                </Link>
               </nav>
             </div>
           </div>
