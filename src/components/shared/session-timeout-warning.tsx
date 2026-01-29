@@ -255,7 +255,7 @@ export function SessionTimeoutWarning({
                 </div>
               )}
               <p className="text-sm">
-                Click "Extend Session" to continue working, or you will be signed out automatically.
+                Click &quot;Extend Session&quot; to continue working, or you will be signed out automatically.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>

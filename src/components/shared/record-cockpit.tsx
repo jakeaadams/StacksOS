@@ -4,7 +4,7 @@ import * as React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import Link from "next/link";
-import Image from "next/image";
+
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

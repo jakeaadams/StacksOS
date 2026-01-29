@@ -76,6 +76,7 @@ export default function GlobalError({
                 Try Again
               </button>
               <a
+                /* eslint-disable-next-line @next/next/no-html-link-for-pages */
                 href="/"
                 style={{
                   padding: "0.5rem 1rem",

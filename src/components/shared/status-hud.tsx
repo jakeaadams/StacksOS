@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { STATUS_CHECK_INTERVAL_MS } from "@/lib/constants";
-import { Badge } from "@/components/ui/badge";
+
 import { 
   WifiOff, 
   MapPin, 

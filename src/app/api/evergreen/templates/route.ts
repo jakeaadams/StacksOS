@@ -393,7 +393,7 @@ export async function POST(req: NextRequest) {
         const settingsRes = await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.settings.retrieve",
           [authtoken, targetOrgId, ["ui.staff.catalog.holdings_templates"]]);
         const rawTemplates = settingsRes?.payload?.[0]?.["ui.staff.catalog.holdings_templates"];
-        let templates = rawTemplates ? (typeof rawTemplates === "string" ? JSON.parse(rawTemplates) : rawTemplates) : [];
+        const templates = rawTemplates ? (typeof rawTemplates === "string" ? JSON.parse(rawTemplates) : rawTemplates) : [];
         
         if (action === "create") {
           const newId = Math.max(0, ...templates.map((t: any) => t.id || 0)) + 1;
