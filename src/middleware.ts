@@ -7,6 +7,53 @@ import {
   getCSRFToken,
 } from "@/lib/csrf";
 
+/**
+ * Add security headers to response
+ */
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  // Content Security Policy - restrictive policy to prevent XSS
+  response.headers.set(
+    "Content-Security-Policy",
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +  // unsafe-eval needed for Next.js dev
+    "style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' data: https:; " +
+    "font-src 'self' data:; " +
+    "connect-src 'self'; " +
+    "frame-ancestors 'none'; " +
+    "base-uri 'self'; " +
+    "form-action 'self';"
+  );
+
+  // Prevent browsers from MIME-sniffing
+  response.headers.set("X-Content-Type-Options", "nosniff");
+
+  // Enable XSS filter in older browsers
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+
+  // Prevent clickjacking
+  response.headers.set("X-Frame-Options", "DENY");
+
+  // HSTS - force HTTPS (only in production with HTTPS)
+  if (process.env.NODE_ENV === "production") {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains; preload"
+    );
+  }
+
+  // Referrer policy - control referrer information
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+  // Permissions policy - disable unnecessary browser features
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=()"
+  );
+
+  return response;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname, method } = new URL(request.url);
 
@@ -30,7 +77,7 @@ export function middleware(request: NextRequest) {
       setCSRFCookie(response, newToken);
     }
     
-    return response;
+    return addSecurityHeaders(response);
   }
 
   // For state-changing requests, validate CSRF token
@@ -45,7 +92,7 @@ export function middleware(request: NextRequest) {
     );
   }
 
-  return NextResponse.next();
+  return addSecurityHeaders(NextResponse.next());
 }
 
 // Configure which routes the middleware runs on
