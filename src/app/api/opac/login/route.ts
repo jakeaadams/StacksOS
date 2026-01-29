@@ -7,7 +7,7 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
-import { hashPasswordSecure } from "@/lib/password";
+import { hashPassword } from "@/lib/password";
 
 /**
  * OPAC Patron Login
@@ -41,8 +41,8 @@ export async function POST(req: NextRequest) {
       return errorResponse("Invalid library card number or PIN", 401);
     }
 
-    // Step 2: Hash PIN securely (bcrypt + MD5 for Evergreen compatibility)
-    const finalHash = await hashPasswordSecure(cleanPin, seed);
+    // Step 2: Hash PIN using MD5 (Evergreen compatibility)
+    const finalHash = hashPassword(cleanPin, seed);
 
     // Step 3: Authenticate as OPAC user
     const authResponse = await callOpenSRF(
@@ -51,8 +51,8 @@ export async function POST(req: NextRequest) {
       [{
         username: cleanBarcode,
         password: finalHash,
-        type: "opac",  // OPAC login type (not staff)
-        identifier: "barcode",  // Tell Evergreen this is a barcode
+        type: "opac",
+        identifier: "barcode",
       }]
     );
 
@@ -62,15 +62,13 @@ export async function POST(req: NextRequest) {
       const cookieStore = await cookies();
       const cookieSecure = process.env.NODE_ENV === "production";
       
-      // Set patron auth cookie (separate from staff cookie)
       cookieStore.set("patron_authtoken", authResult.payload.authtoken, {
         httpOnly: true,
         secure: cookieSecure,
         sameSite: "lax",
-        maxAge: rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 8, // 30 days or 8 hours
+        maxAge: rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 8,
       });
 
-      // Get patron details
       const userResponse = await callOpenSRF(
         "open-ils.auth",
         "open-ils.auth.session.retrieve",
@@ -80,7 +78,6 @@ export async function POST(req: NextRequest) {
       const user = userResponse?.payload?.[0];
 
       if (user && !user.ilsevent) {
-        // Get full patron data
         const patronResponse = await callOpenSRF(
           "open-ils.actor",
           "open-ils.actor.user.fleshed.retrieve",
@@ -106,7 +103,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Authentication failed
     logger.warn({ route: "api.opac.login", barcode: cleanBarcode, error: authResult?.textcode }, "OPAC login failed");
     return errorResponse("Invalid library card number or PIN", 401);
   } catch (error) {

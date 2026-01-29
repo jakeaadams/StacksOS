@@ -10,7 +10,7 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
-import { hashPasswordSecure } from "@/lib/password";
+import { hashPassword } from "@/lib/password";
 
 // POST - Login
 export async function POST(req: NextRequest) {
@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
       return errorResponse("Failed to get auth seed - user may not exist", 401);
     }
 
-    // Step 2: Hash password securely (bcrypt + MD5 for Evergreen compatibility)
-    const finalHash = await hashPasswordSecure(password, seed);
+    // Step 2: Hash password using MD5 (Evergreen compatibility)
+    const finalHash = hashPassword(password, seed);
 
     // Step 3: Authenticate
     const authParams: Record<string, any> = {
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
         return errorResponse("Failed to re-init auth seed for retry", 401);
       }
 
-      const retryHash = await hashPasswordSecure(password, retrySeed);
+      const retryHash = hashPassword(password, retrySeed);
 
       const retryResponse = await callOpenSRF(
         "open-ils.auth",

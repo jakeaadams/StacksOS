@@ -8,7 +8,7 @@ import {
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { cookies } from "next/headers";
-import { hashPasswordSecure } from "@/lib/password";
+import { hashPassword } from "@/lib/password";
 
 // POST /api/opac/change-pin - Change patron PIN
 export async function POST(req: NextRequest) {
@@ -30,7 +30,6 @@ export async function POST(req: NextRequest) {
       return errorResponse("New PIN must be at least 4 characters");
     }
 
-    // Get session to get patron ID and username
     const sessionResponse = await callOpenSRF(
       "open-ils.auth",
       "open-ils.auth.session.retrieve",
@@ -42,8 +41,6 @@ export async function POST(req: NextRequest) {
       return errorResponse("Session expired", 401);
     }
 
-    // Verify current PIN by attempting to authenticate
-    // First get auth seed
     const seedResponse = await callOpenSRF(
       "open-ils.auth",
       "open-ils.auth.authenticate.init",
@@ -55,10 +52,8 @@ export async function POST(req: NextRequest) {
       return errorResponse("Authentication error", 500);
     }
 
-    // Hash current PIN securely (bcrypt + MD5 for Evergreen compatibility)
-    const currentHash = await hashPasswordSecure(currentPin, seed);
+    const currentHash = hashPassword(currentPin, seed);
 
-    // Verify current PIN
     const verifyResponse = await callOpenSRF(
       "open-ils.auth",
       "open-ils.auth.authenticate.verify",
@@ -71,7 +66,6 @@ export async function POST(req: NextRequest) {
 
     const verifyResult = verifyResponse?.payload?.[0];
     if (!verifyResult || verifyResult.ilsevent !== 0) {
-      // SECURITY FIX: Log failed PIN change attempt
       await logAuditEvent({
         action: "patron.pin.change",
         entity: "patron",
@@ -86,7 +80,6 @@ export async function POST(req: NextRequest) {
       return errorResponse("Current PIN is incorrect");
     }
 
-    // Update password using patron update
     const updateResponse = await callOpenSRF(
       "open-ils.actor",
       "open-ils.actor.user.password",
@@ -98,7 +91,6 @@ export async function POST(req: NextRequest) {
     if (updateResult?.ilsevent && updateResult.ilsevent !== 0) {
       logger.error({ error: String(updateResult) }, "PIN change error");
       
-      // SECURITY FIX: Log failed PIN change
       await logAuditEvent({
         action: "patron.pin.change",
         entity: "patron",
@@ -113,7 +105,6 @@ export async function POST(req: NextRequest) {
       return errorResponse(updateResult.desc || "Failed to change PIN", 500);
     }
 
-    // SECURITY FIX: Log successful PIN change
     await logAuditEvent({
       action: "patron.pin.change",
       entity: "patron",
