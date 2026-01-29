@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
 
     switch (action) {
       case "claimable": {
-        let claimableItems: ClaimableItem[] = [];
+        const claimableItems: ClaimableItem[] = [];
         try {
           const response = await callOpenSRF("open-ils.acq", "open-ils.acq.lineitem.search", [authtoken, { state: ["on-order"] }, { flesh: 2, flesh_fields: { jub: ["lineitem_details", "attributes", "purchase_order"], acqpo: ["provider"], acqlid: [] }, limit, offset }]);
           const payload = response?.payload || [];
@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
         return successResponse({ reasons });
       }
       case "summary": {
-        let summary = { totalClaimable: 0, totalClaimed: 0, pendingClaims: 0, resolvedClaims: 0, byVendor: [] as Array<{ vendorId: number; vendorName: string; count: number }> };
+        const summary = { totalClaimable: 0, totalClaimed: 0, pendingClaims: 0, resolvedClaims: 0, byVendor: [] as Array<{ vendorId: number; vendorName: string; count: number }> };
         try {
           const claimableResp = await callOpenSRF("open-ils.acq", "open-ils.acq.lineitem.search", [authtoken, { state: ["on-order"] }, { id_list: true }]);
           const claimablePayload = claimableResp?.payload || [];
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
         if (!lineitemId && !lineitemDetailIds?.length) return errorResponse("Lineitem ID or detail IDs required", 400);
         const claimType = claimTypeId || 1;
         let claimedCount = 0;
-        let errors: string[] = [];
+        const errors: string[] = [];
         try {
           if (lineitemDetailIds && Array.isArray(lineitemDetailIds)) {
             for (const detailId of lineitemDetailIds) {
@@ -186,7 +186,7 @@ export async function POST(req: NextRequest) {
         if (!items || !Array.isArray(items) || items.length === 0) return errorResponse("Items array required", 400);
         const claimType = claimTypeId || 1;
         let claimedCount = 0;
-        let errors: string[] = [];
+        const errors: string[] = [];
         for (const item of items) {
           const { lineitemDetailId, lineitemId } = item;
           try {
