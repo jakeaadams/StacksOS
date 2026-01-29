@@ -45,13 +45,44 @@ export async function GET(req: NextRequest) {
     const authtoken = await requireAuthToken();
 
     if (action === "subscriptions") {
-      // Evergreen does not provide a single "list all subscriptions" API that is
-      // safe to expose without additional UX (filters, paging, org scoping).
-      // We intentionally return an empty result with an explanatory message.
-      return successResponse(
-        { subscriptions: [] },
-        "Serials subscriptions listing is not configured yet. Create subscriptions in Evergreen."
+      // Fetch serial subscriptions for the user's working org unit
+      const { actor } = await requirePermissions(["STAFF_LOGIN"]);
+      const orgId = actor?.ws_ou ?? actor?.home_ou ?? 1;
+      const limit = parseInt(searchParams.get("limit") || "50", 10);
+      const offset = parseInt(searchParams.get("offset") || "0", 10);
+      
+      const response = await callOpenSRF(
+        "open-ils.pcrud",
+        "open-ils.pcrud.search.ssub.atomic",
+        [
+          authtoken,
+          { owning_lib: orgId },
+          {
+            flesh: 2,
+            flesh_fields: {
+              ssub: ["owning_lib", "record_entry"],
+              aou: ["name"],
+              bre: ["simple_record"],
+            },
+            limit,
+            offset,
+            order_by: { ssub: "start_date DESC" },
+          },
+        ]
       );
+
+      const subscriptions = (response?.payload?.[0] || []).map(sub => ({
+        id: sub?.id,
+        start_date: sub?.start_date,
+        end_date: sub?.end_date,
+        expected_date_offset: sub?.expected_date_offset,
+        owning_lib: sub?.owning_lib?.id || sub?.owning_lib,
+        owning_lib_name: sub?.owning_lib?.name || null,
+        record_entry: sub?.record_entry?.id || sub?.record_entry,
+        title: sub?.record_entry?.simple_record?.title || null,
+      }));
+
+      return successResponse({ subscriptions, count: subscriptions.length, orgId });
     }
 
     if (action === "items" || action === "issues") {
@@ -96,10 +127,38 @@ export async function GET(req: NextRequest) {
     }
 
     if (action === "distributions") {
-      return successResponse(
-        { distributions: [] },
-        "Serial distributions listing is not configured yet"
+      const subscriptionId = searchParams.get("subscription_id");
+      if (!subscriptionId) {
+        return successResponse(
+          { distributions: [] },
+          "Provide subscription_id to load distributions"
+        );
+      }
+
+      const response = await callOpenSRF(
+        "open-ils.pcrud",
+        "open-ils.pcrud.search.sdist.atomic",
+        [
+          authtoken,
+          { subscription: parseInt(subscriptionId, 10) },
+          {
+            flesh: 1,
+            flesh_fields: { sdist: ["holding_lib"] },
+            order_by: { sdist: "label" },
+          },
+        ]
       );
+
+      const distributions = (response?.payload?.[0] || []).map(dist => ({
+        id: dist?.id,
+        label: dist?.label,
+        holding_lib: dist?.holding_lib?.id || dist?.holding_lib,
+        holding_lib_name: dist?.holding_lib?.name || null,
+        receive_call_number: dist?.receive_call_number,
+        receive_unit_template: dist?.receive_unit_template,
+      }));
+
+      return successResponse({ distributions, count: distributions.length });
     }
 
     return errorResponse(
@@ -171,12 +230,61 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "claim") {
-      // Claims are view-only for now - they should be managed through Evergreen
-      // The UI shows claimed items but doesn\'t allow creating new claims
-      return errorResponse(
-        "Claims are managed through Evergreen. Use Evergreen to create and manage serial claims.",
-        501
-      );
+      // Create serial claims for missing/late items
+      const itemIds = body?.item_ids;
+      const claimType = body?.claim_type || 1;
+      const note = body?.note || "";
+      
+      if (!Array.isArray(itemIds) || itemIds.length === 0) {
+        await audit("failure", { itemIds }, "Missing or invalid item_ids array");
+        return errorResponse("item_ids array required", 400);
+      }
+
+      const results = [];
+      for (const itemId of itemIds) {
+        try {
+          const claimResponse = await callOpenSRF(
+            "open-ils.serial",
+            "open-ils.serial.claim.create",
+            [authtoken, itemId, claimType, note]
+          );
+
+          const result = claimResponse?.payload?.[0];
+          if (isOpenSRFEvent(result) || result?.ilsevent) {
+            results.push({
+              itemId,
+              success: false,
+              error: getErrorMessage(result, "Failed to create claim"),
+            });
+          } else {
+            results.push({ itemId, success: true, claimId: result });
+          }
+        } catch (err) {
+          results.push({
+            itemId,
+            success: false,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      const failureCount = results.length - successCount;
+      
+      await audit("success", {
+        itemIds,
+        claimType,
+        note,
+        successCount,
+        failureCount,
+        results,
+      });
+
+      return successResponse({
+        results,
+        successCount,
+        failureCount,
+      }, `Created ${successCount} claim(s), ${failureCount} failed`);
     }
 
     return errorResponse("Invalid action. Use: receive", 400);
