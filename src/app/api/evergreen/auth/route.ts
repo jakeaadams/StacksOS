@@ -1,8 +1,6 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
-import * as crypto from "crypto";
 import {
-
   callOpenSRF,
   getAuthToken,
   successResponse,
@@ -12,16 +10,7 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
-
-
-// Hash password using MD5 method (matching Evergreen staff client behavior)
-// Formula: md5(seed + md5(password))
-// Note: Evergreen always uses MD5 even when it returns bcrypt-style seeds
-function hashPassword(password: string, seed: string): string {
-  const passwordMd5 = crypto.createHash("md5").update(password).digest("hex");
-  return crypto.createHash("md5").update(seed + passwordMd5).digest("hex");
-}
-
+import { hashPasswordSecure } from "@/lib/password";
 
 // POST - Login
 export async function POST(req: NextRequest) {
@@ -75,8 +64,8 @@ export async function POST(req: NextRequest) {
       return errorResponse("Failed to get auth seed - user may not exist", 401);
     }
 
-    // Step 2: Hash password using MD5 (matching Evergreen staff client)
-    const finalHash = hashPassword(password, seed);
+    // Step 2: Hash password securely (bcrypt + MD5 for Evergreen compatibility)
+    const finalHash = await hashPasswordSecure(password, seed);
 
     // Step 3: Authenticate
     const authParams: Record<string, any> = {
@@ -120,7 +109,7 @@ export async function POST(req: NextRequest) {
         return errorResponse("Failed to re-init auth seed for retry", 401);
       }
 
-      const retryHash = hashPassword(password, retrySeed);
+      const retryHash = await hashPasswordSecure(password, retrySeed);
 
       const retryResponse = await callOpenSRF(
         "open-ils.auth",

@@ -7,8 +7,7 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
-
-import * as crypto from "crypto";
+import { hashPasswordSecure } from "@/lib/password";
 
 /**
  * OPAC Patron Login
@@ -29,10 +28,7 @@ export async function POST(req: NextRequest) {
 
     logger.info({ route: "api.opac.login", barcode: cleanBarcode }, "OPAC login attempt");
 
-    // Step 1: Get the username from barcode
-    // In Evergreen, we can authenticate with barcode directly using "barcode" type
-    
-    // Step 2: Get auth seed using barcode
+    // Step 1: Get auth seed using barcode
     const seedResponse = await callOpenSRF(
       "open-ils.auth",
       "open-ils.auth.authenticate.init",
@@ -45,14 +41,10 @@ export async function POST(req: NextRequest) {
       return errorResponse("Invalid library card number or PIN", 401);
     }
 
-    // Step 3: Hash PIN (same as password: md5(seed + md5(pin)))
-    const pinMd5 = crypto.createHash("md5").update(cleanPin).digest("hex");
-    const finalHash = crypto
-      .createHash("md5")
-      .update(seed + pinMd5)
-      .digest("hex");
+    // Step 2: Hash PIN securely (bcrypt + MD5 for Evergreen compatibility)
+    const finalHash = await hashPasswordSecure(cleanPin, seed);
 
-    // Step 4: Authenticate as OPAC user
+    // Step 3: Authenticate as OPAC user
     const authResponse = await callOpenSRF(
       "open-ils.auth",
       "open-ils.auth.authenticate.complete",

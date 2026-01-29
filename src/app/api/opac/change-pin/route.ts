@@ -8,8 +8,7 @@ import {
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { cookies } from "next/headers";
-
-import * as crypto from "crypto";
+import { hashPasswordSecure } from "@/lib/password";
 
 // POST /api/opac/change-pin - Change patron PIN
 export async function POST(req: NextRequest) {
@@ -56,12 +55,8 @@ export async function POST(req: NextRequest) {
       return errorResponse("Authentication error", 500);
     }
 
-    // Hash current PIN
-    const currentPinMd5 = crypto.createHash("md5").update(currentPin).digest("hex");
-    const currentHash = crypto
-      .createHash("md5")
-      .update(seed + currentPinMd5)
-      .digest("hex");
+    // Hash current PIN securely (bcrypt + MD5 for Evergreen compatibility)
+    const currentHash = await hashPasswordSecure(currentPin, seed);
 
     // Verify current PIN
     const verifyResponse = await callOpenSRF(
