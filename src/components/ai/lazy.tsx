@@ -31,3 +31,16 @@ export const LazyCatalogingCopilot = dynamic(
     ssr: false,
   }
 );
+
+/**
+ * Lazy-loaded Policy Explainer
+ * ~14KB - AI policy explanation component
+ * Used in staff and OPAC help contexts
+ */
+export const LazyPolicyExplainer = dynamic(
+  () => import("./policy-explainer").then((mod) => mod.PolicyExplainer),
+  {
+    loading: AILoading,
+    ssr: false,
+  }
+);

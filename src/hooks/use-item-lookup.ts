@@ -11,6 +11,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useDebounce } from "./use-debounce";
+import type { ItemRaw } from "@/types/api-responses";
 
 export interface CopyStatus {
   id: number;
@@ -137,6 +138,39 @@ function parseStatus(statusId: number): CopyStatus {
   return { ...base, ...STATUS_MAP[statusId] };
 }
 
+interface BibRecord {
+  title?: string;
+  author?: string;
+}
+
+interface CopyRaw {
+  id: number;
+  barcode?: string;
+  call_number?: {
+    label?: string;
+    record?: {
+      simple_record?: {
+        title?: string;
+        author?: string;
+      };
+    };
+    owning_lib?: {
+      shortname?: string;
+    };
+  };
+  title?: string;
+  author?: string;
+  callNumber?: string;
+  location?: { name?: string } | string;
+  circ_lib?: { shortname?: string; name?: string };
+  status?: { id: number } | number;
+  copy_number?: number;
+  price?: string | number;
+  holdable?: boolean;
+  circulate?: boolean;
+  ref?: boolean;
+}
+
 export function useItemLookup(options: UseItemLookupOptions = {}): UseItemLookupReturn {
   const {
     autoSearch = false,
@@ -170,35 +204,35 @@ export function useItemLookup(options: UseItemLookupOptions = {}): UseItemLookup
     };
   }, []);
 
-  const transformItem = (copy: any, bib?: any): ItemSummary => ({
+  const transformItem = (copy: CopyRaw, bib?: BibRecord): ItemSummary => ({
     id: copy.id,
     barcode: copy.barcode || "",
     title: bib?.title || copy.call_number?.record?.simple_record?.title || copy.title || "Unknown Title",
     author: bib?.author || copy.call_number?.record?.simple_record?.author || copy.author || "",
     callNumber: copy.call_number?.label || copy.callNumber || "",
     copyNumber: copy.copy_number || 1,
-    location: copy.location?.name || copy.location || "",
+    location: typeof copy.location === "object" ? copy.location?.name || "" : copy.location || "",
     circulationLibrary: copy.circ_lib?.shortname || copy.circ_lib?.name || "",
     owningLibrary: copy.call_number?.owning_lib?.shortname || "",
-    status: parseStatus(typeof copy.status === "object" ? copy.status.id : copy.status),
-    price: copy.price ? parseFloat(copy.price) : undefined,
+    status: parseStatus(typeof copy.status === "object" ? copy.status.id : (copy.status ?? 0)),
+    price: copy.price ? parseFloat(String(copy.price)) : undefined,
     holdable: copy.holdable !== false,
     circulate: copy.circulate !== false,
     refItem: copy.ref === true,
   });
 
-  const transformApiItem = (item: any): ItemFull => ({
+  const transformApiItem = (item: ItemRaw): ItemFull => ({
     id: item.id,
     barcode: item.barcode || "",
     title: item.title || "Unknown Title",
     author: item.author || "",
     callNumber: item.callNumber || "",
     copyNumber: item.copyNumber || 1,
-    location: item.location || "",
+    location: typeof item.location === "string" ? item.location : "",
     circulationLibrary: item.circLib || "",
     owningLibrary: item.owningLib || "",
     status: parseStatus(item.statusId ?? 0),
-    price: item.price ? parseFloat(item.price) : undefined,
+    price: item.price ? parseFloat(String(item.price)) : undefined,
     holdable: item.holdable !== false,
     circulate: item.circulate !== false,
     refItem: item.refItem === true,
@@ -241,7 +275,7 @@ export function useItemLookup(options: UseItemLookupOptions = {}): UseItemLookup
         throw new Error(json.error || "Lookup failed");
       }
 
-      const apiItem = json.item;
+      const apiItem = json.item as ItemRaw | undefined;
       if (!apiItem?.id) {
         onNotFound?.();
         return null;
@@ -296,14 +330,14 @@ export function useItemLookup(options: UseItemLookupOptions = {}): UseItemLookup
       const items: ItemSummary[] = [];
 
       if (json.records) {
-        for (const record of json.records) {
+        for (const record of json.records as Array<BibRecord & { copies?: CopyRaw[] }>) {
           const copies = record.copies || [];
           for (const copy of copies) {
             items.push(transformItem(copy, record));
           }
         }
       } else if (json.copies) {
-        for (const copy of json.copies) {
+        for (const copy of json.copies as CopyRaw[]) {
           items.push(transformItem(copy));
         }
       }

@@ -6,7 +6,7 @@
 // OpenSRF Response Types
 // ============================================================================
 
-export interface OpenSRFResponse<T = any> {
+export interface OpenSRFResponse<T = unknown> {
   payload: T[];
   status?: number;
 }
@@ -15,7 +15,7 @@ export interface OpenSRFEvent {
   ilsevent: number;
   textcode: string;
   desc?: string;
-  payload?: any;
+  payload?: unknown;
   servertime?: string;
 }
 
@@ -23,20 +23,20 @@ export interface OpenSRFEvent {
 // API Response Types
 // ============================================================================
 
-export interface ApiSuccessResponse<T = any> {
+export interface ApiSuccessResponse<T = unknown> {
   ok: true;
   data?: T;
   message?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ApiErrorResponse {
   ok: false;
   error: string;
-  details?: any;
+  details?: unknown;
 }
 
-export type ApiResponse<T = any> = ApiSuccessResponse<T> | ApiErrorResponse;
+export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 // ============================================================================
 // Authentication Types

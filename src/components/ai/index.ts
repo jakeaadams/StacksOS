@@ -3,4 +3,5 @@
  */
 export { CatalogingCopilot } from "./cataloging-copilot";
 export type { CatalogingCopilotProps, MARCField, Suggestion } from "./cataloging-copilot";
-export { LazyCatalogingCopilot } from "./lazy";
+export { PolicyExplainer } from "./policy-explainer";
+export { LazyCatalogingCopilot, LazyPolicyExplainer } from "./lazy";

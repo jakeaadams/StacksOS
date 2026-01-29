@@ -11,6 +11,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useDebounce } from "./use-debounce";
+import type { PatronRaw, PatronPenaltyRaw } from "@/types/api-responses";
 
 export interface PatronSummary {
   id: number;
@@ -83,7 +84,7 @@ export interface UsePatronLookupReturn {
   clear: () => void;
 }
 
-function transformPatron(p: any): PatronSummary {
+function transformPatron(p: PatronRaw): PatronSummary {
   return {
     id: p.id,
     barcode: p.card?.barcode || p.barcode || "",
@@ -101,14 +102,14 @@ function transformPatron(p: any): PatronSummary {
     barred: p.barred === true,
     hasAlerts: (p.alerts?.length || 0) > 0 || (p.penalties?.length || 0) > 0,
     alertCount: (p.alerts?.length || 0) + (p.standing_penalties?.length || 0),
-    balanceOwed: parseFloat(p.balance_owed || p.balanceOwed || 0),
+    balanceOwed: parseFloat(String(p.balance_owed || p.balanceOwed || 0)),
     checkoutsCount: p.checkouts_count || p.checkoutsCount || 0,
     holdsCount: p.holds_count || p.holdsCount || 0,
     overdueCount: p.overdue_count || p.overdueCount || 0,
   };
 }
 
-function transformPatronFull(p: any): PatronFull {
+function transformPatronFull(p: PatronRaw): PatronFull {
   return {
     ...transformPatron(p),
     address:
@@ -118,16 +119,16 @@ function transformPatronFull(p: any): PatronFull {
             street2: p.addresses?.[0]?.street2 || p.address?.street2,
             city: p.addresses?.[0]?.city || p.address?.city || "",
             state: p.addresses?.[0]?.state || p.address?.state || "",
-            zip: p.addresses?.[0]?.post_code || p.address?.zip || "",
+            zip: p.addresses?.[0]?.post_code || p.address?.post_code || "",
             country: p.addresses?.[0]?.country || p.address?.country,
           }
         : undefined,
     dateOfBirth: p.dob || p.dateOfBirth,
-    created: p.create_date || p.created,
-    expires: p.expire_date || p.expires,
+    created: p.create_date || p.created || "",
+    expires: p.expire_date || p.expires || "",
     lastActivity: p.last_xact_id || p.lastActivity,
     notes: p.notes,
-    penalties: p.standing_penalties?.map((pen: any) => ({
+    penalties: p.standing_penalties?.map((pen: PatronPenaltyRaw) => ({
       id: pen.id,
       type: pen.standing_penalty?.name || "Unknown",
       message: pen.note || pen.standing_penalty?.label || "",
@@ -198,7 +199,7 @@ export function usePatronLookup(options: UsePatronLookupOptions = {}): UsePatron
         throw new Error(json.error || "Search failed");
       }
 
-      const patrons = (json.patrons || []).map(transformPatron);
+      const patrons = (json.patrons || []).map((patron: PatronRaw) => transformPatron(patron));
       setResults(patrons);
 
       if (patrons.length === 0) {
@@ -248,7 +249,7 @@ export function usePatronLookup(options: UsePatronLookupOptions = {}): UsePatron
         throw new Error(json.error || "Lookup failed");
       }
 
-      const patron = json.patron ? transformPatronFull(json.patron) : null;
+      const patron = json.patron ? transformPatronFull(json.patron as PatronRaw) : null;
 
       if (patron) {
         setSelectedPatron(patron);
@@ -294,7 +295,7 @@ export function usePatronLookup(options: UsePatronLookupOptions = {}): UsePatron
         throw new Error(json.error || "Failed to load patron");
       }
 
-      const patron = json.patron ? transformPatronFull(json.patron) : null;
+      const patron = json.patron ? transformPatronFull(json.patron as PatronRaw) : null;
 
       if (patron) {
         setSelectedPatron(patron);
