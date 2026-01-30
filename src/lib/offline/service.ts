@@ -5,6 +5,7 @@
 
 import { offlineDB, OfflineTransaction, OfflineSession } from "./db";
 import { clientLogger } from "@/lib/client-logger";
+import { fetchWithAuth } from "@/lib/client-fetch";
 
 export interface OfflineCheckoutResult {
   success: boolean;
@@ -290,14 +291,13 @@ class OfflineCirculationService {
     let errors = 0;
     const exceptions: Array<{ transactionId: string; error: string }> = [];
 
-    for (const tx of pending) {
-      try {
-        const res = await fetch("/api/evergreen/offline", {
-          method: "POST",
-        credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(tx),
-        });
+	    for (const tx of pending) {
+	      try {
+	        const res = await fetchWithAuth("/api/evergreen/offline", {
+	          method: "POST",
+	          headers: { "Content-Type": "application/json" },
+	          body: JSON.stringify(tx),
+	        });
 
         const result = await res.json();
 

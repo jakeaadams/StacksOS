@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import { fetchWithAuth } from "@/lib/client-fetch";
 import {
   Star,
   StarHalf,
@@ -238,7 +239,7 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
 
   const hasReviewed = currentPatronId ? reviews.some((r) => r.patronId === currentPatronId) : false;
 
-  const submitReview = async () => {
+	  const submitReview = async () => {
     if (newRating === 0) {
       toast.error("Please select a rating");
       return;
@@ -248,15 +249,14 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const response = await fetch("/api/opac/reviews", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bibId: recordId,
-          rating: newRating,
+	    setIsSubmitting(true);
+	    try {
+	      const response = await fetchWithAuth("/api/opac/reviews", {
+	        method: "POST",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({
+	          bibId: recordId,
+	          rating: newRating,
           title: newTitle.trim(),
           text: newContent.trim(),
         }),
@@ -282,14 +282,13 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
     }
   };
 
-  const markHelpful = async (reviewId: number) => {
-    try {
-      const response = await fetch("/api/opac/reviews", {
-        method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reviewId, action: "helpful" }),
-      });
+	  const markHelpful = async (reviewId: number) => {
+	    try {
+	      const response = await fetchWithAuth("/api/opac/reviews", {
+	        method: "PUT",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({ reviewId, action: "helpful" }),
+	      });
 
       if (response.ok) {
         setReviews(reviews.map((r) =>
@@ -302,12 +301,11 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
     }
   };
 
-  const deleteReview = async (reviewId: number) => {
-    try {
-      const response = await fetch(`/api/opac/reviews?id=${reviewId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+	  const deleteReview = async (reviewId: number) => {
+	    try {
+	      const response = await fetchWithAuth(`/api/opac/reviews?id=${reviewId}`, {
+	        method: "DELETE",
+	      });
 
       if (response.ok) {
         setReviews(reviews.filter((r) => r.id !== reviewId));
@@ -319,14 +317,13 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
     }
   };
 
-  const reportReview = async (reviewId: number) => {
-    try {
-      await fetch("/api/opac/reviews", {
-        method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reviewId, action: "report" }),
-      });
+	  const reportReview = async (reviewId: number) => {
+	    try {
+	      await fetchWithAuth("/api/opac/reviews", {
+	        method: "PUT",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({ reviewId, action: "report" }),
+	      });
       toast.success("Review reported. Our team will review it.");
     } catch (_error) {
       toast.error("Failed to report review");

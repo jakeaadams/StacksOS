@@ -217,7 +217,7 @@ export function OPACHeader() {
                   </button>
                 ))}
                 <Link href={`/opac/search?q=${encodeURIComponent(searchQuery)}`} onClick={() => setShowResults(false)} className="block p-3 text-center text-primary hover:bg-muted/30 font-medium text-sm">
-                  See all results for "{searchQuery}"
+                  See all results for &quot;{searchQuery}&quot;
                 </Link>
               </div>
             )}

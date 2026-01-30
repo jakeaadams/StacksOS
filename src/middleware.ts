@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   generateCSRFToken,
+  isCookieSecure,
   setCSRFCookie,
   validateCSRFToken,
   requiresCSRFProtection,
@@ -10,7 +11,7 @@ import {
 /**
  * Add security headers to response
  */
-function addSecurityHeaders(response: NextResponse): NextResponse {
+function addSecurityHeaders(request: NextRequest, response: NextResponse): NextResponse {
   // Content Security Policy - restrictive policy to prevent XSS
   response.headers.set(
     "Content-Security-Policy",
@@ -34,8 +35,8 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   // Prevent clickjacking
   response.headers.set("X-Frame-Options", "DENY");
 
-  // HSTS - force HTTPS (only in production with HTTPS)
-  if (process.env.NODE_ENV === "production") {
+  // HSTS - force HTTPS (only when actually running behind HTTPS)
+  if (isCookieSecure(request)) {
     response.headers.set(
       "Strict-Transport-Security",
       "max-age=31536000; includeSubDomains; preload"
@@ -75,25 +76,28 @@ export function middleware(request: NextRequest) {
     
     if (!existingToken) {
       const newToken = generateCSRFToken();
-      setCSRFCookie(response, newToken);
+      setCSRFCookie(response, newToken, request);
     }
     
-    return addSecurityHeaders(response);
+    return addSecurityHeaders(request, response);
   }
 
   // For state-changing requests, validate CSRF token
   if (!validateCSRFToken(request)) {
-    return NextResponse.json(
+    return addSecurityHeaders(
+      request,
+      NextResponse.json(
       {
         ok: false,
         error: "CSRF token validation failed",
         details: "Invalid or missing CSRF token. Please refresh the page and try again.",
       },
       { status: 403 }
+      )
     );
   }
 
-  return addSecurityHeaders(NextResponse.next());
+  return addSecurityHeaders(request, NextResponse.next());
 }
 
 // Configure which routes the middleware runs on

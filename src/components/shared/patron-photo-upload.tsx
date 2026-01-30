@@ -1,5 +1,6 @@
 "use client";
 import { logger } from "@/lib/logger";
+import { fetchWithAuth } from "@/lib/client-fetch";
 
 import * as React from "react";
 import { useState } from "react";
@@ -58,11 +59,11 @@ export function PatronPhotoUpload({
       formData.append("file", uploadFile);
       formData.append("patronId", patronId.toString());
 
-      // Upload to server
-      const response = await fetch("/api/upload-patron-photo", {
-        method: "POST",
-        body: formData,
-      });
+	      // Upload to server
+	      const response = await fetchWithAuth("/api/upload-patron-photo", {
+	        method: "POST",
+	        body: formData,
+	      });
 
       if (!response.ok) {
         const error = await response.json();

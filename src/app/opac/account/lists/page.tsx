@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/usePatronSession";
+import { fetchWithAuth } from "@/lib/client-fetch";
 import {
   Heart,
   BookOpen,
@@ -129,19 +130,18 @@ export default function MyListsPage() {
     }
   };
 
-  const createList = async () => {
+	  const createList = async () => {
     if (!newListName.trim()) return;
     
-    setActionLoading(true);
-    try {
-      const response = await fetch("/api/opac/lists", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          name: newListName.trim(),
-          description: newListDescription.trim(),
-          visibility: newListVisibility,
+	    setActionLoading(true);
+	    try {
+	      const response = await fetchWithAuth("/api/opac/lists", {
+	        method: "POST",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({
+	          name: newListName.trim(),
+	          description: newListDescription.trim(),
+	          visibility: newListVisibility,
         }),
       });
 
@@ -164,19 +164,18 @@ export default function MyListsPage() {
     }
   };
 
-  const updateList = async () => {
+	  const updateList = async () => {
     if (!selectedList || !newListName.trim()) return;
     
-    setActionLoading(true);
-    try {
-      const response = await fetch(`/api/opac/lists/${selectedList.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          name: newListName.trim(),
-          description: newListDescription.trim(),
-          visibility: newListVisibility,
+	    setActionLoading(true);
+	    try {
+	      const response = await fetchWithAuth(`/api/opac/lists/${selectedList.id}`, {
+	        method: "PATCH",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({
+	          name: newListName.trim(),
+	          description: newListDescription.trim(),
+	          visibility: newListVisibility,
         }),
       });
 
@@ -201,13 +200,12 @@ export default function MyListsPage() {
     }
   };
 
-  const deleteList = async (list: BookList) => {
-    setActionLoading(true);
-    try {
-      const response = await fetch(`/api/opac/lists/${list.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+	  const deleteList = async (list: BookList) => {
+	    setActionLoading(true);
+	    try {
+	      const response = await fetchWithAuth(`/api/opac/lists/${list.id}`, {
+	        method: "DELETE",
+	      });
 
       if (response.ok) {
         const newLists = lists.filter(l => l.id !== list.id);
@@ -232,14 +230,13 @@ export default function MyListsPage() {
     }
   };
 
-  const removeItemFromList = async (itemId: number | string) => {
-    if (!selectedList) return;
-    
-    try {
-      const response = await fetch(`/api/opac/lists/${selectedList.id}/items/${itemId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+	  const removeItemFromList = async (itemId: number | string) => {
+	    if (!selectedList) return;
+	    
+	    try {
+	      const response = await fetchWithAuth(`/api/opac/lists/${selectedList.id}/items/${itemId}`, {
+	        method: "DELETE",
+	      });
 
       if (response.ok) {
         setListItems(listItems.filter(item => item.id !== itemId));

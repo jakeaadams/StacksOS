@@ -1,13 +1,6 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 
-// Helper function to login
-async function loginAsStaff(page: Page) {
-  await page.goto("/login");
-  await page.locator("input#username").fill("jake");
-  await page.locator("input#password").fill("jake");
-  await page.locator("button[type='submit']").click({ force: true });
-  await page.waitForURL(/\/staff/, { timeout: 15000 });
-}
+const authFile = "e2e/.auth/staff.json";
 
 test.describe("Catalog Workflows", () => {
   test.describe("OPAC (Public Catalog)", () => {
@@ -84,10 +77,7 @@ test.describe("Catalog Workflows", () => {
   });
 
   test.describe("Staff Catalog", () => {
-    // Login before each staff catalog test
-    test.beforeEach(async ({ page }) => {
-      await loginAsStaff(page);
-    });
+    test.use({ storageState: authFile });
 
     test("staff catalog page loads", async ({ page }) => {
       await page.goto("/staff/catalog");

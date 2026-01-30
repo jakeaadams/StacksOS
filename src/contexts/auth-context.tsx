@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { clientLogger } from "@/lib/client-logger";
+import { fetchWithAuth, resetCSRFToken } from "@/lib/client-fetch";
 
 interface OrgUnit {
   id: number;
@@ -134,9 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string, workstation?: string): Promise<boolean> => {
     try {
-      const res = await fetch("/api/evergreen/auth", {
+      const res = await fetchWithAuth("/api/evergreen/auth", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password, workstation }),
       });
@@ -176,10 +176,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch("/api/evergreen/auth", { method: "DELETE", credentials: "include" });
+      await fetchWithAuth("/api/evergreen/auth", { method: "DELETE" });
     } catch (err) {
       clientLogger.error("Logout error:", err);
     }
+    resetCSRFToken();
     setUser(null);
     router.push("/login");
   };

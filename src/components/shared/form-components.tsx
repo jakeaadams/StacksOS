@@ -471,7 +471,8 @@ export function ValidatedInput({
   required?: boolean;
 }) {
   // Generate unique IDs for ARIA relationships
-  const inputId = inputProps.id || `input-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = React.useId();
+  const inputId = inputProps.id ?? `input-${generatedId}`;
   const errorId = `${inputId}-error`;
   const descriptionId = `${inputId}-description`;
   
@@ -489,6 +490,7 @@ export function ValidatedInput({
       </Label>
       <div className="relative">
         <Input
+          {...inputProps}
           id={inputId}
           className={cn(
             error && "border-destructive focus-visible:ring-destructive",
@@ -496,7 +498,6 @@ export function ValidatedInput({
           )}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
-          {...inputProps}
         />
         {(error || success) && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">

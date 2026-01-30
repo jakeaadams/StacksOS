@@ -1,5 +1,6 @@
 "use client";
 import { clientLogger } from "@/lib/client-logger";
+import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from "react";
 
@@ -119,17 +120,16 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (cardNumber: string, pin: string): Promise<boolean> => {
-    try {
-      setError(null);
-      setIsLoading(true);
+	  const login = async (cardNumber: string, pin: string): Promise<boolean> => {
+	    try {
+	      setError(null);
+	      setIsLoading(true);
 
-      const response = await fetch("/api/opac/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ barcode: cardNumber, pin }),
-      });
+	      const response = await fetchWithAuth("/api/opac/login", {
+	        method: "POST",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({ barcode: cardNumber, pin }),
+	      });
 
       const data = await response.json();
 
@@ -157,16 +157,15 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = async () => {
-    try {
-      await fetch("/api/opac/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch (err) {
-      clientLogger.error("Logout error:", err);
-    } finally {
-      setPatron(null);
+	  const logout = async () => {
+	    try {
+	      await fetchWithAuth("/api/opac/logout", {
+	        method: "POST",
+	      });
+	    } catch (err) {
+	      clientLogger.error("Logout error:", err);
+	    } finally {
+	      setPatron(null);
       setCheckouts([]);
       setHolds([]);
       setFines([]);
@@ -235,14 +234,13 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
     }
   }, [patron]);
 
-  const renewItem = async (checkoutId: number) => {
-    try {
-      const response = await fetch(`/api/opac/renew`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ checkoutId }),
-      });
+	  const renewItem = async (checkoutId: number) => {
+	    try {
+	      const response = await fetchWithAuth(`/api/opac/renew`, {
+	        method: "POST",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({ checkoutId }),
+	      });
       
       const data = await response.json();
       
@@ -257,12 +255,11 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const renewAll = async () => {
-    try {
-      const response = await fetch(`/api/opac/renew-all`, {
-        method: "POST",
-        credentials: "include",
-      });
+	  const renewAll = async () => {
+	    try {
+	      const response = await fetchWithAuth(`/api/opac/renew-all`, {
+	        method: "POST",
+	      });
       
       const data = await response.json();
       await fetchCheckouts();
@@ -277,14 +274,13 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const placeHold = async (recordId: number, pickupLocation: number) => {
-    try {
-      const response = await fetch(`/api/opac/holds`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ recordId, pickupLocation }),
-      });
+	  const placeHold = async (recordId: number, pickupLocation: number) => {
+	    try {
+	      const response = await fetchWithAuth(`/api/opac/holds`, {
+	        method: "POST",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({ recordId, pickupLocation }),
+	      });
       
       const data = await response.json();
       
@@ -299,12 +295,11 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const cancelHold = async (holdId: number) => {
-    try {
-      const response = await fetch(`/api/opac/holds/${holdId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+	  const cancelHold = async (holdId: number) => {
+	    try {
+	      const response = await fetchWithAuth(`/api/opac/holds/${holdId}`, {
+	        method: "DELETE",
+	      });
       
       const data = await response.json();
       
@@ -319,14 +314,13 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const suspendHold = async (holdId: number, until?: string) => {
-    try {
-      const response = await fetch(`/api/opac/holds/${holdId}/suspend`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ until }),
-      });
+	  const suspendHold = async (holdId: number, until?: string) => {
+	    try {
+	      const response = await fetchWithAuth(`/api/opac/holds/${holdId}/suspend`, {
+	        method: "POST",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({ until }),
+	      });
       
       const data = await response.json();
       
@@ -341,12 +335,11 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const activateHold = async (holdId: number) => {
-    try {
-      const response = await fetch(`/api/opac/holds/${holdId}/activate`, {
-        method: "POST",
-        credentials: "include",
-      });
+	  const activateHold = async (holdId: number) => {
+	    try {
+	      const response = await fetchWithAuth(`/api/opac/holds/${holdId}/activate`, {
+	        method: "POST",
+	      });
       
       const data = await response.json();
       

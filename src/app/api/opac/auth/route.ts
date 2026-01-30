@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
 import { createHash } from "crypto";
+import { isCookieSecure } from "@/lib/csrf";
 
 /**
  * Self-Checkout Patron Authentication
@@ -68,9 +69,10 @@ export async function POST(req: NextRequest) {
 
     // Store the auth token in a cookie for self-checkout session
     const cookieStore = await cookies();
+    const cookieSecure = isCookieSecure(req);
     cookieStore.set("self_checkout_token", authtoken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: cookieSecure,
       sameSite: "strict",
       maxAge: 60 * 30, // 30 minutes
       path: "/",
@@ -78,7 +80,7 @@ export async function POST(req: NextRequest) {
 
     cookieStore.set("self_checkout_patron_id", String(patronId), {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: cookieSecure,
       sameSite: "strict",
       maxAge: 60 * 30, // 30 minutes
       path: "/",

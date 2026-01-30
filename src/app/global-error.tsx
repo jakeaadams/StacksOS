@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 
 export default function GlobalError({
   error,
@@ -72,28 +73,27 @@ export default function GlobalError({
                   cursor: "pointer",
                   fontWeight: 500,
                 }}
-              >
-                Try Again
-              </button>
-              <a
-                 
-                href="/"
-                style={{
-                  padding: "0.5rem 1rem",
-                  backgroundColor: "white",
-                  color: "#333",
-                  border: "1px solid #ddd",
-                  borderRadius: "0.375rem",
-                  textDecoration: "none",
-                  fontWeight: 500,
-                }}
-              >
-                Go Home
-              </a>
-            </div>
-          </div>
-        </div>
-      </body>
+	              >
+	                Try Again
+	              </button>
+	              <Link
+	                href="/"
+	                style={{
+	                  padding: "0.5rem 1rem",
+	                  backgroundColor: "white",
+	                  color: "#333",
+	                  border: "1px solid #ddd",
+	                  borderRadius: "0.375rem",
+	                  textDecoration: "none",
+	                  fontWeight: 500,
+	                }}
+	              >
+	                Go Home
+	              </Link>
+	            </div>
+	          </div>
+	        </div>
+	      </body>
     </html>
   );
 }

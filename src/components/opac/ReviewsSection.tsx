@@ -1,5 +1,6 @@
 "use client";
 import { clientLogger } from "@/lib/client-logger";
+import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useState, useEffect } from "react";
 import { usePatronSession } from "@/hooks/usePatronSession";
@@ -91,16 +92,15 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
     }
 
     setIsSubmitting(true);
-    setSubmitError(null);
+	    setSubmitError(null);
 
-    try {
-      const response = await fetch("/api/opac/reviews", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bibId,
-          rating,
+	    try {
+	      const response = await fetchWithAuth("/api/opac/reviews", {
+	        method: "POST",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({
+	          bibId,
+	          rating,
           title: reviewTitle,
           text: reviewText,
         }),

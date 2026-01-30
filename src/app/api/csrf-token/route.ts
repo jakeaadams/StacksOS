@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   });
   
   // Set/refresh CSRF cookie
-  setCSRFCookie(response, token);
+  setCSRFCookie(response, token, request);
   
   return response;
 }

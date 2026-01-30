@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { fetchWithAuth } from "@/lib/client-fetch";
 import { toast } from "sonner";
 import {
   BookOpen,
@@ -120,15 +121,14 @@ export default function SelfCheckoutPage() {
     setIsProcessing(true);
     setLastError(null);
     
-    try {
-      // In production, this would call the Evergreen API
-      // For now, simulate a successful login
-      const res = await fetch("/api/opac/auth", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ barcode: barcodeInput, pin: pinInput }),
-      });
+	  try {
+	    // In production, this would call the Evergreen API
+	    // For now, simulate a successful login
+	    const res = await fetchWithAuth("/api/opac/auth", {
+	      method: "POST",
+	      headers: { "Content-Type": "application/json" },
+	      body: JSON.stringify({ barcode: barcodeInput, pin: pinInput }),
+	    });
       
       const data = await res.json();
       
@@ -163,14 +163,13 @@ export default function SelfCheckoutPage() {
     setIsProcessing(true);
     setLastError(null);
     
-    try {
-      const res = await fetch("/api/opac/self-checkout", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patronId: patron.id,
-          itemBarcode: barcodeInput,
+	  try {
+	    const res = await fetchWithAuth("/api/opac/self-checkout", {
+	      method: "POST",
+	      headers: { "Content-Type": "application/json" },
+	      body: JSON.stringify({
+	        patronId: patron.id,
+	        itemBarcode: barcodeInput,
         }),
       });
       

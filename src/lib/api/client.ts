@@ -28,13 +28,14 @@ export async function callOpenSRF<T = any>(
   method: string,
   params: any[] = []
 ): Promise<OpenSRFResponse<T>> {
-  const paramString = params
-    .map((p) => `param=${encodeURIComponent(JSON.stringify(p))}`)
-    .join("&");
+  const url = `${EVERGREEN_BASE.replace(/\/+$/, "")}/osrf-gateway-v1`;
 
-  const url = `${EVERGREEN_BASE}/osrf-gateway-v1?service=${service}&method=${method}${
-    paramString ? "&" + paramString : ""
-  }`;
+  // Use POST body instead of querystring to avoid leaking sensitive values
+  // (e.g. authtokens, password hashes) into intermediary access logs.
+  const body = new URLSearchParams({ service, method });
+  for (const param of params) {
+    body.append("param", JSON.stringify(param));
+  }
 
   const timeoutMsRaw = process.env.STACKSOS_EVERGREEN_TIMEOUT_MS;
   const timeoutMs = Number.isFinite(Number(timeoutMsRaw)) ? Number(timeoutMsRaw) : 15000;
@@ -45,7 +46,12 @@ export async function callOpenSRF<T = any>(
   let res: Response;
   try {
     res = await fetch(url, {
-      headers: { Accept: "application/json" },
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
       cache: "no-store",
       signal: controller.signal,
     });
@@ -78,13 +84,25 @@ export async function callOpenSRF<T = any>(
 
   if (status && status !== 200) {
     const debug = (json as any)?.debug;
-    logger.error({ component: "opensrf", service, method, status, paramCount: params.length, debug }, "OpenSRF gateway error");
+    const debugText = typeof debug === "string" ? debug : "";
+    const isMethodNotFound =
+      status === 404 && debugText.toLowerCase().includes("method [") && debugText.toLowerCase().includes("not found");
 
-    throw new Error(
+    const log = isMethodNotFound ? logger.warn : logger.error;
+    log(
+      { component: "opensrf", service, method, status, paramCount: params.length, debug },
+      "OpenSRF gateway error"
+    );
+
+    const err = new Error(
       `OpenSRF gateway error (${service}.${method}): status ${status}${
         debug ? ` - ${debug}` : ""
       }`
     );
+    if (isMethodNotFound) {
+      (err as any).code = "OSRF_METHOD_NOT_FOUND";
+    }
+    throw err;
   }
 
   return decodeOpenSRFResponse(json);

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/usePatronSession";
+import { fetchWithAuth } from "@/lib/client-fetch";
 import { Mail, MailOpen, Trash2, ChevronLeft, Loader2, AlertCircle, CheckCircle, Clock, DollarSign, User, Bell, X, RefreshCw } from "lucide-react";
 
 interface PatronMessage { id: number; title: string; content: string; sendingLibrary: string; sendingLibraryId: number; isRead: boolean; readDate: string | null; createDate: string; messageType: "general" | "holds" | "fines" | "account"; }
@@ -26,9 +27,9 @@ export default function PatronMessagesPage() {
 
   const fetchMsgs = async () => { try { setIsLoading(true); setError(null); const r = await fetch("/api/opac/messages", { credentials: "include" }); if (!r.ok) { if (r.status === 401) { router.push("/opac/login?redirect=/opac/account/messages"); return; } throw new Error("Failed"); } const d = await r.json(); setMessages(d.messages || []); } catch (e) { setError(e instanceof Error ? e.message : "Error"); } finally { setIsLoading(false); } };
 
-  const markRead = async (ids: number[]) => { setActLoad(true); try { const r = await fetch("/api/opac/messages", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ action: "mark_read", messageIds: ids }) }); if (r.ok) { setMessages(messages.map(m => ids.includes(m.id) ? { ...m, isRead: true } : m)); setSelIds(new Set()); } } catch { setError("Failed"); } finally { setActLoad(false); } };
+  const markRead = async (ids: number[]) => { setActLoad(true); try { const r = await fetchWithAuth("/api/opac/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "mark_read", messageIds: ids }) }); if (r.ok) { setMessages(messages.map(m => ids.includes(m.id) ? { ...m, isRead: true } : m)); setSelIds(new Set()); } } catch { setError("Failed"); } finally { setActLoad(false); } };
 
-  const deleteMsgs = async (ids: number[]) => { setActLoad(true); try { const r = await fetch("/api/opac/messages", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ action: "delete", messageIds: ids }) }); if (r.ok) { setMessages(messages.filter(m => !ids.includes(m.id))); setSelIds(new Set()); if (selMsg && ids.includes(selMsg.id)) setSelMsg(null); } } catch { setError("Failed"); } finally { setActLoad(false); } };
+  const deleteMsgs = async (ids: number[]) => { setActLoad(true); try { const r = await fetchWithAuth("/api/opac/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", messageIds: ids }) }); if (r.ok) { setMessages(messages.filter(m => !ids.includes(m.id))); setSelIds(new Set()); if (selMsg && ids.includes(selMsg.id)) setSelMsg(null); } } catch { setError("Failed"); } finally { setActLoad(false); } };
 
   const openMsg = async (m: PatronMessage) => { setSelMsg(m); if (!m.isRead) await markRead([m.id]); };
   const toggle = (id: number) => { const n = new Set(selIds); if (n.has(id)) n.delete(id); else n.add(id); setSelIds(n); };

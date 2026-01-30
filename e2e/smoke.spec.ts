@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+const authFile = "e2e/.auth/staff.json";
+
 test.describe("Smoke Tests", () => {
   test("homepage loads and displays StacksOS branding", async ({ page }) => {
     await page.goto("/");
@@ -61,22 +63,14 @@ test.describe("Smoke Tests", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("staff dashboard loads after login", async ({ page }) => {
-    // Login first
-    await page.goto("/login");
-    await page.locator("input#username").fill("jake");
-    await page.locator("input#password").fill("jake");
-    await page.locator("button[type='submit']").click({ force: true });
-    
-    // Wait for redirect to staff page
-    await page.waitForURL(/\/staff/, { timeout: 15000 });
-    
-    // Verify staff dashboard elements are present
-    await expect(page.locator("body")).toBeVisible();
-    
-    // Verify we can see staff-specific content
-    const pageContent = await page.content();
-    expect(pageContent.length).toBeGreaterThan(0);
+  test.describe("Staff (authenticated)", () => {
+    test.use({ storageState: authFile });
+
+    test("staff dashboard loads after login", async ({ page }) => {
+      await page.goto("/staff");
+      await expect(page).toHaveURL(/\/staff/);
+      await expect(page.locator("body")).toBeVisible();
+    });
   });
 
   test("API health check endpoint responds", async ({ request }) => {

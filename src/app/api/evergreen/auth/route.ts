@@ -12,6 +12,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { hashPassword } from "@/lib/password";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isCookieSecure } from "@/lib/csrf";
 
 // POST - Login
 export async function POST(req: NextRequest) {
@@ -47,9 +48,7 @@ export async function POST(req: NextRequest) {
         ? String(rawWorkstation).trim()
         : undefined;
 
-    const cookieSecure =
-      process.env.NODE_ENV === "production" &&
-      !["0", "false"].includes(String(process.env.STACKSOS_COOKIE_SECURE || "").toLowerCase());
+    const cookieSecure = isCookieSecure(req);
 
     if (!username || !password) {
       await logAuditEvent({

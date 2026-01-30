@@ -69,6 +69,72 @@ const formatLabels: Record<string, string> = {
   magazine: "Magazine",
 };
 
+function AvailabilityBadge({
+  availableCopies,
+  holdCount,
+}: {
+  availableCopies: number;
+  holdCount: number;
+}) {
+  if (availableCopies > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 
+                     text-xs font-medium rounded-full">
+        <CheckCircle className="h-3 w-3" />
+        Available
+      </span>
+    );
+  }
+
+  if (holdCount > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-800 
+                       text-xs font-medium rounded-full">
+        <Clock className="h-3 w-3" />
+        {holdCount} {holdCount === 1 ? "hold" : "holds"}
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-1 bg-muted/50 text-muted-foreground 
+                     text-xs font-medium rounded-full">
+      <AlertCircle className="h-3 w-3" />
+      Checked out
+    </span>
+  );
+}
+
+function StarRating({ rating, reviewCount }: { rating?: number; reviewCount?: number }) {
+  if (!rating) return null;
+  const ratingText = `${rating.toFixed(1)} out of 5 stars${reviewCount ? `, ${reviewCount} reviews` : ""}`;
+  return (
+    <div className="flex items-center gap-1" role="img" aria-label={ratingText}>
+      {[1, 2, 3, 4, 5].map((star) => {
+        const filled = rating >= star;
+        const partial = !filled && rating > star - 1;
+        return (
+          <div key={star} className="relative">
+            <Star className="h-4 w-4 text-muted-foreground/50" fill="currentColor" />
+            {(filled || partial) && (
+              <div
+                className="absolute inset-0 overflow-hidden"
+                style={{ width: filled ? "100%" : `${(rating - (star - 1)) * 100}%` }}
+              >
+                <Star className="h-4 w-4 text-amber-400" fill="currentColor" />
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <span className="text-xs text-muted-foreground font-medium ml-1">{rating.toFixed(1)}</span>
+      {reviewCount && reviewCount > 0 && (
+        <span className="text-xs text-muted-foreground/70">({reviewCount.toLocaleString()})</span>
+      )}
+    </div>
+  );
+}
+
 export function BookCard({
   id,
   title,
@@ -124,64 +190,6 @@ export function BookCard({
   // Generate a placeholder color based on title
   const placeholderColor = `hsl(${(title.charCodeAt(0) * 137) % 360}, 60%, 75%)`;
 
-  const AvailabilityBadge = () => {
-    if (availableCopies > 0) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 
-                       text-xs font-medium rounded-full">
-          <CheckCircle className="h-3 w-3" />
-          Available
-        </span>
-      );
-    }
-    if (holdCount > 0) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-800 
-                       text-xs font-medium rounded-full">
-          <Clock className="h-3 w-3" />
-          {holdCount} {holdCount === 1 ? "hold" : "holds"}
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-1 bg-muted/50 text-muted-foreground 
-                     text-xs font-medium rounded-full">
-        <AlertCircle className="h-3 w-3" />
-        Checked out
-      </span>
-    );
-  };
-
-  const StarRating = () => {
-    if (!rating) return null;
-    const ratingText = `${rating.toFixed(1)} out of 5 stars${reviewCount ? `, ${reviewCount} reviews` : ""}`;
-    return (
-      <div className="flex items-center gap-1" role="img" aria-label={ratingText}>
-        {[1, 2, 3, 4, 5].map((star) => {
-          const filled = rating >= star;
-          const partial = !filled && rating > star - 1;
-          return (
-            <div key={star} className="relative">
-              <Star className="h-4 w-4 text-muted-foreground/50" fill="currentColor" />
-              {(filled || partial) && (
-                <div
-                  className="absolute inset-0 overflow-hidden"
-                  style={{ width: filled ? "100%" : `${(rating - (star - 1)) * 100}%` }}
-                >
-                  <Star className="h-4 w-4 text-amber-400" fill="currentColor" />
-                </div>
-              )}
-            </div>
-          );
-        })}
-        <span className="text-xs text-muted-foreground font-medium ml-1">{rating.toFixed(1)}</span>
-        {reviewCount && reviewCount > 0 && (
-          <span className="text-xs text-muted-foreground/70">({reviewCount.toLocaleString()})</span>
-        )}
-      </div>
-    );
-  };
-
   // Grid variant (default)
   if (variant === "grid") {
     return (
@@ -221,7 +229,7 @@ export function BookCard({
 
             {/* Availability badge overlay */}
             <div className="absolute top-2 left-2">
-              <AvailabilityBadge />
+              <AvailabilityBadge availableCopies={availableCopies} holdCount={holdCount} />
             </div>
 
             {/* Quick actions on hover */}
@@ -271,7 +279,7 @@ export function BookCard({
             
             {showRating && (
               <div className="mt-2">
-                <StarRating />
+                <StarRating rating={rating} reviewCount={reviewCount} />
               </div>
             )}
 
@@ -346,7 +354,7 @@ export function BookCard({
 
           {showRating && (
             <div className="mt-2">
-              <StarRating />
+              <StarRating rating={rating} reviewCount={reviewCount} />
             </div>
           )}
 
@@ -355,7 +363,7 @@ export function BookCard({
           )}
 
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <AvailabilityBadge />
+            <AvailabilityBadge availableCopies={availableCopies} holdCount={holdCount} />
             
             {showFormats && formats.length > 0 && (
               <div className="flex flex-wrap gap-1">
@@ -438,7 +446,7 @@ export function BookCard({
           </div>
         )}
       </div>
-      <AvailabilityBadge />
+      <AvailabilityBadge availableCopies={availableCopies} holdCount={holdCount} />
     </Link>
   );
 }

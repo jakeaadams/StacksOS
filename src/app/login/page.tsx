@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertCircle, Loader2, Lock, User, Building2, CheckCircle2, Sparkles, Shield, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { clientLogger } from "@/lib/client-logger";
+import { fetchWithAuth } from "@/lib/client-fetch";
 
 interface OrgUnit {
   id: number;
@@ -138,9 +139,8 @@ export default function LoginPage() {
     };
     if (workstationName) payload.workstation = workstationName;
 
-    const res = await fetch("/api/evergreen/auth", {
+    const res = await fetchWithAuth("/api/evergreen/auth", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
@@ -150,9 +150,8 @@ export default function LoginPage() {
   };
 
   const registerWorkstation = async (name: string, orgId: number) => {
-    const res = await fetch("/api/evergreen/workstations", {
+    const res = await fetchWithAuth("/api/evergreen/workstations", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, org_id: orgId }),
     });

@@ -6,6 +6,15 @@
 
 import { test, expect } from "@playwright/test";
 
+async function getCsrfToken(request: any): Promise<string> {
+  const response = await request.get("/api/csrf-token");
+  expect(response.status()).toBe(200);
+  const data = await response.json();
+  expect(data.ok).toBe(true);
+  expect(typeof data.token).toBe("string");
+  return data.token;
+}
+
 test.describe("API Endpoints E2E", () => {
   test.describe("Health Check Endpoint", () => {
     test("GET /api/health returns health status", async ({ request }) => {
@@ -83,7 +92,9 @@ test.describe("API Endpoints E2E", () => {
 
   test.describe("Staff Authentication Endpoint", () => {
     test("POST /api/evergreen/auth requires credentials", async ({ request }) => {
+      const token = await getCsrfToken(request);
       const response = await request.post("/api/evergreen/auth", {
+        headers: { "x-csrf-token": token, "x-forwarded-for": `e2e-staff-missing-${Date.now()}` },
         data: {},
       });
       
@@ -94,7 +105,9 @@ test.describe("API Endpoints E2E", () => {
     });
 
     test("POST /api/evergreen/auth with invalid credentials returns 401", async ({ request }) => {
+      const token = await getCsrfToken(request);
       const response = await request.post("/api/evergreen/auth", {
+        headers: { "x-csrf-token": token, "x-forwarded-for": `e2e-staff-invalid-${Date.now()}` },
         data: {
           username: "invalid_user_12345",
           password: "wrong_password",
@@ -108,7 +121,9 @@ test.describe("API Endpoints E2E", () => {
     });
 
     test("POST /api/evergreen/auth with valid credentials returns user data", async ({ request }) => {
+      const token = await getCsrfToken(request);
       const response = await request.post("/api/evergreen/auth", {
+        headers: { "x-csrf-token": token, "x-forwarded-for": `e2e-staff-valid-${Date.now()}` },
         data: {
           username: "jake",
           password: "jake",
@@ -119,8 +134,8 @@ test.describe("API Endpoints E2E", () => {
       if (response.status() === 200) {
         const data = await response.json();
         expect(data.ok).toBe(true);
-        expect(data.data).toHaveProperty("authtoken");
-        expect(data.data).toHaveProperty("user");
+        expect(data).toHaveProperty("authtoken");
+        expect(data).toHaveProperty("user");
       } else {
         // May fail if Evergreen is not available
         console.log("Staff auth test skipped - Evergreen may not be available");
@@ -134,11 +149,14 @@ test.describe("API Endpoints E2E", () => {
       
       const data = await response.json();
       expect(data.ok).toBe(true);
-      expect(data.data).toHaveProperty("authenticated");
+      expect(data).toHaveProperty("authenticated");
     });
 
     test("DELETE /api/evergreen/auth logs out user", async ({ request }) => {
-      const response = await request.delete("/api/evergreen/auth");
+      const token = await getCsrfToken(request);
+      const response = await request.delete("/api/evergreen/auth", {
+        headers: { "x-csrf-token": token, "x-forwarded-for": `e2e-staff-logout-${Date.now()}` },
+      });
       
       expect(response.status()).toBe(200);
       
@@ -149,7 +167,9 @@ test.describe("API Endpoints E2E", () => {
 
   test.describe("OPAC Login Endpoint", () => {
     test("POST /api/opac/login requires barcode and PIN", async ({ request }) => {
+      const token = await getCsrfToken(request);
       const response = await request.post("/api/opac/login", {
+        headers: { "x-csrf-token": token, "x-forwarded-for": `e2e-opac-missing-${Date.now()}` },
         data: {},
       });
       
@@ -157,11 +177,13 @@ test.describe("API Endpoints E2E", () => {
       
       const data = await response.json();
       expect(data.ok).toBe(false);
-      expect(data.message).toContain("required");
+      expect(data.error).toContain("required");
     });
 
     test("POST /api/opac/login with invalid credentials returns 401", async ({ request }) => {
+      const token = await getCsrfToken(request);
       const response = await request.post("/api/opac/login", {
+        headers: { "x-csrf-token": token, "x-forwarded-for": `e2e-opac-invalid-${Date.now()}` },
         data: {
           barcode: "INVALID12345",
           pin: "wrongpin",
@@ -177,9 +199,12 @@ test.describe("API Endpoints E2E", () => {
 
   test.describe("Rate Limiting", () => {
     test("rate limiting headers are present on auth failures", async ({ request }) => {
+      const token = await getCsrfToken(request);
+      const ip = `e2e-ratelimit-${Date.now()}`;
       // Make several failed auth attempts
       for (let i = 0; i < 3; i++) {
         await request.post("/api/evergreen/auth", {
+          headers: { "x-csrf-token": token, "x-forwarded-for": ip },
           data: {
             username: `ratelimit_test_${Date.now()}`,
             password: "wrong",
@@ -189,6 +214,7 @@ test.describe("API Endpoints E2E", () => {
       
       // The request should still work (not rate limited yet with default 5 attempts)
       const response = await request.post("/api/evergreen/auth", {
+        headers: { "x-csrf-token": token, "x-forwarded-for": ip },
         data: {
           username: `ratelimit_test_${Date.now()}`,
           password: "wrong",

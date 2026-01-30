@@ -1,19 +1,9 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 
-// Helper function to login
-async function loginAsStaff(page: Page) {
-  await page.goto("/login");
-  await page.locator("input#username").fill("jake");
-  await page.locator("input#password").fill("jake");
-  await page.locator("button[type='submit']").click({ force: true });
-  await page.waitForURL(/\/staff/, { timeout: 15000 });
-}
+const authFile = "e2e/.auth/staff.json";
 
 test.describe("Circulation Workflows", () => {
-  // Login before all tests in this suite
-  test.beforeEach(async ({ page }) => {
-    await loginAsStaff(page);
-  });
+  test.use({ storageState: authFile });
 
   test("checkout page loads with proper interface", async ({ page }) => {
     await page.goto("/staff/circulation/checkout");
@@ -71,6 +61,7 @@ test.describe("Circulation Workflows", () => {
     await page.goto("/staff");
     
     // Look for circulation-related links or navigation
+    await page.waitForSelector("a[href*='/staff/circulation']", { timeout: 15000 });
     const circulationLinks = page.locator("a[href*='circulation'], button:has-text('Circulation')");
     const linkCount = await circulationLinks.count();
     

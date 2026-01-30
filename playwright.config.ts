@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const basePort = Number(process.env.E2E_PORT || 3001);
+const baseURL = process.env.BASE_URL || `http://localhost:${basePort}`;
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,  // Run tests sequentially to avoid auth conflicts
@@ -7,6 +10,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : 2,
   reporter: "html",
+  globalSetup: "./e2e/global-setup.ts",
   
   // Global timeout settings
   timeout: 30000,
@@ -15,7 +19,7 @@ export default defineConfig({
   },
   
   use: {
-    baseURL: process.env.BASE_URL || "http://localhost:3000",
+    baseURL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
@@ -39,8 +43,8 @@ export default defineConfig({
   
   // Start dev server before tests
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:3000",
+    command: `NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/evergreen-192.168.1.232.crt STACKSOS_COOKIE_SECURE=false NEXT_TELEMETRY_DISABLED=1 npm run dev -- -p ${basePort}`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

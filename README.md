@@ -19,7 +19,12 @@ Create `.env.local`:
 
 ```
 EVERGREEN_BASE_URL=https://<evergreen-host>
-NODE_TLS_REJECT_UNAUTHORIZED=0
+# If Evergreen uses a self-signed certificate, prefer adding the cert to the
+# Node trust store instead of disabling verification globally:
+# NODE_EXTRA_CA_CERTS=/path/to/evergreen-ca.crt
+#
+# Avoid in production:
+# NODE_TLS_REJECT_UNAUTHORIZED=0
 ```
 
 ## Core paths

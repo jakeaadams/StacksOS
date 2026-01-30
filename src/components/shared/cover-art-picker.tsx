@@ -1,5 +1,6 @@
 "use client";
 import { logger } from "@/lib/logger";
+import { fetchWithAuth } from "@/lib/client-fetch";
 
 import * as React from "react";
 import { useState, useEffect } from "react";
@@ -196,11 +197,11 @@ export function CoverArtPicker({
       formData.append("file", uploadFile);
       formData.append("recordId", recordId.toString());
 
-      // Upload to server
-      const response = await fetch("/api/upload-cover", {
-        method: "POST",
-        body: formData,
-      });
+	      // Upload to server
+	      const response = await fetchWithAuth("/api/upload-cover", {
+	        method: "POST",
+	        body: formData,
+	      });
 
       if (!response.ok) {
         const error = await response.json();

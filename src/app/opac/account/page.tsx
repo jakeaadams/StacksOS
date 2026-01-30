@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import type { ElementType } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/usePatronSession";
@@ -21,8 +22,50 @@ import {
   MapPin,
   Mail,
   Phone,
-  CreditCard,
-} from "lucide-react";
+	  CreditCard,
+	} from "lucide-react";
+
+type QuickStatCardProps = {
+  title: string;
+  value: number | string;
+  icon: ElementType;
+  href: string;
+  color: string;
+  alert?: boolean;
+};
+
+function QuickStatCard({
+  title,
+  value,
+  icon: Icon,
+  href,
+  color,
+  alert,
+}: QuickStatCardProps) {
+  return (
+    <Link
+      href={href}
+      className={`block p-6 bg-card rounded-xl shadow-sm border border-border 
+                hover:shadow-md hover:border-primary-300 transition-all group
+                ${alert ? "ring-2 ring-amber-400 ring-offset-2" : ""}`}
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground mb-1">{title}</p>
+          <p className={`text-3xl font-bold ${color}`}>{value}</p>
+        </div>
+        <div className={`p-3 rounded-lg ${color.replace("text-", "bg-").replace("-600", "-100")}`}>
+          <Icon className={`h-6 w-6 ${color}`} />
+        </div>
+      </div>
+      <div className="mt-4 flex items-center text-sm text-primary-600 font-medium 
+                    group-hover:gap-2 transition-all">
+        View details
+        <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+      </div>
+    </Link>
+  );
+}
 
 export default function AccountDashboard() {
   const router = useRouter();
@@ -64,44 +107,6 @@ export default function AccountDashboard() {
   const overdueItems = checkouts.filter(c => c.isOverdue);
   const readyHolds = holds.filter(h => h.status === "ready");
   const totalFineBalance = fines.reduce((sum, f) => sum + (f.isPaid ? 0 : f.amount), 0);
-
-  const QuickStatCard = ({ 
-    title, 
-    value, 
-    icon: Icon, 
-    href, 
-    color,
-    alert,
-  }: { 
-    title: string; 
-    value: number | string; 
-    icon: React.ElementType;
-    href: string;
-    color: string;
-    alert?: boolean;
-  }) => (
-    <Link
-      href={href}
-      className={`block p-6 bg-card rounded-xl shadow-sm border border-border 
-                hover:shadow-md hover:border-primary-300 transition-all group
-                ${alert ? "ring-2 ring-amber-400 ring-offset-2" : ""}`}
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground mb-1">{title}</p>
-          <p className={`text-3xl font-bold ${color}`}>{value}</p>
-        </div>
-        <div className={`p-3 rounded-lg ${color.replace("text-", "bg-").replace("-600", "-100")}`}>
-          <Icon className={`h-6 w-6 ${color}`} />
-        </div>
-      </div>
-      <div className="mt-4 flex items-center text-sm text-primary-600 font-medium 
-                    group-hover:gap-2 transition-all">
-        View details
-        <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
-      </div>
-    </Link>
-  );
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">

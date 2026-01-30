@@ -1,29 +1,23 @@
 # Security Configuration Guide
 
-## CRITICAL: SSL Certificate Verification Disabled
-
-**Current Status:** SSL certificate verification is disabled via NODE_TLS_REJECT_UNAUTHORIZED=0
-
-**Location:** .env.local line 2
+## CRITICAL: Do Not Disable TLS Verification
 
 **Risk Level:** CRITICAL
 
-### Why This Is Dangerous
+Disabling TLS verification (e.g. `NODE_TLS_REJECT_UNAUTHORIZED=0`) enables man-in-the-middle (MITM) attacks.
 
-Disabling SSL verification allows man-in-the-middle (MITM) attacks.
+### Recommended Fixes
 
-### How To Fix
+**Option 1 (Best): Install a valid TLS certificate on Evergreen**
 
-**Option 1: Install Valid SSL Certificate on Evergreen Server**
+- Use a publicly trusted cert (if Evergreen has a real DNS name), or an internal CA.
+- Then ensure `EVERGREEN_BASE_URL=https://...` and remove any TLS bypasses.
 
-1. SSH into Evergreen server (192.168.1.232)
-2. Install SSL certificate
-3. Remove NODE_TLS_REJECT_UNAUTHORIZED=0 from .env.local
-4. Restart StacksOS
+**Option 2 (Acceptable for internal CA / self-signed): Trust the cert properly**
 
-**Option 2: Accept Risk for Internal Network**
-
-Only if network is completely isolated.
+- Export Evergreen’s CA/cert to a PEM/CRT file.
+- Set `NODE_EXTRA_CA_CERTS=/path/to/evergreen-ca.crt` in the StacksOS runtime environment.
+- Remove `NODE_TLS_REJECT_UNAUTHORIZED=0`.
 
 ### Security Improvements Completed
 

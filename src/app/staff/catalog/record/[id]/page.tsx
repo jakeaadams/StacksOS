@@ -254,16 +254,16 @@ export default function CatalogRecordPage() {
   const totalCopies = holdings.length > 0 ? holdings.reduce((sum, h) => sum + h.totalCopies, 0) : copies.length;
   const availableCopies = holdings.length > 0 ? holdings.reduce((sum, h) => sum + h.availableCopies, 0) : copies.filter(c => c.statusId === 0 || c.statusId === 7).length;
 
-  const handleCoverSelected = async (url: string, source: string) => {
-    setCustomCoverUrl(url);
-    
-    // Save to server (and eventually to Evergreen)
-    try {
-      const response = await fetch("/api/save-cover", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recordId, coverUrl: url, source }),
-      });
+	  const handleCoverSelected = async (url: string, source: string) => {
+	    setCustomCoverUrl(url);
+	    
+	    // Save to server (and eventually to Evergreen)
+	    try {
+	      const response = await fetchWithAuth("/api/save-cover", {
+	        method: "POST",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({ recordId, coverUrl: url, source }),
+	      });
       
       if (!response.ok) {
         throw new Error("Failed to save cover");
@@ -277,12 +277,12 @@ export default function CatalogRecordPage() {
     }
   };
 
-  const handleTitleEdit = async (newTitle: string) => {
-    const response = await fetch("/api/update-record-title", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ recordId, title: newTitle }),
-    });
+	  const handleTitleEdit = async (newTitle: string) => {
+	    const response = await fetchWithAuth("/api/update-record-title", {
+	      method: "POST",
+	      headers: { "Content-Type": "application/json" },
+	      body: JSON.stringify({ recordId, title: newTitle }),
+	    });
     
     const data = await response.json();
     if (!response.ok) {

@@ -10,6 +10,7 @@ import {
 import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
 import { hashPassword } from "@/lib/password";
+import { isCookieSecure } from "@/lib/csrf";
 
 /**
  * OPAC Patron Login
@@ -54,31 +55,40 @@ export async function POST(req: NextRequest) {
 
     logger.info({ route: "api.opac.login", barcode: cleanBarcode }, "OPAC login attempt");
 
-    // Step 1: Get auth seed using barcode
-    const seedResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.authenticate.init",
-      [cleanBarcode]
+    // Step 1: Resolve the patron username from barcode (Evergreen stores auth seeds by usrname)
+    const patronLookup = await callOpenSRF(
+      "open-ils.actor",
+      "open-ils.actor.user.fleshed.retrieve_by_barcode",
+      [null, cleanBarcode]
     );
 
-    const seed = seedResponse?.payload?.[0];
-    if (!seed) {
-      logger.warn({ route: "api.opac.login", barcode: cleanBarcode }, "Failed to get auth seed");
+    const patron = patronLookup?.payload?.[0];
+    if (!patron || patron.ilsevent) {
       return errorResponse("Invalid library card number or PIN", 401);
     }
 
-    // Step 2: Hash PIN using MD5 (Evergreen compatibility)
-    const finalHash = hashPassword(cleanPin, seed);
+    const username = patron.usrname;
 
-    // Step 3: Authenticate as OPAC user
+    // Step 2: Get auth seed using username
+    const seedResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.init", [username]);
+
+    const seed = seedResponse?.payload?.[0];
+    if (!seed) {
+      logger.warn({ route: "api.opac.login", username }, "Failed to get auth seed");
+      return errorResponse("Invalid library card number or PIN", 401);
+    }
+
+    // Step 3: Hash PIN using MD5 (Evergreen compatibility)
+    const finalHash = hashPassword(cleanPin, String(seed));
+
+    // Step 4: Authenticate as OPAC user
     const authResponse = await callOpenSRF(
       "open-ils.auth",
       "open-ils.auth.authenticate.complete",
       [{
-        username: cleanBarcode,
+        username,
         password: finalHash,
         type: "opac",
-        identifier: "barcode",
       }]
     );
 
@@ -86,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     if (authResult?.ilsevent === 0 && authResult?.payload?.authtoken) {
       const cookieStore = await cookies();
-      const cookieSecure = process.env.NODE_ENV === "production";
+      const cookieSecure = isCookieSecure(req);
       
       cookieStore.set("patron_authtoken", authResult.payload.authtoken, {
         httpOnly: true,
@@ -104,14 +114,6 @@ export async function POST(req: NextRequest) {
       const user = userResponse?.payload?.[0];
 
       if (user && !user.ilsevent) {
-        const patronResponse = await callOpenSRF(
-          "open-ils.actor",
-          "open-ils.actor.user.fleshed.retrieve",
-          [authResult.payload.authtoken, user.id, ["card", "home_ou", "profile"]]
-        );
-
-        const patron = patronResponse?.payload?.[0];
-
         logger.info({ route: "api.opac.login", patronId: user.id }, "OPAC login successful");
 
         return successResponse({

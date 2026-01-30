@@ -4,6 +4,7 @@ import * as React from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/contexts/auth-context";
+import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { BarcodeInput } from "./barcode-input";
 import { ErrorMessage } from "./error-state";
@@ -154,16 +155,15 @@ export function PlaceHoldDialog({
     }
 
     setIsPlacing(true);
-    setError(null);
+	    setError(null);
 
-    try {
-      const res = await fetch("/api/evergreen/holds", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "place_hold",
-          patronId: patron.id,
+	    try {
+	      const res = await fetchWithAuth("/api/evergreen/holds", {
+	        method: "POST",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({
+	          action: "place_hold",
+	          patronId: patron.id,
           targetId: record.id,
           holdType: "T",
           pickupLib: pickup,

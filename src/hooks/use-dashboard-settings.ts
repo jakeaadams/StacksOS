@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useApi, useMutation } from "./use-api";
+import { fetchWithAuth } from "@/lib/client-fetch";
 
 // Widget definitions - all possible dashboard widgets
 export interface WidgetConfig {
@@ -184,16 +185,15 @@ export function useDashboardSettings(): UseDashboardSettingsReturn {
       pendingSaveRef.current = layout; // Store for rollback
       setLayout(newLayout); // Optimistic update
       setIsSaving(true);
-      setSaveError(null);
+	      setSaveError(null);
 
-      try {
-        const response = await fetch(SETTINGS_URL, {
-          method: "POST",
-        credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            settings: {
-              [SETTINGS_KEY]: newLayout,
+	      try {
+	        const response = await fetchWithAuth(SETTINGS_URL, {
+	          method: "POST",
+	          headers: { "Content-Type": "application/json" },
+	          body: JSON.stringify({
+	            settings: {
+	              [SETTINGS_KEY]: newLayout,
             },
           }),
         });

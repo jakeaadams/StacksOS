@@ -1,5 +1,6 @@
 "use client";
 import { logger } from "@/lib/logger";
+import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -210,15 +211,14 @@ export default function SettingsPage() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 
-      // Also try to save to Evergreen API if available
-      try {
-        const response = await fetch("/api/evergreen/user-settings", {
-          method: "POST",
-        credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            settings: {
-              "stacksos.preferences.theme": settings.theme,
+	      // Also try to save to Evergreen API if available
+	      try {
+	        const response = await fetchWithAuth("/api/evergreen/user-settings", {
+	          method: "POST",
+	          headers: { "Content-Type": "application/json" },
+	          body: JSON.stringify({
+	            settings: {
+	              "stacksos.preferences.theme": settings.theme,
               "stacksos.preferences.density": settings.density,
               "stacksos.preferences.search": {
                 scope: settings.defaultSearchScope,

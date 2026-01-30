@@ -14,6 +14,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { fetchWithAuth } from "@/lib/client-fetch";
 
 
 export class ApiError extends Error {
@@ -379,16 +380,15 @@ export function useMutation<T = any, TVariables = any>(
           const timer = setTimeout(() => {
             timedOut = true;
             controller.abort();
-          }, timeoutMs);
+	          }, timeoutMs);
 
-          try {
-            const response = await fetch(url, {
-            credentials: "include",
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-request-id": requestId,
-                "x-idempotency-key": idempotencyKey,
+	          try {
+	            const response = await fetchWithAuth(url, {
+	              method: "POST",
+	              headers: {
+	                "Content-Type": "application/json",
+	                "x-request-id": requestId,
+	                "x-idempotency-key": idempotencyKey,
               },
               body: JSON.stringify(variables),
               signal: controller.signal,

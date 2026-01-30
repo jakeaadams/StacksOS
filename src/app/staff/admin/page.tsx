@@ -218,14 +218,13 @@ export default function AdminPage() {
       return;
     }
 
-    setIsRegistering(true);
-    try {
-      const res = await fetchWithAuth("/api/evergreen/workstations", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: workstationName.trim(), org_id: selectedOrgId }),
-      });
+	    setIsRegistering(true);
+	    try {
+	      const res = await fetchWithAuth("/api/evergreen/workstations", {
+	        method: "POST",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({ name: workstationName.trim(), org_id: selectedOrgId }),
+	      });
       const data = await res.json();
 
       if (data.ok) {
@@ -252,14 +251,13 @@ export default function AdminPage() {
       return;
     }
 
-    setIsValidatingBarcode(true);
-    try {
-      const res = await fetch("/api/stacksos/barcodes", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ barcode: barcodeInput.trim(), profileId: barcodeProfileId }),
-      });
+	    setIsValidatingBarcode(true);
+	    try {
+	      const res = await fetchWithAuth("/api/stacksos/barcodes", {
+	        method: "POST",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({ barcode: barcodeInput.trim(), profileId: barcodeProfileId }),
+	      });
       const data = await res.json();
       if (data.ok) {
         setBarcodeResult(data.result);
@@ -317,14 +315,13 @@ export default function AdminPage() {
       return;
     }
 
-    setIsPreflighting(true);
-    try {
-      const res = await fetch("/api/stacksos/migration/preflight", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ records }),
-      });
+	    setIsPreflighting(true);
+	    try {
+	      const res = await fetchWithAuth("/api/stacksos/migration/preflight", {
+	        method: "POST",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({ records }),
+	      });
       const data = await res.json();
       if (data.ok) {
         setPreflightResult(data);
