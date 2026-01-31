@@ -98,12 +98,10 @@ export async function GET(req: NextRequest) {
         });
       }
     } else {
-      const sort = [
-        "family_name ASC",
-        "first_given_name ASC",
-        "second_given_name ASC",
-        "dob DESC",
-      ];
+      // Some Evergreen installs build invalid SQL when sort strings contain spaces
+      // (e.g. "family_name ASC" arriving as "family_name+ASC"). Passing an empty
+      // sort list delegates ordering to Evergreen defaults and avoids that bug.
+      const sort: string[] = [];
 
       const includeInactive = searchParams.get("inactive") === "true";
 

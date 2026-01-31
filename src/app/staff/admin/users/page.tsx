@@ -38,13 +38,23 @@ export default function UserManagementPage() {
   const loadStaffUsers = useCallback(async () => {
     setIsLoading(true);
     try {
+      const query = searchQuery.trim() || user?.displayName?.trim() || user?.username?.trim() || "";
+      if (!query) {
+        setStaffUsers([]);
+        return;
+      }
+
       // Search for users - in production this would filter by staff profile
-      const response = await fetchWithAuth(
-        `/api/evergreen/patrons?q=${encodeURIComponent(searchQuery || "staff")}&type=name&limit=50`
-      );
+      const response = await fetchWithAuth(`/api/evergreen/patrons?q=${encodeURIComponent(query)}&type=name&limit=50`);
       const data = await response.json();
 
-      if (data.ok && data.patrons) {
+      if (!response.ok || !data.ok) {
+        toast.error(data?.error || "Failed to load users");
+        setStaffUsers([]);
+        return;
+      }
+
+      if (data.patrons) {
         const users = data.patrons.map((p: any) => ({
           id: p.id,
           username: p.username || p.usrname || "",
@@ -58,10 +68,11 @@ export default function UserManagementPage() {
       }
     } catch (error) {
       toast.error("Failed to load users");
+      setStaffUsers([]);
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, orgs]);
+  }, [orgs, searchQuery, user]);
 
   useEffect(() => {
     loadStaffUsers();
