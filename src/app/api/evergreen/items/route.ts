@@ -8,6 +8,7 @@ import {
   requireAuthToken,
   getErrorMessage,
   isOpenSRFEvent,
+  fmBoolean,
 } from "@/lib/api";
 
 function getId(value: any): number | undefined {
@@ -131,6 +132,11 @@ export async function GET(req: NextRequest) {
     const statusId = getId(copy.status) ?? copy.status;
     const statusName = getName(copy.status);
 
+    const holdableRaw = fmBoolean(copy, "holdable");
+    const circulateRaw = fmBoolean(copy, "circulate");
+    const opacVisibleRaw = fmBoolean(copy, "opac_visible");
+    const refRaw = fmBoolean(copy, "ref");
+
     const rawCircLibId = getId(copy.circ_lib) ?? copy.circ_lib;
     const rawOwningLibId = getId(callNumber?.owning_lib) ?? callNumber?.owning_lib;
     const circLibId = typeof rawCircLibId === "string" ? parseInt(rawCircLibId, 10) : rawCircLibId;
@@ -160,7 +166,7 @@ export async function GET(req: NextRequest) {
           dueDate: circ.due_date,
           checkinDate: circ.checkin_time || circ.xact_finish || null,
           status: circ.checkin_time || circ.xact_finish ? "Returned" : "Checked Out",
-          renewalRemaining: circ.renewal_remaining,
+          renewCount: circ.renew_count ?? circ.renewal_count ?? circ.renewals ?? circ.renewal_remaining,
           circLibId: circ.circ_lib,
           checkinLibId: circ.checkin_lib,
           billingTotal: circ.billing_total,
@@ -186,8 +192,8 @@ export async function GET(req: NextRequest) {
             const patron = patronResponse?.payload?.[0];
             if (patron && !patron.ilsevent && patron.card) {
               patronMap.set(patronId, {
-                barcode: typeof patron.card === 'object' ? patron.card.barcode : patron.card,
-                name: [patron.family_name, patron.first_given_name].filter(Boolean).join(', ')
+                barcode: typeof patron.card === "object" ? patron.card.barcode : patron.card,
+                name: [patron.family_name, patron.first_given_name].filter(Boolean).join(", "),
               });
             }
           } catch (err) {
@@ -201,12 +207,31 @@ export async function GET(req: NextRequest) {
           return {
             ...h,
             patronBarcode: patronInfo?.barcode,
-            patronName: patronInfo?.name
+            patronName: patronInfo?.name,
           };
         });
       }
     }
 
+    const priceRaw = copy.price;
+    const price =
+      priceRaw === null || priceRaw === undefined || priceRaw === ""
+        ? undefined
+        : typeof priceRaw === "number"
+          ? priceRaw
+          : Number.isFinite(parseFloat(String(priceRaw)))
+            ? parseFloat(String(priceRaw))
+            : undefined;
+
+    const depositRaw = (copy as any).deposit_amount ?? (copy as any).depositAmount;
+    const depositAmount =
+      depositRaw === null || depositRaw === undefined || depositRaw === ""
+        ? undefined
+        : typeof depositRaw === "number"
+          ? depositRaw
+          : Number.isFinite(parseFloat(String(depositRaw)))
+            ? parseFloat(String(depositRaw))
+            : undefined;
 
     const item = {
       id: copy.id,
@@ -223,10 +248,16 @@ export async function GET(req: NextRequest) {
       owningLib: owningLibName || "",
       owningLibId: owningLibId ?? undefined,
       copyNumber: copy.copy_number || 1,
-      price: copy.price ? parseFloat(copy.price) : undefined,
-      holdable: copy.holdable !== false,
-      circulate: copy.circulate !== false,
-      refItem: copy.ref === true,
+      price,
+      depositAmount,
+      createDate: (copy as any).create_date ?? (copy as any).createDate,
+      editDate: (copy as any).edit_date ?? (copy as any).editDate,
+      activeDate: (copy as any).active_date ?? (copy as any).activeDate,
+      alertMessage: (copy as any).alert_message ?? (copy as any).alertMessage ?? "",
+      holdable: holdableRaw !== false,
+      circulate: circulateRaw !== false,
+      refItem: refRaw === true,
+      opacVisible: opacVisibleRaw !== false,
       title: bib?.title || "",
       author: bib?.author || "",
       isbn: bib?.isbn || "",
