@@ -13,11 +13,10 @@ import {
   StatusBadge,
   UniversalSearch,
 } from "@/components/shared";
-import { DashboardEditor } from "@/components/dashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
-import { useApi, useDashboardSettings } from "@/hooks";
+import { useApi } from "@/hooks";
 import { useAuth } from "@/contexts/auth-context";
 import {
   ArrowLeftRight,
@@ -30,7 +29,6 @@ import {
   FileText,
   UserPlus,
   AlertCircle,
-  Settings2,
 } from "lucide-react";
 
 interface TopItemRow {
@@ -151,7 +149,7 @@ function QuickActionsWidget() {
   ];
 
   return (
-    <Card className="mt-6">
+    <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Quick Actions</CardTitle>
         <CardDescription>Fast routes for daily workflows</CardDescription>
@@ -349,7 +347,7 @@ function AlertsWidget({ stats }: { stats: any }) {
   }, [stats]);
 
   return (
-    <Card className="mt-6">
+    <Card>
       <CardHeader>
         <CardTitle className="text-base">Alerts</CardTitle>
         <CardDescription>Operational follow-ups</CardDescription>
@@ -394,17 +392,6 @@ export default function StaffDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const orgId = user?.homeLibraryId || 1;
-
-  // Dashboard customization
-  const {
-    enabledWidgets,
-    allWidgets,
-    isLoading: settingsLoading,
-    isSaving,
-    toggleWidget,
-    reorderWidgets,
-    resetToDefaults,
-  } = useDashboardSettings();
 
   // Data fetching
   const { data: dashboardData, isLoading: dashboardLoading } = useApi<any>(
@@ -455,55 +442,6 @@ export default function StaffDashboard() {
     }));
   }, [overdueData]);
 
-  // Check which widgets are enabled
-  const isWidgetEnabled = (widgetId: string) =>
-    enabledWidgets.some((w) => w.id === widgetId);
-
-  // Sort content widgets by order for rendering
-  const sortedContentWidgets = enabledWidgets
-    .filter((w) => w.defaultOrder >= 0)
-    .sort((a, b) => {
-      const orderA = allWidgets.find((w) => w.id === a.id)?.order ?? a.defaultOrder;
-      const orderB = allWidgets.find((w) => w.id === b.id)?.order ?? b.defaultOrder;
-      return orderA - orderB;
-    });
-
-  // Render a widget by ID
-  const renderWidget = (widgetId: string) => {
-    switch (widgetId) {
-      case "universal-search":
-        return <UniversalSearchWidget key={widgetId} />;
-      case "stat-cards":
-        return (
-          <StatCardsWidget key={widgetId} stats={stats} isLoading={dashboardLoading} />
-        );
-      case "quick-actions":
-        return <QuickActionsWidget key={widgetId} />;
-      case "top-items":
-        return (
-          <TopItemsWidget
-            key={widgetId}
-            topItems={topItems}
-            isLoading={topItemsLoading}
-            message={topItemsData?.message}
-          />
-        );
-      case "overdue-items":
-        return (
-          <OverdueItemsWidget
-            key={widgetId}
-            overdueRows={overdueRows}
-            isLoading={overdueLoading}
-            message={overdueData?.message}
-          />
-        );
-      case "alerts":
-        return <AlertsWidget key={widgetId} stats={stats} />;
-      default:
-        return null;
-    }
-  };
-
   return (
     <PageContainer>
       <PageHeader
@@ -520,74 +458,46 @@ export default function StaffDashboard() {
       >
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            {isWidgetEnabled("date-display") && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                {new Date().toLocaleDateString(undefined, {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </div>
-            )}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              {new Date().toLocaleDateString(undefined, {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </div>
             {dashboardData?.message && (
               <div className="text-xs text-muted-foreground">{dashboardData.message}</div>
             )}
           </div>
-          <DashboardEditor
-            allWidgets={allWidgets}
-            onToggle={toggleWidget}
-            onReorder={reorderWidgets}
-            onReset={resetToDefaults}
-            isSaving={isSaving}
-            trigger={
-              <Button variant="ghost" size="sm">
-                <Settings2 className="h-4 w-4 mr-2" />
-                Customize
-              </Button>
-            }
-          />
         </div>
       </PageHeader>
 
       <PageContent>
-        {/* Render widgets in user-defined order */}
-        {sortedContentWidgets.map((widget) => {
-          // Special handling for the two-column layout (top-items + overdue-items)
-          if (widget.id === "top-items") {
-            const overdueEnabled = isWidgetEnabled("overdue-items");
-            if (overdueEnabled) {
-              return (
-                <div key="items-grid" className="grid gap-6 lg:grid-cols-2 mt-6">
-                  {renderWidget("top-items")}
-                  {renderWidget("overdue-items")}
-                </div>
-              );
-            }
-            return (
-              <div key={widget.id} className="mt-6">
-                {renderWidget(widget.id)}
-              </div>
-            );
-          }
+        <UniversalSearchWidget />
+        <StatCardsWidget stats={stats} isLoading={dashboardLoading} />
 
-          // Skip overdue-items here since it's rendered with top-items
-          if (widget.id === "overdue-items" && isWidgetEnabled("top-items")) {
-            return null;
-          }
+        <div className="mt-6">
+          <QuickActionsWidget />
+        </div>
 
-          // Render single overdue-items if top-items is disabled
-          if (widget.id === "overdue-items") {
-            return (
-              <div key={widget.id} className="mt-6">
-                {renderWidget(widget.id)}
-              </div>
-            );
-          }
+        <div className="grid gap-6 lg:grid-cols-2 mt-6">
+          <TopItemsWidget
+            topItems={topItems}
+            isLoading={topItemsLoading}
+            message={topItemsData?.message}
+          />
+          <OverdueItemsWidget
+            overdueRows={overdueRows}
+            isLoading={overdueLoading}
+            message={overdueData?.message}
+          />
+        </div>
 
-          return renderWidget(widget.id);
-        })}
+        <div className="mt-6">
+          <AlertsWidget stats={stats} />
+        </div>
       </PageContent>
     </PageContainer>
   );

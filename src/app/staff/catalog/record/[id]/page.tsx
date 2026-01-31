@@ -15,14 +15,12 @@ import {
   DataTableColumnHeader,
   EmptyState,
   ErrorBoundary,
+  PlaceHoldDialog,
 } from "@/components/shared";
 import { CoverArtPicker } from "@/components/shared/cover-art-picker";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
@@ -31,13 +29,11 @@ import {
   ArrowLeft,
   BookOpen,
   Edit,
-  PencilLine,
   Package,
   Bookmark,
   MapPin,
   Building,
   Printer,
-  CheckCircle,
   ExternalLink,
   ImageOff,
   Copy,
@@ -108,7 +104,7 @@ function CoverImage({
   if (!coverUrl || error) {
     return (
       <div
-        className="w-48 h-64 bg-muted rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/70 transition-colors group"
+        className="w-full max-w-[240px] aspect-[2/3] bg-muted rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-muted/70 transition-colors group"
         onClick={onClick}
         title="Click to upload cover art"
       >
@@ -119,18 +115,18 @@ function CoverImage({
   }
 
   return (
-    <div className="w-48 h-64 relative group cursor-pointer" onClick={onClick} title="Click to change cover art">
+    <div className="w-full max-w-[240px] aspect-[2/3] relative group cursor-pointer" onClick={onClick} title="Click to change cover art">
       {!loaded && (
-        <div className="absolute inset-0 bg-muted rounded-lg animate-pulse" />
+        <div className="absolute inset-0 bg-muted rounded-xl animate-pulse" />
       )}
       <img
         src={coverUrl}
         alt={"Cover of " + title}
-        className={"w-48 h-64 object-contain bg-muted rounded-lg shadow-md " + (loaded ? "opacity-100" : "opacity-0")}
+        className={"absolute inset-0 h-full w-full object-contain bg-muted rounded-xl shadow-md transition-opacity " + (loaded ? "opacity-100" : "opacity-0")}
         onError={() => setError(true)}
         onLoad={() => setLoaded(true)}
       />
-      <div className="absolute inset-0 bg-black/60 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
         <div className="text-white text-center">
           <Edit className="h-8 w-8 mx-auto mb-2" />
           <span className="text-sm font-medium">Change Cover</span>
@@ -162,9 +158,7 @@ export default function CatalogRecordPage() {
   const [error, setError] = useState<string | null>(null);
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   const [customCoverUrl, setCustomCoverUrl] = useState<string | undefined>(undefined);
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [renameTitle, setRenameTitle] = useState("");
-  const [renameSaving, setRenameSaving] = useState(false);
+  const [holdOpen, setHoldOpen] = useState(false);
 
   const loadRecordData = useCallback(async () => {
     setIsLoading(true);
@@ -261,12 +255,6 @@ export default function CatalogRecordPage() {
   const totalCopies = holdings.length > 0 ? holdings.reduce((sum, h) => sum + h.totalCopies, 0) : copies.length;
   const availableCopies = holdings.length > 0 ? holdings.reduce((sum, h) => sum + h.availableCopies, 0) : copies.filter(c => c.statusId === 0 || c.statusId === 7).length;
 
-  useEffect(() => {
-    if (renameOpen && record?.title) {
-      setRenameTitle(record.title);
-    }
-  }, [renameOpen, record?.title]);
-
 	  const handleCoverSelected = async (url: string, source: string) => {
 	    setCustomCoverUrl(url);
 	    
@@ -287,52 +275,6 @@ export default function CatalogRecordPage() {
     } catch (err) {
       clientLogger.error("Error saving cover:", err);
       toast.error("Cover updated locally, but failed to save to server");
-    }
-  };
-
-  const handleTitleEdit = async (newTitle: string) => {
-	    const response = await fetchWithAuth("/api/update-record-title", {
-	      method: "POST",
-	      headers: { "Content-Type": "application/json" },
-	      body: JSON.stringify({ recordId, title: newTitle }),
-	    });
-    
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || "Failed to update title");
-    }
-    
-    if (data.warning) {
-      toast.warning(data.warning);
-    } else {
-      toast.success("Title updated");
-    }
-    
-    // Update local state
-    if (record) {
-      setRecord({ ...record, title: newTitle });
-    }
-  };
-
-  const handleRenameSubmit = async () => {
-    const nextTitle = renameTitle.trim();
-    if (!nextTitle) {
-      toast.error("Title cannot be empty");
-      return;
-    }
-    if (record && nextTitle === record.title) {
-      setRenameOpen(false);
-      return;
-    }
-
-    setRenameSaving(true);
-    try {
-      await handleTitleEdit(nextTitle);
-      setRenameOpen(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to rename title");
-    } finally {
-      setRenameSaving(false);
     }
   };
 
@@ -420,7 +362,13 @@ export default function CatalogRecordPage() {
       <PageContainer>
         <PageHeader
           title={record.title}
-        subtitle={`${record.author ? `by ${record.author} • ` : ""}Record #${record.id}`}
+        subtitle={[
+          record.author ? `by ${record.author}` : null,
+          record.pubdate || null,
+          record.format || null,
+        ]
+          .filter(Boolean)
+          .join(" • ")}
         breadcrumbs={[
           { label: "Catalog", href: "/staff/catalog" },
           { label: record.title && record.title.length > 42 ? `${record.title.slice(0, 42)}…` : (record.title || `Record ${record.id}`) },
@@ -438,12 +386,6 @@ export default function CatalogRecordPage() {
             icon: Edit,
           },
           {
-            label: "Rename Title",
-            onClick: () => setRenameOpen(true),
-            icon: PencilLine,
-            variant: "outline",
-          },
-          {
             label: "Holdings",
             onClick: () => router.push("/staff/cataloging/holdings?id=" + record.id),
             icon: Package,
@@ -451,7 +393,7 @@ export default function CatalogRecordPage() {
           },
           {
             label: "Place Hold",
-            onClick: () => toast.info("Hold dialog would open"),
+            onClick: () => setHoldOpen(true),
             icon: Bookmark,
             variant: "outline",
           },
@@ -688,34 +630,11 @@ export default function CatalogRecordPage() {
         onCoverSelected={handleCoverSelected}
       />
 
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Rename Title</DialogTitle>
-            <DialogDescription>
-              This changes the display title. For authoritative changes, update the MARC record.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="rename-title">Title</Label>
-            <Input
-              id="rename-title"
-              value={renameTitle}
-              onChange={(e) => setRenameTitle(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleRenameSubmit()}
-              autoFocus
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setRenameOpen(false)} disabled={renameSaving}>
-              Cancel
-            </Button>
-            <Button onClick={handleRenameSubmit} disabled={renameSaving}>
-              Save Title
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PlaceHoldDialog
+        open={holdOpen}
+        onOpenChange={setHoldOpen}
+        record={{ id: record.id, title: record.title, author: record.author }}
+      />
       </PageContainer>
     </ErrorBoundary>
   );

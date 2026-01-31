@@ -70,6 +70,19 @@ function formatDate(value?: string | null) {
   return date.toLocaleDateString();
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function ItemStatusPage() {
   const searchParams = useSearchParams();
   const barcodeParam = searchParams.get("barcode") || "";
@@ -88,7 +101,7 @@ export default function ItemStatusPage() {
       {
         accessorKey: "checkoutDate",
         header: "Checked Out",
-        cell: ({ row }) => formatDate(row.original.checkoutDate),
+        cell: ({ row }) => formatDateTime(row.original.checkoutDate),
       },
       {
         accessorKey: "dueDate",
@@ -98,7 +111,7 @@ export default function ItemStatusPage() {
       {
         accessorKey: "checkinDate",
         header: "Checked In",
-        cell: ({ row }) => formatDate(row.original.checkinDate || undefined),
+        cell: ({ row }) => formatDateTime(row.original.checkinDate || undefined),
       },
       {
         accessorKey: "status",

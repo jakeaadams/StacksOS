@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { fetchWithAuth } from "@/lib/client-fetch";
 import {
   Search,
   Sun,
@@ -11,12 +12,10 @@ import {
   Building2,
   Keyboard,
   Check,
-  GripVertical,
-  Settings,
-  X,
+  Camera,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +30,8 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTheme } from "next-themes";
 import { DensityToggle } from "@/components/shared";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 interface OrgUnit {
   id: number;
@@ -42,8 +42,12 @@ interface OrgUnit {
 interface TopNavProps {
   onCommandOpen: () => void;
   currentLibrary?: string;
+  userId?: number;
   userName?: string;
   userInitials?: string;
+  userPhotoUrl?: string;
+  userTitle?: string;
+  onUserPhotoUpdated?: (url: string) => void;
   onLogout?: () => void | Promise<void>;
   orgs?: OrgUnit[];
   evergreenOk?: boolean;
@@ -53,33 +57,16 @@ interface TopNavProps {
 const WORKSTATION_KEY = "stacksos_workstation";
 const WORKSTATION_ORG_KEY = "stacksos_workstation_org";
 const LOGIN_ORG_OVERRIDE_KEY = "stacksos_login_org_override";
-const TOPBAR_ORDER_KEY = "stacksos_topbar_order";
-
-// Available toolbar items with their IDs
-type ToolbarItemId = "ils-status" | "clock" | "density" | "shortcuts" | "help" | "notifications" | "theme" | "user";
-
-interface ToolbarItem {
-  id: ToolbarItemId;
-  label: string;
-  visible: boolean;
-}
-
-const DEFAULT_TOOLBAR_ORDER: ToolbarItem[] = [
-  { id: "ils-status", label: "ILS Status", visible: true },
-  { id: "clock", label: "Clock", visible: true },
-  { id: "density", label: "Density", visible: true },
-  { id: "shortcuts", label: "Shortcuts", visible: true },
-  { id: "help", label: "Help", visible: true },
-  { id: "notifications", label: "Notifications", visible: true },
-  { id: "theme", label: "Theme", visible: true },
-  { id: "user", label: "User Menu", visible: true },
-];
 
 export function TopNav({
   onCommandOpen,
   currentLibrary = "Library",
+  userId,
   userName = "Staff User",
   userInitials = "SU",
+  userPhotoUrl,
+  userTitle = "Library Staff",
+  onUserPhotoUpdated,
   onLogout,
   orgs = [],
   evergreenOk = true,
@@ -91,9 +78,11 @@ export function TopNav({
   const [workstation, setWorkstation] = useState("");
   const [workstationOrgId, setWorkstationOrgId] = useState<number | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [customizeOpen, setCustomizeOpen] = useState(false);
-  const [toolbarItems, setToolbarItems] = useState<ToolbarItem[]>(DEFAULT_TOOLBAR_ORDER);
-  const [draggedItem, setDraggedItem] = useState<ToolbarItemId | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | undefined>(userPhotoUrl);
+  const [uploadPhotoFile, setUploadPhotoFile] = useState<File | null>(null);
+  const [uploadPhotoPreview, setUploadPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -104,77 +93,63 @@ export function TopNav({
       const rawOrg = localStorage.getItem(WORKSTATION_ORG_KEY);
       const parsed = rawOrg ? parseInt(rawOrg, 10) : NaN;
       setWorkstationOrgId(Number.isFinite(parsed) ? parsed : null);
-
-      // Load saved toolbar order
-      const savedOrder = localStorage.getItem(TOPBAR_ORDER_KEY);
-      if (savedOrder) {
-        try {
-          const parsed = JSON.parse(savedOrder) as ToolbarItem[];
-          // Merge with defaults to handle any new items
-          const mergedItems = DEFAULT_TOOLBAR_ORDER.map((defaultItem) => {
-            const saved = parsed.find((p) => p.id === defaultItem.id);
-            return saved || defaultItem;
-          });
-          // Sort by saved order
-          mergedItems.sort((a, b) => {
-            const aIndex = parsed.findIndex((p) => p.id === a.id);
-            const bIndex = parsed.findIndex((p) => p.id === b.id);
-            if (aIndex === -1) return 1;
-            if (bIndex === -1) return -1;
-            return aIndex - bIndex;
-          });
-          setToolbarItems(mergedItems);
-        } catch (_error) {
-          // Use defaults on _error
-        }
-      }
     }
 
     return () => clearInterval(timer);
   }, []);
 
-  const saveToolbarOrder = useCallback((items: ToolbarItem[]) => {
-    setToolbarItems(items);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(TOPBAR_ORDER_KEY, JSON.stringify(items));
+  useEffect(() => {
+    setProfilePhotoUrl(userPhotoUrl);
+  }, [userPhotoUrl]);
+
+  useEffect(() => {
+    if (!uploadPhotoFile) {
+      setUploadPhotoPreview(null);
+      return;
     }
-  }, []);
 
-  const handleDragStart = (id: ToolbarItemId) => {
-    setDraggedItem(id);
-  };
+    const url = URL.createObjectURL(uploadPhotoFile);
+    setUploadPhotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [uploadPhotoFile]);
 
-  const handleDragOver = (e: React.DragEvent, targetId: ToolbarItemId) => {
-    e.preventDefault();
-    if (!draggedItem || draggedItem === targetId) return;
-
-    const newItems = [...toolbarItems];
-    const draggedIndex = newItems.findIndex((i) => i.id === draggedItem);
-    const targetIndex = newItems.findIndex((i) => i.id === targetId);
-
-    if (draggedIndex !== -1 && targetIndex !== -1) {
-      const [removed] = newItems.splice(draggedIndex, 1);
-      newItems.splice(targetIndex, 0, removed);
-      setToolbarItems(newItems);
+  const handleUploadProfilePhoto = async () => {
+    if (!userId) {
+      toast.error("Missing user id; unable to upload photo.");
+      return;
     }
-  };
 
-  const handleDragEnd = () => {
-    if (draggedItem) {
-      saveToolbarOrder(toolbarItems);
+    if (!uploadPhotoFile) {
+      toast.error("Choose a photo to upload.");
+      return;
     }
-    setDraggedItem(null);
-  };
 
-  const toggleItemVisibility = (id: ToolbarItemId) => {
-    const newItems = toolbarItems.map((item) =>
-      item.id === id ? { ...item, visible: !item.visible } : item
-    );
-    saveToolbarOrder(newItems);
-  };
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", uploadPhotoFile);
+      formData.append("patronId", String(userId));
 
-  const resetToDefaults = () => {
-    saveToolbarOrder(DEFAULT_TOOLBAR_ORDER);
+      const res = await fetchWithAuth("/api/upload-patron-photo", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success || !data?.url) {
+        throw new Error(data?.error || "Failed to upload photo");
+      }
+
+      setProfilePhotoUrl(data.url);
+      onUserPhotoUpdated?.(data.url);
+      setUploadPhotoFile(null);
+      setProfileOpen(false);
+      toast.success("Profile photo updated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to upload photo");
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const handleSwitchLocation = async (orgId: number) => {
@@ -201,138 +176,6 @@ export function TopNav({
     ],
     []
   );
-
-  // Render individual toolbar items
-  const renderToolbarItem = (item: ToolbarItem) => {
-    if (!item.visible) return null;
-
-    switch (item.id) {
-      case "ils-status":
-        return (
-          <div key={item.id} className="hidden xl:flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-[11px] text-muted-foreground">
-            <span
-              className={
-                "inline-flex h-2 w-2 rounded-full " +
-                (evergreenOk ? "bg-emerald-500" : "bg-rose-500")
-              }
-            />
-            <span>{evergreenOk ? "ILS Online" : "ILS Offline"}</span>
-          </div>
-        );
-
-      case "clock":
-        return (
-          <div key={item.id} className="text-xs text-muted-foreground font-mono hidden lg:block whitespace-nowrap">
-            {mounted ? time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--"}
-          </div>
-        );
-
-      case "density":
-        return <DensityToggle key={item.id} />;
-
-      case "shortcuts":
-        return (
-          <Tooltip key={item.id}>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => setShortcutsOpen(true)}>
-                <Keyboard className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Keyboard shortcuts</TooltipContent>
-          </Tooltip>
-        );
-
-      case "help":
-        return (
-          <Tooltip key={item.id}>
-            <TooltipTrigger asChild>
-              <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-full">
-                <Link href="/staff/help" aria-label="Help & Documentation">
-                  <HelpCircle className="h-4 w-4" />
-                </Link>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Help & Documentation</TooltipContent>
-          </Tooltip>
-        );
-
-      case "notifications":
-        return (
-          <DropdownMenu key={item.id}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full relative" aria-label="Notifications">
-                    <Bell className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent>Notifications</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="end" className="w-72">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem disabled>No notifications yet</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-
-      case "theme":
-        return (
-          <Tooltip key={item.id}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-full"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              >
-                {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Toggle theme</TooltipContent>
-          </Tooltip>
-        );
-
-      case "user":
-        return (
-          <DropdownMenu key={item.id}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-9 px-2 gap-2 rounded-full">
-                <Avatar className="h-7 w-7 cursor-pointer hover:ring-2 hover:ring-primary transition-all" title="Click to change photo">
-                  <AvatarFallback className="bg-[hsl(var(--brand-1))] text-white text-xs">
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-xs font-medium hidden md:inline">{userName}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{userName}</p>
-                  <p className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors" title="Click to edit profile" onClick={() => setCustomizeOpen(true)}>Library Staff • Click to edit</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setCustomizeOpen(true)}>
-                <Settings className="mr-2 h-4 w-4" />
-                Customize Toolbar
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600" onClick={() => void onLogout?.()}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign out
-                <DropdownMenuShortcut>⌘Q</DropdownMenuShortcut>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-
-      default:
-        return null;
-    }
-  };
 
   return (
     <TooltipProvider>
@@ -410,7 +253,110 @@ export function TopNav({
 
           {/* Right: Actions - rendered in custom order */}
           <div className="flex items-center gap-2">
-            {toolbarItems.map(renderToolbarItem)}
+            <div className="hidden xl:flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-[11px] text-muted-foreground">
+              <span
+                className={
+                  "inline-flex h-2 w-2 rounded-full " +
+                  (evergreenOk ? "bg-emerald-500" : "bg-rose-500")
+                }
+              />
+              <span>{evergreenOk ? "ILS Online" : "ILS Offline"}</span>
+            </div>
+
+            <div className="text-xs text-muted-foreground font-mono hidden lg:block whitespace-nowrap">
+              {mounted ? time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--"}
+            </div>
+
+            <DensityToggle />
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => setShortcutsOpen(true)}>
+                  <Keyboard className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Keyboard shortcuts</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+                  <Link href="/staff/help" aria-label="Help & Documentation">
+                    <HelpCircle className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Help & Documentation</TooltipContent>
+            </Tooltip>
+
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full relative" aria-label="Notifications">
+                      <Bell className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Notifications</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled>No notifications yet</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                >
+                  {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Toggle theme</TooltipContent>
+            </Tooltip>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-9 px-2 gap-2 rounded-full">
+                  <Avatar className="h-7 w-7">
+                    {profilePhotoUrl ? (
+                      <AvatarImage src={profilePhotoUrl} alt={`${userName} photo`} />
+                    ) : null}
+                    <AvatarFallback className="bg-[hsl(var(--brand-1))] text-white text-xs">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs font-medium hidden md:inline">{userName}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">{userName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {userTitle}{workstation ? ` • WS ${workstation}` : ""}{currentLibrary ? ` • ${currentLibrary}` : ""}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setProfileOpen(true)}>
+                  <Camera className="mr-2 h-4 w-4" />
+                  Change profile photo
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-red-600" onClick={() => void onLogout?.()}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign out
+                  <DropdownMenuShortcut>⌘Q</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -446,56 +392,68 @@ export function TopNav({
         </DialogContent>
       </Dialog>
 
-      {/* Customize toolbar dialog */}
-      <Dialog open={customizeOpen} onOpenChange={setCustomizeOpen}>
-        <DialogContent className="sm:max-w-[480px]">
+      <Dialog
+        open={profileOpen}
+        onOpenChange={(nextOpen) => {
+          setProfileOpen(nextOpen);
+          if (!nextOpen) setUploadPhotoFile(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
-            <DialogTitle>Customize Toolbar</DialogTitle>
-            <DialogDescription>
-              Drag items to reorder. Click to show/hide.
-            </DialogDescription>
+            <DialogTitle>Profile</DialogTitle>
+            <DialogDescription>Update your profile photo.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2 py-4">
-            {toolbarItems.map((item) => (
-              <div
-                key={item.id}
-                draggable
-                onDragStart={() => handleDragStart(item.id)}
-                onDragOver={(e) => handleDragOver(e, item.id)}
-                onDragEnd={handleDragEnd}
-                className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-move
-                  ${draggedItem === item.id ? "opacity-50 border-primary" : "border-border hover:border-primary/50"}
-                  ${!item.visible ? "opacity-60" : ""}
-                `}
-              >
-                <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="flex-1 text-sm font-medium">{item.label}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={() => toggleItemVisibility(item.id)}
-                  title={item.visible ? "Hide from toolbar" : "Show in toolbar"}
-                >
-                  {item.visible ? (
-                    <Check className="h-4 w-4 text-emerald-600" />
-                  ) : (
-                    <X className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <span className="sr-only">{item.visible ? "Hide" : "Show"} {item.label}</span>
-                </Button>
+          <div className="flex flex-col gap-5">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                {profilePhotoUrl ? <AvatarImage src={profilePhotoUrl} alt={`${userName} photo`} /> : null}
+                <AvatarFallback className="bg-[hsl(var(--brand-1))] text-white">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <div className="font-medium truncate">{userName}</div>
+                <div className="text-sm text-muted-foreground truncate">{userTitle}</div>
               </div>
-            ))}
-          </div>
+            </div>
 
-          <div className="flex justify-between">
-            <Button variant="outline" size="sm" onClick={resetToDefaults}>
-              Reset to Defaults
-            </Button>
-            <Button size="sm" onClick={() => setCustomizeOpen(false)}>
-              Done
-            </Button>
+            <div className="space-y-2">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setUploadPhotoFile(e.target.files?.[0] || null)}
+              />
+              <div className="text-xs text-muted-foreground">
+                JPG/PNG/GIF/WEBP • Max 2MB
+              </div>
+            </div>
+
+            {uploadPhotoPreview && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={uploadPhotoPreview}
+                alt="Profile photo preview"
+                className="h-40 w-40 rounded-full object-cover border bg-muted self-center"
+              />
+            )}
+
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setProfileOpen(false)}
+                disabled={uploadingPhoto}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUploadProfilePhoto}
+                disabled={!uploadPhotoFile || uploadingPhoto || !userId}
+              >
+                {uploadingPhoto ? "Uploading..." : "Upload"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

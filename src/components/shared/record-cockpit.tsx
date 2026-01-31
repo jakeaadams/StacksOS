@@ -9,11 +9,11 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { PlaceHoldDialog } from "./place-hold-dialog";
 
 import {
   ArrowRight,
@@ -22,7 +22,6 @@ import {
   Building,
   Edit,
   ExternalLink,
-  FileText,
   ImageOff,
   Package,
 } from "lucide-react";
@@ -89,7 +88,7 @@ function CoverArt({ isbn, title }: { isbn?: string; title: string }) {
       <img
         src={coverUrl}
         alt={`Cover of ${title}`}
-        className={`w-24 h-32 object-cover rounded-md shadow-sm ${loaded ? "opacity-100" : "opacity-0"}`}
+        className={`w-24 h-32 object-contain bg-muted rounded-md shadow-sm ${loaded ? "opacity-100" : "opacity-0"}`}
         onError={() => setError(true)}
         onLoad={() => setLoaded(true)}
       />
@@ -112,6 +111,7 @@ export function RecordCockpit({ recordId, open, onOpenChange, onPlaceHold }: Rec
   const [holdings, setHoldings] = useState<HoldingInfo[]>([]);
   const [copies, setCopies] = useState<CopyInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [holdOpen, setHoldOpen] = useState(false);
 
   const loadRecordData = useCallback(async () => {
     if (!recordId) return;
@@ -170,7 +170,7 @@ export function RecordCockpit({ recordId, open, onOpenChange, onPlaceHold }: Rec
           );
         }
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to load record data");
     } finally {
       setIsLoading(false);
@@ -187,7 +187,8 @@ export function RecordCockpit({ recordId, open, onOpenChange, onPlaceHold }: Rec
   const availableCopies = holdings.length > 0 ? holdings.reduce((sum, h) => sum + h.availableCount, 0) : copies.filter(c => c.statusId === 0 || c.statusId === 7).length;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[500px] sm:w-[600px] sm:max-w-xl p-0">
         <ScrollArea className="h-full">
           <div className="p-6">
@@ -311,8 +312,15 @@ export function RecordCockpit({ recordId, open, onOpenChange, onPlaceHold }: Rec
                     size="sm"
                     variant="outline"
                     onClick={() => {
+                      if (onPlaceHold) {
+                        onOpenChange(false);
+                        onPlaceHold(record.id);
+                        return;
+                      }
+
+                      // Built-in hold workflow (no parent wiring required).
                       onOpenChange(false);
-                      onPlaceHold?.(record.id);
+                      setHoldOpen(true);
                     }}
                   >
                     <Bookmark className="h-4 w-4 mr-1" />
@@ -328,12 +336,6 @@ export function RecordCockpit({ recordId, open, onOpenChange, onPlaceHold }: Rec
                     <Link href={`/staff/cataloging/holdings?record=${record.id}`}>
                       <Package className="h-4 w-4 mr-1" />
                       Holdings
-                    </Link>
-                  </Button>
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href={`/staff/catalog/item-status?record=${record.id}`}>
-                      <FileText className="h-4 w-4 mr-1" />
-                      Item Status
                     </Link>
                   </Button>
                 </div>
@@ -372,6 +374,12 @@ export function RecordCockpit({ recordId, open, onOpenChange, onPlaceHold }: Rec
           </div>
         </ScrollArea>
       </SheetContent>
-    </Sheet>
+      </Sheet>
+      <PlaceHoldDialog
+        open={holdOpen}
+        onOpenChange={setHoldOpen}
+        record={record ? { id: record.id, title: record.title, author: record.author } : null}
+      />
+    </>
   );
 }

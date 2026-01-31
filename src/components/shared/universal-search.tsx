@@ -359,7 +359,7 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
                           alt="Decorative image"
                           width={40}
                           height={56}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                           unoptimized
                         />
                       </div>

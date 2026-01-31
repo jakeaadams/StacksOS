@@ -24,7 +24,7 @@ export function StaffLayout({ children }: StaffLayoutProps) {
   const [commandOpen, setCommandOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const router = useRouter();
-  const { user, orgs, isLoading, isAuthenticated, logout } = useAuth();
+  const { user, orgs, isLoading, isAuthenticated, logout, updateUser } = useAuth();
 
   // Single source of truth for backend connectivity indicators.
   const { data: pingData } = useApi<any>("/api/evergreen/ping", {
@@ -111,6 +111,7 @@ export function StaffLayout({ children }: StaffLayoutProps) {
         <TopNav
           onCommandOpen={() => setCommandOpen(true)}
           currentLibrary={user?.activeOrgName || user?.homeLibrary || "Library"}
+          userId={user?.id}
           userName={user?.displayName || "Staff User"}
           userInitials={
             user?.displayName
@@ -119,6 +120,9 @@ export function StaffLayout({ children }: StaffLayoutProps) {
               .join("")
               .toUpperCase() || "SU"
           }
+          userPhotoUrl={user?.photoUrl}
+          userTitle={user?.profileName || "Library Staff"}
+          onUserPhotoUpdated={(url) => updateUser({ photoUrl: url })}
           onLogout={logout}
           orgs={orgs}
           evergreenOk={evergreenOk}

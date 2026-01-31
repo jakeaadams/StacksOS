@@ -104,6 +104,19 @@ function formatDate(value?: string | null) {
   });
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function getStatusColor(statusId: number) {
   switch (statusId) {
     case 0: return "text-green-600 bg-green-50 border-green-200";
@@ -258,7 +271,7 @@ export default function ItemDetailPage() {
     {
       accessorKey: "checkoutDate",
       header: "Checked Out",
-      cell: ({ row }) => formatDate(row.original.checkoutDate),
+      cell: ({ row }) => formatDateTime(row.original.checkoutDate),
     },
     {
       accessorKey: "dueDate",
@@ -268,7 +281,7 @@ export default function ItemDetailPage() {
     {
       accessorKey: "checkinDate",
       header: "Returned",
-      cell: ({ row }) => row.original.checkinDate ? formatDate(row.original.checkinDate) : (
+      cell: ({ row }) => row.original.checkinDate ? formatDateTime(row.original.checkinDate) : (
         <Badge variant="outline" className="text-blue-600">Active</Badge>
       ),
     },

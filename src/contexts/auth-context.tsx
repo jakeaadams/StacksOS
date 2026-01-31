@@ -15,6 +15,8 @@ interface User {
   id: number;
   username: string;
   displayName: string;
+  photoUrl?: string;
+  profileName?: string;
   homeLibrary: string;
   homeLibraryId: number;
   activeOrgId: number;
@@ -30,6 +32,7 @@ interface AuthContextType {
   login: (username: string, password: string, workstation?: string) => Promise<boolean>;
   logout: () => Promise<void>;
   getOrgName: (orgId: number) => string;
+  updateUser: (patch: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -62,6 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [orgs, setOrgs] = useState<OrgUnit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
+  const updateUser = (patch: Partial<User>) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev));
+  };
 
   async function loadOrgs() {
     try {
@@ -114,6 +121,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           displayName: data.user.first_given_name
             ? `${data.user.first_given_name} ${data.user.family_name}`
             : "Staff User",
+          photoUrl: data.user.photo_url || data.user.photoUrl || undefined,
+          profileName: data.profileName || undefined,
           homeLibrary: homeOrg?.name || `Library ${homeOu}`,
           homeLibraryId: homeOu,
           activeOrgId,
@@ -159,6 +168,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           displayName: data.user?.first_given_name
             ? `${data.user.first_given_name} ${data.user.family_name}`
             : username,
+          photoUrl: data.user?.photo_url || data.user?.photoUrl || undefined,
+          profileName: data.profileName || undefined,
           homeLibrary: homeOrg?.name || `Library ${homeOu}`,
           homeLibraryId: homeOu,
           activeOrgId,
@@ -195,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         getOrgName,
+        updateUser,
       }}
     >
       {children}

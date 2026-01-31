@@ -14,6 +14,29 @@ import { hashPassword } from "@/lib/password";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { isCookieSecure } from "@/lib/csrf";
 
+async function resolveProfileName(authtoken: string, user: any): Promise<string | null> {
+  const raw = user?.profile ?? user?.profile_id ?? user?.profileId;
+  const profileId = typeof raw === "number" ? raw : parseInt(String(raw ?? ""), 10);
+  if (!Number.isFinite(profileId)) return null;
+
+  try {
+    const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.pgt", [
+      authtoken,
+      profileId,
+    ]);
+
+    const group = response?.payload?.[0];
+    const name = group?.name ?? group?.__p?.[1];
+    return typeof name === "string" && name.trim() ? name.trim() : null;
+  } catch (error) {
+    logger.warn(
+      { error: String(error), component: "auth", profileId },
+      "Failed to resolve staff profile name"
+    );
+    return null;
+  }
+}
+
 // POST - Login
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
@@ -155,12 +178,14 @@ export async function POST(req: NextRequest) {
           "open-ils.auth.session.retrieve",
           [authResult.payload.authtoken]
         );
+        const user = userResponse?.payload?.[0];
+        const profileName = await resolveProfileName(authResult.payload.authtoken, user);
 
         await logAuditEvent({
           action: "auth.login",
           status: "success",
           actor: {
-            id: userResponse?.payload?.[0]?.id,
+            id: user?.id,
             username,
           },
           ip,
@@ -171,8 +196,9 @@ export async function POST(req: NextRequest) {
         return successResponse(
           {
             authtoken: authResult.payload.authtoken,
-            user: userResponse?.payload?.[0],
+            user,
             needsWorkstation: true,
+            profileName,
           },
           `Workstation "${workstation}" is not registered. Please register a workstation.`
         );
@@ -194,12 +220,14 @@ export async function POST(req: NextRequest) {
         "open-ils.auth.session.retrieve",
         [authResult.payload.authtoken]
       );
+      const user = userResponse?.payload?.[0];
+      const profileName = await resolveProfileName(authResult.payload.authtoken, user);
 
       await logAuditEvent({
         action: "auth.login",
         status: "success",
         actor: {
-          id: userResponse?.payload?.[0]?.id,
+          id: user?.id,
           username,
         },
         ip,
@@ -210,8 +238,9 @@ export async function POST(req: NextRequest) {
 
       return successResponse({
         authtoken: authResult.payload.authtoken,
-        user: userResponse?.payload?.[0],
+        user,
         workstation: workstation || null,
+        profileName,
       });
     }
 
@@ -279,7 +308,8 @@ export async function GET(req: NextRequest) {
     const user = sessionResponse?.payload?.[0];
 
     if (user && !user.ilsevent) {
-      return successResponse({ authenticated: true, user });
+      const profileName = await resolveProfileName(authtoken, user);
+      return successResponse({ authenticated: true, user, profileName });
     }
 
     const cookieStore = await cookies();
