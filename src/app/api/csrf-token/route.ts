@@ -19,6 +19,10 @@ export async function GET(request: NextRequest) {
     ok: true,
     token,
   });
+
+  // Never cache CSRF responses (prevents token/cookie mismatches behind proxies/CDNs).
+  response.headers.set("Cache-Control", "no-store");
+  response.headers.set("Pragma", "no-cache");
   
   // Set/refresh CSRF cookie
   setCSRFCookie(response, token, request);

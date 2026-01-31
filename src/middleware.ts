@@ -12,6 +12,8 @@ import {
  * Add security headers to response
  */
 function addSecurityHeaders(request: NextRequest, response: NextResponse): NextResponse {
+  const pathname = request.nextUrl.pathname;
+
   // Content Security Policy - restrictive policy to prevent XSS
   response.headers.set(
     "Content-Security-Policy",
@@ -52,12 +54,34 @@ function addSecurityHeaders(request: NextRequest, response: NextResponse): NextR
     "camera=(), microphone=(), geolocation=(), payment=()"
   );
 
+  // Avoid serving stale HTML through external caches (common when self-hosting
+  // behind Cloudflare/nginx). Stale HTML can reference old hashed JS bundles,
+  // which can break login and other critical flows after deploys.
+  const accept = request.headers.get("accept") || "";
+  const isHtmlNav = request.method === "GET" && accept.includes("text/html");
+  const neverCache =
+    pathname.startsWith("/api/") ||
+    pathname === "/login" ||
+    pathname.startsWith("/staff") ||
+    pathname.startsWith("/self-checkout") ||
+    pathname.startsWith("/opac/login") ||
+    isHtmlNav;
+
+  if (neverCache) {
+    response.headers.set("Cache-Control", "no-store");
+  }
+
   return response;
 }
 
 export function middleware(request: NextRequest) {
   const { pathname } = new URL(request.url);
   const _method = request.method;
+
+  // Let the CSRF route handler own token issuance (prevents duplicate Set-Cookie).
+  if (pathname === "/api/csrf-token") {
+    return addSecurityHeaders(request, NextResponse.next());
+  }
 
   // Skip CSRF for:
   // 1. GET/HEAD/OPTIONS requests (safe methods)
@@ -66,7 +90,6 @@ export function middleware(request: NextRequest) {
   // 4. Next.js internal routes
   if (
     !requiresCSRFProtection(request.method) ||
-    pathname === "/api/csrf-token" ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/opac/session") // Read-only session check
   ) {
