@@ -34,7 +34,7 @@ function normalizeGoogleImageUrl(url: unknown): string | null {
 
 function upgradeGoogleImageZoom(url: string | null): string | null {
   if (!url) return null;
-  return url.replace(/([?&]zoom=)(\\d+)/, (_match, prefix: string) => `${prefix}2`);
+  return url.replace(/([?&]zoom=)(\d+)/, (_match, prefix: string) => `${prefix}2`);
 }
 
 async function fetchGoogleBook(isbn: string): Promise<GoogleBookData | null> {

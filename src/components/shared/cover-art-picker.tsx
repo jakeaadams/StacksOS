@@ -97,29 +97,44 @@ export function CoverArtPicker({
       // Google Books API
       if (cleanIsbn || title) {
         try {
-          const q = cleanIsbn ? `isbn:${cleanIsbn}` : `intitle:${title}${author ? ` inauthor:${author}` : ""}`;
-          const params = new URLSearchParams({
-            q,
-            maxResults: "8",
-          });
+          const googleQueryByTitle =
+            title?.trim()
+              ? `intitle:${title}${author?.trim() ? ` inauthor:${author}` : ""}`
+              : "";
 
-          const response = await fetch(`/api/google-books?${params.toString()}`);
-          const data = await response.json().catch(() => null);
+          const fetchGoogle = async (q: string) => {
+            const params = new URLSearchParams({ q, maxResults: "10" });
+            const response = await fetch(`/api/google-books?${params.toString()}`);
+            return response.json().catch(() => null);
+          };
 
-          if (data?.ok && Array.isArray(data.items)) {
-            data.items.forEach((item: any, idx: number) => {
-              const imageUrl = item.image || item.thumbnail;
-              const thumbnailUrl = item.thumbnail || item.image;
-              if (!imageUrl || !thumbnailUrl) return;
+          // Prefer ISBN lookup, but Google Books often lacks/normalizes ISBNs for
+          // specific editions. Fallback to title/author search when ISBN returns nothing.
+          const primaryQuery = cleanIsbn ? `isbn:${cleanIsbn}` : googleQueryByTitle;
+          const primary = primaryQuery ? await fetchGoogle(primaryQuery) : null;
+          const primaryItems = primary?.ok && Array.isArray(primary.items) ? primary.items : [];
 
-              options.push({
-                url: imageUrl,
-                source: item.title ? `Google Books — ${item.title}` : `Google Books ${idx + 1}`,
-                thumbnail: thumbnailUrl,
-                provider: "google",
-              });
+          const fallback =
+            cleanIsbn && primaryItems.length === 0 && googleQueryByTitle
+              ? await fetchGoogle(googleQueryByTitle)
+              : null;
+          const fallbackItems =
+            fallback?.ok && Array.isArray(fallback.items) ? fallback.items : [];
+
+          const allItems = [...primaryItems, ...fallbackItems];
+
+          allItems.forEach((item: any, idx: number) => {
+            const imageUrl = item.image || item.thumbnail;
+            const thumbnailUrl = item.thumbnail || item.image;
+            if (!imageUrl || !thumbnailUrl) return;
+
+            options.push({
+              url: imageUrl,
+              source: item.title ? `Google Books — ${item.title}` : `Google Books ${idx + 1}`,
+              thumbnail: thumbnailUrl,
+              provider: "google",
             });
-          }
+          });
         } catch (err) {
           clientLogger.error("Google Books API error:", err);
         }
@@ -391,7 +406,7 @@ function CoverThumbnail({
       <img
         src={cover.thumbnail}
         alt={cover.source}
-        className={`w-full h-full object-cover ${loaded ? "opacity-100" : "opacity-0"}`}
+        className={`w-full h-full object-contain bg-muted ${loaded ? "opacity-100" : "opacity-0"}`}
         onError={() => setError(true)}
         onLoad={() => setLoaded(true)}
       />

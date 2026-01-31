@@ -79,12 +79,14 @@ interface ItemDetail {
   activeDate?: string;
   alertMessage?: string;
   notes?: string;
+  historyError?: string;
 }
 
 interface CircHistory {
   id: number;
   patronId?: number;
   patronBarcode?: string;
+  patronName?: string;
   checkoutDate?: string;
   dueDate?: string;
   checkinDate?: string | null;
@@ -243,6 +245,17 @@ export default function ItemDetailPage() {
 
   const historyColumns: ColumnDef<CircHistory>[] = [
     {
+      id: "patron",
+      header: "Patron",
+      cell: ({ row }) => {
+        const label =
+          row.original.patronName ||
+          row.original.patronBarcode ||
+          (row.original.patronId ? `#${row.original.patronId}` : "—");
+        return <span className="text-sm font-mono">{label}</span>;
+      },
+    },
+    {
       accessorKey: "checkoutDate",
       header: "Checked Out",
       cell: ({ row }) => formatDate(row.original.checkoutDate),
@@ -291,36 +304,51 @@ export default function ItemDetailPage() {
   return (
     <ErrorBoundary onReset={() => router.refresh()}>
       <PageContainer>
+        {(() => {
+          const breadcrumbLabel =
+            item.title && item.title.length > 42 ? `${item.title.slice(0, 42)}…` : item.title || item.barcode;
+          const subtitleParts = [`Barcode ${item.barcode}`];
+          if (item.callNumber) subtitleParts.push(item.callNumber);
+          if (item.circLib) subtitleParts.push(item.circLib);
+          const subtitle = subtitleParts.join(" • ");
+
+          return (
         <PageHeader
-          title={`Item: ${item.barcode}`}
-        subtitle={item.title}
-        breadcrumbs={[
-          { label: "Catalog", href: "/staff/catalog" },
-          { label: "Item Status", href: "/staff/catalog/item-status" },
-          { label: item.barcode },
-        ]}
-        actions={[
-          {
-            label: isEditing ? "Cancel" : "Edit Item",
-            onClick: () => setIsEditing(!isEditing),
-            icon: isEditing ? X : Edit,
-            variant: isEditing ? "outline" : "default",
-          },
-          ...(isEditing ? [{
-            label: "Save Changes",
-            onClick: handleSave,
-            icon: Save,
-            disabled: isSaving,
-          }] : []),
-          {
-            label: "View Record",
-            onClick: () => item.recordId && router.push(`/staff/catalog/record/${item.recordId}`),
-            icon: BookOpen,
-            variant: "outline" as const,
-            disabled: !item.recordId,
-          },
-        ]}
-      />
+          title={item.title || `Item ${item.barcode}`}
+          subtitle={subtitle}
+          breadcrumbs={[
+            { label: "Catalog", href: "/staff/catalog" },
+            { label: "Item Status", href: "/staff/catalog/item-status" },
+            { label: breadcrumbLabel },
+          ]}
+          actions={[
+            {
+              label: isEditing ? "Cancel" : "Edit Item",
+              onClick: () => setIsEditing(!isEditing),
+              icon: isEditing ? X : Edit,
+              variant: isEditing ? "outline" : "default",
+            },
+            ...(isEditing
+              ? [
+                  {
+                    label: "Save Changes",
+                    onClick: handleSave,
+                    icon: Save,
+                    disabled: isSaving,
+                  },
+                ]
+              : []),
+            {
+              label: "View Record",
+              onClick: () => item.recordId && router.push(`/staff/catalog/record/${item.recordId}`),
+              icon: BookOpen,
+              variant: "outline" as const,
+              disabled: !item.recordId,
+            },
+          ]}
+        />
+          );
+        })()}
 
       <PageContent className="space-y-6">
         {/* Status Banner */}
@@ -528,7 +556,7 @@ export default function ItemDetailPage() {
                     <img
                       src={coverUrl}
                       alt={`Cover of ${item.title}`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain bg-muted"
                       onError={() => setCoverPreviewError(true)}
                     />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-medium">
@@ -577,9 +605,14 @@ export default function ItemDetailPage() {
               <History className="h-5 w-5" />
               Circulation History
             </CardTitle>
-            <CardDescription>Recent checkout activity for this item</CardDescription>
+            <CardDescription>From Evergreen (circulation history)</CardDescription>
           </CardHeader>
           <CardContent>
+            {item.historyError && (
+              <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                {item.historyError}
+              </div>
+            )}
             {history.length > 0 ? (
               <DataTable columns={historyColumns} data={history} />
             ) : (

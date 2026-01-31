@@ -99,7 +99,8 @@ function CoverImage({
   const [loaded, setLoaded] = useState(false);
 
   // Use custom cover if available, otherwise use OpenLibrary
-  const coverUrl = customCoverUrl || (isbn ? "https://covers.openlibrary.org/b/isbn/" + isbn + "-L.jpg" : null);
+  const cleanIsbn = isbn ? isbn.replace(/[^0-9X]/gi, "") : "";
+  const coverUrl = customCoverUrl || (cleanIsbn ? `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg` : null);
 
   if (!coverUrl || error) {
     return (
@@ -122,7 +123,7 @@ function CoverImage({
       <img
         src={coverUrl}
         alt={"Cover of " + title}
-        className={"w-48 h-64 object-cover rounded-lg shadow-md " + (loaded ? "opacity-100" : "opacity-0")}
+        className={"w-48 h-64 object-contain bg-muted rounded-lg shadow-md " + (loaded ? "opacity-100" : "opacity-0")}
         onError={() => setError(true)}
         onLoad={() => setLoaded(true)}
       />
@@ -385,10 +386,10 @@ export default function CatalogRecordPage() {
       <PageContainer>
         <PageHeader
           title={<InlineEdit value={record.title} onSave={handleTitleEdit} />}
-        subtitle={record.author ? "by " + record.author : undefined}
+        subtitle={`${record.author ? `by ${record.author} • ` : ""}Record #${record.id}`}
         breadcrumbs={[
           { label: "Catalog", href: "/staff/catalog" },
-          { label: "Record " + record.id },
+          { label: record.title && record.title.length > 42 ? `${record.title.slice(0, 42)}…` : (record.title || `Record ${record.id}`) },
         ]}
         actions={[
           {

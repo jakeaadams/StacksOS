@@ -15,10 +15,13 @@ test.describe("Item Detail", () => {
     const hasAny = (await firstBarcodeLink.count()) > 0;
     test.skip(!hasAny, `No item links found on /staff/catalog/record/${recordId}`);
 
+    const barcode = (await firstBarcodeLink.textContent())?.trim();
     await firstBarcodeLink.click();
     await page.waitForURL(/\/staff\/catalog\/item\//, { timeout: 15000 });
 
-    await expect(page.getByRole("heading", { name: /item:/i })).toBeVisible();
+    if (barcode) {
+      await expect(page.getByText(barcode).first()).toBeVisible();
+    }
     await expect(page.getByText(/barcode is required/i)).toHaveCount(0);
 
     // Cover picker should be available for bib-backed items.
@@ -30,4 +33,3 @@ test.describe("Item Detail", () => {
     }
   });
 });
-
