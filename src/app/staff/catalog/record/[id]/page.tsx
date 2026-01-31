@@ -14,13 +14,15 @@ import {
   DataTable,
   DataTableColumnHeader,
   EmptyState,
-  InlineEdit,
   ErrorBoundary,
 } from "@/components/shared";
 import { CoverArtPicker } from "@/components/shared/cover-art-picker";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
@@ -29,6 +31,7 @@ import {
   ArrowLeft,
   BookOpen,
   Edit,
+  PencilLine,
   Package,
   Bookmark,
   MapPin,
@@ -159,6 +162,9 @@ export default function CatalogRecordPage() {
   const [error, setError] = useState<string | null>(null);
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   const [customCoverUrl, setCustomCoverUrl] = useState<string | undefined>(undefined);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameTitle, setRenameTitle] = useState("");
+  const [renameSaving, setRenameSaving] = useState(false);
 
   const loadRecordData = useCallback(async () => {
     setIsLoading(true);
@@ -255,6 +261,12 @@ export default function CatalogRecordPage() {
   const totalCopies = holdings.length > 0 ? holdings.reduce((sum, h) => sum + h.totalCopies, 0) : copies.length;
   const availableCopies = holdings.length > 0 ? holdings.reduce((sum, h) => sum + h.availableCopies, 0) : copies.filter(c => c.statusId === 0 || c.statusId === 7).length;
 
+  useEffect(() => {
+    if (renameOpen && record?.title) {
+      setRenameTitle(record.title);
+    }
+  }, [renameOpen, record?.title]);
+
 	  const handleCoverSelected = async (url: string, source: string) => {
 	    setCustomCoverUrl(url);
 	    
@@ -278,7 +290,7 @@ export default function CatalogRecordPage() {
     }
   };
 
-	  const handleTitleEdit = async (newTitle: string) => {
+  const handleTitleEdit = async (newTitle: string) => {
 	    const response = await fetchWithAuth("/api/update-record-title", {
 	      method: "POST",
 	      headers: { "Content-Type": "application/json" },
@@ -299,6 +311,28 @@ export default function CatalogRecordPage() {
     // Update local state
     if (record) {
       setRecord({ ...record, title: newTitle });
+    }
+  };
+
+  const handleRenameSubmit = async () => {
+    const nextTitle = renameTitle.trim();
+    if (!nextTitle) {
+      toast.error("Title cannot be empty");
+      return;
+    }
+    if (record && nextTitle === record.title) {
+      setRenameOpen(false);
+      return;
+    }
+
+    setRenameSaving(true);
+    try {
+      await handleTitleEdit(nextTitle);
+      setRenameOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to rename title");
+    } finally {
+      setRenameSaving(false);
     }
   };
 
@@ -385,7 +419,7 @@ export default function CatalogRecordPage() {
     <ErrorBoundary onReset={() => router.refresh()}>
       <PageContainer>
         <PageHeader
-          title={<InlineEdit value={record.title} onSave={handleTitleEdit} />}
+          title={record.title}
         subtitle={`${record.author ? `by ${record.author} • ` : ""}Record #${record.id}`}
         breadcrumbs={[
           { label: "Catalog", href: "/staff/catalog" },
@@ -402,6 +436,12 @@ export default function CatalogRecordPage() {
             label: "Edit MARC",
             onClick: () => router.push("/staff/cataloging/marc-editor?id=" + record.id),
             icon: Edit,
+          },
+          {
+            label: "Rename Title",
+            onClick: () => setRenameOpen(true),
+            icon: PencilLine,
+            variant: "outline",
           },
           {
             label: "Holdings",
@@ -647,6 +687,35 @@ export default function CatalogRecordPage() {
         currentCoverUrl={customCoverUrl}
         onCoverSelected={handleCoverSelected}
       />
+
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Rename Title</DialogTitle>
+            <DialogDescription>
+              This changes the display title. For authoritative changes, update the MARC record.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="rename-title">Title</Label>
+            <Input
+              id="rename-title"
+              value={renameTitle}
+              onChange={(e) => setRenameTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleRenameSubmit()}
+              autoFocus
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setRenameOpen(false)} disabled={renameSaving}>
+              Cancel
+            </Button>
+            <Button onClick={handleRenameSubmit} disabled={renameSaving}>
+              Save Title
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       </PageContainer>
     </ErrorBoundary>
   );
