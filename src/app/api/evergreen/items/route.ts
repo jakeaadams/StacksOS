@@ -66,6 +66,12 @@ export async function GET(req: NextRequest) {
     const authtoken = await requireAuthToken();
     const searchParams = req.nextUrl.searchParams;
     const barcode = searchParams.get("barcode");
+    const idRaw =
+      searchParams.get("id") ||
+      searchParams.get("copy_id") ||
+      searchParams.get("copyId") ||
+      searchParams.get("copyID");
+    const copyId = idRaw ? parseInt(idRaw, 10) : NaN;
     const include = new Set(
       (searchParams.get("include") || "bib,circ")
         .split(",")
@@ -77,15 +83,21 @@ export async function GET(req: NextRequest) {
       10
     );
 
-    if (!barcode) {
-      return errorResponse("barcode is required", 400);
+    if (!barcode && !Number.isFinite(copyId)) {
+      return errorResponse("barcode or id is required", 400);
     }
 
-    const copyResponse = await callOpenSRF(
-      "open-ils.search",
-      "open-ils.search.asset.copy.find_by_barcode",
-      [barcode]
-    );
+    const copyResponse = barcode
+      ? await callOpenSRF(
+          "open-ils.search",
+          "open-ils.search.asset.copy.find_by_barcode",
+          [barcode]
+        )
+      : await callOpenSRF(
+          "open-ils.search",
+          "open-ils.search.asset.copy.retrieve",
+          [copyId]
+        );
 
     const copy = copyResponse?.payload?.[0];
     if (!copy || copy.ilsevent) {
