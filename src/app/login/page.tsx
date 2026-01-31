@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -66,7 +65,6 @@ export default function LoginPage() {
   const [orgs, setOrgs] = useState<Array<OrgUnit & { depth: number }>>([]);
   const [orgOverride, setOrgOverride] = useState("");
   const [deviceId, setDeviceId] = useState("");
-  const router = useRouter();
 
   useEffect(() => {
     setDeviceId(getOrCreateDeviceId());
@@ -182,6 +180,12 @@ export default function LoginPage() {
     setAutoSetupMessage("");
 
     try {
+      const requestedNext =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("next") || ""
+          : "";
+      const nextPath = requestedNext.startsWith("/") ? requestedNext : "/staff";
+
       const storedWorkstation = getStoredWorkstation();
       const loginResult = await attemptLogin(storedWorkstation || undefined, {
         username: cleanUsername,
@@ -198,7 +202,8 @@ export default function LoginPage() {
           storedWorkstation,
           parseInt(localStorage.getItem(WORKSTATION_ORG_KEY) || "", 10)
         );
-        router.push("/staff");
+        // Full reload ensures the AuthProvider session check runs with the new cookie.
+        window.location.assign(nextPath);
         return;
       }
 
@@ -225,7 +230,7 @@ export default function LoginPage() {
       }
 
       saveWorkstation(workstationName, orgId);
-      router.push("/staff");
+      window.location.assign(nextPath);
     } catch (_error) {
       setError("Connection failed. Please try again.");
     } finally {
