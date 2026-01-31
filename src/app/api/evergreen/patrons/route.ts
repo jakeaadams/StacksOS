@@ -98,37 +98,99 @@ export async function GET(req: NextRequest) {
         });
       }
     } else {
-      // Some Evergreen installs build invalid SQL when sort strings contain spaces
-      // (e.g. "family_name ASC" arriving as "family_name+ASC"). Passing an empty
-      // sort list delegates ordering to Evergreen defaults and avoids that bug.
-      const sort: string[] = [];
-
       const includeInactive = searchParams.get("inactive") === "true";
 
-      let search: Record<string, any>;
-      if (searchType === "name") {
-        search = { name: { value: query } };
-      } else if (searchType === "email") {
-        search = { email: { value: query, group: 0 } };
-      } else if (searchType === "phone") {
-        // Evergreen's staff UI uses a dedicated "phone" key grouped with other contact fields.
-        search = { phone: { value: query, group: 2 } };
-      } else {
-        search = { name: { value: query } };
+      // Primary: use Evergreen's advanced search (preferred), but some Evergreen installs
+      // are buggy here. If it errors, fallback to a pcrud search on actor.usr.
+      try {
+        // Some Evergreen installs build invalid SQL when sort strings contain spaces
+        // (e.g. "family_name ASC" arriving as "family_name+ASC"). Passing an empty
+        // sort list delegates ordering to Evergreen defaults and avoids that bug.
+        const sort: string[] = [];
+
+        let search: Record<string, any>;
+        if (searchType === "name") {
+          search = { name: { value: query } };
+        } else if (searchType === "email") {
+          search = { email: { value: query, group: 0 } };
+        } else if (searchType === "phone") {
+          // Evergreen's staff UI uses a dedicated "phone" key grouped with other contact fields.
+          search = { phone: { value: query, group: 2 } };
+        } else {
+          search = { name: { value: query } };
+        }
+
+        const searchResponse = await callOpenSRF(
+          "open-ils.actor",
+          "open-ils.actor.patron.search.advanced.fleshed",
+          [authtoken, search, limit, sort, includeInactive, searchOu, fleshFields, offset]
+        );
+
+        const results = Array.isArray(searchResponse?.payload) ? searchResponse.payload : [];
+        const patrons = results
+          .filter((p: any) => p && !p.ilsevent)
+          .map(formatPatron);
+
+        return successResponse({ count: patrons.length, patrons });
+      } catch (err) {
+        logger.warn(
+          { requestId: getRequestMeta(req).requestId, route: "api.evergreen.patrons", error: String(err) },
+          "Advanced patron search failed; falling back to pcrud actor.usr search"
+        );
+
+        // Fallback: pcrud search on actor.usr (au), fleshed for card/home_ou/profile.
+        const q = query.trim();
+        const parts = q.split(/\s+/).filter(Boolean);
+        const qOr = (v: string) => ({ "~*": v });
+
+        const orConditions: any[] = [
+          { usrname: qOr(q) },
+          { first_given_name: qOr(q) },
+          { family_name: qOr(q) },
+          { email: qOr(q) },
+          { day_phone: qOr(q) },
+          { other_phone: qOr(q) },
+        ];
+
+        // If user typed multiple tokens (e.g. "Jake Adams"), also search each token.
+        for (const part of parts) {
+          orConditions.push({ usrname: qOr(part) });
+          orConditions.push({ first_given_name: qOr(part) });
+          orConditions.push({ family_name: qOr(part) });
+        }
+
+        const baseFilter: any = {
+          deleted: "f",
+          "-or": orConditions,
+        };
+
+        if (!includeInactive) {
+          baseFilter.active = "t";
+        }
+
+        const pcrudResponse = await callOpenSRF(
+          "open-ils.pcrud",
+          "open-ils.pcrud.search.au.atomic",
+          [
+            authtoken,
+            baseFilter,
+            {
+              flesh: 1,
+              flesh_fields: { au: ["card", "home_ou", "profile"] },
+              limit,
+              offset,
+              order_by: { au: "family_name" },
+            },
+          ]
+        );
+
+        const results = Array.isArray(pcrudResponse?.payload?.[0]) ? pcrudResponse.payload[0] : [];
+        const patrons = results
+          .filter((p: any) => p && !p.ilsevent)
+          .map((p: any) => normalizePatron(p));
+
+        return successResponse({ count: patrons.length, patrons });
       }
-
-      const searchResponse = await callOpenSRF(
-        "open-ils.actor",
-        "open-ils.actor.patron.search.advanced.fleshed",
-        [authtoken, search, limit, sort, includeInactive, searchOu, fleshFields, offset]
-      );
-
-      const results = Array.isArray(searchResponse?.payload) ? searchResponse.payload : [];
-      const patrons = results
-        .filter((p: any) => p && !p.ilsevent)
-        .map(formatPatron);
-
-      return successResponse({ count: patrons.length, patrons });
     }
 
     return successResponse({ count: 0, patrons: [] });

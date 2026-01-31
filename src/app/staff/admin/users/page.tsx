@@ -38,9 +38,26 @@ export default function UserManagementPage() {
   const loadStaffUsers = useCallback(async () => {
     setIsLoading(true);
     try {
-      const query = searchQuery.trim() || user?.displayName?.trim() || user?.username?.trim() || "";
+      const query = searchQuery.trim();
+
+      // Default view: show the currently logged-in staff account so this page never looks "empty"
+      // and doesn't rely on Evergreen's name-search behavior.
       if (!query) {
-        setStaffUsers([]);
+        if (user) {
+          setStaffUsers([
+            {
+              id: user.id,
+              username: user.username,
+              displayName: user.displayName,
+              barcode: "—",
+              homeLibrary: user.homeLibrary,
+              profile: user.profileName || "Staff",
+              active: true,
+            },
+          ]);
+        } else {
+          setStaffUsers([]);
+        }
         return;
       }
 
@@ -204,7 +221,7 @@ export default function UserManagementPage() {
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base">Search Users</CardTitle>
-            <CardDescription>Search for users by name.</CardDescription>
+            <CardDescription>Type a name to search Evergreen. Leave blank to show your current session user.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSearch} className="flex gap-2 mb-4">
