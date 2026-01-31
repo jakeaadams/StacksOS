@@ -172,6 +172,23 @@ export async function GET(req: NextRequest) {
           billingTotal: circ.billing_total,
           paymentTotal: circ.payment_total,
         }));
+
+        // Defensive: some Evergreen installs return duplicated entries for this call
+        // (or proxies can duplicate payload elements). De-dupe by a stable key so the
+        // UI doesn't look "fake" when it isn't.
+        const seen = new Set<string>();
+        history = history.filter((h: any) => {
+          const key = [
+            h?.id ?? "",
+            h?.patronId ?? "",
+            h?.checkoutDate ?? "",
+            h?.dueDate ?? "",
+            h?.checkinDate ?? "",
+          ].join("|");
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
       } else {
         history = [];
       }

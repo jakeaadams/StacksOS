@@ -258,6 +258,11 @@ export default function ItemDetailPage() {
 
   const historyColumns: ColumnDef<CircHistory>[] = [
     {
+      accessorKey: "id",
+      header: "Circ",
+      cell: ({ row }) => <span className="text-xs font-mono">{row.original.id}</span>,
+    },
+    {
       id: "patron",
       header: "Patron",
       cell: ({ row }) => {

@@ -94,6 +94,11 @@ export default function ItemStatusPage() {
   const historyColumns = useMemo<ColumnDef<ItemHistory>[]>(
     () => [
       {
+        accessorKey: "id",
+        header: "Circ",
+        cell: ({ row }) => <span className="text-xs font-mono">{row.original.id}</span>,
+      },
+      {
         accessorKey: "patronId",
         header: "Patron",
         cell: ({ row }) => row.original.patronBarcode || row.original.patronId ? <span className="font-mono text-xs">{row.original.patronBarcode || 'ID ' + row.original.patronId}</span> : "—",
