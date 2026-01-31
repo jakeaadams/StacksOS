@@ -1,6 +1,6 @@
 "use client";
-import { logger } from "@/lib/logger";
 import { fetchWithAuth } from "@/lib/client-fetch";
+import { clientLogger } from "@/lib/client-logger";
 
 import * as React from "react";
 import { useState, useEffect } from "react";
@@ -58,6 +58,8 @@ export function CoverArtPicker({
     const options: CoverOption[] = [];
 
     try {
+      const cleanIsbn = isbn ? isbn.replace(/[^0-9X]/gi, "") : "";
+
       // Add current cover if exists
       if (currentCoverUrl) {
         options.push({
@@ -69,18 +71,18 @@ export function CoverArtPicker({
       }
 
       // OpenLibrary covers (multiple sizes/editions)
-      if (isbn) {
+      if (cleanIsbn) {
         // Try ISBN-13
         options.push({
-          url: `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`,
+          url: `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`,
           source: "OpenLibrary (ISBN)",
-          thumbnail: `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`,
+          thumbnail: `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg`,
           provider: "openlibrary",
         });
 
         // Try ISBN-10 if applicable (convert)
-        if (isbn.length === 13 && isbn.startsWith("978")) {
-          const isbn10 = convertToISBN10(isbn);
+        if (cleanIsbn.length === 13 && cleanIsbn.startsWith("978")) {
+          const isbn10 = convertToISBN10(cleanIsbn);
           if (isbn10) {
             options.push({
               url: `https://covers.openlibrary.org/b/isbn/${isbn10}-L.jpg`,
@@ -93,32 +95,33 @@ export function CoverArtPicker({
       }
 
       // Google Books API
-      if (isbn || title) {
+      if (cleanIsbn || title) {
         try {
-          const query = isbn ? `isbn:${isbn}` : `intitle:${encodeURIComponent(title)}${author ? `+inauthor:${encodeURIComponent(author)}` : ""}`;
-          const response = await fetch(
-            `https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=5`
-          );
-          const data = await response.json();
+          const q = cleanIsbn ? `isbn:${cleanIsbn}` : `intitle:${title}${author ? ` inauthor:${author}` : ""}`;
+          const params = new URLSearchParams({
+            q,
+            maxResults: "8",
+          });
 
-          if (data.items) {
+          const response = await fetch(`/api/google-books?${params.toString()}`);
+          const data = await response.json().catch(() => null);
+
+          if (data?.ok && Array.isArray(data.items)) {
             data.items.forEach((item: any, idx: number) => {
-              if (item.volumeInfo?.imageLinks) {
-                const imageUrl = item.volumeInfo.imageLinks.thumbnail?.replace("http:", "https:") ||
-                               item.volumeInfo.imageLinks.smallThumbnail?.replace("http:", "https:");
-                if (imageUrl) {
-                  options.push({
-                    url: imageUrl.replace("&zoom=1", "&zoom=2"), // Higher res
-                    source: `Google Books ${idx + 1}`,
-                    thumbnail: imageUrl,
-                    provider: "google",
-                  });
-                }
-              }
+              const imageUrl = item.image || item.thumbnail;
+              const thumbnailUrl = item.thumbnail || item.image;
+              if (!imageUrl || !thumbnailUrl) return;
+
+              options.push({
+                url: imageUrl,
+                source: item.title ? `Google Books — ${item.title}` : `Google Books ${idx + 1}`,
+                thumbnail: thumbnailUrl,
+                provider: "google",
+              });
             });
           }
         } catch (err) {
-          logger.error({ error: String(err) }, "Google Books API error");
+          clientLogger.error("Google Books API error:", err);
         }
       }
 
@@ -130,7 +133,7 @@ export function CoverArtPicker({
 
       setCovers(uniqueCovers);
     } catch (err) {
-      logger.error({ error: String(err) }, "Error fetching covers");
+      clientLogger.error("Error fetching covers:", err);
       toast.error("Failed to fetch cover options");
     } finally {
       setLoading(false);
@@ -226,7 +229,7 @@ export function CoverArtPicker({
       onCoverSelected(data.url, "Uploaded File");
       onOpenChange(false);
     } catch (error) {
-      logger.error({ error: String(error) }, "Upload error");
+      clientLogger.error("Upload error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to upload cover");
     } finally {
       setLoading(false);

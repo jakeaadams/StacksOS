@@ -1,6 +1,7 @@
 "use client";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
+import { clientLogger } from "@/lib/client-logger";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -14,6 +15,7 @@ import {
   DataTable,
   ErrorBoundary,
 } from "@/components/shared";
+import { CoverArtPicker } from "@/components/shared/cover-art-picker";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +47,7 @@ import {
   AlertTriangle,
   CheckCircle,
   History,
+  ImageOff,
 } from "lucide-react";
 
 interface ItemDetail {
@@ -122,6 +125,9 @@ export default function ItemDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+  const [customCoverUrl, setCustomCoverUrl] = useState<string | undefined>(undefined);
+  const [coverPreviewError, setCoverPreviewError] = useState(false);
 
   // Editable fields
   const [editBarcode, setEditBarcode] = useState("");
@@ -148,6 +154,24 @@ export default function ItemDetailPage() {
         setEditCirculate(data.item.circulate);
         setEditOpacVisible(data.item.opacVisible !== false);
         setEditAlertMessage(data.item.alertMessage || "");
+
+        if (data.item.recordId) {
+          try {
+            const coverRes = await fetch(`/api/save-cover?recordId=${data.item.recordId}`);
+            if (coverRes.ok) {
+              const coverData = await coverRes.json();
+              if (coverData?.success && coverData.coverUrl) {
+                setCustomCoverUrl(coverData.coverUrl);
+              } else {
+                setCustomCoverUrl(undefined);
+              }
+            }
+          } catch (err) {
+            clientLogger.warn("Failed to load custom cover:", err);
+          }
+        } else {
+          setCustomCoverUrl(undefined);
+        }
       } else {
         setError(data.error || "Item not found");
       }
@@ -161,6 +185,30 @@ export default function ItemDetailPage() {
   useEffect(() => {
     loadItem();
   }, [loadItem]);
+
+  useEffect(() => {
+    setCoverPreviewError(false);
+  }, [customCoverUrl, item?.isbn, item?.recordId]);
+
+  const handleCoverSelected = async (url: string, source: string) => {
+    if (!item?.recordId) return;
+    setCustomCoverUrl(url);
+
+    try {
+      const response = await fetchWithAuth("/api/save-cover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recordId: item.recordId, coverUrl: url, source }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save cover");
+      }
+    } catch (err) {
+      clientLogger.error("Error saving cover:", err);
+      toast.error("Cover updated locally, but failed to save to server");
+    }
+  };
 
   const handleSave = async () => {
     if (!item) return;
@@ -453,8 +501,46 @@ export default function ItemDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-start gap-4">
-              <div className="flex-1">
+            <div className="flex flex-col md:flex-row items-start gap-6">
+              {(() => {
+                const cleanIsbn = item.isbn ? item.isbn.replace(/[^0-9X]/gi, "") : "";
+                const coverUrl =
+                  !coverPreviewError &&
+                  (customCoverUrl ||
+                    (cleanIsbn ? `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg` : ""));
+
+                return (
+              <button
+                type="button"
+                className="group relative w-32 h-48 rounded-lg overflow-hidden border bg-muted flex items-center justify-center"
+                onClick={() => item.recordId && setCoverPickerOpen(true)}
+                disabled={!item.recordId}
+                title={item.recordId ? "Click to change cover art" : "No bib record attached"}
+              >
+                {!coverUrl ? (
+                  <div className="text-center text-muted-foreground">
+                    <ImageOff className="h-10 w-10 mx-auto mb-2" />
+                    <span className="text-xs">No cover</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={coverUrl}
+                      alt={`Cover of ${item.title}`}
+                      className="w-full h-full object-cover"
+                      onError={() => setCoverPreviewError(true)}
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-medium">
+                      Change cover
+                    </div>
+                  </>
+                )}
+              </button>
+                );
+              })()}
+
+              <div className="flex-1 min-w-0">
                 <h3 className="text-lg font-semibold">{item.title}</h3>
                 {item.author && <p className="text-muted-foreground">{item.author}</p>}
                 {item.isbn && (
@@ -462,15 +548,24 @@ export default function ItemDetailPage() {
                     ISBN: <span className="font-mono">{item.isbn}</span>
                   </p>
                 )}
+
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {item.recordId && (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/staff/catalog/record/${item.recordId}`}>
+                        <BookOpen className="h-4 w-4 mr-1" />
+                        Full Record
+                      </Link>
+                    </Button>
+                  )}
+                  {item.recordId && (
+                    <Button variant="outline" size="sm" onClick={() => setCoverPickerOpen(true)}>
+                      <Edit className="h-4 w-4 mr-1" />
+                      Change Cover
+                    </Button>
+                  )}
+                </div>
               </div>
-              {item.recordId && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/staff/catalog/record/${item.recordId}`}>
-                    <BookOpen className="h-4 w-4 mr-1" />
-                    Full Record
-                  </Link>
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -496,6 +591,19 @@ export default function ItemDetailPage() {
         </Card>
       </PageContent>
       </PageContainer>
+
+      {item.recordId && (
+        <CoverArtPicker
+          open={coverPickerOpen}
+          onOpenChange={setCoverPickerOpen}
+          isbn={item.isbn}
+          title={item.title}
+          author={item.author}
+          recordId={item.recordId}
+          currentCoverUrl={customCoverUrl}
+          onCoverSelected={handleCoverSelected}
+        />
+      )}
     </ErrorBoundary>
   );
 }

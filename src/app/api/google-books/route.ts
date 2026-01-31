@@ -16,6 +16,27 @@ export interface GoogleBookData {
   previewLink: string | null;
 }
 
+export interface GoogleBooksSearchItem {
+  id: string;
+  title: string | null;
+  authors: string[];
+  publishedDate: string | null;
+  thumbnail: string | null;
+  image: string | null;
+  previewLink: string | null;
+  infoLink: string | null;
+}
+
+function normalizeGoogleImageUrl(url: unknown): string | null {
+  if (typeof url !== "string" || !url.trim()) return null;
+  return url.replace(/^http:/, "https:");
+}
+
+function upgradeGoogleImageZoom(url: string | null): string | null {
+  if (!url) return null;
+  return url.replace(/([?&]zoom=)(\\d+)/, (_match, prefix: string) => `${prefix}2`);
+}
+
 async function fetchGoogleBook(isbn: string): Promise<GoogleBookData | null> {
   try {
     const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`;
@@ -48,8 +69,58 @@ async function fetchGoogleBook(isbn: string): Promise<GoogleBookData | null> {
   }
 }
 
+async function searchGoogleBooks(query: string, maxResults: number, startIndex: number): Promise<{
+  totalItems: number;
+  items: GoogleBooksSearchItem[];
+}> {
+  const safeMaxResults = Math.max(1, Math.min(maxResults || 8, 12));
+  const safeStartIndex = Math.max(0, Math.min(startIndex || 0, 200));
+  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=${safeMaxResults}&startIndex=${safeStartIndex}`;
+
+  const res = await fetch(url, {
+    next: { revalidate: 86400 }, // Cache for 24 hours
+  });
+
+  if (!res.ok) {
+    throw new Error(`Google Books HTTP error: ${res.status} ${res.statusText}`);
+  }
+
+  const data = await res.json();
+  const totalItems = typeof data?.totalItems === "number" ? data.totalItems : 0;
+  const rawItems = Array.isArray(data?.items) ? data.items : [];
+
+  const items: GoogleBooksSearchItem[] = rawItems
+    .map((book: any) => {
+      const volumeInfo = book?.volumeInfo || {};
+      const imageLinks = volumeInfo?.imageLinks || {};
+
+      const thumbnail =
+        normalizeGoogleImageUrl(imageLinks.smallThumbnail) ||
+        normalizeGoogleImageUrl(imageLinks.thumbnail);
+
+      const image =
+        upgradeGoogleImageZoom(normalizeGoogleImageUrl(imageLinks.thumbnail)) ||
+        upgradeGoogleImageZoom(normalizeGoogleImageUrl(imageLinks.smallThumbnail));
+
+      return {
+        id: typeof book?.id === "string" ? book.id : "",
+        title: typeof volumeInfo?.title === "string" ? volumeInfo.title : null,
+        authors: Array.isArray(volumeInfo?.authors) ? volumeInfo.authors.filter(Boolean) : [],
+        publishedDate: typeof volumeInfo?.publishedDate === "string" ? volumeInfo.publishedDate : null,
+        thumbnail,
+        image,
+        previewLink: typeof volumeInfo?.previewLink === "string" ? volumeInfo.previewLink : null,
+        infoLink: typeof volumeInfo?.infoLink === "string" ? volumeInfo.infoLink : null,
+      };
+    })
+    .filter((item: GoogleBooksSearchItem) => item.thumbnail || item.image);
+
+  return { totalItems, items };
+}
+
 // GET /api/google-books?isbn=9780123456789
 // GET /api/google-books?isbns=9780123456789,9780987654321 (batch)
+// GET /api/google-books?q=intitle:...&maxResults=8&startIndex=0 (search)
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   
@@ -80,6 +151,23 @@ export async function GET(request: NextRequest) {
     );
     
     return NextResponse.json(results);
+  }
+
+  const q = searchParams.get("q");
+  if (q) {
+    try {
+      const maxResults = parseInt(searchParams.get("maxResults") || "8", 10);
+      const startIndex = parseInt(searchParams.get("startIndex") || "0", 10);
+
+      const result = await searchGoogleBooks(q, maxResults, startIndex);
+      return NextResponse.json({ ok: true, query: q, ...result });
+    } catch (error) {
+      logger.error({ error: String(error), query: q }, "Error searching Google Books");
+      return NextResponse.json(
+        { ok: false, error: "Failed to search Google Books" },
+        { status: 502 }
+      );
+    }
   }
   
   return NextResponse.json(
