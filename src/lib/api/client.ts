@@ -36,6 +36,11 @@ export async function callOpenSRF<T = any>(
   for (const param of params) {
     body.append("param", JSON.stringify(param));
   }
+  // URLSearchParams encodes spaces as "+", but the Evergreen OpenSRF gateway
+  // does not consistently decode "+" back to spaces inside param payloads.
+  // This breaks queries like order_by: { auact: "event_time DESC" } by turning
+  // it into "event_time+DESC" on the server side. Force %20 encoding instead.
+  const bodyString = body.toString().replaceAll("+", "%20");
 
   const timeoutMsRaw = process.env.STACKSOS_EVERGREEN_TIMEOUT_MS;
   const timeoutMs = Number.isFinite(Number(timeoutMsRaw)) ? Number(timeoutMsRaw) : 15000;
@@ -51,7 +56,7 @@ export async function callOpenSRF<T = any>(
         Accept: "application/json",
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body,
+      body: bodyString,
       cache: "no-store",
       signal: controller.signal,
     });
