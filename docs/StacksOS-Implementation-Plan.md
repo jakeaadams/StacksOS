@@ -16,6 +16,40 @@ Recently shipped (2026-02-01):
 Key credibility rule (non-negotiable):
 - No demo/fake data in staff workflows. If a screen is empty, it must be empty because Evergreen is empty or misconfigured — and we should show that clearly.
 
+## Hosting + SaaS architecture (what to do first)
+
+StacksOS is a stateless app tier. Evergreen is a stateful ILS tier (Postgres + OpenSRF + XMPP + Apache). For SaaS, you want:
+- Evergreen kept **private** (east/west only), with StacksOS as the only public ingress.
+- StacksOS and Evergreen **co-located** (same region, ideally same VPC) to keep scan-first staff workflows fast/reliable.
+
+### Vercel (StacksOS) + DigitalOcean (Evergreen)
+This can work, but it’s not the default for staff-heavy deployments.
+
+Pros:
+- Great Next.js deploy ergonomics (previews/rollbacks) and edge/CDN for public pages.
+- Easy horizontal scaling of the app tier.
+
+Cons (important):
+- Adds internet RTT on every staff action: browser → Vercel → Evergreen → Vercel → browser.
+- Private Evergreen becomes harder: you either (a) expose Evergreen publicly (bad), or (b) build VPN/tunnel/allowlist plumbing (ops-heavy).
+- Distributed debugging/observability across providers.
+
+### DigitalOcean (StacksOS) + DigitalOcean (Evergreen) in same region/VPC
+Recommended for “real circulation desk” performance and for SaaS security posture.
+
+Pros:
+- Lowest latency and simplest private networking.
+- Smaller public attack surface (only StacksOS behind WAF/LB).
+- Easier incident response (one provider, one VPC).
+
+Cons:
+- You own more ops (deploys, scaling, monitoring) unless you use DO App Platform/K8s.
+
+### Practical phased recommendation
+1) Early SaaS (first pilots): single-tenant per library, StacksOS + Evergreen in same DO region/VPC (even same droplet is acceptable initially).
+2) Growth: separate droplets (or k8s namespaces) per tenant; centralize logging/metrics; move uploads to object storage.
+3) Maturity: automated tenant provisioning, blue/green upgrades, per-tenant secrets/keys, and stronger isolation.
+
 ## Execution order (what to do next)
 
 ### Phase 0 — Stabilize + remove “fake” (P0 credibility)
@@ -118,4 +152,3 @@ Before claiming “world-class” for any feature:
 - Audit log entries for sensitive actions
 - Performance: scan-first workflows remain fast
 - Feature flag exists for risky integrations (AI, external metadata sources)
-

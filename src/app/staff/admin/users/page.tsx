@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   PageContainer,
   PageHeader,
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/auth-context";
 import { fetchWithAuth } from "@/lib/client-fetch";
-import { Users, Shield, UserPlus, Search, RefreshCw } from "lucide-react";
+import { Users, Shield, Search, RefreshCw } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 
@@ -30,39 +30,46 @@ interface StaffUser {
 }
 
 export default function UserManagementPage() {
-  const { user, orgs } = useAuth();
+  const { user, orgs, isLoading: authLoading } = useAuth();
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
+  const [lastSearchedQuery, setLastSearchedQuery] = useState<string>("");
 
-  const loadStaffUsers = useCallback(async () => {
+  const sessionUser = useMemo<StaffUser | null>(() => {
+    if (!user) return null;
+    return {
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      barcode: "—",
+      homeLibrary: user.homeLibrary,
+      profile: user.profileName || "Staff",
+      active: true,
+    };
+  }, [user]);
+
+  const loadStaffUsers = useCallback(async (query: string) => {
+    const trimmed = query.trim();
+
+    // Match the "Search Patrons" UX: no "0 results" until a search is performed.
+    if (!trimmed) {
+      setHasSearched(false);
+      setLastSearchedQuery("");
+      setStaffUsers([]);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const query = searchQuery.trim();
-
-      // Default view: show the currently logged-in staff account so this page never looks "empty"
-      // and doesn't rely on Evergreen's name-search behavior.
-      if (!query) {
-        if (user) {
-          setStaffUsers([
-            {
-              id: user.id,
-              username: user.username,
-              displayName: user.displayName,
-              barcode: "—",
-              homeLibrary: user.homeLibrary,
-              profile: user.profileName || "Staff",
-              active: true,
-            },
-          ]);
-        } else {
-          setStaffUsers([]);
-        }
-        return;
-      }
+      setHasSearched(true);
+      setLastSearchedQuery(trimmed);
 
       // Search for users - in production this would filter by staff profile
-      const response = await fetchWithAuth(`/api/evergreen/patrons?q=${encodeURIComponent(query)}&type=name&limit=50`);
+      const response = await fetchWithAuth(
+        `/api/evergreen/patrons?q=${encodeURIComponent(trimmed)}&type=name&limit=50`
+      );
       const data = await response.json();
 
       if (!response.ok || !data.ok) {
@@ -89,11 +96,7 @@ export default function UserManagementPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [orgs, searchQuery, user]);
-
-  useEffect(() => {
-    loadStaffUsers();
-  }, [loadStaffUsers]);
+  }, [orgs]);
 
   const columns: ColumnDef<StaffUser>[] = useMemo(() => [
     {
@@ -136,12 +139,18 @@ export default function UserManagementPage() {
     },
   ], []);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    loadStaffUsers();
+    void loadStaffUsers(searchQuery);
   };
 
-  if (isLoading && staffUsers.length === 0) {
+  const handleRefresh = () => {
+    if (hasSearched) {
+      void loadStaffUsers(lastSearchedQuery || searchQuery);
+    }
+  };
+
+  if (authLoading) {
     return (
       <PageContainer>
         <PageHeader
@@ -153,7 +162,7 @@ export default function UserManagementPage() {
           ]}
         />
         <PageContent>
-          <LoadingSpinner message="Loading users..." />
+          <LoadingSpinner message="Loading session..." />
         </PageContent>
       </PageContainer>
     );
@@ -169,59 +178,63 @@ export default function UserManagementPage() {
           { label: "Users" },
         ]}
         actions={[
-          { label: "Refresh", onClick: loadStaffUsers, icon: RefreshCw },
+          { label: "Refresh", onClick: handleRefresh, icon: RefreshCw, disabled: !hasSearched },
         ]}
       />
 
       <PageContent className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Card className="rounded-2xl">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Found Users</p>
-                  <div className="text-2xl font-semibold mt-1">{staffUsers.length}</div>
+        {hasSearched && (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card className="rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Found Users</p>
+                    <div className="text-2xl font-semibold mt-1">{staffUsers.length}</div>
+                  </div>
+                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600">
+                    <Users className="h-5 w-5" />
+                  </div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600">
-                  <Users className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card className="rounded-2xl">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Active</p>
-                  <div className="text-2xl font-semibold mt-1">{staffUsers.filter(u => u.active).length}</div>
+            <Card className="rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Active</p>
+                    <div className="text-2xl font-semibold mt-1">{staffUsers.filter(u => u.active).length}</div>
+                  </div>
+                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600">
+                    <Users className="h-5 w-5" />
+                  </div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600">
-                  <Users className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card className="rounded-2xl">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Profiles</p>
-                  <div className="text-2xl font-semibold mt-1">{new Set(staffUsers.map(u => u.profile)).size}</div>
+            <Card className="rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Profiles</p>
+                    <div className="text-2xl font-semibold mt-1">{new Set(staffUsers.map(u => u.profile)).size}</div>
+                  </div>
+                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-purple-500/10 text-purple-600">
+                    <Shield className="h-5 w-5" />
+                  </div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-purple-500/10 text-purple-600">
-                  <Shield className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base">Search Users</CardTitle>
-            <CardDescription>Type a name to search Evergreen. Leave blank to show your current session user.</CardDescription>
+            <CardDescription>
+              Search for users by name. Results appear only after you run a search.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSearch} className="flex gap-2 mb-4">
@@ -244,13 +257,44 @@ export default function UserManagementPage() {
               paginated={staffUsers.length > 10}
               emptyState={
                 <EmptyState
-                  title="No users found"
-                  description="No users match your search criteria."
+                  title={hasSearched ? "No users found" : "Search for users"}
+                  description={
+                    hasSearched
+                      ? "No users match your search criteria."
+                      : "Enter a name above (e.g., \"Jake Adams\") and press Search."
+                  }
                 />
               }
             />
           </CardContent>
         </Card>
+
+        {sessionUser && (
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-base">Current Session</CardTitle>
+              <CardDescription>Who you are logged in as (from Evergreen session).</CardDescription>
+            </CardHeader>
+            <CardContent className="text-sm">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="font-medium">{sessionUser.displayName}</div>
+                  <div className="text-muted-foreground font-mono text-xs">{sessionUser.username}</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <StatusBadge
+                    label={sessionUser.active ? "Active" : "Inactive"}
+                    status={sessionUser.active ? "success" : "error"}
+                  />
+                  <div className="text-xs text-muted-foreground">{sessionUser.profile}</div>
+                </div>
+              </div>
+              <div className="mt-3 text-xs text-muted-foreground">
+                Home library: {sessionUser.homeLibrary || "—"}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="rounded-2xl">
           <CardHeader>

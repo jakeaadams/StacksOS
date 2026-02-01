@@ -820,6 +820,15 @@ Checklist:
 - [ ] Redaction policy for PII in prompts (default on).
 - [ ] Abuse protections + rate limits.
 - [ ] Incident response runbook for AI features.
+- [ ] Implement `src/lib/ai/` provider interface + adapters (OpenAI/Anthropic), with schema-validated outputs (Zod) and deterministic settings for “explain” endpoints.
+- [ ] Add per-tenant AI config wiring (env + DB): enabled flag, provider, model, max tokens, temperature, safety mode.
+- [ ] Add server-side prompt templates with provenance (prompt versioning + prompt hash in logs).
+- [ ] Add “AI OFF” UX: all AI panels hidden/disabled and the product remains fully functional.
+- [ ] Add AI audit events (draft created/accepted/rejected) and store minimal metadata (no raw PII by default).
+- [ ] Add redaction unit tests + fixtures (names, emails, phones, barcodes) and enforce redaction on the server boundary.
+- [ ] Add evaluation harness: golden test cases for policy explanations and cataloging suggestions (no hallucinations, no invented numbers).
+- [ ] Add safety UI patterns: “Draft” labels, provenance display (model/provider/version), and “Copy/Insert” flows (no auto-mutations).
+- [ ] Add cost/latency telemetry: per-endpoint timing, tokens, error rates, and per-tenant budgets/limits.
 
 AC:
 - AI features can be disabled instantly per tenant.
