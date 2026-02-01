@@ -13,6 +13,8 @@ import {
   Keyboard,
   Check,
   Camera,
+  ArrowLeftRight,
+  UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,9 +31,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTheme } from "next-themes";
-import { DensityToggle } from "@/components/shared";
+import { DensityToggle, UniversalSearch } from "@/components/shared";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useApi } from "@/hooks";
+import { cn } from "@/lib/utils";
 
 interface OrgUnit {
   id: number;
@@ -58,6 +62,20 @@ const WORKSTATION_KEY = "stacksos_workstation";
 const WORKSTATION_ORG_KEY = "stacksos_workstation_org";
 const LOGIN_ORG_OVERRIDE_KEY = "stacksos_login_org_override";
 
+function getEnvToneClasses(tone?: string | null) {
+  const t = String(tone || "").toLowerCase();
+  if (t === "training" || t === "test") {
+    return "bg-[#ff6f61] text-white"; // coral-ish
+  }
+  if (t === "sandbox" || t === "staging") {
+    return "bg-amber-600 text-white";
+  }
+  if (t === "dev" || t === "development") {
+    return "bg-slate-700 text-white";
+  }
+  return "bg-blue-700 text-white"; // prod/default
+}
+
 export function TopNav({
   onCommandOpen,
   currentLibrary = "Library",
@@ -83,6 +101,16 @@ export function TopNav({
   const [uploadPhotoFile, setUploadPhotoFile] = useState<File | null>(null);
   const [uploadPhotoPreview, setUploadPhotoPreview] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const { data: envData } = useApi<any>("/api/env", {
+    immediate: true,
+    revalidateOnFocus: false,
+    revalidateInterval: 5 * 60_000,
+  });
+
+  const envLabel = String(envData?.env?.label || "").trim();
+  const envTone = String(envData?.env?.tone || "").trim();
+  const showEnvBanner = envLabel.length > 0;
 
   useEffect(() => {
     setMounted(true);
@@ -180,9 +208,15 @@ export function TopNav({
   return (
     <TooltipProvider>
       <header className="sticky top-0 z-50 border-b border-border/70 surface-glass">
-        <div className="flex items-center justify-between gap-4 px-4 py-3">
+        {showEnvBanner ? (
+          <div className={cn("px-4 py-1.5 text-[11px] font-semibold tracking-[0.2em] uppercase", getEnvToneClasses(envTone))}>
+            {envLabel}
+          </div>
+        ) : null}
+
+        <div className="flex items-center gap-4 px-4 py-3">
           {/* Left: Brand + Location */}
-          <div className="flex items-center gap-4 min-w-0">
+          <div className="flex items-center gap-4 min-w-0 flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-[hsl(var(--brand-1))] via-[hsl(var(--brand-3))] to-[hsl(var(--brand-2))] flex items-center justify-center shadow-lg">
                 <span className="text-white font-semibold text-xs tracking-[0.2em]">SO</span>
@@ -238,21 +272,29 @@ export function TopNav({
             </div>
           </div>
 
-          {/* Center: Command search */}
-          <Button
-            variant="outline"
-            className="hidden md:flex w-[420px] lg:w-[520px] justify-start h-10 rounded-full bg-background/80 border-border/70 text-muted-foreground shadow-sm"
-            onClick={onCommandOpen}
-          >
-            <Search className="mr-2 h-4 w-4" />
-            <span className="text-xs">Search patrons, items, records...</span>
-            <kbd className="pointer-events-none ml-auto hidden h-6 select-none items-center gap-1 rounded-full bg-muted px-2 font-mono text-[10px] font-medium text-muted-foreground lg:flex">
-              <span className="text-[10px]">⌘</span>K
-            </kbd>
-          </Button>
+          {/* Center: Always-visible quick search (Polaris-style) */}
+          <div className="hidden md:block flex-1 max-w-[720px]">
+            <UniversalSearch variant="topbar" placeholder="Search patrons, items, records..." />
+          </div>
 
           {/* Right: Actions - rendered in custom order */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Polaris-style primary actions */}
+            <div className="hidden xl:flex items-center gap-2">
+              <Button asChild size="sm" variant="outline" className="h-9 rounded-full px-4">
+                <Link href="/staff/circulation/checkin">
+                  <ArrowLeftRight className="h-4 w-4 mr-2" />
+                  Check In
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="outline" className="h-9 rounded-full px-4">
+                <Link href="/staff/patrons/register">
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  New Patron
+                </Link>
+              </Button>
+            </div>
+
             <div className="hidden xl:flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-[11px] text-muted-foreground">
               <span
                 className={
@@ -266,6 +308,23 @@ export function TopNav({
             <div className="text-xs text-muted-foreground font-mono hidden lg:block whitespace-nowrap">
               {mounted ? time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--"}
             </div>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full hidden md:inline-flex"
+                  onClick={onCommandOpen}
+                  aria-label="Open command palette"
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Command palette <span className="ml-2 font-mono text-[10px] opacity-80">⌘K</span>
+              </TooltipContent>
+            </Tooltip>
 
             <DensityToggle />
 
@@ -362,14 +421,7 @@ export function TopNav({
 
         {/* Mobile command bar */}
         <div className="px-4 pb-3 md:hidden">
-          <Button
-            variant="outline"
-            className="w-full justify-start h-10 rounded-full bg-background/80 border-border/70 text-muted-foreground"
-            onClick={onCommandOpen}
-          >
-            <Search className="mr-2 h-4 w-4" />
-            <span className="text-xs">Search patrons, items, records...</span>
-          </Button>
+          <UniversalSearch variant="topbar" placeholder="Search patrons, items, records..." />
         </div>
       </header>
 

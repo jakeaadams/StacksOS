@@ -54,6 +54,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { WorkformTracker } from "./workform-tracker";
 
 interface NavSection {
   title: string;
@@ -344,11 +345,14 @@ export function Sidebar({ collapsed = false, onToggleCollapse, evergreenOk = tru
       </div>
 
       <ScrollArea className="flex-1 pb-4">
-        <nav className={cn("space-y-1", collapsed ? "px-2" : "px-3")}>
+        <div className={cn(collapsed ? "px-2" : "px-3")}>
+          {collapsed ? null : <WorkformTracker />}
+          <nav className="space-y-1">
           {mainNav.map((section) => (
             <NavSection key={section.title} section={section} collapsed={collapsed} />
           ))}
-        </nav>
+          </nav>
+        </div>
       </ScrollArea>
 
       <div className={cn("border-t border-border/70 px-3 py-3", collapsed && "px-2")}>

@@ -13,6 +13,7 @@ import { KeyboardProvider } from "@/components/keyboard/keyboard-shortcuts";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { KeyboardShortcutsOverlay, SessionTimeoutWarning } from "@/components/shared";
 import { useApi } from "@/hooks";
+import { WorkformsProvider } from "@/contexts/workforms-context";
 
 interface StaffLayoutProps {
   children: React.ReactNode;
@@ -107,6 +108,7 @@ export function StaffLayout({ children }: StaffLayoutProps) {
 
   return (
     <KeyboardProvider>
+      <WorkformsProvider>
       <div className="app-shell min-h-screen flex flex-col">
         <TopNav
           onCommandOpen={() => setCommandOpen(true)}
@@ -172,6 +174,7 @@ export function StaffLayout({ children }: StaffLayoutProps) {
         />
         <Toaster position="top-right" richColors />
       </div>
+      </WorkformsProvider>
     </KeyboardProvider>
   );
 }
