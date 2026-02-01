@@ -2,7 +2,7 @@
 
 import { fetchWithAuth } from "@/lib/client-fetch";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-import { Save, Check, AlertTriangle, Plus, Trash2, HelpCircle, Loader2 } from "lucide-react";
+import { Save, Check, AlertTriangle, Plus, Trash2, HelpCircle, Loader2, Columns2, X } from "lucide-react";
 
 
 interface MarcField {
@@ -194,10 +194,49 @@ function buildMarcXml(record: MarcRecord): string {
   return parts.join("");
 }
 
+function recordToLines(record: MarcRecord): string[] {
+  const lines: string[] = [];
+
+  const leader = String(record.leader || "").trim();
+  if (leader) lines.push(`LDR ${leader}`);
+
+  for (const field of record.fields || []) {
+    const tag = String(field.tag || "").trim();
+    if (!tag) continue;
+
+    const tagNum = Number.parseInt(tag, 10);
+    if (!Number.isNaN(tagNum) && tagNum < 10) {
+      const value = String(field.subfields?.[0]?.value || "").trim();
+      lines.push(`${tag} ${value}`.trim());
+      continue;
+    }
+
+    const ind1 = String(field.ind1 || " ").slice(0, 1);
+    const ind2 = String(field.ind2 || " ").slice(0, 1);
+    const subs = (field.subfields || [])
+      .filter((sf) => String(sf.code || "").trim())
+      .map((sf) => `$${String(sf.code || "").trim().slice(0, 1)} ${String(sf.value || "").trim()}`.trim())
+      .join(" ");
+
+    lines.push(`${tag} ${ind1}${ind2} ${subs}`.trim());
+  }
+
+  return lines;
+}
+
+function toCounts(lines: string[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const line of lines) {
+    map.set(line, (map.get(line) || 0) + 1);
+  }
+  return map;
+}
+
 function MarcEditorContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const recordId = searchParams.get("id");
+  const compareIdParam = searchParams.get("compare");
 
   const [record, setRecord] = useState<MarcRecord>(defaultMarcRecord);
   const [bibInfo, setBibInfo] = useState<{ title: string; author: string } | null>(null);
@@ -208,10 +247,75 @@ function MarcEditorContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [comparePanelOpen, setComparePanelOpen] = useState(false);
+  const [compareDraft, setCompareDraft] = useState("");
+  const [compareRecord, setCompareRecord] = useState<MarcRecord | null>(null);
+  const [compareBibInfo, setCompareBibInfo] = useState<{ title: string; author: string } | null>(null);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareError, setCompareError] = useState<string | null>(null);
+  const [diffOnly, setDiffOnly] = useState(false);
+
+  const baseLines = useMemo(() => recordToLines(record), [record]);
+  const compareLines = useMemo(() => (compareRecord ? recordToLines(compareRecord) : []), [compareRecord]);
+  const diff = useMemo(() => {
+    const baseCounts = toCounts(baseLines);
+    const compareCounts = toCounts(compareLines);
+    const keys = new Set<string>([...baseCounts.keys(), ...compareCounts.keys()]);
+
+    const order = new Map<string, number>();
+    for (let i = 0; i < baseLines.length; i += 1) {
+      const line = baseLines[i];
+      if (!order.has(line)) order.set(line, i);
+    }
+
+    let nextOrder = baseLines.length;
+    for (const line of compareLines) {
+      if (!order.has(line)) order.set(line, nextOrder++);
+    }
+
+    const rows = [...keys]
+      .sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0))
+      .map((line) => {
+        const baseCount = baseCounts.get(line) || 0;
+        const compareCount = compareCounts.get(line) || 0;
+        if (baseCount === compareCount) {
+          return { line, kind: "same" as const, baseCount, compareCount, delta: 0 };
+        }
+        if (compareCount > baseCount) {
+          return { line, kind: "added" as const, baseCount, compareCount, delta: compareCount - baseCount };
+        }
+        return { line, kind: "removed" as const, baseCount, compareCount, delta: baseCount - compareCount };
+      });
+
+    const added = rows.filter((r) => r.kind === "added").reduce((sum, r) => sum + r.delta, 0);
+    const removed = rows.filter((r) => r.kind === "removed").reduce((sum, r) => sum + r.delta, 0);
+
+    return {
+      rows,
+      added,
+      removed,
+      hasCompare: Boolean(compareRecord),
+    };
+  }, [baseLines, compareLines, compareRecord]);
+
   useEffect(() => {
     if (!recordId) return;
     void loadRecord(recordId);
   }, [recordId]);
+
+  useEffect(() => {
+    const id = compareIdParam && /^\d+$/.test(compareIdParam) ? compareIdParam : "";
+    if (id) {
+      setComparePanelOpen(true);
+      setCompareDraft(id);
+      void loadCompareRecord(id);
+      return;
+    }
+
+    setCompareRecord(null);
+    setCompareBibInfo(null);
+    setCompareError(null);
+  }, [compareIdParam]);
 
   const loadRecord = async (id: string) => {
     setLoading(true);
@@ -245,6 +349,68 @@ function MarcEditorContent() {
       setLoading(false);
     }
   };
+
+  const loadCompareRecord = async (id: string) => {
+    setCompareLoading(true);
+    setCompareError(null);
+    setCompareRecord(null);
+    setCompareBibInfo(null);
+
+    try {
+      const response = await fetchWithAuth(`/api/evergreen/catalog?action=record&id=${encodeURIComponent(id)}`);
+      const data = await response.json();
+
+      if (!data.ok || !data.record) {
+        throw new Error(data.error || "Failed to load compare record");
+      }
+
+      setCompareBibInfo({ title: data.record.title, author: data.record.author });
+
+      if (!data.record.marc_xml) {
+        throw new Error("No MARC data available for compare record");
+      }
+
+      const parsed = parseMarcXml(data.record.marc_xml);
+      if (!parsed) {
+        throw new Error("Failed to parse compare MARC record");
+      }
+
+      setCompareRecord(parsed);
+    } catch (e) {
+      setCompareError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCompareLoading(false);
+    }
+  };
+
+  const updateCompareInUrl = (nextCompare: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextCompare && nextCompare.trim()) {
+      params.set("compare", nextCompare.trim());
+    } else {
+      params.delete("compare");
+    }
+    router.replace(`/staff/cataloging/marc-editor?${params.toString()}`);
+  };
+
+  const closeCompare = () => {
+    setComparePanelOpen(false);
+    setCompareDraft("");
+    setCompareRecord(null);
+    setCompareBibInfo(null);
+    setCompareError(null);
+    updateCompareInUrl(null);
+  };
+
+  const clearCompare = () => {
+    setCompareDraft("");
+    setCompareRecord(null);
+    setCompareBibInfo(null);
+    setCompareError(null);
+    updateCompareInUrl(null);
+  };
+
+  const canLoadCompare = Boolean(recordId) && /^\d+$/.test(compareDraft.trim()) && compareDraft.trim() !== recordId;
 
   const updateField = (index: number, updates: Partial<MarcField>) => {
     const newFields = [...record.fields];
@@ -377,6 +543,34 @@ function MarcEditorContent() {
               <Plus className="h-4 w-4 mr-1" />Add Field
             </Button>
             <div className="flex-1" />
+            <Button
+              size="sm"
+              variant={comparePanelOpen ? "default" : "outline"}
+              onClick={() => {
+                if (!recordId) return;
+                if (comparePanelOpen) {
+                  closeCompare();
+                  return;
+                }
+                setComparePanelOpen(true);
+                setCompareDraft(compareIdParam && /^\d+$/.test(compareIdParam) ? compareIdParam : "");
+              }}
+              title="Split-screen compare"
+              disabled={!recordId}
+            >
+              <Columns2 className="h-4 w-4 mr-1" />
+              Compare
+            </Button>
+            {comparePanelOpen && (
+              <Button
+                size="sm"
+                variant={diffOnly ? "default" : "outline"}
+                onClick={() => setDiffOnly((v) => !v)}
+                title="Toggle differences only"
+              >
+                Diff only
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={() => setShowHelp(!showHelp)}>
               <HelpCircle className="h-4 w-4" />
             </Button>
@@ -406,8 +600,8 @@ function MarcEditorContent() {
           )}
 
           <div className="flex-1 overflow-auto p-4">
-            <div className="flex gap-4">
-              <Card className="flex-1">
+            <div className="flex flex-col lg:flex-row gap-4">
+              <Card className="flex-1 min-w-0">
                 <CardHeader className="py-3">
                   <CardTitle className="text-base flex items-center justify-between">
                     <span>
@@ -546,21 +740,151 @@ function MarcEditorContent() {
                 </CardContent>
               </Card>
 
-              {showHelp && (
-                <div className="w-72 border rounded-lg p-4 bg-muted/30">
-                  <h3 className="font-medium mb-3 flex items-center gap-2">
-                    <HelpCircle className="h-4 w-4" />MARC Help
-                  </h3>
-                  <div className="space-y-2 text-sm">
-                    {Object.entries(marcFieldDescriptions)
-                      .slice(0, 12)
-                      .map(([tag, desc]) => (
-                        <div key={tag} className="flex gap-2">
-                          <Badge variant="outline" className="shrink-0">{tag}</Badge>
-                          <span className="text-muted-foreground text-xs">{desc}</span>
+              {(comparePanelOpen || showHelp) && (
+                <div className="w-full lg:w-[420px] shrink-0 space-y-4">
+                  {comparePanelOpen && (
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-base flex items-center justify-between">
+                          <span className="inline-flex items-center gap-2">
+                            <Columns2 className="h-4 w-4" />
+                            Compare records
+                          </span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={closeCompare}
+                            title="Close compare"
+                          >
+                            <X className="h-4 w-4" />
+                            <span className="sr-only">Close compare</span>
+                          </Button>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="text-sm text-muted-foreground">
+                          Load another bib record ID to compare against the current record.
                         </div>
-                      ))}
-                  </div>
+
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={compareDraft}
+                            onChange={(e) => setCompareDraft(e.target.value)}
+                            placeholder="Compare record ID (e.g. 123)"
+                            inputMode="numeric"
+                          />
+                          <Button
+                            onClick={() => {
+                              const id = compareDraft.trim();
+                              if (!/^\d+$/.test(id)) {
+                                setCompareError("Enter a numeric record id.");
+                                return;
+                              }
+                              if (recordId && id === recordId) {
+                                setCompareError("Pick a different record id to compare.");
+                                return;
+                              }
+                              updateCompareInUrl(id);
+                            }}
+                            disabled={!canLoadCompare || compareLoading}
+                          >
+                            {compareLoading ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : null}
+                            Load
+                          </Button>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-xs text-muted-foreground">
+                            Tip: add `?compare=123` to deep-link this view.
+                          </div>
+                          <Button size="sm" variant="outline" onClick={clearCompare} disabled={compareLoading}>
+                            Clear
+                          </Button>
+                        </div>
+
+                        {compareError && (
+                          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                            {compareError}
+                          </div>
+                        )}
+
+                        {compareBibInfo && (
+                          <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                            <div className="text-sm font-medium truncate">{compareBibInfo.title || "Untitled"}</div>
+                            <div className="text-xs text-muted-foreground truncate">{compareBibInfo.author || "—"}</div>
+                          </div>
+                        )}
+
+                        {diff.hasCompare ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline">Base #{recordId}</Badge>
+                              <Badge variant="outline">Compare #{compareDraft.trim() || compareIdParam}</Badge>
+                              <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10">
+                                +{diff.added}
+                              </Badge>
+                              <Badge className="bg-rose-500/10 text-rose-700 hover:bg-rose-500/10">
+                                -{diff.removed}
+                              </Badge>
+                            </div>
+
+                            <div className="max-h-[520px] overflow-auto rounded-lg border bg-background">
+                              <div className="p-2 font-mono text-xs space-y-1">
+                                {diff.rows
+                                  .filter((r) => !diffOnly || r.kind !== "same")
+                                  .map((r) => (
+                                    <div
+                                      key={r.line}
+                                      className={
+                                        "rounded-md px-2 py-1 leading-relaxed " +
+                                        (r.kind === "added"
+                                          ? "bg-emerald-50 text-emerald-900"
+                                          : r.kind === "removed"
+                                            ? "bg-rose-50 text-rose-900"
+                                            : "text-muted-foreground")
+                                      }
+                                    >
+                                      <span className="inline-block w-4 text-center mr-1">
+                                        {r.kind === "added" ? "+" : r.kind === "removed" ? "-" : "·"}
+                                      </span>
+                                      <span className="break-words">{r.line}</span>
+                                      {r.delta > 1 ? (
+                                        <span className="ml-2 text-[10px] text-muted-foreground">×{r.delta}</span>
+                                      ) : null}
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                            No compare record loaded yet.
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {showHelp && (
+                    <div className="border rounded-lg p-4 bg-muted/30">
+                      <h3 className="font-medium mb-3 flex items-center gap-2">
+                        <HelpCircle className="h-4 w-4" />MARC Help
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        {Object.entries(marcFieldDescriptions)
+                          .slice(0, 12)
+                          .map(([tag, desc]) => (
+                            <div key={tag} className="flex gap-2">
+                              <Badge variant="outline" className="shrink-0">{tag}</Badge>
+                              <span className="text-muted-foreground text-xs">{desc}</span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
