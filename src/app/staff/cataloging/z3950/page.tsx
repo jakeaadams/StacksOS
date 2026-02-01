@@ -292,7 +292,7 @@ export default function Z3950Page() {
         action: recordId
           ? {
               label: "View Record",
-              onClick: () => router.push(`/staff/cataloging/record/${recordId}`),
+              onClick: () => router.push(`/staff/catalog/record/${recordId}`),
             }
           : undefined,
       });
