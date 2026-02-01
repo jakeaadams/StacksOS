@@ -18,6 +18,7 @@ import {
   PlaceHoldDialog,
 } from "@/components/shared";
 import { CoverArtPicker } from "@/components/shared/cover-art-picker";
+import { AddItemDialog } from "@/components/cataloging/add-item-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,7 @@ import {
   ExternalLink,
   ImageOff,
   Copy,
+  Plus,
 } from "lucide-react";
 
 interface RecordDetail {
@@ -159,6 +161,7 @@ export default function CatalogRecordPage() {
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   const [customCoverUrl, setCustomCoverUrl] = useState<string | undefined>(undefined);
   const [holdOpen, setHoldOpen] = useState(false);
+  const [addItemOpen, setAddItemOpen] = useState(false);
 
   const loadRecordData = useCallback(async () => {
     setIsLoading(true);
@@ -384,6 +387,11 @@ export default function CatalogRecordPage() {
             label: "Edit MARC",
             onClick: () => router.push("/staff/cataloging/marc-editor?id=" + record.id),
             icon: Edit,
+          },
+          {
+            label: "Add Items",
+            onClick: () => setAddItemOpen(true),
+            icon: Plus,
           },
           {
             label: "Holdings",
@@ -634,6 +642,18 @@ export default function CatalogRecordPage() {
         open={holdOpen}
         onOpenChange={setHoldOpen}
         record={{ id: record.id, title: record.title, author: record.author }}
+      />
+
+      <AddItemDialog
+        open={addItemOpen}
+        onOpenChange={setAddItemOpen}
+        bibRecord={{
+          id: record.id,
+          title: record.title,
+          author: record.author,
+          isbn: record.isbn,
+        }}
+        onItemCreated={() => window.location.reload()}
       />
       </PageContainer>
     </ErrorBoundary>

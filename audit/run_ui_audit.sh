@@ -15,7 +15,14 @@ scan() {
 
   # shellcheck disable=SC2034
   local matches
-  matches=$(grep -RIn --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=audit -E "$pattern" \
+  matches=$(grep -RIn --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=audit \
+    --exclude='*.bak' \
+    --exclude='*.backup' \
+    --exclude='*.backup2' \
+    --exclude='*.backup3' \
+    --exclude='*.backup_*' \
+    --exclude='*.orig' \
+    -E "$pattern" \
     "$ROOT_DIR/src/app/staff" "$ROOT_DIR/src/components" 2>/dev/null || true)
 
   local count

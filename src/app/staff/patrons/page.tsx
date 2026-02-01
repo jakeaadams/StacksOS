@@ -1,4 +1,5 @@
 "use client";
+import { getEffectiveSearchType } from "@/lib/smart-search";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
 
@@ -55,16 +56,30 @@ function PatronSearchContent() {
   const [searchType, setSearchType] = useState(searchParams.get("type") || "name");
   const [patrons, setPatrons] = useState<PatronRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [lastQuery, setLastQuery] = useState<string | null>(null);
   const [selectedPatron, setSelectedPatron] = useState<PatronRow | null>(null);
   const [cockpitOpen, setCockpitOpen] = useState(false);
 
   const handleSearch = useCallback(async () => {
-    if (!searchQuery.trim()) return;
+    const query = searchQuery.trim();
+    if (!query) {
+      setHasSearched(false);
+      setLastQuery(null);
+      setPatrons([]);
+      setSelectedPatron(null);
+      toast.message("Enter a search term");
+      return;
+    }
+    // Smart search: auto-detect barcode, email, phone
+    setHasSearched(true);
+    setLastQuery(query);
+    const effectiveType = getEffectiveSearchType(query, searchType, "patron");
     setIsLoading(true);
 
     try {
       const res = await fetchWithAuth(
-        `/api/evergreen/patrons?q=${encodeURIComponent(searchQuery)}&type=${searchType}&limit=50`
+        `/api/evergreen/patrons?q=${encodeURIComponent(query)}&type=${effectiveType}&limit=50`
       );
       const data = await res.json();
 
@@ -234,9 +249,20 @@ function PatronSearchContent() {
         ]}
       >
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="rounded-full">
-            Results: {patrons.length}
-          </Badge>
+          {hasSearched ? (
+            <Badge
+              variant="secondary"
+              className="rounded-full"
+              data-testid="patron-search-results"
+            >
+              {isLoading ? "Searching…" : `Results: ${patrons.length}`}
+            </Badge>
+          ) : null}
+          {lastQuery ? (
+            <Badge variant="outline" className="rounded-full">
+              Query: {lastQuery}
+            </Badge>
+          ) : null}
           {selectedPatron && (
             <Badge variant="outline" className="rounded-full">
               Selected: {selectedPatron.barcode}
@@ -289,7 +315,16 @@ function PatronSearchContent() {
           isLoading={isLoading}
           searchable={false}
           onRowClick={handleRowClick}
-          emptyState={<EmptyState title="No patrons" description="Run a search to see results." />}
+          emptyState={
+            hasSearched ? (
+              <EmptyState
+                title="No patrons found"
+                description="Try a different name, barcode, email, or phone."
+              />
+            ) : (
+              <EmptyState title="Search for patrons" description="Run a search to see results." />
+            )
+          }
         />
       </PageContent>
 

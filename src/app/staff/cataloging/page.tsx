@@ -2,6 +2,7 @@
 
 import { fetchWithAuth } from "@/lib/client-fetch";
 
+import { getEffectiveSearchType } from "@/lib/smart-search";
 import { useState } from "react";
 import { PageContainer, PageHeader, PageContent } from "@/components/shared";
 import { Input } from "@/components/ui/input";
@@ -62,10 +63,13 @@ export default function CatalogingPage() {
     setError(null);
     setHasSearched(true);
     
+    // Smart search: auto-detect ISBN, barcode
+    const effectiveType = getEffectiveSearchType(searchQuery, searchType, "catalog");
+    
     try {
       const params = new URLSearchParams({
         q: searchQuery,
-        type: searchType,
+        type: effectiveType,
         limit: "50",
       });
       

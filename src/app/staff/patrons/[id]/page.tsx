@@ -20,6 +20,7 @@ import {
   StatusBadge,
   ErrorBoundary,
 } from "@/components/shared";
+import { useWorkforms } from "@/contexts/workforms-context";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,8 @@ import { toast } from "sonner";
 import { PatronNoticesTab } from "@/components/patron/patron-notices-tab";
 
 import {
+  Pin,
+  PinOff,
   AlertTriangle,
   Ban,
   BookOpen,
@@ -115,6 +118,7 @@ function toDateLabel(value?: string) {
 export default function PatronDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { addPin, removePin, isPinned } = useWorkforms();
   
   const patronId = params?.id ? parseInt(String(params.id), 10) : null;
 
@@ -571,6 +575,20 @@ export default function PatronDetailPage() {
             label: "Bills",
             onClick: () => router.push(`/staff/circulation/bills?patron=${patron.barcode}`),
             icon: CreditCard,
+            variant: "outline",
+          },
+          {
+            label: isPinned("patron", String(patron.id)) ? "Unpin" : "Pin",
+            onClick: () => {
+              if (isPinned("patron", String(patron.id))) {
+                removePin(`patron:${patron.id}`);
+                toast.success("Unpinned from sidebar");
+              } else {
+                addPin({ type: "patron", id: String(patron.id), title: displayName || "Patron", subtitle: patron.barcode, href: `/staff/patrons/${patron.id}` });
+                toast.success("Pinned to sidebar");
+              }
+            },
+            icon: isPinned("patron", String(patron.id)) ? PinOff : Pin,
             variant: "outline",
           },
         ]}

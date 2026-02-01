@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Clock, AlertTriangle, Save } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
+import { clientLogger } from "@/lib/client-logger";
 
 interface SessionTimeoutWarningProps {
   /** Session duration in minutes (default: 480 = 8 hours) */
@@ -104,7 +105,7 @@ export function SessionTimeoutWarning({
         try {
           await onSessionExpiring();
         } catch (error) {
-          console.error("Error in onSessionExpiring callback:", error);
+          clientLogger.error("Error in onSessionExpiring callback:", error);
         } finally {
           setIsSaving(false);
         }
@@ -197,7 +198,7 @@ export function SessionTimeoutWarning({
         setShowExpired(true);
       }
     } catch (error) {
-      console.error("Failed to extend session:", error);
+      clientLogger.error("Failed to extend session:", error);
       setShowWarning(false);
       setShowExpired(true);
     } finally {

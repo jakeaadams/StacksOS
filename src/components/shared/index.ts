@@ -201,3 +201,4 @@ export {
   LazyRecordCockpit,
   LazyUniversalSearch,
 } from "./lazy";
+export { PinButton } from "./pin-button";

@@ -5,15 +5,21 @@ BASE_URL="${BASE_URL:-http://localhost:3000}"
 PROJECT_DIR="${PROJECT_DIR:-/home/jake/projects/stacksos}"
 OUT_DIR="${OUT_DIR:-$PROJECT_DIR/audit/api}"
 COOKIE_JAR="$OUT_DIR/cookies.txt"
+COOKIE_JAR_SEED="${COOKIE_JAR_SEED:-}"
 LOG="$OUT_DIR/summary.tsv"
+CSRF_TOKEN=""
 
-PATRON_BARCODE="${PATRON_BARCODE:-29000000001234}"
+PATRON_QUERY="${PATRON_QUERY:-Adams}"
+PATRON_BARCODE="${PATRON_BARCODE:-}"
 ITEM_BARCODE="${ITEM_BARCODE:-39000000001235}"
 WORKSTATION="${WORKSTATION:-STACKSOS-AUDIT}"
 ORG_ID="${ORG_ID:-101}"
 
 mkdir -p "$OUT_DIR"
-rm -f "$OUT_DIR"/*.json "$COOKIE_JAR" 2>/dev/null || true
+rm -f "$OUT_DIR"/*.json 2>/dev/null || true
+if [[ -n "$COOKIE_JAR_SEED" && -f "$COOKIE_JAR_SEED" ]]; then
+  cp "$COOKIE_JAR_SEED" "$COOKIE_JAR"
+fi
 
 : > "$LOG"
 printf "name\tstatus\turl\n" >> "$LOG"
@@ -30,9 +36,14 @@ call() {
       -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
       "$url")
   else
+    if [[ -z "$CSRF_TOKEN" ]]; then
+      echo "ERROR: CSRF_TOKEN is empty; call /api/csrf-token first" >&2
+      exit 1
+    fi
     resp=$(curl -sS -w '\nHTTP_STATUS:%{http_code}\n' \
       -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
       -H 'Content-Type: application/json' \
+      -H "x-csrf-token: $CSRF_TOKEN" \
       -X "$method" \
       -d "$data" \
       "$url")
@@ -48,27 +59,52 @@ call() {
 call "ping" "$BASE_URL/api/evergreen/ping"
 call "orgs" "$BASE_URL/api/evergreen/orgs"
 
-# 2) Login
-AUTH_PAYLOAD=$(cat <<JSON
+# 1b) CSRF token (required for all state-changing ops like auth login)
+call "csrf_token" "$BASE_URL/api/csrf-token"
+CSRF_TOKEN=$(python3 - <<PY
+import json,sys
+p=json.load(open("$OUT_DIR/csrf_token.json"))
+print(p.get("token") or "")
+PY
+)
+if [[ -z "$CSRF_TOKEN" ]]; then
+  echo "ERROR: failed to obtain CSRF token from $OUT_DIR/csrf_token.json" >&2
+  exit 1
+fi
+
+# 2) Auth preflight (avoid rate-limit during iteration if we already have a valid cookie jar)
+call "auth_session_preflight" "$BASE_URL/api/evergreen/auth"
+
+ALREADY_AUTHED=$(python3 - <<PY
+import json
+p=json.load(open("$OUT_DIR/auth_session_preflight.json"))
+print("1" if p.get("authenticated") else "0")
+PY
+)
+
+if [[ "$ALREADY_AUTHED" != "1" ]]; then
+  # Login
+  AUTH_PAYLOAD=$(cat <<JSON
 {"username":"jake","password":"jake","workstation":"$WORKSTATION"}
 JSON
 )
-call "auth_login" "$BASE_URL/api/evergreen/auth" "POST" "$AUTH_PAYLOAD"
+  call "auth_login" "$BASE_URL/api/evergreen/auth" "POST" "$AUTH_PAYLOAD"
 
-# Detect if workstation registration is needed
-if python3 - <<PY
+  # Detect if workstation registration is needed
+  if python3 - <<PY
 import json,sys
 p=json.load(open("$OUT_DIR/auth_login.json"))
 sys.exit(0 if p.get("needsWorkstation") else 1)
 PY
-then
-  REG_PAYLOAD=$(cat <<JSON
+  then
+    REG_PAYLOAD=$(cat <<JSON
 {"name":"$WORKSTATION","org_id":$ORG_ID}
 JSON
 )
-  call "workstation_register" "$BASE_URL/api/evergreen/workstations" "POST" "$REG_PAYLOAD"
-  # Retry login
-  call "auth_login_retry" "$BASE_URL/api/evergreen/auth" "POST" "$AUTH_PAYLOAD"
+    call "workstation_register" "$BASE_URL/api/evergreen/workstations" "POST" "$REG_PAYLOAD"
+    # Retry login
+    call "auth_login_retry" "$BASE_URL/api/evergreen/auth" "POST" "$AUTH_PAYLOAD"
+  fi
 fi
 
 # 3) Session check
@@ -77,19 +113,55 @@ call "auth_session" "$BASE_URL/api/evergreen/auth"
 # 4) Workstation list
 call "workstations_list" "$BASE_URL/api/evergreen/workstations?org_id=$ORG_ID"
 
-# 5) Patron lookup
-call "patron_barcode" "$BASE_URL/api/evergreen/patrons?barcode=$PATRON_BARCODE"
+# 5) Patron search (discover a real barcode/id to avoid brittle fixtures)
+call "patron_search" "$BASE_URL/api/evergreen/patrons?q=${PATRON_QUERY}&type=name"
 
-PATRON_ID=$(python3 - <<PY
+read -r DISCOVERED_BARCODE DISCOVERED_ID < <(python3 - <<PY
 import json
-p=json.load(open("$OUT_DIR/patron_barcode.json"))
-patron=p.get("patron") or {}
-print(patron.get("id") or "")
+from pathlib import Path
+
+p=json.load(open("$OUT_DIR/patron_search.json"))
+rows=p.get("patrons") or []
+
+def pick_barcode(row):
+  # Common shapes: barcode, card.barcode, card[0] etc.
+  if isinstance(row, dict):
+    if row.get("barcode"): return row.get("barcode")
+    card=row.get("card")
+    if isinstance(card, dict) and card.get("barcode"): return card.get("barcode")
+    if isinstance(card, (list, tuple)) and len(card) > 0:
+      # Some fieldmapper payloads.
+      for v in card:
+        if isinstance(v, str) and v.strip(): return v.strip()
+  return None
+
+barcode=None
+pid=None
+for row in rows:
+  if barcode is None:
+    barcode=pick_barcode(row)
+  if pid is None and isinstance(row, dict):
+    pid=row.get("id") or row.get("usr") or row.get("userId")
+  if barcode and pid:
+    break
+
+print(f"{barcode or ''}\t{pid or ''}")
 PY
 )
 
-# 6) Patron search by name if possible
-call "patron_search" "$BASE_URL/api/evergreen/patrons?q=Adams&type=name"
+if [[ -n "$DISCOVERED_BARCODE" ]]; then
+  PATRON_BARCODE="$DISCOVERED_BARCODE"
+fi
+if [[ -n "$DISCOVERED_ID" ]]; then
+  PATRON_ID="$DISCOVERED_ID"
+else
+  PATRON_ID=""
+fi
+
+# 6) Patron lookup (if we have a barcode)
+if [[ -n "$PATRON_BARCODE" ]]; then
+  call "patron_barcode" "$BASE_URL/api/evergreen/patrons?barcode=$PATRON_BARCODE"
+fi
 
 # 7) Catalog search (find a record)
 call "catalog_search" "$BASE_URL/api/evergreen/catalog?q=harry"

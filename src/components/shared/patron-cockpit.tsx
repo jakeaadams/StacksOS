@@ -8,16 +8,19 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { PatronPhotoUpload } from "./patron-photo-upload";
 
 import {
   ArrowRight,
   Bookmark,
   BookOpen,
+  Camera,
   CreditCard,
   ExternalLink,
   Mail,
@@ -85,17 +88,21 @@ export function PatronCockpit({ patronId, open, onOpenChange, onCheckout }: Patr
   const [holds, setHolds] = useState<HoldItem[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [patronPhotoUrl, setPatronPhotoUrl] = useState<string | undefined>(undefined);
+  const [photoUploadOpen, setPhotoUploadOpen] = useState(false);
 
   const loadPatronData = useCallback(async () => {
     if (!patronId) return;
     setIsLoading(true);
+    setPatronPhotoUrl(undefined);
 
     try {
-      const [patronRes, circRes, holdsRes, billsRes] = await Promise.all([
+      const [patronRes, circRes, holdsRes, billsRes, photoRes] = await Promise.all([
         fetchWithAuth(`/api/evergreen/patrons?id=${patronId}`),
         fetchWithAuth(`/api/evergreen/circulation?patron_id=${patronId}`),
         fetchWithAuth(`/api/evergreen/circulation?action=holds&patron_id=${patronId}`),
         fetchWithAuth(`/api/evergreen/circulation?action=bills&patron_id=${patronId}`),
+        fetchWithAuth(`/api/upload-patron-photo?patronId=${patronId}`),
       ]);
 
       const patronData = await patronRes.json();
@@ -115,6 +122,11 @@ export function PatronCockpit({ patronId, open, onOpenChange, onCheckout }: Patr
           expireDate: p.expire_date,
           penalties: Array.isArray(p.standing_penalties) ? p.standing_penalties.length : 0,
         });
+      }
+
+      const photoData = await photoRes.json().catch(() => null);
+      if (photoData?.success && photoData?.url) {
+        setPatronPhotoUrl(photoData.url);
       }
 
       const circData = await circRes.json();
@@ -172,6 +184,10 @@ export function PatronCockpit({ patronId, open, onOpenChange, onCheckout }: Patr
   const totalOwed = bills.reduce((sum, b) => sum + b.balance, 0);
   const overdueCount = checkouts.filter((c) => c.overdue).length;
   const expired = patron?.expireDate ? new Date(patron.expireDate) < new Date() : false;
+  const initials =
+    patron?.firstName || patron?.lastName
+      ? `${patron?.firstName?.[0] || ""}${patron?.lastName?.[0] || ""}`.toUpperCase()
+      : "?";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -198,66 +214,109 @@ export function PatronCockpit({ patronId, open, onOpenChange, onCheckout }: Patr
               <div className="mt-6 space-y-6">
                 {/* Patron Header */}
                 <div className="rounded-lg border p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold">
-                        {patron.lastName}, {patron.firstName}
-                      </h3>
-                      <p className="text-sm text-muted-foreground font-mono">{patron.barcode}</p>
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="relative group cursor-pointer"
+                      onClick={() => setPhotoUploadOpen(true)}
+                      role="button"
+                      aria-label="Upload patron photo"
+                      tabIndex={0}
+                      title="Click to upload photo"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setPhotoUploadOpen(true);
+                        }
+                      }}
+                    >
+                      <Avatar className="h-12 w-12 transition-opacity group-hover:opacity-70">
+                        {patronPhotoUrl ? (
+                          <AvatarImage
+                            src={patronPhotoUrl}
+                            alt={`${patron.firstName} ${patron.lastName}`.trim() || "Patron photo"}
+                            data-testid="patron-cockpit-photo-image"
+                            onError={() => setPatronPhotoUrl(undefined)}
+                          />
+                        ) : null}
+                        <AvatarFallback>{initials}</AvatarFallback>
+                      </Avatar>
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full pointer-events-none">
+                        <Camera className="h-4 w-4 text-white" />
+                      </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {patron.barred && (
-                        <Badge variant="destructive">Barred</Badge>
-                      )}
-                      {!patron.isActive && !patron.barred && (
-                        <Badge variant="secondary">Inactive</Badge>
-                      )}
-                      {expired && (
-                        <Badge variant="outline" className="text-amber-600 border-amber-300">
-                          Expired
-                        </Badge>
-                      )}
-                      {patron.penalties > 0 && (
-                        <Badge variant="outline" className="text-red-600 border-red-300">
-                          {patron.penalties} block{patron.penalties > 1 ? "s" : ""}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="text-lg font-semibold truncate">
+                            {patron.lastName}, {patron.firstName}
+                          </h3>
+                          <p className="text-sm text-muted-foreground font-mono truncate">{patron.barcode}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {patron.barred && (
+                            <Badge variant="destructive">Barred</Badge>
+                          )}
+                          {!patron.isActive && !patron.barred && (
+                            <Badge variant="secondary">Inactive</Badge>
+                          )}
+                          {expired && (
+                            <Badge variant="outline" className="text-amber-600 border-amber-300">
+                              Expired
+                            </Badge>
+                          )}
+                          {patron.penalties > 0 && (
+                            <Badge variant="outline" className="text-red-600 border-red-300">
+                              {patron.penalties} block{patron.penalties > 1 ? "s" : ""}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
 
                   <Separator className="my-3" />
 
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Mail className="h-3.5 w-3.5" />
-                      <span className="truncate">{patron.email || "—"}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Phone className="h-3.5 w-3.5" />
-                      <span>{patron.phone || "—"}</span>
-                    </div>
-                  </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Mail className="h-3.5 w-3.5" />
+                          <span className="truncate">{patron.email || "—"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Phone className="h-3.5 w-3.5" />
+                          <span>{patron.phone || "—"}</span>
+                        </div>
+                      </div>
 
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => {
-                        onOpenChange(false);
-                        onCheckout?.(patron.id);
-                      }}
-                    >
-                      <BookOpen className="h-4 w-4 mr-1" />
-                      Check Out
-                    </Button>
-                    <Button size="sm" variant="outline" asChild>
-                      <Link href={`/staff/patrons/${patron.id}`}>
-                        Full Record
-                        <ExternalLink className="h-3 w-3 ml-1" />
-                      </Link>
-                    </Button>
+                      <div className="mt-3 flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            onOpenChange(false);
+                            onCheckout?.(patron.id);
+                          }}
+                        >
+                          <BookOpen className="h-4 w-4 mr-1" />
+                          Check Out
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link href={`/staff/patrons/${patron.id}`}>
+                            Full Record
+                            <ExternalLink className="h-3 w-3 ml-1" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
+
+                <PatronPhotoUpload
+                  open={photoUploadOpen}
+                  onOpenChange={setPhotoUploadOpen}
+                  patronId={patron.id}
+                  patronName={`${patron.firstName} ${patron.lastName}`.trim() || patron.barcode}
+                  currentPhotoUrl={patronPhotoUrl}
+                  onPhotoUploaded={(url) => setPatronPhotoUrl(url)}
+                />
 
                 {/* Quick Stats */}
                 <div className="grid grid-cols-3 gap-3">

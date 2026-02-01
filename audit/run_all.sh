@@ -31,9 +31,23 @@ if ! curl -fsS "$BASE_URL/api/evergreen/ping" >/dev/null 2>&1; then
 fi
 
 banner "Server code hygiene: disallow console.*"
-if grep -RInE "console\\.(log|warn|error|debug|info)" "$ROOT_DIR/src" --exclude=client-logger.ts >/dev/null 2>&1; then
+if grep -RInE "console\\.(log|warn|error|debug|info)" "$ROOT_DIR/src" \
+  --exclude=client-logger.ts \
+  --exclude='*.bak' \
+  --exclude='*.backup' \
+  --exclude='*.backup2' \
+  --exclude='*.backup3' \
+  --exclude='*.backup_*' \
+  --exclude='*.orig' >/dev/null 2>&1; then
   echo "ERROR: console.* found in src/. Use src/lib/logger.ts instead." >&2
-  grep -RInE "console\\.(log|warn|error|debug|info)" "$ROOT_DIR/src" --exclude=client-logger.ts | head -50 >&2
+  grep -RInE "console\\.(log|warn|error|debug|info)" "$ROOT_DIR/src" \
+    --exclude=client-logger.ts \
+    --exclude='*.bak' \
+    --exclude='*.backup' \
+    --exclude='*.backup2' \
+    --exclude='*.backup3' \
+    --exclude='*.backup_*' \
+    --exclude='*.orig' | head -50 >&2
   exit 1
 fi
 
@@ -84,7 +98,7 @@ sys.exit(0)
 PY
 
 banner "Workflow QA (checkout/checkin/holds/bills smoke)"
-"$ROOT_DIR/audit/run_workflow_qa.sh"
+COOKIE_JAR_SEED="$ROOT_DIR/audit/api/cookies.txt" "$ROOT_DIR/audit/run_workflow_qa.sh"
 
 banner "Performance budgets (p50/p95)"
 "$ROOT_DIR/audit/run_perf.sh"

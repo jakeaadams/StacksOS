@@ -14,6 +14,7 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import { KeyboardShortcutsOverlay, SessionTimeoutWarning } from "@/components/shared";
 import { useApi } from "@/hooks";
 import { WorkformsProvider } from "@/contexts/workforms-context";
+import { clientLogger } from "@/lib/client-logger";
 
 interface StaffLayoutProps {
   children: React.ReactNode;
@@ -85,7 +86,7 @@ export function StaffLayout({ children }: StaffLayoutProps) {
   const handleSessionExpiring = useCallback(async () => {
     // This is where we could save any unsaved work
     // For now, we just log it - individual components can listen to this event
-    console.log("[StacksOS] Session expiring soon - consider saving work");
+    clientLogger.info("[StacksOS] Session expiring soon - consider saving work");
   }, []);
 
   if (isLoading) {

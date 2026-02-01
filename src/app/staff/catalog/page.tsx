@@ -1,4 +1,5 @@
 "use client";
+import { getEffectiveSearchType } from "@/lib/smart-search";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
 
@@ -90,11 +91,13 @@ function CatalogSearchContent() {
 
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
+    // Smart search: auto-detect ISBN, barcode, call number
+    const effectiveType = getEffectiveSearchType(searchQuery, searchType, "catalog");
     setIsLoading(true);
 
     try {
       const query = encodeURIComponent(searchQuery.trim());
-      const res = await fetchWithAuth(`/api/evergreen/catalog?q=${query}&type=${searchType}&limit=50`);
+      const res = await fetchWithAuth(`/api/evergreen/catalog?q=${query}&type=${effectiveType}&limit=50`);
       const data = await res.json();
 
       if (data.ok) {

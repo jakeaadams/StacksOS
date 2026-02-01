@@ -4,13 +4,11 @@ import { requirePermissions } from "@/lib/permissions";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { existsSync } from "fs";
-import { query } from "@/lib/db/evergreen";
-
+import { savePatronPhotoUrl } from "@/lib/db/evergreen";
 
 export async function POST(request: NextRequest) {
   try {
-    // Require staff authentication
-    await requirePermissions(["STAFF_LOGIN"]);
+    const { actor } = await requirePermissions(["STAFF_LOGIN"]);
 
     const formData = await request.formData();
     const file = formData.get("file") as File;
@@ -44,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     // Generate unique filename
     const timestamp = Date.now();
-    const ext = path.extname(file.name);
+    const ext = path.extname(file.name) || ".jpg";
     const filename = `patron-${patronId}-${timestamp}${ext}`;
 
     // Ensure upload directory exists
@@ -62,21 +60,18 @@ export async function POST(request: NextRequest) {
     // Return the public URL
     const publicUrl = `/uploads/patron-photos/${filename}`;
 
-    // Update Evergreen database with photo URL
+    // Save to custom database table
     try {
-      await query(
-        `UPDATE actor.usr SET photo_url = $1 WHERE id = $2`,
-        [publicUrl, parseInt(patronId)]
-      );
-      logger.info({ patronId, publicUrl }, "Patron photo updated");
+      await savePatronPhotoUrl(parseInt(patronId), publicUrl, actor?.id);
+      logger.info({ patronId, publicUrl }, "Patron photo saved to database");
     } catch (dbError) {
-      logger.error({ error: String(dbError) }, "Failed to update photo_url in database");
-      // Still return success since file was uploaded
+      logger.error({ error: String(dbError) }, "Failed to save photo URL to database");
+      // Still return success since file was uploaded - photo just won't persist across sessions
       return NextResponse.json({
         success: true,
         url: publicUrl,
         filename,
-        warning: "Photo uploaded but failed to update database. Please contact system administrator.",
+        warning: "Photo uploaded but database save failed. Photo may not persist.",
       });
     }
 
@@ -92,6 +87,33 @@ export async function POST(request: NextRequest) {
         error: "Failed to upload file",
         details: error instanceof Error ? error.message : String(error),
       },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    await requirePermissions(["STAFF_LOGIN"]);
+    
+    const { searchParams } = new URL(request.url);
+    const patronId = searchParams.get("patronId");
+    
+    if (!patronId) {
+      return NextResponse.json({ error: "No patronId provided" }, { status: 400 });
+    }
+    
+    const { getPatronPhotoUrl } = await import("@/lib/db/evergreen");
+    const photoUrl = await getPatronPhotoUrl(parseInt(patronId));
+    
+    return NextResponse.json({
+      success: true,
+      url: photoUrl,
+    });
+  } catch (error) {
+    logger.error({ error: String(error) }, "Get photo error");
+    return NextResponse.json(
+      { error: "Failed to get photo", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

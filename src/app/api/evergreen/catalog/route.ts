@@ -210,6 +210,23 @@ export async function GET(req: NextRequest) {
     }
 
     // Get holdings for a bib record
+    // Get copy locations for the Add Item dialog
+    if (action === "copy_locations") {
+      const locResponse = await callOpenSRF(
+        "open-ils.search",
+        "open-ils.search.asset.copy_location.retrieve.all",
+        []
+      );
+      const locations = (locResponse?.payload || []).filter((loc: any) => !loc.ilsevent).map((loc: any) => ({
+        id: loc.id,
+        name: loc.name,
+        owningLib: loc.owning_lib,
+        holdable: loc.holdable === "t",
+        opacVisible: loc.opac_visible === "t",
+      }));
+      return successResponse({ ok: true, locations });
+    }
+
     if (action === "holdings" && bibId) {
       const bibNumeric = parseInt(bibId, 10);
       if (!Number.isFinite(bibNumeric)) {

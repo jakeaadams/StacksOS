@@ -1,1 +1,0 @@
-{"ok":true,"policies":[{"id":0,"name":"Default","loanPeriodDays":21,"renewalLimit":2,"gracePeriodDays":0}],"fineRules":[{"id":0,"name":"Default Fine","fineAmount":0.1,"fineInterval":"1 day"}],"maxFines":[],"message":"Using default policies - could not fetch from Evergreen"}

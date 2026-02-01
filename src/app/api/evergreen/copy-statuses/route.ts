@@ -12,6 +12,7 @@ import {
   successResponse,
 } from "@/lib/api";
 import { getActorFromToken } from "@/lib/audit";
+import { requirePermissions } from "@/lib/permissions";
 
 function toNumber(value: any): number {
   const num = typeof value === "number" ? value : Number(value);
@@ -152,7 +153,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { authtoken, actor, orgId } = await requireStrictPermissions(["CREATE_COPY_STATUS"]);
+    const { authtoken, actor, result: permResult } = await requirePermissions(["CREATE_COPY_STATUS"]);
+    const orgId = permResult.orgId;
     const body = await parseJsonBody<Record<string, any>>(req);
     if (body instanceof Response) return body;
 
@@ -196,7 +198,7 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { authtoken } = await requireStrictPermissions(["UPDATE_COPY_STATUS"]);
+    const { authtoken } = await requirePermissions(["UPDATE_COPY_STATUS"]);
     const body = await parseJsonBody<Record<string, any>>(req);
     if (body instanceof Response) return body;
 
@@ -264,7 +266,7 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const { authtoken } = await requireStrictPermissions(["DELETE_COPY_STATUS"]);
+    const { authtoken } = await requirePermissions(["DELETE_COPY_STATUS"]);
     const body = await parseJsonBody<Record<string, any>>(req);
     if (body instanceof Response) return body;
 

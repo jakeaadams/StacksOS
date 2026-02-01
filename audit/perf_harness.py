@@ -10,10 +10,12 @@ BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:3000")
 OUT_DIR = Path(os.environ.get("OUT_DIR", str(Path.cwd() / "audit" / "perf")))
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 COOKIE_JAR = OUT_DIR / "cookies.txt"
+COOKIE_JAR_SEED = os.environ.get("COOKIE_JAR_SEED", "")
+CSRF_TOKEN = ""
 
 ITERATIONS = int(os.environ.get("ITERATIONS", "30"))
 
-PATRON_BARCODE = os.environ.get("PATRON_BARCODE", "29000000001234")
+PATRON_BARCODE = os.environ.get("PATRON_BARCODE", "")
 ITEM_BARCODE = os.environ.get("ITEM_BARCODE", "39000000001235")
 WORKSTATION = os.environ.get("WORKSTATION", "STACKSOS-PERF")
 
@@ -37,7 +39,10 @@ def curl_time(url: str, method: str = "GET", json_body: dict | None = None) -> f
     cmd += ["-b", str(COOKIE_JAR), "-c", str(COOKIE_JAR)]
 
     if method != "GET":
+        if not CSRF_TOKEN:
+            raise RuntimeError("CSRF token missing; call ensure_csrf_token() first")
         cmd += ["-H", "Content-Type: application/json", "-X", method]
+        cmd += ["-H", f"x-csrf-token: {CSRF_TOKEN}"]
         if json_body is not None:
             cmd += ["-d", json.dumps(json_body)]
 
@@ -56,7 +61,10 @@ def curl_time(url: str, method: str = "GET", json_body: dict | None = None) -> f
 def curl_json(url: str, method: str = "GET", json_body: dict | None = None) -> dict:
     cmd = ["curl", "-sS", "-b", str(COOKIE_JAR), "-c", str(COOKIE_JAR)]
     if method != "GET":
+        if not CSRF_TOKEN:
+            raise RuntimeError("CSRF token missing; call ensure_csrf_token() first")
         cmd += ["-H", "Content-Type: application/json", "-X", method]
+        cmd += ["-H", f"x-csrf-token: {CSRF_TOKEN}"]
         if json_body is not None:
             cmd += ["-d", json.dumps(json_body)]
     cmd.append(url)
@@ -89,11 +97,19 @@ def to_ms(values: list[float]) -> list[float]:
 
 def require_ok(obj: dict, label: str):
     if isinstance(obj, dict) and obj.get("ok") is False:
-        raise RuntimeError(f"{label}: ok=false ({obj.get(error)})")
+        raise RuntimeError(f"{label}: ok=false ({obj.get('error')})")
+
+
+def ensure_csrf_token():
+    global CSRF_TOKEN
+    res = curl_json(f"{BASE_URL}/api/csrf-token")
+    if not isinstance(res, dict) or not res.get("ok") or not res.get("token"):
+        raise RuntimeError("Failed to obtain CSRF token")
+    CSRF_TOKEN = str(res["token"])
 
 
 def login():
-    COOKIE_JAR.write_text("", encoding="utf-8")
+    ensure_csrf_token()
     res = curl_json(
         f"{BASE_URL}/api/evergreen/auth",
         method="POST",
@@ -102,20 +118,61 @@ def login():
     require_ok(res, "auth_login")
 
 
-def resolve_patron_id() -> int:
-    res = curl_json(f"{BASE_URL}/api/evergreen/patrons?barcode={PATRON_BARCODE}")
-    require_ok(res, "patron_lookup")
-    patron = res.get("patron") or {}
-    pid = patron.get("id")
+def get_session_user() -> tuple[int, str]:
+    res = curl_json(f"{BASE_URL}/api/evergreen/auth")
+    require_ok(res, "auth_session")
+    if not res.get("authenticated"):
+        return (0, "")
+    user = res.get("user") or {}
+    pid = user.get("id")
+    # auth_session returns user.card as an id on most Evergreen installs (not fleshed).
+    # We'll resolve barcode via /api/evergreen/patrons?id=... when needed.
+    barcode = ""
+    card = user.get("card")
+    if isinstance(card, dict):
+        barcode = str(card.get("barcode") or "")
     if not isinstance(pid, int):
-        raise RuntimeError("Could not resolve patron id")
-    return pid
+        pid = 0
+    return (pid, str(barcode or ""))
+
+
+def resolve_patron_barcode(patron_id: int) -> str:
+    res = curl_json(f"{BASE_URL}/api/evergreen/patrons?id={patron_id}")
+    require_ok(res, "patron_by_id")
+    patron = res.get("patron") or {}
+    if not isinstance(patron, dict):
+        return ""
+    if patron.get("barcode"):
+        return str(patron.get("barcode") or "")
+    card = patron.get("card")
+    if isinstance(card, dict) and card.get("barcode"):
+        return str(card.get("barcode") or "")
+    return ""
 
 
 def main():
     start = time.time()
-    login()
-    patron_id = resolve_patron_id()
+    if COOKIE_JAR_SEED and Path(COOKIE_JAR_SEED).exists():
+        COOKIE_JAR.write_text(Path(COOKIE_JAR_SEED).read_text(encoding="utf-8"), encoding="utf-8")
+    else:
+        COOKIE_JAR.write_text("", encoding="utf-8")
+
+    ensure_csrf_token()
+
+    patron_id, session_barcode = get_session_user()
+    if patron_id <= 0:
+        login()
+        patron_id, session_barcode = get_session_user()
+
+    global PATRON_BARCODE
+    if not PATRON_BARCODE:
+        if session_barcode:
+            PATRON_BARCODE = session_barcode
+        else:
+            PATRON_BARCODE = resolve_patron_barcode(patron_id)
+
+    if not PATRON_BARCODE:
+        raise RuntimeError("Could not resolve patron barcode for checkout/checkin timing")
 
     # Warmup (avoid first-call noise)
     _ = curl_time(f"{BASE_URL}/api/evergreen/catalog?q=harry%20potter&type=title&limit=10")
@@ -217,7 +274,7 @@ def main():
         budget = BUDGETS[budget_key]
         ok = p95 <= budget
         lines.append(
-            f"{metric}\t{metrics[metric]["samples"]}\t{metrics[metric]["p50_ms"]}\t{p95}\t{budget}\t{1 if ok else 0}"
+            f"{metric}\t{metrics[metric]['samples']}\t{metrics[metric]['p50_ms']}\t{p95}\t{budget}\t{1 if ok else 0}"
         )
         return ok
 

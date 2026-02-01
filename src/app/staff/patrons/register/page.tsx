@@ -185,7 +185,7 @@ export default function PatronRegisterPage() {
       });
 
       if (createdBarcode) {
-        router.push(`/staff/patrons?q=${encodeURIComponent(createdBarcode)}`);
+        router.push(`/staff/patrons?q=${encodeURIComponent(createdBarcode)}&type=barcode`);
       }
     } catch (err: any) {
       setError(err?.message || "Registration failed");

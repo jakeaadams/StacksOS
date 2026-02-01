@@ -20,17 +20,33 @@ export async function GET(req: NextRequest) {
 
     // Use open-ils.search for authority browse
     // The browse method returns authority headings matching the search term
-    const response = await callOpenSRF(
-      "open-ils.search",
-      "open-ils.search.authority.simple_heading.browse",
-      [
-        authtoken,
-        query,
-        axis || null, // authority type filter (author, subject, title, etc.)
-        10, // limit results
-        0,  // offset
-      ]
-    );
+    let response: any;
+    try {
+      response = await callOpenSRF(
+        "open-ils.search",
+        "open-ils.search.authority.simple_heading.browse",
+        [
+          authtoken,
+          query,
+          axis || null, // authority type filter (author, subject, title, etc.)
+          10, // limit results
+          0,  // offset
+        ]
+      );
+    } catch (error) {
+      // Evergreen installs vary; many don't expose authority browse in OpenSRF.
+      // Treat "method not found" as "not configured" instead of a hard 500.
+      if (error && typeof error === "object" && (error as any).code === "OSRF_METHOD_NOT_FOUND") {
+        return successResponse({
+          count: 0,
+          authorities: [],
+          query,
+          axis: axis || null,
+          warning: "Authority search is not configured on this Evergreen server.",
+        });
+      }
+      throw error;
+    }
 
     const authorities = response?.payload || [];
     

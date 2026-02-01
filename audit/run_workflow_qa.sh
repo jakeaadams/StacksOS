@@ -5,15 +5,22 @@ BASE_URL="${BASE_URL:-http://localhost:3000}"
 PROJECT_DIR="${PROJECT_DIR:-/home/jake/projects/stacksos}"
 OUT_DIR="${OUT_DIR:-$PROJECT_DIR/audit/workflow}"
 COOKIE_JAR="$OUT_DIR/cookies.txt"
+COOKIE_JAR_SEED="${COOKIE_JAR_SEED:-}"
 LOG="$OUT_DIR/summary.tsv"
+CSRF_TOKEN=""
 
-PATRON_BARCODE="${PATRON_BARCODE:-29000000001234}"
+PATRON_BARCODE="${PATRON_BARCODE:-}"
 ITEM_BARCODE="${ITEM_BARCODE:-39000000001235}"
 WORKSTATION="${WORKSTATION:-STACKSOS-QA}"
 ORG_ID="${ORG_ID:-101}"
 
 mkdir -p "$OUT_DIR"
-rm -f "$OUT_DIR"/*.json "$COOKIE_JAR" 2>/dev/null || true
+rm -f "$OUT_DIR"/*.json 2>/dev/null || true
+if [[ -n "$COOKIE_JAR_SEED" && -f "$COOKIE_JAR_SEED" ]]; then
+  cp "$COOKIE_JAR_SEED" "$COOKIE_JAR"
+else
+  rm -f "$COOKIE_JAR" 2>/dev/null || true
+fi
 
 : > "$LOG"
 printf "name\tstatus\turl\n" >> "$LOG"
@@ -30,9 +37,14 @@ call() {
       -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
       "$url")
   else
+    if [[ -z "$CSRF_TOKEN" ]]; then
+      echo "ERROR: CSRF_TOKEN is empty; call /api/csrf-token first" >&2
+      exit 1
+    fi
     resp=$(curl -sS -w '\nHTTP_STATUS:%{http_code}\n' \
       -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
       -H 'Content-Type: application/json' \
+      -H "x-csrf-token: $CSRF_TOKEN" \
       -X "$method" \
       -d "$data" \
       "$url")
@@ -69,49 +81,116 @@ trap cleanup EXIT
 call "ping" "$BASE_URL/api/evergreen/ping"
 require_ok "ping"
 
+# 0b) CSRF token (required for POST/PUT/PATCH/DELETE)
+call "csrf_token" "$BASE_URL/api/csrf-token"
+CSRF_TOKEN=$(python3 - <<PY
+import json,sys
+p=json.load(open("$OUT_DIR/csrf_token.json"))
+print(p.get("token") or "")
+PY
+)
+if [[ -z "$CSRF_TOKEN" ]]; then
+  echo "ERROR: failed to obtain CSRF token from $OUT_DIR/csrf_token.json" >&2
+  exit 1
+fi
+
 # 1) Login (and auto-register workstation if needed)
-AUTH_PAYLOAD=$(cat <<JSON
+call "auth_session_preflight" "$BASE_URL/api/evergreen/auth"
+require_ok "auth_session_preflight"
+
+ALREADY_AUTHED=$(python3 - <<PY
+import json
+p=json.load(open("$OUT_DIR/auth_session_preflight.json"))
+print("1" if p.get("authenticated") else "0")
+PY
+)
+
+if [[ "$ALREADY_AUTHED" != "1" ]]; then
+  AUTH_PAYLOAD=$(cat <<JSON
 {"username":"jake","password":"jake","workstation":"$WORKSTATION"}
 JSON
 )
-call "auth_login" "$BASE_URL/api/evergreen/auth" "POST" "$AUTH_PAYLOAD"
-require_ok "auth_login"
+  call "auth_login" "$BASE_URL/api/evergreen/auth" "POST" "$AUTH_PAYLOAD"
+  require_ok "auth_login"
 
-NEEDS_WS=$(python3 - <<PY
+  NEEDS_WS=$(python3 - <<PY
 import json
 p=json.load(open("$OUT_DIR/auth_login.json"))
 print("1" if p.get("needsWorkstation") else "0")
 PY
 )
 
-if [[ "$NEEDS_WS" == "1" ]]; then
-  REG_PAYLOAD=$(cat <<JSON
+  if [[ "$NEEDS_WS" == "1" ]]; then
+    REG_PAYLOAD=$(cat <<JSON
 {"name":"$WORKSTATION","org_id":$ORG_ID}
 JSON
 )
-  call "workstation_register" "$BASE_URL/api/evergreen/workstations" "POST" "$REG_PAYLOAD"
-  require_ok "workstation_register"
-  call "auth_login_retry" "$BASE_URL/api/evergreen/auth" "POST" "$AUTH_PAYLOAD"
-  require_ok "auth_login_retry"
+    call "workstation_register" "$BASE_URL/api/evergreen/workstations" "POST" "$REG_PAYLOAD"
+    require_ok "workstation_register"
+    call "auth_login_retry" "$BASE_URL/api/evergreen/auth" "POST" "$AUTH_PAYLOAD"
+    require_ok "auth_login_retry"
+  fi
 fi
 
 call "auth_session" "$BASE_URL/api/evergreen/auth"
 require_ok "auth_session"
 
-# 2) Resolve patron + item
-call "patron_lookup" "$BASE_URL/api/evergreen/patrons?barcode=$PATRON_BARCODE"
-require_ok "patron_lookup"
-
+# 2) Resolve patron from session (prefers logged-in staff user)
 PATRON_ID=$(python3 - <<PY
 import json
-p=json.load(open("$OUT_DIR/patron_lookup.json"))
-patron=p.get("patron") or {}
-print(patron.get("id") or "")
+p=json.load(open("$OUT_DIR/auth_session.json"))
+user=p.get("user") or {}
+print(user.get("id") or "")
 PY
 )
+SESSION_BARCODE=$(python3 - <<PY
+import json
+p=json.load(open("$OUT_DIR/auth_session.json"))
+user=p.get("user") or {}
+card=user.get("card") or {}
+barcode=None
+if isinstance(card, dict):
+  barcode=card.get("barcode")
+print(barcode or "")
+PY
+)
+if [[ -n "$SESSION_BARCODE" ]]; then
+  PATRON_BARCODE="$SESSION_BARCODE"
+fi
+
+# Prefer resolving the logged-in user's card barcode via patron-by-id.
+call "patron_by_id" "$BASE_URL/api/evergreen/patrons?id=$PATRON_ID"
+require_ok "patron_by_id"
+BARCODE_FROM_ID=$(python3 - <<PY
+import json
+p=json.load(open("$OUT_DIR/patron_by_id.json"))
+patron=p.get("patron") or {}
+barcode=None
+if isinstance(patron, dict):
+  barcode=patron.get("barcode")
+  card=patron.get("card")
+  if not barcode and isinstance(card, dict):
+    barcode=card.get("barcode")
+print(barcode or "")
+PY
+)
+if [[ -n "$BARCODE_FROM_ID" ]]; then
+  PATRON_BARCODE="$BARCODE_FROM_ID"
+fi
+
+# Verify patron lookup by barcode (if we have one).
+if [[ -n "$PATRON_BARCODE" ]]; then
+  call "patron_lookup" "$BASE_URL/api/evergreen/patrons?barcode=$PATRON_BARCODE"
+  require_ok "patron_lookup"
+fi
 
 if [[ -z "$PATRON_ID" ]]; then
   echo "Patron ID missing from patron lookup" >&2
+  exit 1
+fi
+
+if [[ -z "$PATRON_BARCODE" ]]; then
+  echo "Patron barcode missing; cannot run circulation workflows" >&2
   exit 1
 fi
 

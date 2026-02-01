@@ -7,8 +7,10 @@
 
 "use client";
 
+import { fetchWithAuth } from "@/lib/client-fetch";
+
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,6 +85,22 @@ export function PatronCard({
   const [photoUploadOpen, setPhotoUploadOpen] = useState(false);
   const [patronPhotoUrl, setPatronPhotoUrl] = useState<string | undefined>(undefined);
 
+  // Fetch existing photo on mount
+  useEffect(() => {
+    if (patron.id) {
+      fetchWithAuth(`/api/upload-patron-photo?patronId=${patron.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.url) {
+            setPatronPhotoUrl(data.url);
+          }
+        })
+        .catch(() => {
+          // Ignore errors - patron may not have a photo
+        });
+    }
+  }, [patron.id]);
+
   const handlePhotoClick = () => {
     setPhotoUploadOpen(true);
   };
@@ -122,6 +140,7 @@ export function PatronCard({
                 src={patronPhotoUrl}
                 alt={patron.displayName}
                 onError={handlePhotoError}
+                data-testid="patron-card-photo-image"
               />
             )}
             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
@@ -179,6 +198,14 @@ export function PatronCard({
           <div className="flex items-start gap-4">
             <div className="relative group cursor-pointer" onClick={handlePhotoClick} onKeyDown={handlePhotoKeyDown} role="button" aria-label="Upload patron photo" tabIndex={0} title="Click to upload photo">
               <Avatar className="h-12 w-12 transition-opacity group-hover:opacity-70">
+                {patronPhotoUrl && (
+                  <AvatarImage
+                    src={patronPhotoUrl}
+                    alt={patron.displayName}
+                    onError={handlePhotoError}
+                    data-testid="patron-card-photo-image"
+                  />
+                )}
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full pointer-events-none">
@@ -288,6 +315,7 @@ export function PatronCard({
                   src={patronPhotoUrl}
                   alt={patron.displayName}
                   onError={handlePhotoError}
+                  data-testid="patron-card-photo-image"
                 />
               )}
               <AvatarFallback className="text-xl">{initials}</AvatarFallback>
@@ -442,6 +470,22 @@ export function PatronSearchResult({
   const initials = `${patron.firstName?.[0] || ""}${patron.lastName?.[0] || ""}`.toUpperCase() || "?";
   const [photoUploadOpen, setPhotoUploadOpen] = useState(false);
   const [patronPhotoUrl, setPatronPhotoUrl] = useState<string | undefined>(undefined);
+
+  // Fetch existing photo on mount
+  useEffect(() => {
+    if (patron.id) {
+      fetchWithAuth(`/api/upload-patron-photo?patronId=${patron.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.url) {
+            setPatronPhotoUrl(data.url);
+          }
+        })
+        .catch(() => {
+          // Ignore errors - patron may not have a photo
+        });
+    }
+  }, [patron.id]);
 
   const handlePhotoClick = () => {
     setPhotoUploadOpen(true);

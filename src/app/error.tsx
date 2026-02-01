@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { clientLogger } from "@/lib/client-logger";
 import { AlertTriangle, Home, RefreshCw } from "lucide-react";
 
 export default function Error({
@@ -14,7 +15,7 @@ export default function Error({
 }) {
   useEffect(() => {
     // Log the error to an error reporting service
-    console.error("Application error:", error);
+    clientLogger.error("Application error:", error);
   }, [error]);
 
   return (
