@@ -3,6 +3,7 @@
 Date: 2026-01-25
 
 This is the execution backlog derived from `docs/StacksOS-Master-PRD.md`.
+Implementation sequencing (high-level): `docs/StacksOS-Implementation-Plan.md` (last updated 2026-02-01).
 
 Legend:
 - AC = acceptance criteria
@@ -98,6 +99,9 @@ Done checklist:
 - [x] Shared loading/error/empty states
 - [x] Shared `DataTable` patterns
 - [x] Sidebar + top-nav shell
+- [x] Environment banner (prod vs training/sandbox) in header
+- [x] Always-visible header search (autosuggest)
+- [x] Workform tracker (recent + pinned workforms)
 - [x] Command palette (`Cmd/Ctrl+K`)
 - [x] Keyboard shortcuts registry (F-keys)
 
@@ -692,6 +696,7 @@ Principles (non-negotiable):
 - Explainable: show why a suggestion was made; cite sources when applicable.
 
 Status: NOT STARTED (planning + decomposition)
+Plan: `docs/StacksOS-Implementation-Plan.md` (AI section).
 
 ---
 
@@ -807,6 +812,9 @@ AC:
 Status: NOT STARTED
 
 Checklist:
+- [ ] Ship the AI service layer (server-side): `/api/ai/*` endpoints + provider abstraction + timeouts/rate limits.
+- [ ] Add `featureFlags.ai` (per-tenant) and ensure AI can be disabled instantly without breaking workflows.
+- [ ] Remove or feature-flag any hardcoded “AI answers” in `src/components/ai/*` (no demo responses in staff workflows).
 - [ ] Model registry (model name/version, provider, config) per tenant.
 - [ ] Data retention policy for prompts/outputs (default minimal).
 - [ ] Redaction policy for PII in prompts (default on).
@@ -816,4 +824,3 @@ Checklist:
 AC:
 - AI features can be disabled instantly per tenant.
 - Logs are sufficient for post-incident analysis without exposing patron data.
-
