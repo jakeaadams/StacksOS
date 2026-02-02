@@ -9,14 +9,10 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Settings,
   Building2,
   BookOpen,
   MapPin,
   ArrowRight,
-  Shield,
-  Clock,
-  DollarSign,
   Users,
 } from "lucide-react";
 
@@ -75,13 +71,6 @@ const SETTINGS_CARDS: SettingsCard[] = [
   },
 ];
 
-const QUICK_STATS = [
-  { label: "Setting Categories", value: "4", icon: Settings, color: "text-blue-600" },
-  { label: "Policy Types", value: "3", icon: Shield, color: "text-emerald-600" },
-  { label: "Time-based Rules", value: "Multiple", icon: Clock, color: "text-amber-600" },
-  { label: "Fine Rules", value: "Configurable", icon: DollarSign, color: "text-red-600" },
-];
-
 export default function SettingsHubPage() {
   const router = useRouter();
 
@@ -105,27 +94,6 @@ export default function SettingsHubPage() {
       />
 
       <PageContent className="space-y-8">
-        {/* Quick Stats */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {QUICK_STATS.map((stat) => (
-            <Card key={stat.label} className="rounded-2xl">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {stat.label}
-                    </p>
-                    <div className="text-2xl font-semibold mt-1">{stat.value}</div>
-                  </div>
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center bg-muted ${stat.color}`}>
-                    <stat.icon className="h-5 w-5" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
         {/* Settings Categories */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {SETTINGS_CARDS.map((card) => (
