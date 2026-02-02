@@ -9,6 +9,8 @@ COOKIE_JAR_SEED="${COOKIE_JAR_SEED:-}"
 LOG="$OUT_DIR/summary.tsv"
 CSRF_TOKEN=""
 
+STACKSOS_AUDIT_MUTATE="${STACKSOS_AUDIT_MUTATE:-0}"
+
 PATRON_BARCODE="${PATRON_BARCODE:-}"
 ITEM_BARCODE="${ITEM_BARCODE:-39000000001235}"
 WORKSTATION="${WORKSTATION:-STACKSOS-QA}"
@@ -208,6 +210,12 @@ PY
 if [[ -z "$RECORD_ID" ]]; then
   echo "Record ID missing from item lookup (needed for title holds + MARC)" >&2
   exit 1
+fi
+
+if [[ "$STACKSOS_AUDIT_MUTATE" != "1" ]]; then
+  echo "[workflow_qa] STACKSOS_AUDIT_MUTATE != 1; skipping mutation steps (circ, holds, marc update)" >&2
+  echo "Workflow QA complete. Summary: $LOG"
+  exit 0
 fi
 
 # 3) Circulation core: checkout -> renew -> checkin

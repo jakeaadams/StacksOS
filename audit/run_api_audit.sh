@@ -15,6 +15,7 @@ PATRON_BARCODE="${PATRON_BARCODE:-}"
 ITEM_BARCODE="${ITEM_BARCODE:-39000000001235}"
 WORKSTATION="${WORKSTATION:-STACKSOS-AUDIT}"
 ORG_ID="${ORG_ID:-101}"
+STACKSOS_AUDIT_MUTATE="${STACKSOS_AUDIT_MUTATE:-0}"
 
 mkdir -p "$OUT_DIR"
 rm -f "$OUT_DIR"/*.json 2>/dev/null || true
@@ -191,7 +192,7 @@ call "items_lookup" "$BASE_URL/api/evergreen/items?barcode=$ITEM_BARCODE"
 call "circ_item_status" "$BASE_URL/api/evergreen/circulation?itemBarcode=$ITEM_BARCODE"
 
 # 10) Circulation: checkout -> renew -> checkin (if patron id present)
-if [[ -n "$PATRON_ID" ]]; then
+if [[ -n "$PATRON_ID" && "$STACKSOS_AUDIT_MUTATE" == "1" ]]; then
   # Best-effort: ensure the test item is not already checked out.
   PRECHECKIN_PAYLOAD=$(cat <<JSON
 {"action":"checkin","itemBarcode":"$ITEM_BARCODE"}

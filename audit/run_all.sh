@@ -98,6 +98,9 @@ sys.exit(0)
 PY
 
 banner "Workflow QA (checkout/checkin/holds/bills smoke)"
+if [[ "${STACKSOS_AUDIT_MUTATE:-0}" != "1" ]]; then
+  echo "NOTE: STACKSOS_AUDIT_MUTATE!=1; workflow QA will run read-only (no circ/holds/MARC mutations)." >&2
+fi
 COOKIE_JAR_SEED="$ROOT_DIR/audit/api/cookies.txt" "$ROOT_DIR/audit/run_workflow_qa.sh"
 
 banner "Performance budgets (p50/p95)"
