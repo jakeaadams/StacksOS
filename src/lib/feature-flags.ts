@@ -11,10 +11,15 @@ export const featureFlags = {
     // Major modules
     // Keep disabled until we have a real provider/integration.
     ill: EXPERIMENTAL,
+    opacKids: EXPERIMENTAL,
+    courseReserves: EXPERIMENTAL,
 
     // Cataloging power tools (not yet implemented end-to-end)
     recordBuckets: EXPERIMENTAL,
     marcBatchEdit: EXPERIMENTAL,
+
+    // AI (must never ship demo responses in production workflows)
+    ai: EXPERIMENTAL,
 
     // Reports submodules (not yet implemented)
     reportTemplates: EXPERIMENTAL,
@@ -24,7 +29,8 @@ export const featureFlags = {
     // Admin submodules (not yet implemented)
     serverAdmin: EXPERIMENTAL,
     adminWorkstations: EXPERIMENTAL,
-    userManagement: EXPERIMENTAL,
+    userManagement: true,
+    copyTags: EXPERIMENTAL,
 } as const;
 
 export type FeatureFlags = typeof featureFlags;

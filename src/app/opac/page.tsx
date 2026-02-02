@@ -1,7 +1,8 @@
 "use client";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
-import { clientLogger } from "@/lib/client-logger";;
+import { clientLogger } from "@/lib/client-logger";
+import { featureFlags } from "@/lib/feature-flags";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -503,9 +504,11 @@ export default function OPACHomePage() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/opac/kids" className="hover:text-white transition-colors">
-                    Kids Catalog
-                  </Link>
+                  {featureFlags.opacKids ? (
+                    <Link href="/opac/kids" className="hover:text-white transition-colors">
+                      Kids Catalog
+                    </Link>
+                  ) : null}
                 </li>
                 <li>
                   <Link href="/opac/search?format=ebook" className="hover:text-white transition-colors">

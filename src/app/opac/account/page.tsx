@@ -5,6 +5,7 @@ import type { ElementType } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/usePatronSession";
+import { featureFlags } from "@/lib/feature-flags";
 import { useLibrary } from "@/hooks/useLibrary";
 import {
   User,
@@ -376,14 +377,16 @@ export default function AccountDashboard() {
                   <Heart className="h-5 w-5 text-muted-foreground/70" />
                   My Lists
                 </Link>
-                <Link
-                  href="/opac/kids/challenges"
-                  className="flex items-center gap-3 px-3 py-2 text-foreground/80 hover:bg-muted/30 
+                {featureFlags.opacKids ? (
+                  <Link
+                    href="/opac/kids/challenges"
+                    className="flex items-center gap-3 px-3 py-2 text-foreground/80 hover:bg-muted/30 
                            rounded-lg transition-colors"
-                >
-                  <Award className="h-5 w-5 text-muted-foreground/70" />
-                  Reading Challenges
-                </Link>
+                  >
+                    <Award className="h-5 w-5 text-muted-foreground/70" />
+                    Reading Challenges
+                  </Link>
+                ) : null}
                 <Link
                   href="/opac/account/messages"
                   className="flex items-center gap-3 px-3 py-2 text-foreground/80 hover:bg-muted/30 

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useLibrary } from "@/hooks/useLibrary";
+import { featureFlags } from "@/lib/feature-flags";
 import { 
   Facebook, 
   Twitter, 
@@ -115,9 +116,11 @@ export function OPACFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/opac/kids" className="text-sm hover:text-white transition-colors">
-                  Kids Catalog
-                </Link>
+                {featureFlags.opacKids ? (
+                  <Link href="/opac/kids" className="text-sm hover:text-white transition-colors">
+                    Kids Catalog
+                  </Link>
+                ) : null}
               </li>
               <li>
                 <Link href="/opac/search?format=ebook" className="text-sm hover:text-white transition-colors">

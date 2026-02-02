@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLibrary } from "@/hooks/useLibrary";
 import { usePatronSession } from "@/hooks/usePatronSession";
+import { featureFlags } from "@/lib/feature-flags";
 import {
   Search,
   Home,
@@ -24,6 +25,27 @@ interface KidsLayoutProps {
 }
 
 export default function KidsLayout({ children }: KidsLayoutProps) {
+  if (!featureFlags.opacKids) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6 py-16">
+        <div className="max-w-md rounded-2xl border bg-card p-6 text-center shadow-sm">
+          <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
+            <Sparkles className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <h1 className="text-lg font-semibold">Kids Catalog is disabled</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This module is still being integrated. Return to the main catalog to continue browsing.
+          </p>
+          <div className="mt-4">
+            <Link href="/opac" className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+              Back to OPAC
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const pathname = usePathname();
   const { library } = useLibrary();
   const { patron, isLoggedIn, logout } = usePatronSession();

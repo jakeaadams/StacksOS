@@ -9,6 +9,7 @@ import { useTheme } from "next-themes";
 import { useLibrary } from "@/hooks/useLibrary";
 import { usePatronSession } from "@/hooks/usePatronSession";
 import { useDebounce } from "@/hooks/use-debounce";
+import { featureFlags } from "@/lib/feature-flags";
 import {
   Moon,
   Sun,
@@ -157,7 +158,9 @@ export function OPACHeader() {
                 {library.locations.length} Locations
               </Link>
             )}
-            <Link href="/opac/kids" className="hover:underline font-medium">👶 Kids</Link>
+            {featureFlags.opacKids ? (
+              <Link href="/opac/kids" className="hover:underline font-medium">👶 Kids</Link>
+            ) : null}
           </div>
         </div>
       </div>
@@ -311,7 +314,9 @@ export function OPACHeader() {
           <nav className="px-4 py-4 space-y-2">
             <Link href="/opac" className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg" onClick={() => setMobileMenuOpen(false)}>Home</Link>
             <Link href="/opac/search" className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg" onClick={() => setMobileMenuOpen(false)}>Browse Catalog</Link>
-            <Link href="/opac/kids" className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg" onClick={() => setMobileMenuOpen(false)}>👶 Kids Catalog</Link>
+            {featureFlags.opacKids ? (
+              <Link href="/opac/kids" className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg" onClick={() => setMobileMenuOpen(false)}>👶 Kids Catalog</Link>
+            ) : null}
             <button type="button" onClick={() => { toggleTheme(); setMobileMenuOpen(false); }} className="w-full flex items-center gap-2 px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg">
               {mounted && resolvedTheme === "dark" ? <><Sun className="h-4 w-4" /> Light Mode</> : <><Moon className="h-4 w-4" /> Dark Mode</>}
             </button>

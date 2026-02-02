@@ -134,11 +134,15 @@ const mainNav: NavSection[] = [
         },
       ]
     : []),
-  {
-    title: "Course Reserves",
-    defaultOpen: false,
-    items: [{ title: "Course Materials", href: "/staff/course-reserves", icon: GraduationCap }],
-  },
+  ...(featureFlags.courseReserves
+    ? [
+        {
+          title: "Course Reserves",
+          defaultOpen: false,
+          items: [{ title: "Course Materials", href: "/staff/course-reserves", icon: GraduationCap }],
+        },
+      ]
+    : []),
   {
     title: "Booking",
     defaultOpen: false,
@@ -193,7 +197,9 @@ const mainNav: NavSection[] = [
       { title: "Policy Inspector", href: "/staff/admin/policy-inspector", icon: Database },
       { title: "Item Statuses", href: "/staff/admin/item-statuses", icon: Tag },
       { title: "Stat Categories", href: "/staff/admin/stat-categories", icon: BarChart3 },
-      { title: "Copy Tags", href: "/staff/admin/copy-tags", icon: BookMarked },
+      ...(featureFlags.copyTags
+        ? [{ title: "Copy Tags", href: "/staff/admin/copy-tags", icon: BookMarked }]
+        : []),
       ...(featureFlags.serverAdmin
         ? [{ title: "Server Admin", href: "/staff/admin/server", icon: Database }]
         : []),
