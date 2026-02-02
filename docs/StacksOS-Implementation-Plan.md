@@ -1,17 +1,18 @@
-# StacksOS Implementation Plan (World-class) — 2026-02-01
+# StacksOS Implementation Plan (World-class) — 2026-02-02
 
 This doc turns the PRD + backlog into an executable, sequenced plan. It also spells out how we’ll implement “AI stuff” without sacrificing trust.
 
-**Source of truth for work items:** `docs/StacksOS-Execution-Backlog.md`
+**Source of truth for work items:** `StacksOS-Execution-Backlog.md` (mirrored in `docs/StacksOS-Execution-Backlog.md`)
 
 ## Where we are (baseline)
 
-Recently shipped (2026-02-01):
+Recently shipped (2026-02-02):
 - Polaris-style **environment banner** (`/api/env`, `STACKSOS_ENV_LABEL`, `STACKSOS_ENV_TONE`)
 - Polaris-style **always-visible autosuggest search** in the top header
 - Polaris-style **Workform Tracker** in the sidebar (recent + pinned “open records”)
 - Polaris-style **split-screen MARC compare** (`/staff/cataloging/marc-editor?id=…&compare=…`)
 - Fixed a root Evergreen/OpenSRF integration bug where spaces became literal `+` inside request params (broke pcrud `order_by`, causing “0 results” / empty lists)
+- Fixed Staff User Management to query real Evergreen staff accounts (handles inherited `STAFF_LOGIN` via group descendants)
 
 Key credibility rule (non-negotiable):
 - No demo/fake data in staff workflows. If a screen is empty, it must be empty because Evergreen is empty or misconfigured — and we should show that clearly.

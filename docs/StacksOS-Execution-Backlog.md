@@ -1,9 +1,9 @@
 # StacksOS Execution Backlog (P0/P1/P2)
 
-Date: 2026-01-25
+Date: 2026-02-02
 
-This is the execution backlog derived from `docs/StacksOS-Master-PRD.md`.
-Implementation sequencing (high-level): `docs/StacksOS-Implementation-Plan.md` (last updated 2026-02-01).
+This is the execution backlog derived from `StacksOS-Master-PRD.md` (mirrored in `docs/StacksOS-Master-PRD.md`).
+Implementation sequencing (high-level): `StacksOS-Implementation-Plan.md` (mirrored in `docs/StacksOS-Implementation-Plan.md`).
 
 Legend:
 - AC = acceptance criteria
@@ -62,7 +62,7 @@ Ship when:
 
 ---
 
-## Status Snapshot (as of 2026-01-25)
+## Status Snapshot (as of 2026-02-02)
 
 Implemented foundations:
 - Staff shell + shared UI system: **DONE**
@@ -72,9 +72,10 @@ Implemented foundations:
 - Automated audits exist: **DONE** (`./audit/run_all.sh`, UI/API/workflow/perf/inventory)
 
 Current blockers (must fix before calling this pilot-ready):
-- `./audit/run_all.sh` is **FAILING** due to `console.*` usage (currently in OPAC + a few shared hooks/components).
-- Evergreen sandbox configuration/data is **INCOMPLETE**: multiple modules show empty lists or not configured yet signals (Acq/Serials/Booking/Authority).
-- Admin/role clarity is **INCOMPLETE**: StacksOS displays Evergreen-derived group/profile; ensure sandbox admin group (e.g., `StacksOSAdmin`) is configured + assigned if you expect Admin.
+- Evergreen sandbox configuration/data is **INCOMPLETE**: multiple modules show empty lists or “not configured yet” signals (Acq/Serials/Booking/Authority).
+- SaaS readiness is **INCOMPLETE**: tenant isolation/provisioning, object storage for uploads, secrets management, monitoring/alerting, DR drills.
+- Admin/role clarity is **INCOMPLETE**: StacksOS displays Evergreen-derived group/profile; ensure the sandbox has realistic staff groups and permissions so Admin features appear as expected.
+- Audit realism: `./audit/run_all.sh` is **PASSING**, and workflow QA is **read-only by default** (to avoid polluting the Evergreen sandbox with synthetic circulation). Set `STACKSOS_AUDIT_MUTATE=1` only when you explicitly want mutation coverage.
 
 High-impact UX gaps (why the staff UI feels weak vs Polaris/Symphony):
 - Missing record cockpit UX: selecting a bib/patron should open a detail drawer/panel with availability/holdings/actions (added to P0-4a + P0-5a).
@@ -809,26 +810,23 @@ AC:
 
 ### P2-9: AI safety, model ops, and governance
 
-Status: NOT STARTED
+Status: PARTIAL
 
-Checklist:
-- [ ] Ship the AI service layer (server-side): `/api/ai/*` endpoints + provider abstraction + timeouts/rate limits.
-- [ ] Add `featureFlags.ai` (per-tenant) and ensure AI can be disabled instantly without breaking workflows.
-- [ ] Remove or feature-flag any hardcoded “AI answers” in `src/components/ai/*` (no demo responses in staff workflows).
-- [ ] Model registry (model name/version, provider, config) per tenant.
-- [ ] Data retention policy for prompts/outputs (default minimal).
-- [ ] Redaction policy for PII in prompts (default on).
-- [ ] Abuse protections + rate limits.
-- [ ] Incident response runbook for AI features.
-- [ ] Implement `src/lib/ai/` provider interface + adapters (OpenAI/Anthropic), with schema-validated outputs (Zod) and deterministic settings for “explain” endpoints.
-- [ ] Add per-tenant AI config wiring (env + DB): enabled flag, provider, model, max tokens, temperature, safety mode.
-- [ ] Add server-side prompt templates with provenance (prompt versioning + prompt hash in logs).
-- [ ] Add “AI OFF” UX: all AI panels hidden/disabled and the product remains fully functional.
-- [ ] Add AI audit events (draft created/accepted/rejected) and store minimal metadata (no raw PII by default).
-- [ ] Add redaction unit tests + fixtures (names, emails, phones, barcodes) and enforce redaction on the server boundary.
-- [ ] Add evaluation harness: golden test cases for policy explanations and cataloging suggestions (no hallucinations, no invented numbers).
-- [ ] Add safety UI patterns: “Draft” labels, provenance display (model/provider/version), and “Copy/Insert” flows (no auto-mutations).
-- [ ] Add cost/latency telemetry: per-endpoint timing, tokens, error rates, and per-tenant budgets/limits.
+Notes:
+- AI must never “look real” while being fake. No demo responses in staff workflows.
+- All AI calls are server-side only; the browser never talks directly to a model provider.
+
+Deliverable sequence (do in this order):
+- [x] P2-9a: `featureFlags.ai` exists (currently behind `NEXT_PUBLIC_STACKSOS_EXPERIMENTAL=1`)
+- [ ] P2-9b: Define per-tenant AI config (env + DB): enabled flag, provider, model, max tokens, temperature, safety mode
+- [ ] P2-9c: Implement `src/lib/ai/` provider interface + adapters (OpenAI/Anthropic) with schema-validated outputs (Zod)
+- [ ] P2-9d: Redaction policy + unit tests/fixtures (names, emails, phones, barcodes) enforced on the server boundary
+- [ ] P2-9e: Ship `/api/ai/*` endpoints (draft-only) + timeouts + rate limits + abuse protections
+- [ ] P2-9f: Add prompt templates + provenance (prompt versioning + prompt hash in logs)
+- [ ] P2-9g: Add AI audit events (draft created/accepted/rejected) storing minimal metadata (no raw PII by default)
+- [ ] P2-9h: Replace/feature-flag any hardcoded “AI answers” in `src/components/ai/*` and wire to `/api/ai/*`
+- [ ] P2-9i: Add evaluation harness (golden tests) for policy explanations + cataloging suggestions (no hallucinations)
+- [ ] P2-9j: Add cost/latency telemetry + per-tenant budgets/limits + incident response runbook
 
 AC:
 - AI features can be disabled instantly per tenant.
