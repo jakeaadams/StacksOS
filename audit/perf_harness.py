@@ -14,9 +14,10 @@ COOKIE_JAR_SEED = os.environ.get("COOKIE_JAR_SEED", "")
 CSRF_TOKEN = ""
 
 ITERATIONS = int(os.environ.get("ITERATIONS", "30"))
+STACKSOS_AUDIT_MUTATE = os.environ.get("STACKSOS_AUDIT_MUTATE", "0") == "1"
 
 PATRON_BARCODE = os.environ.get("PATRON_BARCODE", "")
-ITEM_BARCODE = os.environ.get("ITEM_BARCODE", "39000000001235")
+ITEM_BARCODE = os.environ.get("ITEM_BARCODE", "")
 WORKSTATION = os.environ.get("WORKSTATION", "STACKSOS-PERF")
 
 BUDGETS = {
@@ -150,6 +151,16 @@ def resolve_patron_barcode(patron_id: int) -> str:
     return ""
 
 
+def resolve_patron_id_from_barcode(barcode: str) -> int:
+    if not barcode:
+        return 0
+    res = curl_json(f"{BASE_URL}/api/evergreen/patrons?barcode={barcode}")
+    require_ok(res, "patron_by_barcode")
+    patron = res.get("patron") or {}
+    pid = patron.get("id")
+    return pid if isinstance(pid, int) else 0
+
+
 def main():
     start = time.time()
     if COOKIE_JAR_SEED and Path(COOKIE_JAR_SEED).exists():
@@ -164,15 +175,20 @@ def main():
         login()
         patron_id, session_barcode = get_session_user()
 
-    global PATRON_BARCODE
-    if not PATRON_BARCODE:
-        if session_barcode:
-            PATRON_BARCODE = session_barcode
-        else:
-            PATRON_BARCODE = resolve_patron_barcode(patron_id)
-
-    if not PATRON_BARCODE:
-        raise RuntimeError("Could not resolve patron barcode for checkout/checkin timing")
+    global PATRON_BARCODE, ITEM_BARCODE
+    if STACKSOS_AUDIT_MUTATE:
+        if not PATRON_BARCODE:
+            raise RuntimeError(
+                "STACKSOS_AUDIT_MUTATE=1 requires PATRON_BARCODE (use a dedicated test patron)."
+            )
+        if not ITEM_BARCODE:
+            raise RuntimeError(
+                "STACKSOS_AUDIT_MUTATE=1 requires ITEM_BARCODE (use a dedicated test copy barcode)."
+            )
+        # Avoid mutating the logged-in staff user; use the provided patron barcode.
+        patron_id = resolve_patron_id_from_barcode(PATRON_BARCODE)
+        if patron_id <= 0:
+            raise RuntimeError("Could not resolve patron id for provided PATRON_BARCODE")
 
     # Warmup (avoid first-call noise)
     _ = curl_time(f"{BASE_URL}/api/evergreen/catalog?q=harry%20potter&type=title&limit=10")
@@ -203,39 +219,41 @@ def main():
             curl_time(f"{BASE_URL}/api/evergreen/circulation?action=bills&patron_id={patron_id}")
         )
 
-        # Ensure item checked in before checkout (not timed)
+        if STACKSOS_AUDIT_MUTATE:
+            # Ensure item checked in before checkout (not timed)
+            _ = curl_json(
+                f"{BASE_URL}/api/evergreen/circulation",
+                method="POST",
+                json_body={"action": "checkin", "itemBarcode": ITEM_BARCODE},
+            )
+            # Timed checkout
+            checkout_times.append(
+                curl_time(
+                    f"{BASE_URL}/api/evergreen/circulation",
+                    method="POST",
+                    json_body={
+                        "action": "checkout",
+                        "patronBarcode": PATRON_BARCODE,
+                        "itemBarcode": ITEM_BARCODE,
+                    },
+                )
+            )
+            # Timed checkin
+            checkin_times.append(
+                curl_time(
+                    f"{BASE_URL}/api/evergreen/circulation",
+                    method="POST",
+                    json_body={"action": "checkin", "itemBarcode": ITEM_BARCODE},
+                )
+            )
+
+    if STACKSOS_AUDIT_MUTATE:
+        # Always end checked-in.
         _ = curl_json(
             f"{BASE_URL}/api/evergreen/circulation",
             method="POST",
             json_body={"action": "checkin", "itemBarcode": ITEM_BARCODE},
         )
-        # Timed checkout
-        checkout_times.append(
-            curl_time(
-                f"{BASE_URL}/api/evergreen/circulation",
-                method="POST",
-                json_body={
-                    "action": "checkout",
-                    "patronBarcode": PATRON_BARCODE,
-                    "itemBarcode": ITEM_BARCODE,
-                },
-            )
-        )
-        # Timed checkin
-        checkin_times.append(
-            curl_time(
-                f"{BASE_URL}/api/evergreen/circulation",
-                method="POST",
-                json_body={"action": "checkin", "itemBarcode": ITEM_BARCODE},
-            )
-        )
-
-    # Always end checked-in.
-    _ = curl_json(
-        f"{BASE_URL}/api/evergreen/circulation",
-        method="POST",
-        json_body={"action": "checkin", "itemBarcode": ITEM_BARCODE},
-    )
 
     metrics = {}
     def summarize(name: str, samples_s: list[float]):
@@ -270,6 +288,9 @@ def main():
     lines = ["metric\tsamples\tp50_ms\tp95_ms\tbudget_p95_ms\tpass"]
 
     def check(metric: str, budget_key: str):
+        if metrics[metric]["samples"] == 0:
+            lines.append(f"{metric}\t0\t0\t0\t{BUDGETS[budget_key]}\t1")
+            return True
         p95 = metrics[metric]["p95_ms"]
         budget = BUDGETS[budget_key]
         ok = p95 <= budget
@@ -279,8 +300,9 @@ def main():
         return ok
 
     ok_all = True
-    ok_all &= check("checkout", "checkout_p95_ms")
-    ok_all &= check("checkin", "checkin_p95_ms")
+    if STACKSOS_AUDIT_MUTATE:
+        ok_all &= check("checkout", "checkout_p95_ms")
+        ok_all &= check("checkin", "checkin_p95_ms")
     ok_all &= check("patron_search", "patron_search_p95_ms")
     ok_all &= check("catalog_search", "catalog_search_p95_ms")
     ok_all &= check("holds_patron", "holds_patron_p95_ms")

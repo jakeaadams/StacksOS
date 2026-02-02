@@ -405,7 +405,10 @@ export function PatronCockpit({ patronId, open, onOpenChange, onCheckout }: Patr
                     <CardHeader className="py-3 px-4">
                       <CardTitle className="text-sm flex items-center justify-between">
                         <span>Outstanding Bills</span>
-                        <Link href={`/staff/circulation/bills?patron=${patron.id}`} className="text-xs text-primary hover:underline">
+                        <Link
+                          href={`/staff/circulation/bills?patron=${encodeURIComponent(patron.barcode)}`}
+                          className="text-xs text-primary hover:underline"
+                        >
                           Pay bills <ArrowRight className="h-3 w-3 inline" />
                         </Link>
                       </CardTitle>
@@ -428,7 +431,7 @@ export function PatronCockpit({ patronId, open, onOpenChange, onCheckout }: Patr
                   <h4 className="text-sm font-medium mb-2">Quick Actions</h4>
                   <div className="grid grid-cols-2 gap-2">
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/staff/circulation/checkout?patron=${patron.id}`}>
+                      <Link href={`/staff/circulation/checkout?patron=${encodeURIComponent(patron.barcode)}`}>
                         <BookOpen className="h-4 w-4 mr-1" /> Checkout
                       </Link>
                     </Button>
@@ -438,12 +441,12 @@ export function PatronCockpit({ patronId, open, onOpenChange, onCheckout }: Patr
                       </Link>
                     </Button>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/staff/circulation/bills?patron=${patron.id}`}>
+                      <Link href={`/staff/circulation/bills?patron=${encodeURIComponent(patron.barcode)}`}>
                         <CreditCard className="h-4 w-4 mr-1" /> Bills
                       </Link>
                     </Button>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/staff/circulation/holds-management?patron=${patron.id}`}>
+                      <Link href={`/staff/circulation/holds-management?patron=${encodeURIComponent(patron.barcode)}`}>
                         <Bookmark className="h-4 w-4 mr-1" /> Holds
                       </Link>
                     </Button>

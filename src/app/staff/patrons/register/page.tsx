@@ -67,6 +67,11 @@ export default function PatronRegisterPage() {
   const [generated, setGenerated] = useState<GeneratedCredentials | null>(null);
 
   const { data: groupsData } = useApi<any>("/api/evergreen/patrons?action=groups", { immediate: true });
+  const { data: envData } = useApi<any>("/api/env", { immediate: true });
+
+  const patronBarcodeMode = String(envData?.env?.patronBarcodeMode || "generate").toLowerCase();
+  const patronBarcodePrefix = String(envData?.env?.patronBarcodePrefix || "29").trim() || "29";
+  const barcodeIsRequired = patronBarcodeMode === "require" || patronBarcodeMode === "required";
 
   const patronGroups: PatronGroup[] = useMemo(() => {
     const tree = groupsData?.groups || [];
@@ -132,6 +137,12 @@ export default function PatronRegisterPage() {
 
     if (!firstName.trim() || !lastName.trim()) {
       toast.error("First and last name are required");
+      return;
+    }
+    if (barcodeIsRequired && !barcode.trim()) {
+      toast.error("Barcode is required", {
+        description: `This tenant requires using the barcode printed on the patron's card (prefix hint: ${patronBarcodePrefix}...).`,
+      });
       return;
     }
     if (!profile) {
@@ -241,8 +252,16 @@ export default function PatronRegisterPage() {
                 <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Barcode (optional)</Label>
-                <Input value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="Leave blank to auto-generate" />
+                <Label>Barcode {barcodeIsRequired ? "*" : "(optional)"}</Label>
+                <Input
+                  value={barcode}
+                  onChange={(e) => setBarcode(e.target.value)}
+                  placeholder={
+                    barcodeIsRequired
+                      ? "Scan or type the patron's card barcode"
+                      : `Leave blank to auto-generate (prefix ${patronBarcodePrefix}...)`
+                  }
+                />
               </div>
               <div className="space-y-2">
                 <Label>Expiration Date</Label>

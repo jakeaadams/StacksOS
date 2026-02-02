@@ -31,6 +31,27 @@ interface CoverOption {
   provider: "openlibrary" | "google" | "custom" | "current";
 }
 
+function getCoverProviderOrder(): CoverOption["provider"][] {
+  const raw = String(process.env.NEXT_PUBLIC_STACKSOS_COVER_PROVIDER_ORDER || "").trim();
+  if (!raw) return ["current", "openlibrary", "google", "custom"];
+
+  const normalized = raw
+    .split(",")
+    .map((p) => p.trim().toLowerCase())
+    .filter(Boolean);
+
+  const supported = new Set<CoverOption["provider"]>(["current", "openlibrary", "google", "custom"]);
+  const ordered = normalized
+    .filter((p): p is CoverOption["provider"] => supported.has(p as CoverOption["provider"]));
+
+  // Ensure all providers exist in the list (preserve configured order first).
+  for (const p of ["current", "openlibrary", "google", "custom"] as const) {
+    if (!ordered.includes(p)) ordered.push(p);
+  }
+
+  return ordered;
+}
+
 export function CoverArtPicker({
   open,
   onOpenChange,
@@ -56,6 +77,11 @@ export function CoverArtPicker({
   const fetchCoverOptions = async () => {
     setLoading(true);
     const options: CoverOption[] = [];
+    const providerOrder = getCoverProviderOrder();
+    const rank = (provider: CoverOption["provider"]) => {
+      const idx = providerOrder.indexOf(provider);
+      return idx === -1 ? providerOrder.length : idx;
+    };
 
     try {
       const cleanIsbn = isbn ? isbn.replace(/[^0-9X]/gi, "") : "";
@@ -144,7 +170,9 @@ export function CoverArtPicker({
       const uniqueCovers = options.filter(
         (cover, index, self) =>
           index === self.findIndex((c) => c.thumbnail === cover.thumbnail)
-      );
+      ).map((cover, index) => ({ cover, index }))
+        .sort((a, b) => rank(a.cover.provider) - rank(b.cover.provider) || a.index - b.index)
+        .map(({ cover }) => cover);
 
       setCovers(uniqueCovers);
     } catch (err) {

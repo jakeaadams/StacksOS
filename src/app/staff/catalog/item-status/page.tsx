@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import { BookOpen, Package, Tag, FileText } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 
 interface ItemHistory {
   id: number;
@@ -232,12 +233,32 @@ export default function ItemStatusPage() {
                     <CardDescription>
                       {item.author || "Unknown Author"} • {item.barcode}
                     </CardDescription>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      <span className="font-medium">Status</span> (e.g. “Reshelving”) is Evergreen’s copy status.
+                      <span className="ml-2 font-medium">Circulates/Holdable</span> are item attributes.
+                      <span className="ml-2">
+                        Configure in{" "}
+                        <Link href="/staff/admin/item-statuses" className="underline underline-offset-2">
+                          Admin → Item Statuses
+                        </Link>{" "}
+                        and{" "}
+                        <Link href="/staff/admin/policy-inspector" className="underline underline-offset-2">
+                          Policy Inspector
+                        </Link>
+                        .
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {item.circulate ? (
-                      <StatusBadge label="Circulating" status="success" />
+                      <StatusBadge label="Circulates" status="success" />
                     ) : (
                       <StatusBadge label="Non-circulating" status="warning" />
+                    )}
+                    {item.holdable ? (
+                      <StatusBadge label="Holdable" status="success" />
+                    ) : (
+                      <StatusBadge label="Not holdable" status="warning" />
                     )}
                     {item.refItem && <StatusBadge label="Reference" status="info" />}
                   </div>

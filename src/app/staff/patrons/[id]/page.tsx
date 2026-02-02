@@ -19,9 +19,11 @@ import {
   PatronCard,
   StatusBadge,
   ErrorBoundary,
+  PatronPhotoUpload,
 } from "@/components/shared";
 import { useWorkforms } from "@/contexts/workforms-context";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +43,7 @@ import {
   AlertTriangle,
   Ban,
   BookOpen,
+  Camera,
   CreditCard,
   Edit,
   FileText,
@@ -68,7 +71,7 @@ interface PatronDetails {
 }
 
 interface CheckoutRow {
-  id: number;
+  id: string | number;
   title: string;
   barcode: string;
   dueDate?: string;
@@ -138,6 +141,8 @@ export default function PatronDetailPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [photoUploadOpen, setPhotoUploadOpen] = useState(false);
+  const [patronPhotoUrl, setPatronPhotoUrl] = useState<string | undefined>(undefined);
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -168,7 +173,7 @@ export default function PatronDetailPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [patronRes, circRes, holdsRes, billsRes, notesRes, penaltiesRes] = await Promise.all([
+      const [patronRes, circRes, holdsRes, billsRes, notesRes, penaltiesRes, photoRes] = await Promise.all([
         fetchWithAuth(`/api/evergreen/patrons?id=${patronId}`),
         fetchWithAuth(`/api/evergreen/circulation?patron_id=${patronId}`),
         fetchWithAuth(`/api/evergreen/circulation?action=holds&patron_id=${patronId}`),
@@ -181,6 +186,7 @@ export default function PatronDetailPage() {
           method: "PATCH",
           body: JSON.stringify({ action: "getPenaltyTypes" }),
         }),
+        fetchWithAuth(`/api/upload-patron-photo?patronId=${patronId}`),
       ]);
 
       const patronData = await patronRes.json();
@@ -188,6 +194,12 @@ export default function PatronDetailPage() {
         throw new Error(patronData.error || "Patron not found");
       }
       setPatron(patronData.patron);
+      const photoData = await photoRes.json().catch(() => null);
+      if (photoData?.success && photoData?.url) {
+        setPatronPhotoUrl(photoData.url);
+      } else {
+        setPatronPhotoUrl(undefined);
+      }
       setEditForm({
         firstName: patronData.patron.first_given_name || "",
         lastName: patronData.patron.family_name || "",
@@ -200,8 +212,8 @@ export default function PatronDetailPage() {
       const circData = await circRes.json();
       if (circData.ok && circData.checkouts) {
         const mapStatus = (label: string, list: any[]) =>
-          (list || []).map((item: any) => ({
-            id: item.circId || item.id || Math.random(),
+          (list || []).map((item: any, idx: number) => ({
+            id: item.circId || item.id || `${label}:${item.barcode || idx}:${item.dueDate || ""}`,
             title: item.title || "Item",
             barcode: item.barcode || "—",
             dueDate: item.dueDate,
@@ -544,12 +556,40 @@ export default function PatronDetailPage() {
 
   const displayName = `${patron.family_name || ""}, ${patron.first_given_name || ""}`.trim();
   const penalties = patron.standing_penalties || [];
+  const initials =
+    patron.first_given_name || patron.family_name
+      ? `${patron.first_given_name?.[0] || ""}${patron.family_name?.[0] || ""}`.toUpperCase()
+      : "?";
 
   return (
     <ErrorBoundary onReset={() => router.refresh()}>
       <PageContainer>
       <PageHeader
-        title={displayName || "Patron"}
+        title={
+          <span className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              className="group relative inline-flex rounded-full"
+              onClick={() => setPhotoUploadOpen(true)}
+              title="Change patron photo"
+            >
+              <Avatar className="h-10 w-10">
+                {patronPhotoUrl ? (
+                  <AvatarImage
+                    src={patronPhotoUrl}
+                    alt={`${patron.first_given_name} ${patron.family_name}`.trim() || "Patron photo"}
+                    onError={() => setPatronPhotoUrl(undefined)}
+                  />
+                ) : null}
+                <AvatarFallback className="bg-[hsl(var(--brand-1))] text-white text-xs">{initials}</AvatarFallback>
+              </Avatar>
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                <Camera className="h-4 w-4 text-white" />
+              </span>
+            </button>
+            <span className="truncate">{displayName || "Patron"}</span>
+          </span>
+        }
         subtitle={`Barcode ${patron.barcode}`}
         breadcrumbs={[{ label: "Patrons", href: "/staff/patrons" }, { label: "Details" }]}
         actions={[
@@ -780,6 +820,15 @@ export default function PatronDetailPage() {
           </TabsContent>
         </Tabs>
       </PageContent>
+
+      <PatronPhotoUpload
+        open={photoUploadOpen}
+        onOpenChange={setPhotoUploadOpen}
+        patronId={patron.id}
+        patronName={displayName || patron.barcode}
+        currentPhotoUrl={patronPhotoUrl}
+        onPhotoUploaded={(url) => setPatronPhotoUrl(url)}
+      />
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

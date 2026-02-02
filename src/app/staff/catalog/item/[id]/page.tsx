@@ -343,7 +343,6 @@ export default function ItemDetailPage() {
           subtitle={subtitle}
           breadcrumbs={[
             { label: "Catalog", href: "/staff/catalog" },
-            { label: "Item Status", href: "/staff/catalog/item-status" },
             { label: breadcrumbLabel },
           ]}
           actions={[

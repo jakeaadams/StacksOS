@@ -1,6 +1,6 @@
 # StacksOS Runbook (Dev + Pilot Ops)
 
-Last updated: 2026-01-25
+Last updated: 2026-02-02
 
 StacksOS is a Next.js staff client that calls Evergreen (OpenSRF) as the system-of-record.
 
@@ -63,6 +63,24 @@ npm run build
 npm run start -- -H 0.0.0.0 -p 3000
 ```
 
+### Production via systemd (recommended for pilots)
+
+This VM is already configured with `stacksos.service`.
+
+Deploy + restart:
+
+```bash
+cd /home/jake/projects/stacksos && npm run build && sudo systemctl restart stacksos.service
+curl -sS http://127.0.0.1:3000/api/health
+```
+
+Operational commands:
+
+```bash
+sudo systemctl status stacksos.service --no-pager
+sudo journalctl -u stacksos.service --no-pager -n 200
+```
+
 If you want the process to survive SSH disconnects, use a process manager (example):
 
 ```bash
@@ -101,7 +119,7 @@ This validates:
 - adapter endpoints reachable
 - core workflow smoke tests
 - repo inventory + feature matrix artifacts
-- perf budgets (p50/p95) for checkout/checkin/search
+- perf budgets (p50/p95) for search/holds/bills (and for checkout/checkin when `STACKSOS_AUDIT_MUTATE=1`)
 
 ---
 
@@ -111,6 +129,11 @@ Run on stacksos:
 
     cd /home/jake/projects/stacksos
     BASE_URL=http://127.0.0.1:3000 ./audit/run_perf.sh
+
+By default, the perf harness runs **read-only** (to avoid polluting the Evergreen sandbox with synthetic circulation).
+To include checkout/checkin timings, run:
+
+    STACKSOS_AUDIT_MUTATE=1 BASE_URL=http://127.0.0.1:3000 ./audit/run_perf.sh
 
 Budgets (defaults are tuned for LAN pilots; override as needed):
 - PERF_CHECKOUT_P95_MS (default 350)
@@ -138,6 +161,8 @@ Environment controls:
 - `STACKSOS_AUDIT_LOG_PATH=/path/to/audit.log`
 - `STACKSOS_LOG_LEVEL=debug|info|warn|error`
 - `STACKSOS_EVERGREEN_TIMEOUT_MS=15000` (OpenSRF gateway fetch timeout)
+- `STACKSOS_PATRON_BARCODE_MODE=generate|require` (default: `generate`)
+- `STACKSOS_PATRON_BARCODE_PREFIX=29` (used when mode is `generate`)
 
 ---
 
@@ -196,4 +221,3 @@ StacksOS code can be re-deployed from the filesystem copy; there is no GitHub re
 3) **"Permission denied" on a workflow**
 - The UI should show the missing Evergreen permission(s).
 - Grant the missing permission(s) to the staff user (or adjust which user is used for pilots).
-

@@ -1,7 +1,7 @@
 "use client";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   PageContainer,
@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { 
   Globe, 
@@ -48,6 +49,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface PurchaseOrder {
   id: number;
@@ -79,6 +81,19 @@ interface LineItem {
 
 type ReceiveAction = 'receive_all' | 'partial_receive' | 'unreceive' | 'mark_damaged';
 
+interface CancelReason {
+  id: number;
+  label: string;
+  description?: string | null;
+  keep_debits: boolean;
+}
+
+interface ClaimType {
+  id: number;
+  code: string;
+  description?: string | null;
+}
+
 export default function ReceivingPage() {
   const router = useRouter();
 
@@ -106,15 +121,20 @@ export default function ReceivingPage() {
   
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
   const [claimTarget, setClaimTarget] = useState<LineItem | null>(null);
-  const [claimNote, setClaimNote] = useState("");
+  const [claimTypes, setClaimTypes] = useState<ClaimType[]>([]);
+  const [claimTypesError, setClaimTypesError] = useState<string | null>(null);
+  const [claimTypeId, setClaimTypeId] = useState<number | null>(null);
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<LineItem | null>(null);
-  const [cancelReason, setCancelReason] = useState("");
+  const [cancelReasons, setCancelReasons] = useState<CancelReason[]>([]);
+  const [cancelReasonsError, setCancelReasonsError] = useState<string | null>(null);
+  const [cancelReasonId, setCancelReasonId] = useState<number | null>(null);
 
   const [damagedDialogOpen, setDamagedDialogOpen] = useState(false);
-  const [damagedTarget, setDamagedTarget] = useState<{ lineitem: LineItem; detailId: number } | null>(null);
+  const [damagedTarget, setDamagedTarget] = useState<{ lineitem: LineItem; copyBarcode: string } | null>(null);
   const [damagedNote, setDamagedNote] = useState("");
+  const [damagedBillAmount, setDamagedBillAmount] = useState<string>("");
 
   const loadPurchaseOrder = useCallback(async (po: PurchaseOrder) => {
     setSelectedPo(po);
@@ -236,22 +256,50 @@ export default function ReceivingPage() {
 
   const openClaimDialog = useCallback((lineitem: LineItem) => {
     setClaimTarget(lineitem);
-    setClaimNote("");
     setClaimDialogOpen(true);
   }, []);
+
+  const loadClaimTypes = useCallback(async () => {
+    setClaimTypesError(null);
+    try {
+      const res = await fetchWithAuth("/api/evergreen/acquisitions?action=claim_types");
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || "Failed to load claim types");
+      }
+      const list = Array.isArray(json?.claimTypes) ? json.claimTypes : [];
+      const mapped = list
+        .map((t: any) => ({
+          id: Number(t.id),
+          code: String(t.code || "").trim(),
+          description: t.description ?? null,
+        }))
+        .filter((t: any) => Number.isFinite(t.id) && t.code);
+      setClaimTypes(mapped);
+      if (!claimTypeId && mapped.length > 0) setClaimTypeId(mapped[0].id);
+    } catch (err: any) {
+      setClaimTypes([]);
+      setClaimTypesError(err?.message || "Failed to load claim types");
+    }
+  }, [claimTypeId]);
 
   const handleClaim = useCallback(async () => {
     if (!claimTarget) return;
     setActionLoadingId(claimTarget.id);
 
     try {
+      if (!claimTypeId) {
+        toast.error("Select a claim type");
+        return;
+      }
+
       const res = await fetchWithAuth("/api/evergreen/acquisitions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "claim_lineitem",
           lineitemId: claimTarget.id,
-          note: claimNote,
+          claimType: claimTypeId,
         }),
       });
       const json = await res.json();
@@ -266,26 +314,57 @@ export default function ReceivingPage() {
     } finally {
       setActionLoadingId(null);
     }
-  }, [claimNote, claimTarget, loadPurchaseOrder, selectedPo]);
+  }, [claimTarget, claimTypeId, loadPurchaseOrder, selectedPo]);
 
   const openCancelDialog = useCallback((lineitem: LineItem) => {
     setCancelTarget(lineitem);
-    setCancelReason("");
+    setCancelReasonsError(null);
+    setCancelReasonId(null);
     setCancelDialogOpen(true);
   }, []);
+
+  const loadCancelReasons = useCallback(async () => {
+    setCancelReasonsError(null);
+    try {
+      const res = await fetchWithAuth("/api/evergreen/acquisitions?action=cancel_reasons");
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || "Failed to load cancellation reasons");
+      }
+      const list = Array.isArray(json?.cancelReasons) ? json.cancelReasons : [];
+      const mapped = list
+        .map((r: any) => ({
+          id: Number(r.id),
+          label: String(r.label || "").trim(),
+          description: r.description ?? null,
+          keep_debits: r.keep_debits === true || r.keep_debits === "t",
+        }))
+        .filter((r: any) => Number.isFinite(r.id) && r.label);
+      setCancelReasons(mapped);
+      if (!cancelReasonId && mapped.length > 0) setCancelReasonId(mapped[0].id);
+    } catch (err: any) {
+      setCancelReasons([]);
+      setCancelReasonsError(err?.message || "Failed to load cancellation reasons");
+    }
+  }, [cancelReasonId]);
 
   const handleCancel = useCallback(async () => {
     if (!cancelTarget) return;
     setActionLoadingId(cancelTarget.id);
     
     try {
+      if (!cancelReasonId) {
+        toast.error("Select a cancellation reason");
+        return;
+      }
+
       const res = await fetchWithAuth("/api/evergreen/acquisitions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           action: "cancel_lineitem", 
           lineitemId: cancelTarget.id,
-          reason: cancelReason || "Staff cancelled"
+          reason: cancelReasonId,
         }),
       });
       const json = await res.json();
@@ -300,11 +379,12 @@ export default function ReceivingPage() {
     } finally {
       setActionLoadingId(null);
     }
-  }, [cancelTarget, cancelReason, loadPurchaseOrder, selectedPo]);
+  }, [cancelTarget, cancelReasonId, loadPurchaseOrder, selectedPo]);
 
-  const openDamagedDialog = useCallback((lineitem: LineItem, detailId: number) => {
-    setDamagedTarget({ lineitem, detailId });
+  const openDamagedDialog = useCallback((lineitem: LineItem, copyBarcode: string) => {
+    setDamagedTarget({ lineitem, copyBarcode });
     setDamagedNote("");
+    setDamagedBillAmount("");
     setDamagedDialogOpen(true);
   }, []);
 
@@ -313,13 +393,24 @@ export default function ReceivingPage() {
     setActionLoadingId(damagedTarget.lineitem.id);
     
     try {
+      if (!damagedTarget.copyBarcode) {
+        toast.error("Missing copy barcode");
+        return;
+      }
+
+      const billAmount =
+        damagedBillAmount.trim() && Number.isFinite(parseFloat(damagedBillAmount))
+          ? parseFloat(damagedBillAmount)
+          : undefined;
+
       const res = await fetchWithAuth("/api/evergreen/acquisitions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           action: "mark_damaged", 
-          lineitemDetailId: damagedTarget.detailId,
-          note: damagedNote
+          copyBarcode: damagedTarget.copyBarcode,
+          billAmount,
+          billNote: damagedNote,
         }),
       });
       const json = await res.json();
@@ -334,7 +425,19 @@ export default function ReceivingPage() {
     } finally {
       setActionLoadingId(null);
     }
-  }, [damagedTarget, damagedNote, loadPurchaseOrder, selectedPo]);
+  }, [damagedTarget, damagedNote, damagedBillAmount, loadPurchaseOrder, selectedPo]);
+
+  useEffect(() => {
+    if (cancelDialogOpen && cancelReasons.length === 0 && !cancelReasonsError) {
+      void loadCancelReasons();
+    }
+  }, [cancelDialogOpen, cancelReasons.length, cancelReasonsError, loadCancelReasons]);
+
+  useEffect(() => {
+    if (claimDialogOpen && claimTypes.length === 0 && !claimTypesError) {
+      void loadClaimTypes();
+    }
+  }, [claimDialogOpen, claimTypes.length, claimTypesError, loadClaimTypes]);
 
   const ordersColumns = useMemo<ColumnDef<PurchaseOrder>[]>(
     () => [
@@ -642,7 +745,8 @@ export default function ReceivingPage() {
                                 size="sm"
                                 variant="ghost"
                                 className="text-destructive hover:text-destructive"
-                                onClick={() => openDamagedDialog(lineitem, detail.id)}
+                                onClick={() => openDamagedDialog(lineitem, detail.barcode || "")}
+                                disabled={!detail.barcode}
                               >
                                 <PackageX className="h-3 w-3 mr-1" />
                                 Mark Damaged
@@ -732,16 +836,34 @@ export default function ReceivingPage() {
           onConfirm={handleClaim}
           variant="warning"
           isLoading={actionLoadingId !== null}
+          confirmDisabled={!!claimTypesError || claimTypes.length === 0 || !claimTypeId}
         >
-          <div className="space-y-2">
-            <Label htmlFor="claim-note">Claim note (optional)</Label>
-            <Textarea
-              id="claim-note"
-              value={claimNote}
-              onChange={(e) => setClaimNote(e.target.value)}
-              placeholder="Add claim note"
-            />
-          </div>
+          {claimTypesError ? (
+            <div className="text-sm text-destructive">{claimTypesError}</div>
+          ) : claimTypes.length === 0 ? (
+            <div className="text-sm text-muted-foreground">
+              No claim types are configured in Evergreen. Configure acquisitions claim types before using this action.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="claim-type">Claim type</Label>
+              <Select
+                value={claimTypeId ? String(claimTypeId) : ""}
+                onValueChange={(value) => setClaimTypeId(parseInt(value, 10))}
+              >
+                <SelectTrigger id="claim-type">
+                  <SelectValue placeholder="Select a claim type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {claimTypes.map((ct) => (
+                    <SelectItem key={ct.id} value={String(ct.id)}>
+                      {ct.code}{ct.description ? ` — ${ct.description}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </ConfirmDialog>
 
         {/* Cancel Dialog */}
@@ -754,16 +876,34 @@ export default function ReceivingPage() {
           onConfirm={handleCancel}
           variant="danger"
           isLoading={actionLoadingId !== null}
+          confirmDisabled={!!cancelReasonsError || cancelReasons.length === 0 || !cancelReasonId}
         >
-          <div className="space-y-2">
-            <Label htmlFor="cancel-reason">Cancellation reason (optional)</Label>
-            <Textarea
-              id="cancel-reason"
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="Reason for cancellation"
-            />
-          </div>
+          {cancelReasonsError ? (
+            <div className="text-sm text-destructive">{cancelReasonsError}</div>
+          ) : cancelReasons.length === 0 ? (
+            <div className="text-sm text-muted-foreground">
+              No cancellation reasons were returned from Evergreen.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="cancel-reason">Cancellation reason</Label>
+              <Select
+                value={cancelReasonId ? String(cancelReasonId) : ""}
+                onValueChange={(value) => setCancelReasonId(parseInt(value, 10))}
+              >
+                <SelectTrigger id="cancel-reason">
+                  <SelectValue placeholder="Select a cancellation reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cancelReasons.map((cr) => (
+                    <SelectItem key={cr.id} value={String(cr.id)}>
+                      {cr.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </ConfirmDialog>
 
         {/* Damaged Dialog */}
@@ -771,21 +911,33 @@ export default function ReceivingPage() {
           open={damagedDialogOpen}
           onOpenChange={setDamagedDialogOpen}
           title="Mark as damaged"
-          description="Mark this item as damaged and create a claim"
+          description="Mark this copy as damaged in Evergreen"
           confirmText="Mark Damaged"
           onConfirm={handleMarkDamaged}
           variant="warning"
           isLoading={actionLoadingId !== null}
+          confirmDisabled={!damagedTarget?.copyBarcode}
         >
           <div className="space-y-2">
-            <Label htmlFor="damaged-note">Damage note (required)</Label>
-            <Textarea
-              id="damaged-note"
-              value={damagedNote}
-              onChange={(e) => setDamagedNote(e.target.value)}
-              placeholder="Describe the damage..."
-              required
-            />
+            <div className="space-y-2">
+              <Label htmlFor="damaged-amount">Bill amount (optional)</Label>
+              <Input
+                id="damaged-amount"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={damagedBillAmount}
+                onChange={(e) => setDamagedBillAmount(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="damaged-note">Note (optional)</Label>
+              <Textarea
+                id="damaged-note"
+                value={damagedNote}
+                onChange={(e) => setDamagedNote(e.target.value)}
+                placeholder="Optional note"
+              />
+            </div>
           </div>
         </ConfirmDialog>
       </PageContent>

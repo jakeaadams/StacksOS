@@ -48,7 +48,6 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const qRaw = searchParams.get("q") || "";
     const q = qRaw.trim();
-    if (!q) return errorResponse("q is required", 400);
 
     const includeInactive = searchParams.get("inactive") === "true";
     const limitRaw = parseInt(searchParams.get("limit") || "50", 10);
@@ -63,6 +62,7 @@ export async function GET(req: NextRequest) {
       return successResponse({ count: 0, users: [], message: "No staff permission groups found" });
     }
 
+    // If q is empty, treat this as a "list staff users" request.
     const like = `%${q}%`;
 
     const baseWhere = `

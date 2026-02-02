@@ -287,7 +287,13 @@ export function RecordCockpit({ recordId, open, onOpenChange, onPlaceHold }: Rec
                         {copies.map((c) => (
                           <div key={c.id} className="flex items-center justify-between text-sm py-1.5 border-b last:border-0">
                             <div>
-                              <span className="font-mono text-xs">{c.barcode}</span>
+                              <Link
+                                href={`/staff/catalog/item/${c.id}`}
+                                className="font-mono text-xs hover:underline"
+                                title="Open item status"
+                              >
+                                {c.barcode}
+                              </Link>
                               <span className="text-muted-foreground ml-2 text-xs">{c.location}</span>
                             </div>
                             <Badge variant="outline" className={getStatusColor(c.statusId)}>

@@ -1,11 +1,21 @@
 import { NextRequest } from "next/server";
 import {
   callOpenSRF,
+  getCopyByBarcode,
+  getErrorMessage,
+  getRequestMeta,
+  isOpenSRFEvent,
+  isSuccessResult,
+  notFoundResponse,
+  parseJsonBody,
   successResponse,
   errorResponse,
   serverErrorResponse,
 } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
+import { query } from "@/lib/db/evergreen";
 import { requirePermissions } from "@/lib/permissions";
+import { ACQUISITIONS_PERMS, CIRCULATION_PERMS } from "@/lib/permissions-map";
 import { logger } from "@/lib/logger";
 
 /**
@@ -25,6 +35,46 @@ export async function GET(req: NextRequest) {
     logger.debug({ route: "api.evergreen.acquisitions", action, id }, "Acquisitions GET");
 
     switch (action) {
+      case "cancel_reasons": {
+        await requirePermissions([...ACQUISITIONS_PERMS.cancel_lineitem]);
+
+        const reasons = await query<{
+          id: number;
+          org_unit: number;
+          label: string;
+          description: string | null;
+          keep_debits: boolean;
+        }>(
+          `
+            select id, org_unit, label, description, keep_debits
+            from acq.cancel_reason
+            order by lower(label), id
+          `
+        );
+
+        return successResponse({ cancelReasons: reasons });
+      }
+
+      case "claim_types": {
+        // Evergreen uses admin-level perms for acquisitions claim management.
+        await requirePermissions(["ADMIN_ACQ_CLAIM"]);
+
+        const claimTypes = await query<{
+          id: number;
+          org_unit: number;
+          code: string;
+          description: string | null;
+        }>(
+          `
+            select id, org_unit, code, description
+            from acq.claim_type
+            order by lower(code), id
+          `
+        );
+
+        return successResponse({ claimTypes });
+      }
+
       case "orders":
       case "purchase_orders": {
         // Get purchase orders
@@ -276,14 +326,17 @@ export async function GET(req: NextRequest) {
 // POST - Create/modify acquisitions data
 export async function POST(req: NextRequest) {
   try {
-    const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
-    const body = await req.json();
+    const body = await parseJsonBody<Record<string, any>>(req);
+    if (body instanceof Response) return body;
+
     const { action } = body;
+    const { ip, userAgent, requestId } = getRequestMeta(req);
 
     logger.debug({ route: "api.evergreen.acquisitions", action }, "Acquisitions POST");
 
     switch (action) {
       case "create_po": {
+        const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.create_po]);
         const provider = body.provider;
         const orderingAgency =
           body.orderingAgency ??
@@ -313,14 +366,41 @@ export async function POST(req: NextRequest) {
         );
 
         const result = response?.payload?.[0];
-        if (result?.ilsevent) {
-          return errorResponse(result.textcode || "Failed to create PO", 400);
+        if (!result || isOpenSRFEvent(result) || result.ilsevent) {
+          const message = getErrorMessage(result, "Failed to create PO");
+          await logAuditEvent({
+            action: "acq.po.create",
+            entity: "acqpo",
+            status: "failure",
+            actor,
+            orgId: orderingAgency,
+            ip,
+            userAgent,
+            requestId,
+            error: message,
+            details: { provider, orderingAgency, name: body.name || null },
+          });
+          return errorResponse(message, 400, result);
         }
+
+        await logAuditEvent({
+          action: "acq.po.create",
+          entity: "acqpo",
+          entityId: result?.id,
+          status: "success",
+          actor,
+          orgId: orderingAgency,
+          ip,
+          userAgent,
+          requestId,
+          details: { provider, orderingAgency, name: body.name || null },
+        });
 
         return successResponse({ po: result });
       }
 
       case "receive_lineitem": {
+        const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.receive_lineitem]);
         const { lineitemId } = body;
         if (!lineitemId) {
           return errorResponse("Lineitem ID required", 400);
@@ -333,14 +413,38 @@ export async function POST(req: NextRequest) {
         );
 
         const result = response?.payload?.[0];
-        if (result?.ilsevent) {
-          return errorResponse(result.textcode || "Failed to receive lineitem", 400);
+        if (!result || isOpenSRFEvent(result) || result.ilsevent) {
+          const message = getErrorMessage(result, "Failed to receive line item");
+          await logAuditEvent({
+            action: "acq.lineitem.receive",
+            entity: "acqli",
+            entityId: lineitemId,
+            status: "failure",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            error: message,
+          });
+          return errorResponse(message, 400, result);
         }
+
+        await logAuditEvent({
+          action: "acq.lineitem.receive",
+          entity: "acqli",
+          entityId: lineitemId,
+          status: "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+        });
 
         return successResponse({ received: true, lineitemId });
       }
 
       case "receive_lineitem_detail": {
+        const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.receive_lineitem]);
         const detailId = body.detailId ?? body.lineitemDetailId ?? body.lineitem_detail_id;
         if (!detailId) {
           return errorResponse("Detail ID required", 400);
@@ -353,14 +457,38 @@ export async function POST(req: NextRequest) {
         );
 
         const result = response?.payload?.[0];
-        if (result?.ilsevent) {
-          return errorResponse(result.textcode || "Failed to receive copy", 400);
+        if (!result || isOpenSRFEvent(result) || result.ilsevent) {
+          const message = getErrorMessage(result, "Failed to receive copy");
+          await logAuditEvent({
+            action: "acq.lineitem_detail.receive",
+            entity: "acqlid",
+            entityId: detailId,
+            status: "failure",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            error: message,
+          });
+          return errorResponse(message, 400, result);
         }
+
+        await logAuditEvent({
+          action: "acq.lineitem_detail.receive",
+          entity: "acqlid",
+          entityId: detailId,
+          status: "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+        });
 
         return successResponse({ received: true, detailId });
       }
 
       case "unreceive_lineitem_detail": {
+        const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.receive_lineitem]);
         const detailId = body.detailId ?? body.lineitemDetailId ?? body.lineitem_detail_id;
         if (!detailId) {
           return errorResponse("Detail ID required", 400);
@@ -373,72 +501,203 @@ export async function POST(req: NextRequest) {
         );
 
         const result = response?.payload?.[0];
-        if (result?.ilsevent) {
-          return errorResponse(result.textcode || "Failed to unreceive copy", 400);
+        if (!result || isOpenSRFEvent(result) || result.ilsevent) {
+          const message = getErrorMessage(result, "Failed to unreceive copy");
+          await logAuditEvent({
+            action: "acq.lineitem_detail.unreceive",
+            entity: "acqlid",
+            entityId: detailId,
+            status: "failure",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            error: message,
+          });
+          return errorResponse(message, 400, result);
         }
+
+        await logAuditEvent({
+          action: "acq.lineitem_detail.unreceive",
+          entity: "acqlid",
+          entityId: detailId,
+          status: "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+        });
 
         return successResponse({ unreceived: true, detailId });
       }
 
       case "cancel_lineitem": {
+        const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.cancel_lineitem]);
         const { lineitemId, reason } = body;
         if (!lineitemId) {
           return errorResponse("Lineitem ID required", 400);
         }
 
+        const reasonId =
+          typeof reason === "number"
+            ? reason
+            : Number.isFinite(parseInt(String(reason ?? ""), 10))
+              ? parseInt(String(reason), 10)
+              : 1;
+
         const response = await callOpenSRF(
           "open-ils.acq",
           "open-ils.acq.lineitem.cancel",
-          [authtoken, lineitemId, reason || 1]
+          [authtoken, lineitemId, reasonId]
         );
 
         const result = response?.payload?.[0];
-        if (result?.ilsevent) {
-          return errorResponse(result.textcode || "Failed to cancel lineitem", 400);
+        if (!result || isOpenSRFEvent(result) || result.ilsevent) {
+          const message = getErrorMessage(result, "Failed to cancel line item");
+          await logAuditEvent({
+            action: "acq.lineitem.cancel",
+            entity: "acqli",
+            entityId: lineitemId,
+            status: "failure",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            error: message,
+            details: { reasonId },
+          });
+          return errorResponse(message, 400, result);
         }
+
+        await logAuditEvent({
+          action: "acq.lineitem.cancel",
+          entity: "acqli",
+          entityId: lineitemId,
+          status: "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          details: { reasonId },
+        });
 
         return successResponse({ cancelled: true, lineitemId });
       }
 
       case "claim_lineitem": {
+        const { authtoken, actor } = await requirePermissions(["ADMIN_ACQ_CLAIM"]);
         const { lineitemId, claimType } = body;
         if (!lineitemId) {
           return errorResponse("Lineitem ID required", 400);
         }
 
+        const claimTypeId =
+          typeof claimType === "number"
+            ? claimType
+            : Number.isFinite(parseInt(String(claimType ?? ""), 10))
+              ? parseInt(String(claimType), 10)
+              : 1;
+
         const response = await callOpenSRF(
           "open-ils.acq",
           "open-ils.acq.claim.lineitem",
-          [authtoken, lineitemId, claimType || 1]
+          [authtoken, lineitemId, claimTypeId]
         );
 
         const result = response?.payload?.[0];
-        if (result?.ilsevent) {
-          return errorResponse(result.textcode || "Failed to claim lineitem", 400);
+        if (!result || isOpenSRFEvent(result) || result.ilsevent) {
+          const message = getErrorMessage(result, "Failed to claim line item");
+          await logAuditEvent({
+            action: "acq.lineitem.claim",
+            entity: "acqli",
+            entityId: lineitemId,
+            status: "failure",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            error: message,
+            details: { claimTypeId },
+          });
+          return errorResponse(message, 400, result);
         }
+
+        await logAuditEvent({
+          action: "acq.lineitem.claim",
+          entity: "acqli",
+          entityId: lineitemId,
+          status: "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          details: { claimTypeId },
+        });
 
         return successResponse({ claimed: true, lineitemId });
       }
 
       case "mark_damaged": {
-        const detailId = body.detailId ?? body.lineitemDetailId ?? body.lineitem_detail_id;
-        if (!detailId) {
-          return errorResponse("Detail ID required", 400);
+        const { authtoken, actor } = await requirePermissions([...CIRCULATION_PERMS.mark_damaged]);
+        const copyBarcode = String(body.copyBarcode || body.barcode || "").trim();
+        const billNote = String(body.billNote || body.note || "").trim();
+        const billAmountRaw = body.billAmount ?? body.amount;
+        const billAmount = Number.isFinite(parseFloat(String(billAmountRaw ?? "")))
+          ? parseFloat(String(billAmountRaw))
+          : 0;
+
+        if (!copyBarcode) {
+          return errorResponse("copyBarcode required", 400);
         }
 
-        // Mark the copy as damaged via circ
-        const response = await callOpenSRF(
-          "open-ils.circ",
-          "open-ils.circ.mark_item_damaged",
-          [authtoken, detailId]
-        );
+        const copy = await getCopyByBarcode(copyBarcode);
+        if (!copy || isOpenSRFEvent(copy) || (copy as any).ilsevent) {
+          return notFoundResponse("Item not found");
+        }
+
+        const args: any = {
+          apply_fines: billAmount && billAmount > 0 ? "apply" : "noapply",
+        };
+        if (billAmount && billAmount > 0) args.override_amount = billAmount;
+        if (billNote) args.override_note = billNote;
+
+        const response = await callOpenSRF("open-ils.circ", "open-ils.circ.mark_item_damaged", [
+          authtoken,
+          parseInt(String((copy as any).id), 10),
+          args,
+        ]);
 
         const result = response?.payload?.[0];
-        if (result?.ilsevent && result.ilsevent !== 0) {
-          return errorResponse(result.textcode || "Failed to mark damaged", 400);
+        if (!isSuccessResult(result)) {
+          const message = getErrorMessage(result, "Failed to mark damaged");
+          await logAuditEvent({
+            action: "acq.copy.mark_damaged",
+            entity: "acp",
+            entityId: (copy as any).id,
+            status: "failure",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            error: message,
+            details: { copyBarcode, billAmount, billNote: billNote || null },
+          });
+          return errorResponse(message, 400, result);
         }
 
-        return successResponse({ damaged: true, detailId });
+        await logAuditEvent({
+          action: "acq.copy.mark_damaged",
+          entity: "acp",
+          entityId: (copy as any).id,
+          status: "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          details: { copyBarcode, billAmount, billNote: billNote || null },
+        });
+
+        return successResponse({ damaged: true, copyBarcode });
       }
 
       default:

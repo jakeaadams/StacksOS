@@ -18,6 +18,7 @@ import { FileText, Play, Star, Search, Users, BookOpen, DollarSign, Clock, Refre
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { featureFlags } from "@/lib/feature-flags";
 
 interface ReportTemplate {
   id: string;
@@ -61,26 +62,11 @@ const REPORT_TEMPLATES: ReportTemplate[] = [
     apiAction: "overdue",
     isStarred: false,
   },
-  {
-    id: "patrons",
-    name: "Patron Statistics",
-    description: "New patron registrations and activity summary",
-    category: "patrons",
-    apiAction: "patrons",
-    isStarred: false,
-  },
-  {
-    id: "top_items",
-    name: "Top Circulating Items",
-    description: "Most frequently checked out items",
-    category: "catalog",
-    apiAction: "top_items",
-    isStarred: true,
-  },
 ];
 
 export default function ReportTemplatesPage() {
   const router = useRouter();
+  const enabled = featureFlags.reportTemplates;
   const [searchQuery, setSearchQuery] = useState("");
   const [isRunning, setIsRunning] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<any>(null);
@@ -166,6 +152,27 @@ export default function ReportTemplatesPage() {
   ], [isRunning]);
 
   const starredTemplates = REPORT_TEMPLATES.filter(t => t.isStarred);
+
+  if (!enabled) {
+    return (
+      <PageContainer>
+        <PageHeader
+          title="Report Templates"
+          subtitle="Pre-built report templates for common library operations."
+          breadcrumbs={[
+            { label: "Reports", href: "/staff/reports" },
+            { label: "Templates" },
+          ]}
+        />
+        <PageContent>
+          <EmptyState
+            title="Report Templates is not enabled"
+            description="This feature is behind a flag until we ship a real template library and remove any non-functional templates."
+          />
+        </PageContent>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>

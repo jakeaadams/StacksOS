@@ -8,27 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { BookOpen, Barcode, FileEdit, X, User, Pin } from "lucide-react";
 
-function iconForType(type: WorkformType) {
-  switch (type) {
-    case "patron":
-      return User;
-    case "record":
-      return BookOpen;
-    case "item":
-      return Barcode;
-    case "marc":
-      return FileEdit;
-  }
-}
-
 function PinnedRow({ workform }: { workform: WorkformEntry }) {
   const { removePin } = useWorkforms();
-  const Icon = iconForType(workform.type);
 
   return (
     <div className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50 transition-colors">
       <Link href={workform.href} className="flex min-w-0 flex-1 items-center gap-2">
-        <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        {workform.type === "patron" ? (
+          <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        ) : workform.type === "record" ? (
+          <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        ) : workform.type === "item" ? (
+          <Barcode className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        ) : (
+          <FileEdit className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        )}
         <span className="text-sm truncate">{workform.title}</span>
       </Link>
       <Tooltip>

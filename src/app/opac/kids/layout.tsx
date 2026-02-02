@@ -25,6 +25,12 @@ interface KidsLayoutProps {
 }
 
 export default function KidsLayout({ children }: KidsLayoutProps) {
+  const pathname = usePathname();
+  const { library } = useLibrary();
+  const { patron, isLoggedIn, logout } = usePatronSession();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   if (!featureFlags.opacKids) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-6 py-16">
@@ -45,12 +51,6 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
       </div>
     );
   }
-
-  const pathname = usePathname();
-  const { library } = useLibrary();
-  const { patron, isLoggedIn, logout } = usePatronSession();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
     { href: "/opac/kids", label: "Home", icon: Home, color: "text-pink-500" },

@@ -5,9 +5,9 @@
 "use client";
 
 import * as React from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import {
   PatronCard,
@@ -139,12 +139,14 @@ export default function CheckoutPage() {
     isLoading: isLoadingPatron,
     error: patronError,
     lookupByBarcode: lookupPatron,
+    selectPatron,
     clear: clearPatron,
   } = usePatronLookup({
     onError: (err) => toast.error("Patron not found", { description: err.message }),
     onFound: (p) => toast.success("Loaded: " + p.displayName),
   });
 
+  const searchParams = useSearchParams();
   const [checkedOutItems, setCheckedOutItems] = useState<CheckoutItem[]>([]);
   const [scanQueue, setScanQueue] = useState<string[]>([]);
   const [activeScan, setActiveScan] = useState<string | null>(null);
@@ -161,6 +163,40 @@ export default function CheckoutPage() {
 
   const patronInputRef = useRef<HTMLInputElement>(null);
   const itemInputRef = useRef<HTMLInputElement>(null);
+  const lastDeepLinkRef = useRef<{ patron?: string; item?: string }>({});
+
+  // Deep-link support:
+  // - /staff/circulation/checkout?patron=<barcode|id>
+  // - /staff/circulation/checkout?item=<barcode>
+  useEffect(() => {
+    const patronParamRaw = (searchParams.get("patron") || "").trim();
+    if (!patronParamRaw) return;
+    if (patron?.barcode && patron?.barcode === patronParamRaw) return;
+    if (isLoadingPatron) return;
+    if (lastDeepLinkRef.current.patron === patronParamRaw) return;
+
+    lastDeepLinkRef.current.patron = patronParamRaw;
+
+    void (async () => {
+      const looksLikeId = /^\d+$/.test(patronParamRaw);
+      const loaded = looksLikeId
+        ? await selectPatron(Number(patronParamRaw))
+        : await lookupPatron(patronParamRaw);
+
+      if (loaded) {
+        itemInputRef.current?.focus();
+      }
+    })();
+  }, [isLoadingPatron, lookupPatron, patron?.barcode, searchParams, selectPatron]);
+
+  useEffect(() => {
+    const itemParamRaw = (searchParams.get("item") || "").trim();
+    if (!itemParamRaw) return;
+    if (lastDeepLinkRef.current.item === itemParamRaw) return;
+    lastDeepLinkRef.current.item = itemParamRaw;
+    setItemBarcode(itemParamRaw);
+    itemInputRef.current?.focus();
+  }, [searchParams]);
 
   const checkoutMutation = useMutation<any, CheckoutVariables>({
     onSuccess: (data, variables) => {

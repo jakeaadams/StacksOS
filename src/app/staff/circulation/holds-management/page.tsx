@@ -3,7 +3,7 @@
 import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { clientLogger } from "@/lib/client-logger";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
@@ -131,14 +131,18 @@ export default function HoldsManagementPage() {
   const [noteBody, setNoteBody] = useState("");
   const [noteStaffOnly, setNoteStaffOnly] = useState(true);
 
-  const searchPatronHolds = useCallback(async () => {
-    if (!patronBarcode.trim()) return;
+  const lastDeepLinkPatronRef = useRef<string>("");
+
+  const searchPatronHolds = useCallback(async (barcodeOverride?: string) => {
+    const barcode = (barcodeOverride ?? patronBarcode).trim();
+    if (!barcode) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const patronRes = await fetchWithAuth(`/api/evergreen/patrons?barcode=${encodeURIComponent(patronBarcode)}`);
+      setPatronBarcode(barcode);
+      const patronRes = await fetchWithAuth(`/api/evergreen/patrons?barcode=${encodeURIComponent(barcode)}`);
       const patronData = await patronRes.json();
 
       if (!patronData.ok || !patronData.patron) {
@@ -194,12 +198,38 @@ export default function HoldsManagementPage() {
   useEffect(() => {
     const tabParam = searchParams.get("tab");
     const titleParam = searchParams.get("title_id");
+    const patronParam = (searchParams.get("patron") || "").trim();
 
     if (tabParam === "title") {
       setActiveTab("title");
       if (titleParam) {
         setTitleId(titleParam);
         void loadTitleHolds(titleParam);
+      }
+    }
+    if (patronParam) {
+      setActiveTab("patron");
+      if (lastDeepLinkPatronRef.current !== patronParam) {
+        lastDeepLinkPatronRef.current = patronParam;
+        void (async () => {
+          // Back-compat: allow deep-linking with either a patron barcode or a numeric patron id.
+          if (/^\\d+$/.test(patronParam)) {
+            try {
+              const res = await fetchWithAuth(`/api/evergreen/patrons?id=${patronParam}`);
+              const data = await res.json().catch(() => null);
+              const resolved =
+                data?.ok && data?.patron
+                  ? (data.patron?.barcode || data.patron?.card?.barcode || "")
+                  : "";
+              await searchPatronHolds(resolved || patronParam);
+              return;
+            } catch {
+              await searchPatronHolds(patronParam);
+              return;
+            }
+          }
+          await searchPatronHolds(patronParam);
+        })();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -935,7 +965,7 @@ export default function HoldsManagementPage() {
                   isLoading={loading}
                 />
                 <div className="flex gap-2">
-                  <Button onClick={searchPatronHolds} disabled={loading}>
+                  <Button onClick={() => void searchPatronHolds()} disabled={loading}>
                     <Search className="h-4 w-4 mr-2" />
                     Search
                   </Button>

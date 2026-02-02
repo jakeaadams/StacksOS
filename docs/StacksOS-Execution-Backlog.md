@@ -219,7 +219,7 @@ Checklist:
 - [x] UI: fix POST payload for `claims_never_checked_out` (send `copyBarcode` + `patronId` + `circId`)
 - [x] UI: fix POST action for resolve (must be `resolve_claim`) + send `copyBarcode`
 - [x] UI: remove assumption `claimsData.claims` is an array; map from `claims.returned`
-- [ ] Add claims mutation coverage to audit/workflow QA
+- [x] Add claims mutation coverage to audit/workflow QA
 
 AC:
 - All claim actions are audited.
@@ -269,22 +269,22 @@ Status: PARTIAL
 Checklist:
 - [x] Search by name/barcode/email/phone
 - [x] View key stats and blocks
-- [ ] Deep links (history, checkouts, holds, bills) are correct
-- [ ] Patron record cockpit: selecting a patron opens a detail panel (no navigation) with checkouts/holds/bills/alerts + quick actions.
+- [x] Deep links (history, checkouts, holds, bills) are correct
+- [x] Patron record cockpit: selecting a patron opens a detail panel (no navigation) with checkouts/holds/bills/alerts + quick actions.
 
 #### P0-4b: Patron registration
 
 Checklist:
 - [x] Create patron (Evergreen-backed)
-- [ ] Barcode strategy is tenant-configurable (keep imported barcodes; do not force re-barcode)
-- [ ] Field validation errors are human-readable
+- [x] Barcode strategy is tenant-configurable (keep imported barcodes; do not force re-barcode)
+- [x] Field validation errors are human-readable
 
 #### P0-4c: Patron edit / blocks / notes
 
 Checklist:
-- [ ] Edit core fields (permissioned)
-- [ ] Blocks/penalties UX
-- [ ] Notes/alerts UX
+- [x] Edit core fields (permissioned)
+- [x] Blocks/penalties UX
+- [x] Notes/alerts UX
 
 ---
 
@@ -297,29 +297,29 @@ Status: PARTIAL
 Checklist:
 - [x] Search works (Evergreen-backed)
 - [x] Filters/search types are correctly translated (title/author/isbn/etc.)
-- [ ] Deep links into MARC editor, holdings, item status
-- [ ] Material record cockpit: selecting a bib opens a detail drawer/panel with cover + availability + holdings preview + quick actions (place hold, MARC, holdings, item status).
-- [ ] Cover art pipeline: consistent aspect ratio + skeleton + fallback + caching; configurable provider order.
+- [x] Deep links into MARC editor, holdings, item status
+- [x] Material record cockpit: selecting a bib opens a detail drawer/panel with cover + availability + holdings preview + quick actions (place hold, MARC, holdings, item status).
+- [x] Cover art pipeline: consistent aspect ratio + skeleton + fallback + caching; configurable provider order.
 
 #### P0-5b: MARC editor
 
 Checklist:
 - [x] Load MARCXML
 - [x] Save MARCXML
-- [ ] Diff view (before/after)
-- [ ] Validation of required fields with explainable errors
+- [x] Diff view (before/after)
+- [x] Validation of required fields with explainable errors
 
 #### P0-5c: Z39.50 search + import
 
 Checklist:
-- [ ] Evergreen Z39.50 targets configuration surfaced as "setup required" UX
-- [ ] Real search + import creates Evergreen bib
+- [x] Evergreen Z39.50 targets configuration surfaced as "setup required" UX
+- [x] Real search + import creates Evergreen bib
 
 #### P0-5d: MARC import
 
 Checklist:
-- [ ] Import MARC with preview
-- [ ] De-dupe / overlay rules (at least basic)
+- [x] Import MARC with preview
+- [x] De-dupe / overlay rules (at least basic)
 
 #### P0-5e: Authority search
 
@@ -330,7 +330,7 @@ Checklist:
 
 Checklist:
 - [x] Holdings view exists
-- [ ] Item status view includes circ history endpoint + UI
+- [x] Item status view includes circ history endpoint + UI
 
 ---
 
@@ -345,21 +345,21 @@ Checklist:
 - [x] Funds list
 - [x] Purchase orders list
 - [x] Invoices list
-- [ ] Receiving actions (real): receive, partial receive, cancel/claim, mark damaged
-- [ ] Permissioned actions + audit events
-- [ ] "Setup required" UX explains what Evergreen config is missing
+- [x] Receiving actions (real): receive, partial receive, cancel/claim, mark damaged
+- [x] Permissioned actions + audit events
+- [x] "Setup required" UX explains what Evergreen config is missing
 
 ---
 
 ### P0-7: Serials
 
-Status: PARTIAL
+Status: DONE
 
 Checklist:
 - [x] Subscriptions list
 - [x] Routing list
-- [ ] Claims workflow (view-only acceptable for P0, but no dead buttons)
-- [ ] "Setup required" UX
+- [x] Claims workflow (view-only acceptable for P0, but no dead buttons)
+- [x] "Setup required" UX
 
 ---
 
@@ -369,8 +369,8 @@ Status: PARTIAL
 
 Checklist:
 - [x] Dashboards (basic)
-- [ ] CSV export (async for large datasets)
-- [ ] Scheduled reports (feature-flagged until real)
+- [x] CSV export (async for large datasets)
+- [x] Scheduled reports (feature-flagged until real)
 
 ---
 
@@ -386,9 +386,9 @@ Checklist:
 - [x] Workflow QA script exists
 - [x] Single wrapper: `./audit/run_all.sh` (one command)
 - [x] Repo inventory report (pages/routes/nav coverage)
-- [ ] Audit runner is green on current code (no console.* violations; OPAC must comply or be feature-flagged).
-- [ ] Repo inventory respects featureFlags (missing pages are only failures when the flag is enabled).
-- [ ] Tooling: install `rg` + `jq` on the VM OR keep audits/scripts free of those dependencies.
+- [x] Audit runner is green on current code (no console.* violations; OPAC must comply or be feature-flagged).
+- [x] Repo inventory respects featureFlags (missing pages are only failures when the flag is enabled).
+- [x] Tooling: install `rg` + `jq` on the VM OR keep audits/scripts free of those dependencies.
 
 AC:
 - One command validates: no dead UI + adapter health + core workflow smoke.
@@ -396,8 +396,8 @@ AC:
 #### P0-9b: E2E tests (Playwright)
 
 Checklist:
-- [ ] Add Playwright
-- [ ] Top workflows covered end-to-end
+- [x] Add Playwright
+- [x] Top workflows covered end-to-end
 
 #### P0-9c: Contract tests (Evergreen adapter)
 
@@ -409,7 +409,7 @@ Checklist:
 
 Checklist:
 - [x] Perf harness reports p50/p95
-- [x] Budgets enforced for checkout/checkin/holds/search
+- [x] Budgets enforced for checkout/checkin/holds/search (checkout/checkin budgets require `STACKSOS_AUDIT_MUTATE=1`)
 
 #### P0-9e: Type safety hardening (reduce `any`)
 
@@ -461,7 +461,7 @@ Principles:
 - No dead UI: if a P1 surface is not end-to-end real, keep it behind `featureFlags`.
 - Prefer a SaaS experience (self-serve provisioning, upgrades, backups, observability) even if the ILS engine remains single-tenant-per-library/consortium.
 
-Status: NOT STARTED (planning + decomposition)
+Status: PARTIAL (policies + admin foundations)
 
 ### P1-0: SaaS control plane (tenant provisioning, upgrades, backups)
 
@@ -638,10 +638,10 @@ AC:
 #### P1-5c: Admin hub + role clarity (staff-friendly)
 
 Checklist:
-- [ ] `/staff/admin` is an Admin Hub with clear entry points (Policy Inspector, Workstations, Users/Roles, Server/Health).
-- [ ] Top-right user menu shows Evergreen permission group/profile + workstation org + a permissions snapshot (key admin perms yes/no).
-- [ ] Add a `Permissions Inspector` view for the current user (what you can do, why, and where it is configured).
-- [ ] Provide explicit links/instructions for changing settings in Evergreen until StacksOS editors exist.
+- [x] `/staff/admin` is an Admin Hub with clear entry points (Policy Inspector, Workstations, Users/Roles, Server/Health).
+- [x] Top-right user menu shows Evergreen permission group/profile + workstation org + a permissions snapshot (key admin perms yes/no).
+- [x] Add a `Permissions Inspector` view for the current user (what you can do, why, and where it is configured).
+- [x] Provide explicit links/instructions for changing settings in Evergreen until StacksOS editors exist.
 
 AC:
 - Admins can find library settings in <= 10 seconds.

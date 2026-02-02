@@ -12,7 +12,16 @@ CSRF_TOKEN=""
 STACKSOS_AUDIT_MUTATE="${STACKSOS_AUDIT_MUTATE:-0}"
 
 PATRON_BARCODE="${PATRON_BARCODE:-}"
-ITEM_BARCODE="${ITEM_BARCODE:-39000000001235}"
+
+DEFAULT_ITEM_BARCODE="39000000001235"
+ITEM_BARCODE_SET="1"
+if [[ -z "${ITEM_BARCODE:-}" ]]; then
+  ITEM_BARCODE_SET="0"
+  ITEM_BARCODE="$DEFAULT_ITEM_BARCODE"
+else
+  ITEM_BARCODE="$ITEM_BARCODE"
+fi
+
 WORKSTATION="${WORKSTATION:-STACKSOS-QA}"
 ORG_ID="${ORG_ID:-101}"
 
@@ -71,10 +80,15 @@ PY
 }
 
 HOLD_ID=""
+CLAIMS_RESTORE_PAYLOAD=""
 cleanup() {
   if [[ -n "$HOLD_ID" ]]; then
     echo "[cleanup] Attempting to cancel hold $HOLD_ID" >&2
     call "holds_cancel_cleanup" "$BASE_URL/api/evergreen/holds" "POST" "{\"action\":\"cancel_hold\",\"holdId\":$HOLD_ID,\"reason\":4,\"note\":\"QA cleanup\"}"
+  fi
+  if [[ -n "$CLAIMS_RESTORE_PAYLOAD" ]]; then
+    echo "[cleanup] Restoring patron claim counts" >&2
+    call "claims_restore_cleanup" "$BASE_URL/api/evergreen/claims" "PUT" "$CLAIMS_RESTORE_PAYLOAD"
   fi
 }
 trap cleanup EXIT
@@ -137,15 +151,36 @@ fi
 call "auth_session" "$BASE_URL/api/evergreen/auth"
 require_ok "auth_session"
 
-# 2) Resolve patron from session (prefers logged-in staff user)
-PATRON_ID=$(python3 - <<PY
+if [[ "$STACKSOS_AUDIT_MUTATE" == "1" ]]; then
+  if [[ "$ITEM_BARCODE_SET" != "1" ]]; then
+    echo "ERROR: STACKSOS_AUDIT_MUTATE=1 requires setting ITEM_BARCODE explicitly (use a dedicated test copy barcode)." >&2
+    exit 1
+  fi
+  if [[ -z "$PATRON_BARCODE" ]]; then
+    echo "ERROR: STACKSOS_AUDIT_MUTATE=1 requires setting PATRON_BARCODE explicitly (use a dedicated test patron)." >&2
+    exit 1
+  fi
+
+  # Resolve patron id from the provided barcode (do not mutate the logged-in staff account).
+  call "patron_lookup" "$BASE_URL/api/evergreen/patrons?barcode=$PATRON_BARCODE"
+  require_ok "patron_lookup"
+  PATRON_ID=$(python3 - <<PY
+import json
+p=json.load(open("$OUT_DIR/patron_lookup.json"))
+patron=p.get("patron") or {}
+print(patron.get("id") or "")
+PY
+)
+else
+  # 2) Resolve patron from session (read-only mode can use logged-in staff user)
+  PATRON_ID=$(python3 - <<PY
 import json
 p=json.load(open("$OUT_DIR/auth_session.json"))
 user=p.get("user") or {}
 print(user.get("id") or "")
 PY
 )
-SESSION_BARCODE=$(python3 - <<PY
+  SESSION_BARCODE=$(python3 - <<PY
 import json
 p=json.load(open("$OUT_DIR/auth_session.json"))
 user=p.get("user") or {}
@@ -156,14 +191,14 @@ if isinstance(card, dict):
 print(barcode or "")
 PY
 )
-if [[ -n "$SESSION_BARCODE" ]]; then
-  PATRON_BARCODE="$SESSION_BARCODE"
-fi
+  if [[ -n "$SESSION_BARCODE" ]]; then
+    PATRON_BARCODE="$SESSION_BARCODE"
+  fi
 
-# Prefer resolving the logged-in user's card barcode via patron-by-id.
-call "patron_by_id" "$BASE_URL/api/evergreen/patrons?id=$PATRON_ID"
-require_ok "patron_by_id"
-BARCODE_FROM_ID=$(python3 - <<PY
+  # Prefer resolving the logged-in user's card barcode via patron-by-id.
+  call "patron_by_id" "$BASE_URL/api/evergreen/patrons?id=$PATRON_ID"
+  require_ok "patron_by_id"
+  BARCODE_FROM_ID=$(python3 - <<PY
 import json
 p=json.load(open("$OUT_DIR/patron_by_id.json"))
 patron=p.get("patron") or {}
@@ -176,14 +211,15 @@ if isinstance(patron, dict):
 print(barcode or "")
 PY
 )
-if [[ -n "$BARCODE_FROM_ID" ]]; then
-  PATRON_BARCODE="$BARCODE_FROM_ID"
-fi
+  if [[ -n "$BARCODE_FROM_ID" ]]; then
+    PATRON_BARCODE="$BARCODE_FROM_ID"
+  fi
 
-# Verify patron lookup by barcode (if we have one).
-if [[ -n "$PATRON_BARCODE" ]]; then
-  call "patron_lookup" "$BASE_URL/api/evergreen/patrons?barcode=$PATRON_BARCODE"
-  require_ok "patron_lookup"
+  # Verify patron lookup by barcode (if we have one).
+  if [[ -n "$PATRON_BARCODE" ]]; then
+    call "patron_lookup" "$BASE_URL/api/evergreen/patrons?barcode=$PATRON_BARCODE"
+    require_ok "patron_lookup"
+  fi
 fi
 
 if [[ -z "$PATRON_ID" ]]; then
@@ -233,6 +269,14 @@ JSON
 call "circ_checkout" "$BASE_URL/api/evergreen/circulation" "POST" "$CHECKOUT_PAYLOAD"
 require_ok "circ_checkout"
 
+CIRC_ID=$(python3 - <<PY
+import json
+p=json.load(open("$OUT_DIR/circ_checkout.json"))
+c=p.get("circulation") or {}
+print(c.get("id") or c.get("circId") or "")
+PY
+)
+
 call "circ_patron_checkouts_after_checkout" "$BASE_URL/api/evergreen/circulation?patron_id=$PATRON_ID"
 require_ok "circ_patron_checkouts_after_checkout"
 
@@ -256,6 +300,54 @@ JSON
 )
 call "circ_renew" "$BASE_URL/api/evergreen/circulation" "POST" "$RENEW_PAYLOAD"
 require_ok "circ_renew"
+
+# 3b) Claims: mark claims returned (coverage) + restore counts at end
+if [[ -n "$CIRC_ID" ]]; then
+  call "claims_patron_before" "$BASE_URL/api/evergreen/claims?patron_id=$PATRON_ID"
+  require_ok "claims_patron_before"
+
+  CLAIMS_RETURNED_BEFORE=$(python3 - <<PY
+import json
+p=json.load(open("$OUT_DIR/claims_patron_before.json"))
+print(((p.get("counts") or {}).get("claimsReturned")) or 0)
+PY
+)
+  CLAIMS_NCO_BEFORE=$(python3 - <<PY
+import json
+p=json.load(open("$OUT_DIR/claims_patron_before.json"))
+print(((p.get("counts") or {}).get("claimsNeverCheckedOut")) or 0)
+PY
+)
+
+  CLAIMS_RESTORE_PAYLOAD=$(cat <<JSON
+{"patronId":$PATRON_ID,"claimsReturnedCount":$CLAIMS_RETURNED_BEFORE,"claimsNeverCheckedOutCount":$CLAIMS_NCO_BEFORE}
+JSON
+)
+
+  CLAIMS_PAYLOAD=$(cat <<JSON
+{"action":"claims_returned","circId":$CIRC_ID,"note":"StacksOS workflow QA"}
+JSON
+)
+  call "claims_returned" "$BASE_URL/api/evergreen/claims" "POST" "$CLAIMS_PAYLOAD"
+  require_ok "claims_returned"
+
+  call "claims_patron_after" "$BASE_URL/api/evergreen/claims?patron_id=$PATRON_ID"
+  require_ok "claims_patron_after"
+
+  FOUND_CLAIM=$(python3 - <<PY
+import json
+p=json.load(open("$OUT_DIR/claims_patron_after.json"))
+claims=((p.get("claims") or {}).get("returned") or [])
+cid=int("$CIRC_ID")
+print("1" if any((isinstance(c, dict) and int(c.get("circId") or 0)==cid) for c in claims) else "0")
+PY
+)
+  if [[ "$FOUND_CLAIM" != "1" ]]; then
+    echo "WARNING: claims_returned did not appear in patron claims list; verify Evergreen claims settings" >&2
+  fi
+else
+  echo "WARNING: circId missing from checkout response; skipping claims mutation coverage" >&2
+fi
 
 CHECKIN_PAYLOAD=$(cat <<JSON
 {"action":"checkin","itemBarcode":"$ITEM_BARCODE"}
@@ -405,5 +497,12 @@ PY
 
 call "marc_update" "$BASE_URL/api/evergreen/marc" "PUT" "$UPDATE_PAYLOAD"
 require_ok "marc_update"
+
+# Restore patron claim counts (best-effort)
+if [[ -n "$CLAIMS_RESTORE_PAYLOAD" ]]; then
+  call "claims_restore" "$BASE_URL/api/evergreen/claims" "PUT" "$CLAIMS_RESTORE_PAYLOAD"
+  # Even if this fails, don't fail the whole QA run — some installs restrict UPDATE_USER.
+  CLAIMS_RESTORE_PAYLOAD=""
+fi
 
 echo "Workflow QA complete. Summary: $LOG"

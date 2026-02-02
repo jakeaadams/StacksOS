@@ -17,6 +17,7 @@ import { FolderOpen, Play, Download, Clock, FileText, RefreshCw } from "lucide-r
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { exportToCSV, generateExportFilename } from "@/lib/csv";
+import { featureFlags } from "@/lib/feature-flags";
 
 interface SavedReport {
   id: string;
@@ -29,32 +30,8 @@ interface SavedReport {
 }
 
 export default function MyReportsPage() {
-  const [reports, setReports] = useState<SavedReport[]>([
-    {
-      id: "1",
-      name: "Daily Stats",
-      templateName: "Dashboard Statistics",
-      apiAction: "dashboard",
-      lastRun: null,
-      status: "ready",
-    },
-    {
-      id: "2",
-      name: "Holds Report",
-      templateName: "Holds Summary",
-      apiAction: "holds",
-      lastRun: null,
-      status: "ready",
-    },
-    {
-      id: "3",
-      name: "Overdue Items",
-      templateName: "Overdue Items Report",
-      apiAction: "overdue",
-      lastRun: null,
-      status: "ready",
-    },
-  ]);
+  const enabled = featureFlags.myReports;
+  const [reports, setReports] = useState<SavedReport[]>([]);
   const [runningId, setRunningId] = useState<string | null>(null);
 
   const handleRunReport = async (report: SavedReport) => {
@@ -183,6 +160,27 @@ export default function MyReportsPage() {
     },
   ], [runningId]);
 
+  if (!enabled) {
+    return (
+      <PageContainer>
+        <PageHeader
+          title="My Reports"
+          subtitle="Saved report configurations and recent results."
+          breadcrumbs={[
+            { label: "Reports", href: "/staff/reports" },
+            { label: "My Reports" },
+          ]}
+        />
+        <PageContent>
+          <EmptyState
+            title="My Reports is not enabled"
+            description="This feature is behind a flag until we support real saved report configs (no placeholder lists)."
+          />
+        </PageContent>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer>
       <PageHeader
@@ -195,6 +193,12 @@ export default function MyReportsPage() {
       />
 
       <PageContent className="space-y-6">
+        {reports.length === 0 && (
+          <EmptyState
+            title="No saved reports"
+            description="Saved report configs will live here once implemented (likely per-user + per-tenant)."
+          />
+        )}
         <div className="grid gap-4 sm:grid-cols-3">
           <Card className="rounded-2xl">
             <CardContent className="p-5">

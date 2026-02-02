@@ -458,7 +458,21 @@ export async function POST(req: NextRequest) {
         return errorResponse("Barcode already exists", 409);
       }
     } else {
-      barcode = await generateUniqueBarcode(authtoken);
+      const mode = String(process.env.STACKSOS_PATRON_BARCODE_MODE || "generate")
+        .trim()
+        .toLowerCase();
+
+      // For SaaS / real libraries: many will require staff to use the barcode printed
+      // on the physical card. Default remains "generate" for sandbox convenience.
+      if (mode === "require" || mode === "required") {
+        return errorResponse(
+          "Barcode is required by this tenant configuration. Enter the patron's card barcode.",
+          400
+        );
+      }
+
+      const prefix = String(process.env.STACKSOS_PATRON_BARCODE_PREFIX || "29").trim() || "29";
+      barcode = await generateUniqueBarcode(authtoken, prefix);
       generated.barcode = barcode;
     }
 

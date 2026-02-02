@@ -13,6 +13,7 @@ import { logger } from "@/lib/logger";
 import { hashPassword } from "@/lib/password";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { isCookieSecure } from "@/lib/csrf";
+import { getPatronPhotoUrl } from "@/lib/db/evergreen";
 
 async function resolveProfileName(authtoken: string, user: any): Promise<string | null> {
   const raw = user?.profile ?? user?.profile_id ?? user?.profileId;
@@ -35,6 +36,28 @@ async function resolveProfileName(authtoken: string, user: any): Promise<string 
     );
     return null;
   }
+}
+
+async function enrichUserWithPhotoUrl(user: any): Promise<any> {
+  if (!user || typeof user !== "object") return user;
+  if (user.photo_url || user.photoUrl) return user;
+
+  const rawId = user.id ?? user.usr ?? user.user_id;
+  const userId = typeof rawId === "number" ? rawId : parseInt(String(rawId ?? ""), 10);
+  if (!Number.isFinite(userId)) return user;
+
+  try {
+    const url = await getPatronPhotoUrl(userId);
+    if (url) {
+      // Evergreen-style + JS-style keys for client convenience.
+      (user as any).photo_url = url;
+      (user as any).photoUrl = url;
+    }
+  } catch (error) {
+    logger.warn({ error: String(error), userId }, "Failed to resolve user photo URL");
+  }
+
+  return user;
 }
 
 // POST - Login
@@ -178,7 +201,7 @@ export async function POST(req: NextRequest) {
           "open-ils.auth.session.retrieve",
           [authResult.payload.authtoken]
         );
-        const user = userResponse?.payload?.[0];
+        const user = await enrichUserWithPhotoUrl(userResponse?.payload?.[0]);
         const profileName = await resolveProfileName(authResult.payload.authtoken, user);
 
         await logAuditEvent({
@@ -220,7 +243,7 @@ export async function POST(req: NextRequest) {
         "open-ils.auth.session.retrieve",
         [authResult.payload.authtoken]
       );
-      const user = userResponse?.payload?.[0];
+      const user = await enrichUserWithPhotoUrl(userResponse?.payload?.[0]);
       const profileName = await resolveProfileName(authResult.payload.authtoken, user);
 
       await logAuditEvent({
@@ -308,8 +331,9 @@ export async function GET(req: NextRequest) {
     const user = sessionResponse?.payload?.[0];
 
     if (user && !user.ilsevent) {
-      const profileName = await resolveProfileName(authtoken, user);
-      return successResponse({ authenticated: true, user, profileName });
+      const enrichedUser = await enrichUserWithPhotoUrl(user);
+      const profileName = await resolveProfileName(authtoken, enrichedUser);
+      return successResponse({ authenticated: true, user: enrichedUser, profileName });
     }
 
     const cookieStore = await cookies();

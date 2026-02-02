@@ -15,6 +15,8 @@ import {
   Camera,
   ArrowLeftRight,
   UserPlus,
+  ShieldCheck,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -111,6 +113,25 @@ export function TopNav({
   const envLabel = String(envData?.env?.label || "").trim();
   const envTone = String(envData?.env?.tone || "").trim();
   const showEnvBanner = envLabel.length > 0;
+
+  const keyPerms = useMemo(
+    () => ["VIEW_USER", "UPDATE_USER", "ADMIN_COPY_STATUS", "ADMIN_WORKSTATION", "ADMIN_ACQ_CLAIM"],
+    []
+  );
+
+  const permsQuery = useMemo(() => encodeURIComponent(keyPerms.join(",")), [keyPerms]);
+
+  const { data: permData } = useApi<any>(
+    userId ? `/api/evergreen/perm-check?perms=${permsQuery}` : null,
+    { immediate: !!userId, revalidateOnFocus: false, revalidateInterval: 5 * 60_000 }
+  );
+
+  const permSummary = useMemo(() => {
+    const map: Record<string, boolean> | null = permData?.perms || null;
+    if (!map) return null;
+    const allowed = keyPerms.filter((p) => map[p]).length;
+    return `Key perms: ${allowed}/${keyPerms.length}`;
+  }, [keyPerms, permData?.perms]);
 
   useEffect(() => {
     setMounted(true);
@@ -401,8 +422,24 @@ export function TopNav({
                     <p className="text-xs text-muted-foreground">
                       {userTitle}{workstation ? ` • WS ${workstation}` : ""}{currentLibrary ? ` • ${currentLibrary}` : ""}
                     </p>
+                    {permSummary ? (
+                      <p className="text-[11px] text-muted-foreground">{permSummary}</p>
+                    ) : null}
                   </div>
                 </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/staff/admin">
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    Administration
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/staff/admin/permissions">
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Permissions
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setProfileOpen(true)}>
                   <Camera className="mr-2 h-4 w-4" />

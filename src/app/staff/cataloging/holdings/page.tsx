@@ -217,7 +217,15 @@ function HoldingsContent() {
                 <TableBody>
                   {holdings.map((holding) => (
                     <TableRow key={holding.id}>
-                      <TableCell className="font-mono text-sm">{holding.barcode || "-"}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        <Link
+                          href={`/staff/catalog/item/${holding.id}`}
+                          className="text-primary hover:underline"
+                          title="Open item details"
+                        >
+                          {holding.barcode || String(holding.id)}
+                        </Link>
+                      </TableCell>
                       <TableCell className="font-mono text-sm">{holding.callNumber || "-"}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -244,11 +252,11 @@ function HoldingsContent() {
                             size="sm"
                             variant="ghost"
                             className="h-7 w-7 p-0"
-                            title="Item Status"
+                            title="Open item details"
                           >
-                            <Link href={`/staff/catalog/item-status?barcode=${encodeURIComponent(holding.barcode || "")}`}>
+                            <Link href={`/staff/catalog/item/${holding.id}`}>
                               <Barcode className="h-3 w-3" />
-                              <span className="sr-only">Item Status</span>
+                              <span className="sr-only">Item details</span>
                             </Link>
                           </Button>
                         </div>

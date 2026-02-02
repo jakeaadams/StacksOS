@@ -33,9 +33,10 @@ export default function UserManagementPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [hasSearched, setHasSearched] = useState(false);
-  const [lastSearchedQuery, setLastSearchedQuery] = useState<string>("");
+  const [lastQuery, setLastQuery] = useState<string>("");
 
   const sessionUser = useMemo<StaffUser | null>(() => {
     if (!user) return null;
@@ -53,25 +54,24 @@ export default function UserManagementPage() {
   const loadStaffUsers = useCallback(async (query: string) => {
     const trimmed = query.trim();
 
-    // Match the "Search Patrons" UX: no "0 results" until a search is performed.
-    if (!trimmed) {
-      setHasSearched(false);
-      setLastSearchedQuery("");
-      setStaffUsers([]);
-      return;
-    }
-
     setIsLoading(true);
+    setLoadError(null);
     try {
-      setHasSearched(true);
-      setLastSearchedQuery(trimmed);
+      setLastQuery(trimmed);
 
-      const response = await fetchWithAuth(`/api/evergreen/staff-users?q=${encodeURIComponent(trimmed)}&limit=50`);
+      const params = new URLSearchParams();
+      if (trimmed) params.set("q", trimmed);
+      params.set("limit", "50");
+
+      const response = await fetchWithAuth(`/api/evergreen/staff-users?${params.toString()}`);
       const data = await response.json();
 
       if (!response.ok || !data.ok) {
-        toast.error(data?.error || "Failed to load users");
+        const message = data?.error || "Failed to load users";
+        setLoadError(message);
+        toast.error(message);
         setStaffUsers([]);
+        setHasLoaded(true);
         return;
       }
 
@@ -86,9 +86,13 @@ export default function UserManagementPage() {
         active: u.active !== false,
       }));
       setStaffUsers(users);
+      setHasLoaded(true);
     } catch (error) {
-      toast.error("Failed to load users");
+      const message = "Failed to load users";
+      setLoadError(message);
+      toast.error(message);
       setStaffUsers([]);
+      setHasLoaded(true);
     } finally {
       setIsLoading(false);
     }
@@ -141,9 +145,7 @@ export default function UserManagementPage() {
   };
 
   const handleRefresh = () => {
-    if (hasSearched) {
-      void loadStaffUsers(lastSearchedQuery || searchQuery);
-    }
+    void loadStaffUsers(lastQuery || searchQuery);
   };
 
   if (authLoading) {
@@ -174,62 +176,64 @@ export default function UserManagementPage() {
           { label: "Users" },
         ]}
         actions={[
-          { label: "Refresh", onClick: handleRefresh, icon: RefreshCw, disabled: !hasSearched },
+          { label: "Refresh", onClick: handleRefresh, icon: RefreshCw, disabled: isLoading || !hasLoaded },
         ]}
       />
 
       <PageContent className="space-y-6">
-        {hasSearched && (
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card className="rounded-2xl">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Found Users</p>
-                    <div className="text-2xl font-semibold mt-1">{staffUsers.length}</div>
-                  </div>
-                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600">
-                    <Users className="h-5 w-5" />
-                  </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Card className="rounded-2xl">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Found Users</p>
+                  <div className="text-2xl font-semibold mt-1">{hasLoaded ? staffUsers.length : "—"}</div>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600">
+                  <Users className="h-5 w-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card className="rounded-2xl">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Active</p>
-                    <div className="text-2xl font-semibold mt-1">{staffUsers.filter(u => u.active).length}</div>
-                  </div>
-                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600">
-                    <Users className="h-5 w-5" />
+          <Card className="rounded-2xl">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Active</p>
+                  <div className="text-2xl font-semibold mt-1">
+                    {hasLoaded ? staffUsers.filter(u => u.active).length : "—"}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600">
+                  <Users className="h-5 w-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card className="rounded-2xl">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Profiles</p>
-                    <div className="text-2xl font-semibold mt-1">{new Set(staffUsers.map(u => u.profile)).size}</div>
-                  </div>
-                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-purple-500/10 text-purple-600">
-                    <Shield className="h-5 w-5" />
+          <Card className="rounded-2xl">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Profiles</p>
+                  <div className="text-2xl font-semibold mt-1">
+                    {hasLoaded ? new Set(staffUsers.map(u => u.profile)).size : "—"}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-purple-500/10 text-purple-600">
+                  <Shield className="h-5 w-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <Card className="rounded-2xl">
           <CardHeader>
           <CardTitle className="text-base">Search Users</CardTitle>
           <CardDescription>
-              Search staff users by name or username. Results appear only after you run a search.
+              Search staff users by name, username, or email. Searches query Evergreen staff accounts (no demo data).
           </CardDescription>
         </CardHeader>
           <CardContent>
@@ -244,7 +248,21 @@ export default function UserManagementPage() {
                 <Search className="h-4 w-4 mr-2" />
                 Search
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isLoading}
+                onClick={() => void loadStaffUsers("")}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Load first 50
+              </Button>
             </form>
+            {loadError ? (
+              <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                {loadError}
+              </div>
+            ) : null}
             <DataTable
               columns={columns}
               data={staffUsers}
@@ -253,11 +271,13 @@ export default function UserManagementPage() {
               paginated={staffUsers.length > 10}
               emptyState={
                 <EmptyState
-                  title={hasSearched ? "No users found" : "Search for users"}
+                  title={hasLoaded ? "No users found" : "Search for users"}
                   description={
-                    hasSearched
-                      ? "No users match your search criteria."
-                      : "Enter a name above (e.g., \"Jake Adams\") and press Search."
+                    hasLoaded
+                      ? lastQuery
+                        ? "No users match your search criteria."
+                        : "No staff users were returned from Evergreen. Verify staff accounts exist and that your account has VIEW_USER."
+                      : "Run a search to list staff users (or click “Load first 50”)."
                   }
                 />
               }
