@@ -30,7 +30,7 @@ interface StaffUser {
 }
 
 export default function UserManagementPage() {
-  const { user, orgs, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -66,10 +66,7 @@ export default function UserManagementPage() {
       setHasSearched(true);
       setLastSearchedQuery(trimmed);
 
-      // Search for users - in production this would filter by staff profile
-      const response = await fetchWithAuth(
-        `/api/evergreen/patrons?q=${encodeURIComponent(trimmed)}&type=name&limit=50`
-      );
+      const response = await fetchWithAuth(`/api/evergreen/staff-users?q=${encodeURIComponent(trimmed)}&limit=50`);
       const data = await response.json();
 
       if (!response.ok || !data.ok) {
@@ -78,25 +75,24 @@ export default function UserManagementPage() {
         return;
       }
 
-      if (data.patrons) {
-        const users = data.patrons.map((p: any) => ({
-          id: p.id,
-          username: p.username || p.usrname || "",
-          displayName: p.displayName || `${p.firstName || ""} ${p.lastName || ""}`.trim() || "Unknown",
-          barcode: p.barcode || "",
-          homeLibrary: p.homeLibraryName || orgs.find(o => o.id === p.homeLibraryId)?.shortname || "",
-          profile: p.profileName || p.profile || "Patron",
-          active: p.active !== false,
-        }));
-        setStaffUsers(users);
-      }
+      const raw = Array.isArray(data.users) ? data.users : [];
+      const users = raw.map((u: any) => ({
+        id: u.id,
+        username: u.username || "",
+        displayName: u.displayName || u.username || "Unknown",
+        barcode: u.barcode || "",
+        homeLibrary: u.homeLibrary || "",
+        profile: u.profile || "Staff",
+        active: u.active !== false,
+      }));
+      setStaffUsers(users);
     } catch (error) {
       toast.error("Failed to load users");
       setStaffUsers([]);
     } finally {
       setIsLoading(false);
     }
-  }, [orgs]);
+  }, []);
 
   const columns: ColumnDef<StaffUser>[] = useMemo(() => [
     {
@@ -231,11 +227,11 @@ export default function UserManagementPage() {
 
         <Card className="rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-base">Search Users</CardTitle>
-            <CardDescription>
-              Search for users by name. Results appear only after you run a search.
-            </CardDescription>
-          </CardHeader>
+          <CardTitle className="text-base">Search Users</CardTitle>
+          <CardDescription>
+              Search staff users by name or username. Results appear only after you run a search.
+          </CardDescription>
+        </CardHeader>
           <CardContent>
             <form onSubmit={handleSearch} className="flex gap-2 mb-4">
               <Input

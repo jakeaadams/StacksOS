@@ -10,6 +10,7 @@ LOG="$OUT_DIR/summary.tsv"
 CSRF_TOKEN=""
 
 PATRON_QUERY="${PATRON_QUERY:-Adams}"
+STAFF_QUERY="${STAFF_QUERY:-jake}"
 PATRON_BARCODE="${PATRON_BARCODE:-}"
 ITEM_BARCODE="${ITEM_BARCODE:-39000000001235}"
 WORKSTATION="${WORKSTATION:-STACKSOS-AUDIT}"
@@ -112,6 +113,9 @@ call "auth_session" "$BASE_URL/api/evergreen/auth"
 
 # 4) Workstation list
 call "workstations_list" "$BASE_URL/api/evergreen/workstations?org_id=$ORG_ID"
+
+# 4b) Staff user search (admin UX)
+call "staff_users_search" "$BASE_URL/api/evergreen/staff-users?q=${STAFF_QUERY}&limit=10"
 
 # 5) Patron search (discover a real barcode/id to avoid brittle fixtures)
 call "patron_search" "$BASE_URL/api/evergreen/patrons?q=${PATRON_QUERY}&type=name"
