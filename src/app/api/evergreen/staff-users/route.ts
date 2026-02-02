@@ -12,17 +12,31 @@ async function getStaffGroupIds(): Promise<number[]> {
     return staffGroupCache.ids;
   }
 
-  const rows = await query<{ grp: number }>(
+  // STAFF_LOGIN is typically assigned to a parent group (e.g. "Staff") and inherited
+  // by its descendants ("Circulators", "Catalogers", etc). We must include descendant
+  // groups or staff searches will return 0 on real Evergreen installs.
+  const rows = await query<{ id: number }>(
     `
-      select distinct gpm.grp
-      from permission.grp_perm_map gpm
-      join permission.perm_list pl on pl.id = gpm.perm
-      where pl.code = 'STAFF_LOGIN'
-      order by gpm.grp
+      with recursive base as (
+        select distinct gpm.grp as id
+        from permission.grp_perm_map gpm
+        join permission.perm_list pl on pl.id = gpm.perm
+        where pl.code = 'STAFF_LOGIN'
+      ),
+      descendants as (
+        select id from base
+        union
+        select gt.id
+        from permission.grp_tree gt
+        join descendants d on gt.parent = d.id
+      )
+      select distinct id
+      from descendants
+      order by id
     `
   );
 
-  const ids = rows.map((r) => Number(r.grp)).filter((v) => Number.isFinite(v));
+  const ids = rows.map((r) => Number(r.id)).filter((v) => Number.isFinite(v));
   staffGroupCache = { loadedAt: Date.now(), ids };
   return ids;
 }
@@ -113,4 +127,3 @@ export async function GET(req: NextRequest) {
     return serverErrorResponse(error, "Staff users GET", req);
   }
 }
-
