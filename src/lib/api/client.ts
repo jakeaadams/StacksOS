@@ -16,6 +16,10 @@ function resolveEvergreenBaseUrl(): string {
 
 const EVERGREEN_BASE = resolveEvergreenBaseUrl();
 
+// Avoid spamming logs for Evergreen capability mismatches (method not found).
+// Keyed by `${service}.${method}`.
+const missingMethodOnce = new Set<string>();
+
 // ============================================================================
 // Core OpenSRF Gateway
 // ============================================================================
@@ -93,11 +97,21 @@ export async function callOpenSRF<T = any>(
     const isMethodNotFound =
       status === 404 && debugText.toLowerCase().includes("method [") && debugText.toLowerCase().includes("not found");
 
-    const log = isMethodNotFound ? logger.warn : logger.error;
-    log(
-      { component: "opensrf", service, method, status, paramCount: params.length, debug },
-      "OpenSRF gateway error"
-    );
+    if (isMethodNotFound) {
+      const key = `${service}.${method}`;
+      if (!missingMethodOnce.has(key)) {
+        missingMethodOnce.add(key);
+        logger.info(
+          { component: "opensrf", service, method, status, paramCount: params.length, debug },
+          "OpenSRF capability mismatch: method not found"
+        );
+      }
+    } else {
+      logger.error(
+        { component: "opensrf", service, method, status, paramCount: params.length, debug },
+        "OpenSRF gateway error"
+      );
+    }
 
     const err = new Error(
       `OpenSRF gateway error (${service}.${method}): status ${status}${

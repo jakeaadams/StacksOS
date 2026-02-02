@@ -101,7 +101,20 @@ export default function ItemStatusPage() {
       {
         accessorKey: "patronId",
         header: "Patron",
-        cell: ({ row }) => row.original.patronBarcode || row.original.patronId ? <span className="font-mono text-xs">{row.original.patronBarcode || 'ID ' + row.original.patronId}</span> : "—",
+        cell: ({ row }) => {
+          const name = row.original.patronName;
+          const barcode = row.original.patronBarcode;
+          const id = row.original.patronId;
+          if (!name && !barcode && !id) return "—";
+          return (
+            <div className="space-y-0.5">
+              {name ? <div className="text-sm">{name}</div> : null}
+              <div className="font-mono text-xs text-muted-foreground">
+                {barcode ? barcode : id ? `ID ${id}` : "—"}
+              </div>
+            </div>
+          );
+        },
       },
       {
         accessorKey: "checkoutDate",

@@ -74,7 +74,7 @@ function addSecurityHeaders(request: NextRequest, response: NextResponse): NextR
   return response;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = new URL(request.url);
   const _method = request.method;
 

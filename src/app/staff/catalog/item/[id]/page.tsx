@@ -266,11 +266,18 @@ export default function ItemDetailPage() {
       id: "patron",
       header: "Patron",
       cell: ({ row }) => {
-        const label =
-          row.original.patronName ||
-          row.original.patronBarcode ||
-          (row.original.patronId ? `#${row.original.patronId}` : "—");
-        return <span className="text-sm font-mono">{label}</span>;
+        const name = row.original.patronName;
+        const barcode = row.original.patronBarcode;
+        const id = row.original.patronId;
+        if (!name && !barcode && !id) return "—";
+        return (
+          <div className="space-y-0.5">
+            {name ? <div className="text-sm">{name}</div> : null}
+            <div className="font-mono text-xs text-muted-foreground">
+              {barcode ? barcode : id ? `ID ${id}` : "—"}
+            </div>
+          </div>
+        );
       },
     },
     {

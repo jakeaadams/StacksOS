@@ -438,7 +438,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Pagination */}
-      {paginated && (
+      {paginated && table.getFilteredRowModel().rows.length > 0 && (
         <DataTablePagination table={table} pageSizeOptions={pageSizeOptions} />
       )}
     </div>
@@ -458,11 +458,18 @@ export function DataTablePagination<TData>({
   table,
   pageSizeOptions = [10, 25, 50, 100],
 }: DataTablePaginationProps<TData>) {
+  const totalRows = table.getFilteredRowModel().rows.length;
+  const safePageCount = Math.max(1, table.getPageCount());
+  const safePageIndex = Math.min(table.getState().pagination.pageIndex, safePageCount - 1);
+  const pageSize = table.getState().pagination.pageSize;
+  const startRow = safePageIndex * pageSize + 1;
+  const endRow = Math.min((safePageIndex + 1) * pageSize, totalRows);
+
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
       {/* Row count */}
       <div className="text-sm text-muted-foreground">
-        {table.getFilteredRowModel().rows.length} row(s) total
+        {totalRows} row(s) total
       </div>
 
       <div className="flex items-center gap-6 lg:gap-8">
@@ -491,14 +498,14 @@ export function DataTablePagination<TData>({
         {/* Page info */}
         <div className="flex flex-col items-center justify-center gap-1">
           <div className="text-sm font-medium">
-            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+            Page {safePageIndex + 1} of {safePageCount}
           </div>
           <div className="text-xs text-muted-foreground" aria-live="polite" aria-atomic="true">
-            Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}-
-            {Math.min(
-              (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-              table.getFilteredRowModel().rows.length
-            )} of {table.getFilteredRowModel().rows.length} results
+            {totalRows === 0 ? (
+              "No results"
+            ) : (
+              <>Showing {startRow}-{endRow} of {totalRows} results</>
+            )}
           </div>
         </div>
 

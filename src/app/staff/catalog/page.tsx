@@ -76,6 +76,8 @@ function CatalogSearchContent() {
   const [records, setRecords] = useState<BibRecord[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [lastQuery, setLastQuery] = useState<string>("");
   const [selectedRecord, setSelectedRecord] = useState<BibRecord | null>(null);
 
   const [placeHoldOpen, setPlaceHoldOpen] = useState(false);
@@ -90,13 +92,17 @@ function CatalogSearchContent() {
   };
 
   const handleSearch = useCallback(async () => {
-    if (!searchQuery.trim()) return;
+    const queryRaw = searchQuery.trim();
+    if (!queryRaw) return;
+
+    setHasSearched(true);
+    setLastQuery(queryRaw);
     // Smart search: auto-detect ISBN, barcode, call number
-    const effectiveType = getEffectiveSearchType(searchQuery, searchType, "catalog");
+    const effectiveType = getEffectiveSearchType(queryRaw, searchType, "catalog");
     setIsLoading(true);
 
     try {
-      const query = encodeURIComponent(searchQuery.trim());
+      const query = encodeURIComponent(queryRaw);
       const res = await fetchWithAuth(`/api/evergreen/catalog?q=${query}&type=${effectiveType}&limit=50`);
       const data = await res.json();
 
@@ -125,6 +131,8 @@ function CatalogSearchContent() {
   // Auto-run search when landing with a ?q= URL.
   useEffect(() => {
     if (searchQuery.trim()) {
+      setHasSearched(true);
+      setLastQuery(searchQuery.trim());
       void handleSearch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -265,9 +273,16 @@ function CatalogSearchContent() {
         ]}
       >
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="rounded-full">
-            Results: {totalCount}
-          </Badge>
+          {hasSearched ? (
+            <Badge variant="secondary" className="rounded-full">
+              {isLoading ? "Searching…" : `Results: ${totalCount}`}
+            </Badge>
+          ) : null}
+          {lastQuery ? (
+            <Badge variant="outline" className="rounded-full">
+              Query: {lastQuery}
+            </Badge>
+          ) : null}
           {selectedRecord && (
             <Badge variant="outline" className="rounded-full">
               Selected: {selectedRecord.tcn || selectedRecord.id}
@@ -332,7 +347,16 @@ function CatalogSearchContent() {
           isLoading={isLoading}
           searchable={false}
           onRowClick={handleRowClick}
-          emptyState={<EmptyState title="No records" description="Run a search to see results." />}
+          emptyState={
+            hasSearched ? (
+              <EmptyState
+                title="No records found"
+                description="Try a different title, author, ISBN, or keyword."
+              />
+            ) : (
+              <EmptyState title="Search the catalog" description="Run a search to see results." />
+            )
+          }
         />
 
         <PlaceHoldDialog
