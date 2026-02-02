@@ -12,13 +12,19 @@ If the StacksOS repo exists on **evergreen**:
 
 ```bash
 cd /home/jake/projects/stacksos
-sudo bash ops/evergreen/evergreen_harden.sh
+sudo bash ops/evergreen/evergreen_harden.sh --stacksos-ip 192.168.1.233
 ```
 
 If the repo does **not** exist on evergreen (common), run the scripts from your home directory after copying them over (example assumes you copied to `~/ops/evergreen`):
 
 ```bash
-sudo bash ~/ops/evergreen/evergreen_harden.sh
+sudo bash ~/ops/evergreen/evergreen_harden.sh --stacksos-ip 192.168.1.233
+```
+
+If Evergreen must be publicly reachable (not recommended for SaaS), run:
+
+```bash
+sudo bash ~/ops/evergreen/evergreen_harden.sh --public-web
 ```
 
 ## Rotate default secrets (high impact)
@@ -49,7 +55,10 @@ sudo systemctl restart stacksos.service
 ## What it does (high level)
 
 - Enables UFW with a default deny inbound policy.
-- Allows inbound: SSH (22/tcp), HTTP (80/tcp), HTTPS (443/tcp).
+- Allows inbound: SSH (22/tcp) by default.
+- For web:
+  - **Recommended for SaaS:** allow HTTPS (443/tcp) **only** from the StacksOS host (`--stacksos-ip ...`).
+  - Optional/legacy: allow HTTP/HTTPS from anywhere (`--public-web`).
   - This implicitly blocks OpenSRF internal messaging ports from the LAN (ejabberd 5222/5223, epmd 4369, Erlang distribution ports, etc.) while still allowing localhost traffic.
 - Locks down OpenSRF config readability:
   - `/openils/conf/opensrf.xml`

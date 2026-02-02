@@ -14,9 +14,23 @@ sudo ss -ltnp
 ```
 
 Expected:
-- Inbound allowed: `22/tcp`, `80/tcp`, `443/tcp`
-- No LAN exposure for OpenSRF internals (e.g. `5222/5223`, `4369`, Erlang distribution ports)
+- **Recommended SaaS posture (Evergreen is backend-only):**
+  - Inbound allowed: `22/tcp` (SSH) and `443/tcp` **only from stacksos**
+  - `80/tcp` disabled
+- **If Evergreen must be public** (not recommended for SaaS): inbound allowed `22/tcp`, `80/tcp`, `443/tcp`
+- No LAN exposure for OpenSRF internals (e.g. `5222/5223`, `4369`, Erlang distribution ports). It’s OK if they *listen* on `0.0.0.0` as long as the firewall blocks them.
 - PostgreSQL should remain localhost-only unless you *explicitly* decide to expose it
+
+Example UFW rules for SaaS (run on evergreen; replace IP):
+
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 22/tcp
+sudo ufw allow from 192.168.1.233 to any port 443 proto tcp
+sudo ufw --force enable
+sudo ufw status verbose
+```
 
 ## 2) Verify core services are healthy
 

@@ -54,13 +54,14 @@ Goal: verify this environment is *credible* (no fake/demo data in staff workflow
 
 ### Confirmed (non-sudo checks)
 - Evergreen internal service ports are **listening** on all interfaces (e.g. `5222/5223`, `4369`, `33905`).
-  - This is acceptable **only if** the firewall blocks them (UFW should allow only `22/80/443`).
+  - This is acceptable **only if** the firewall blocks them (recommended: Evergreen HTTPS `443` reachable only from `stacksos`).
 - `/openils/conf/opensrf.xml` and `/openils/conf/opensrf_core.xml` permissions are **640** (`opensrf:opensrf`), not world-readable.
 
 ### Still recommended (requires `sudo` on `evergreen`)
 These are the remaining “pilot-hardening” actions I recommend:
 - **Confirm UFW rules** (must deny internal ports):
   - `sudo ufw status verbose`
+  - Expected (SaaS posture): `443/tcp` allowed only from the StacksOS host IP; no public `80/443`.
 - **Bind internal services to localhost/private interface** (defense-in-depth even if UFW is correct):
   - ejabberd should not listen on `0.0.0.0` unless intentionally exposed.
   - epmd/Erlang distribution ports should not be publicly reachable.
@@ -99,4 +100,3 @@ The big SaaS gates still outstanding:
 2. StacksOS: remove/hide any remaining incomplete modules from the sidebar (feature-flag) so nothing looks “fake”.
 3. Implement P0 “Admin Hub” pages that translate Evergreen configuration into StacksOS UX (statuses, locations, permissions, policies).
 4. Start P2-9 AI implementation behind `featureFlags.ai` (no hardcoded demo answers).
-

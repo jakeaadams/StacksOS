@@ -4,6 +4,54 @@ set -euo pipefail
 ts() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
 log() { printf "[%s] %s\n" "$(ts)" "$*"; }
 
+usage() {
+  cat <<'USAGE'
+Usage: evergreen_harden.sh [options]
+
+Options:
+  --stacksos-ip <IP>   Restrict Evergreen HTTPS (443) to the StacksOS host IP (recommended for SaaS).
+  --allow-http         If used with --stacksos-ip, also allow HTTP (80) from that IP (usually not needed).
+  --public-web         Allow HTTP/HTTPS (80/443) from anywhere (use only if Evergreen must be publicly reachable).
+  --ssh-from <CIDR>    Restrict SSH (22) to a CIDR (e.g. 192.168.1.0/24). Default: allow from anywhere.
+  -h, --help           Show this help.
+USAGE
+}
+
+STACKSOS_IP=""
+ALLOW_HTTP=0
+PUBLIC_WEB=0
+SSH_FROM=""
+
+while [[ $# -gt 0 ]]; do
+  case "${1:-}" in
+    --stacksos-ip)
+      STACKSOS_IP="${2:-}"
+      shift 2
+      ;;
+    --allow-http)
+      ALLOW_HTTP=1
+      shift
+      ;;
+    --public-web)
+      PUBLIC_WEB=1
+      shift
+      ;;
+    --ssh-from)
+      SSH_FROM="${2:-}"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "ERROR: unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
 require_root() {
   if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
     echo "ERROR: must run as root (use sudo)" >&2
@@ -27,13 +75,41 @@ configure_ufw() {
     apt-get install -y ufw
   fi
 
-  log "Configuring UFW (default deny inbound; allow 22/80/443)"
+  if [[ "$PUBLIC_WEB" -eq 1 && -n "$STACKSOS_IP" ]]; then
+    echo "ERROR: choose only one of --public-web or --stacksos-ip" >&2
+    exit 2
+  fi
+
+  if [[ -n "$STACKSOS_IP" ]]; then
+    log "Configuring UFW (default deny inbound; allow ssh; allow https from stacksos only)"
+  else
+    log "Configuring UFW (default deny inbound; allow ssh; allow web)"
+  fi
+
   ufw default deny incoming
   ufw default allow outgoing
 
-  ufw allow 22/tcp
-  ufw allow 80/tcp
-  ufw allow 443/tcp
+  if [[ -n "$SSH_FROM" ]]; then
+    ufw allow from "$SSH_FROM" to any port 22 proto tcp
+  else
+    ufw allow 22/tcp
+  fi
+
+  if [[ "$PUBLIC_WEB" -eq 1 ]]; then
+    ufw allow 80/tcp
+    ufw allow 443/tcp
+  elif [[ -n "$STACKSOS_IP" ]]; then
+    ufw allow from "$STACKSOS_IP" to any port 443 proto tcp
+    if [[ "$ALLOW_HTTP" -eq 1 ]]; then
+      ufw allow from "$STACKSOS_IP" to any port 80 proto tcp
+    fi
+  else
+    # Backward-compatible default: allow web from anywhere.
+    # For SaaS, re-run with: --stacksos-ip <STACKSOS_HOST_IP>
+    log "WARN: no --stacksos-ip provided; leaving 80/443 open to the world. For SaaS, restrict Evergreen to StacksOS."
+    ufw allow 80/tcp
+    ufw allow 443/tcp
+  fi
 
   # Ensure it's on (non-interactive).
   ufw --force enable
