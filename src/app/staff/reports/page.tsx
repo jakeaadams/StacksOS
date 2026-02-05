@@ -1,7 +1,7 @@
 "use client";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
-import { useCSVExport, exportToCSV, generateExportFilename } from "@/lib/csv";
+import { useCSVExport, generateExportFilename } from "@/lib/csv";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -25,9 +25,12 @@ import {
   Bookmark,
   Clock,
   Loader2,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 
 import { escapeHtml, printHtml } from "@/lib/print";
+import { featureFlags } from "@/lib/feature-flags";
 
 interface DashboardStats {
   checkouts_today: number | null;
@@ -45,17 +48,12 @@ interface HoldsStats {
   total: number;
 }
 
-function downloadTextFile(filename: string, content: string, mime = "text/plain") {
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
+type AiAnalyticsSummary = {
+  summary: string;
+  highlights: string[];
+  caveats?: string[];
+  drilldowns: Array<{ label: string; url: string }>;
+};
 
 function buildPrintSummaryHtml(params: {
   orgId: number;
@@ -98,12 +96,18 @@ function buildPrintSummaryHtml(params: {
 }
 
 export default function ReportsPage() {
+  const canAi = featureFlags.ai;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [holds, setHolds] = useState<HoldsStats | null>(null);
   const [orgId, setOrgId] = useState(1);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiDraftId, setAiDraftId] = useState<string | null>(null);
+  const [aiSummary, setAiSummary] = useState<AiAnalyticsSummary | null>(null);
+  const [aiFeedback, setAiFeedback] = useState<null | "accepted" | "rejected">(null);
 
   // CSV export hook for managing loading states
   const { exportData, isExporting } = useCSVExport();
@@ -179,6 +183,61 @@ export default function ReportsPage() {
       },
     ];
   }, [stats]);
+
+  const generateAiSummary = useCallback(async () => {
+    if (!canAi || !stats || !holds) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiDraftId(null);
+    setAiSummary(null);
+    setAiFeedback(null);
+
+    try {
+      const response = await fetchWithAuth("/api/ai/analytics-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orgId,
+          stats: {
+            checkouts_today: stats.checkouts_today,
+            checkins_today: stats.checkins_today,
+            active_holds: stats.active_holds,
+            overdue_items: stats.overdue_items,
+            fines_collected_today: stats.fines_collected_today,
+            new_patrons_today: stats.new_patrons_today,
+          },
+          holds,
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok || json.ok === false) {
+        throw new Error(json.error || "AI summary failed");
+      }
+      setAiDraftId(json.draftId || null);
+      setAiSummary(json.response || null);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAiLoading(false);
+    }
+  }, [canAi, holds, orgId, stats]);
+
+  const submitAiFeedback = useCallback(
+    async (decision: "accepted" | "rejected") => {
+      if (!aiDraftId) return;
+      setAiFeedback(decision);
+      try {
+        await fetchWithAuth(`/api/ai/drafts/${aiDraftId}/decision`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision, suggestionId: "analytics_summary" }),
+        });
+      } catch {
+        // Best-effort.
+      }
+    },
+    [aiDraftId]
+  );
 
   // Export all reports data as a single CSV
   const handleDownloadFullReport = useCallback(async () => {
@@ -378,6 +437,80 @@ export default function ReportsPage() {
             </Card>
           ))}
         </div>
+
+        {canAi && stats && holds && (
+          <Card className="rounded-2xl border-border/70 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base">AI Narrative (draft-only)</CardTitle>
+                  <CardDescription>Uses aggregate metrics only (no patron-level data).</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={generateAiSummary} disabled={aiLoading}>
+                    {aiLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    Generate
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void submitAiFeedback("accepted")}
+                    disabled={!aiDraftId || aiFeedback !== null}
+                    title="Thumbs up"
+                  >
+                    <ThumbsUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void submitAiFeedback("rejected")}
+                    disabled={!aiDraftId || aiFeedback !== null}
+                    title="Thumbs down"
+                  >
+                    <ThumbsDown className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {aiError && <div className="text-sm text-muted-foreground">AI unavailable: {aiError}</div>}
+              {!aiError && !aiSummary && !aiLoading && (
+                <div className="text-sm text-muted-foreground">
+                  Generate a short narrative summary for today’s metrics.
+                </div>
+              )}
+              {aiSummary && (
+                <div className="space-y-3">
+                  <div className="text-sm">{aiSummary.summary}</div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {aiSummary.highlights.slice(0, 4).map((h, idx) => (
+                      <div key={idx} className="rounded-xl bg-muted/30 px-3 py-2 text-sm">
+                        {h}
+                      </div>
+                    ))}
+                  </div>
+                  {Array.isArray(aiSummary.caveats) && aiSummary.caveats.length > 0 && (
+                    <div className="rounded-xl border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                      <div className="font-medium text-foreground/80 mb-1">Caveats</div>
+                      <ul className="list-disc list-inside space-y-1">
+                        {aiSummary.caveats.slice(0, 4).map((c, idx) => (
+                          <li key={idx}>{c}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {aiSummary.drilldowns.slice(0, 6).map((d, idx) => (
+                      <Button key={idx} asChild size="sm" variant="outline">
+                        <a href={d.url}>{d.label}</a>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Circulation Statistics Card */}

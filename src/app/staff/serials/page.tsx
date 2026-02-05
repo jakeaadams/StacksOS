@@ -15,6 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Newspaper,
   Search,
@@ -27,7 +30,6 @@ import {
   RefreshCw,
   Info,
   Package,
-  Bookmark,
 } from "lucide-react";
 
 interface Subscription {
@@ -78,6 +80,9 @@ export default function SerialsPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [receiving, setReceiving] = useState<string | number | null>(null);
+  const [claiming, setClaiming] = useState(false);
+  const [claimNote, setClaimNote] = useState("");
+  const [selectedClaimIds, setSelectedClaimIds] = useState<Set<string | number>>(new Set());
 
   const activeSubscription = useMemo(() => {
     if (activeSubscriptionId == null) return null;
@@ -225,6 +230,40 @@ export default function SerialsPage() {
     }
   };
 
+  const handleClaimSelected = async () => {
+    if (selectedClaimIds.size === 0) {
+      toast.error("Select at least one expected issue to claim");
+      return;
+    }
+    setClaiming(true);
+    try {
+      const response = await fetchWithAuth("/api/evergreen/serials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "claim",
+          item_ids: Array.from(selectedClaimIds),
+          claim_type: 1,
+          note: claimNote.trim() || "",
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || "Failed to create claims");
+      }
+      toast.success(`Created ${data.successCount || 0} claim(s)`);
+      setSelectedClaimIds(new Set());
+      setClaimNote("");
+      if (activeSubscriptionId != null) {
+        await loadItems(activeSubscriptionId);
+      }
+    } catch (err) {
+      toast.error("Claim failed", { description: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -309,6 +348,13 @@ export default function SerialsPage() {
             <Alert variant="destructive" className="m-4">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {setupMessage && !error && (
+            <Alert className="m-4">
+              <Info className="h-4 w-4" />
+              <AlertDescription>{setupMessage}</AlertDescription>
             </Alert>
           )}
 
@@ -459,7 +505,7 @@ export default function SerialsPage() {
                     <Alert>
                       <Info className="h-4 w-4" />
                       <AlertDescription>
-                        Claims are managed through Evergreen. Use the Check-In tab to receive claimed issues when they arrive.
+                        Create claims for missing/late issues (Evergreen-backed). When issues arrive, use Check-In to receive them.
                       </AlertDescription>
                     </Alert>
 
@@ -467,54 +513,138 @@ export default function SerialsPage() {
                       <div className="p-10 flex items-center justify-center">
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                       </div>
-                    ) : filteredClaimedItems.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Truck className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>No claimed issues</p>
-                        <p className="text-sm mt-2">Claimed issues will appear here for tracking</p>
-                      </div>
                     ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Item ID</TableHead>
-                            <TableHead>Issuance</TableHead>
-                            <TableHead>Expected Date</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredClaimedItems.map((item) => {
-                            const badge = statusBadge(item.status);
-                            return (
-                              <TableRow key={item.id}>
-                                <TableCell className="font-mono">{item.id}</TableCell>
-                                <TableCell className="font-mono">{item.issuance}</TableCell>
-                                <TableCell>{item.date_expected?.split("T")[0] || "-"}</TableCell>
-                                <TableCell>
-                                  <Badge className={`${badge.className} flex items-center gap-1`}>{badge.label}</Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleReceive(item.id)}
-                                    disabled={receiving === item.id}
-                                  >
-                                    {receiving === item.id ? (
-                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                    ) : (
-                                      <CheckCircle className="h-3 w-3 mr-1" />
-                                    )}
-                                    Mark Received
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                      <div className="space-y-4">
+                        <Card>
+                          <CardHeader className="py-3">
+                            <CardTitle className="text-sm">Create claims (from expected issues)</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div>
+                              <Label>Claim note (optional)</Label>
+                              <Textarea value={claimNote} onChange={(e) => setClaimNote(e.target.value)} placeholder="Optional note to include with claims" />
+                            </div>
+                            <div className="flex justify-end">
+                              <Button onClick={handleClaimSelected} disabled={claiming || selectedClaimIds.size === 0}>
+                                {claiming ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <AlertTriangle className="h-4 w-4 mr-2" />}
+                                Create claim(s)
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardHeader className="py-3">
+                            <CardTitle className="text-sm">Expected issues</CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-0">
+                            {filteredExpectedItems.length === 0 ? (
+                              <div className="text-center py-8 text-muted-foreground">
+                                <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                <p>No expected issues</p>
+                              </div>
+                            ) : (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead></TableHead>
+                                    <TableHead>Item ID</TableHead>
+                                    <TableHead>Issuance</TableHead>
+                                    <TableHead>Expected Date</TableHead>
+                                    <TableHead>Status</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {filteredExpectedItems.map((item) => {
+                                    const selected = selectedClaimIds.has(item.id);
+                                    const badge = statusBadge(item.status);
+                                    return (
+                                      <TableRow key={item.id}>
+                                        <TableCell>
+                                          <Checkbox
+                                            checked={selected}
+                                            onCheckedChange={(v) => {
+                                              setSelectedClaimIds((prev) => {
+                                                const next = new Set(prev);
+                                                if (Boolean(v)) next.add(item.id);
+                                                else next.delete(item.id);
+                                                return next;
+                                              });
+                                            }}
+                                          />
+                                        </TableCell>
+                                        <TableCell className="font-mono">{item.id}</TableCell>
+                                        <TableCell className="font-mono">{item.issuance}</TableCell>
+                                        <TableCell>{item.date_expected?.split("T")[0] || "-"}</TableCell>
+                                        <TableCell>
+                                          <Badge className={`${badge.className} flex items-center gap-1`}>{badge.label}</Badge>
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardHeader className="py-3">
+                            <CardTitle className="text-sm">Claimed issues</CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-0">
+                            {filteredClaimedItems.length === 0 ? (
+                              <div className="text-center py-8 text-muted-foreground">
+                                <Truck className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                <p>No claimed issues</p>
+                                <p className="text-sm mt-2">Claimed issues will appear here for tracking</p>
+                              </div>
+                            ) : (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Item ID</TableHead>
+                                    <TableHead>Issuance</TableHead>
+                                    <TableHead>Expected Date</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Actions</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {filteredClaimedItems.map((item) => {
+                                    const badge = statusBadge(item.status);
+                                    return (
+                                      <TableRow key={item.id}>
+                                        <TableCell className="font-mono">{item.id}</TableCell>
+                                        <TableCell className="font-mono">{item.issuance}</TableCell>
+                                        <TableCell>{item.date_expected?.split("T")[0] || "-"}</TableCell>
+                                        <TableCell>
+                                          <Badge className={`${badge.className} flex items-center gap-1`}>{badge.label}</Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleReceive(item.id)}
+                                            disabled={receiving === item.id}
+                                          >
+                                            {receiving === item.id ? (
+                                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                            ) : (
+                                              <CheckCircle className="h-3 w-3 mr-1" />
+                                            )}
+                                            Mark Received
+                                          </Button>
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </div>
                     )}
                   </CardContent>
                 </Card>

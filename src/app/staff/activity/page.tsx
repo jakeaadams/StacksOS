@@ -40,12 +40,10 @@ import {
 import {
   Activity,
   LogIn,
-  LogOut,
   BookOpen,
   BookCheck,
   Hand,
   CreditCard,
-  DollarSign,
   Search,
   RefreshCw,
   Calendar,
@@ -56,8 +54,6 @@ import {
   ArrowDownUp,
   Loader2,
   AlertCircle,
-  XCircle,
-  CheckCircle2,
   History,
 } from "lucide-react";
 
@@ -65,7 +61,34 @@ import {
 // Types
 // ============================================================================
 
-type ActivityType = "login" | "logout" | "checkout" | "checkin" | "hold_place" | "hold_cancel" | "hold_pickup" | "payment" | "refund" | "fine" | "all";
+type ActivityType =
+  | "login"
+  | "checkout"
+  | "checkin"
+  | "hold"
+  | "payment"
+  | "patron_change"
+  | "all";
+
+type ApiActivityType = Exclude<ActivityType, "all">;
+
+interface ApiActivity {
+  id: string;
+  type: ApiActivityType;
+  timestamp: string;
+  actor: {
+    id: number | null;
+    username: string | null;
+    name: string | null;
+  };
+  target?: {
+    type: string;
+    id: number | string;
+    label: string;
+  };
+  details: Record<string, any>;
+  workstation?: string;
+}
 
 interface ActivityItem {
   id: string;
@@ -82,26 +105,39 @@ interface ActivityItem {
   metadata?: Record<string, unknown>;
 }
 
-interface ActivityResponse {
-  activities: ActivityItem[];
-  total: number;
-  hasMore: boolean;
-  nextCursor?: string;
+interface ApiActivityResponse {
+  ok: boolean;
+  activities: ApiActivity[];
+  capabilities?: {
+    patron_change?: boolean;
+  };
+  pagination: {
+    limit: number;
+    offset: number;
+    count: number;
+    type: string;
+  };
+  filters?: {
+    user_id?: number | null;
+    start_date?: string | null;
+    end_date?: string | null;
+  };
 }
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const ACTIVITY_TYPES: { value: ActivityType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+type ActivityTypeOption = { value: ActivityType; label: string; icon: React.ComponentType<{ className?: string }> };
+
+const ACTIVITY_TYPES: ActivityTypeOption[] = [
   { value: "all", label: "All Activities", icon: Activity },
   { value: "login", label: "Logins", icon: LogIn },
   { value: "checkout", label: "Checkouts", icon: BookOpen },
   { value: "checkin", label: "Checkins", icon: BookCheck },
-  { value: "hold_place", label: "Holds Placed", icon: Hand },
-  { value: "hold_pickup", label: "Holds Picked Up", icon: CheckCircle2 },
-  { value: "hold_cancel", label: "Holds Cancelled", icon: XCircle },
+  { value: "hold", label: "Holds", icon: Hand },
   { value: "payment", label: "Payments", icon: CreditCard },
+  { value: "patron_change", label: "Patron Changes", icon: History },
 ];
 
 const DATE_RANGES = [
@@ -114,28 +150,20 @@ const DATE_RANGES = [
 
 const ACTIVITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   login: LogIn,
-  logout: LogOut,
   checkout: BookOpen,
   checkin: BookCheck,
-  hold_place: Hand,
-  hold_cancel: XCircle,
-  hold_pickup: CheckCircle2,
+  hold: Hand,
   payment: CreditCard,
-  refund: DollarSign,
-  fine: AlertCircle,
+  patron_change: History,
 };
 
 const ACTIVITY_COLORS: Record<string, string> = {
   login: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  logout: "bg-slate-500/10 text-slate-600 dark:text-slate-400",
   checkout: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   checkin: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
-  hold_place: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  hold_cancel: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-  hold_pickup: "bg-green-500/10 text-green-600 dark:text-green-400",
+  hold: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   payment: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-  refund: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
-  fine: "bg-red-500/10 text-red-600 dark:text-red-400",
+  patron_change: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -152,6 +180,7 @@ const STATUS_COLORS: Record<string, string> = {
 function getRelativeTime(timestamp: string): string {
   const now = new Date();
   const date = new Date(timestamp);
+  if (!Number.isFinite(date.getTime())) return "Unknown time";
   const diffMs = now.getTime() - date.getTime();
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffSec / 60);
@@ -174,37 +203,131 @@ function getRelativeTime(timestamp: string): string {
   });
 }
 
+function formatFullTimestamp(timestamp: string): string {
+  const date = new Date(timestamp);
+  if (!Number.isFinite(date.getTime())) return typeof timestamp === "string" && timestamp.trim() ? timestamp : "Unknown";
+  return date.toLocaleString(undefined, {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
+  const safe = typeof name === "string" ? name : "";
+  const trimmed = safe.trim();
+  if (!trimmed) return "?";
+  const parts = trimmed.split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function getDateRangeParams(range: string): { from?: string; to?: string } {
+function getDateRangeParams(range: string): { startDate?: string; endDate?: string } {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   
   switch (range) {
     case "today":
-      return { from: today.toISOString() };
+      return { startDate: today.toISOString() };
     case "yesterday": {
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      return { from: yesterday.toISOString(), to: today.toISOString() };
+      return { startDate: yesterday.toISOString(), endDate: today.toISOString() };
     }
     case "week": {
       const weekAgo = new Date(today);
       weekAgo.setDate(weekAgo.getDate() - 7);
-      return { from: weekAgo.toISOString() };
+      return { startDate: weekAgo.toISOString() };
     }
     case "month": {
       const monthAgo = new Date(today);
       monthAgo.setDate(monthAgo.getDate() - 30);
-      return { from: monthAgo.toISOString() };
+      return { startDate: monthAgo.toISOString() };
     }
     default:
       return {};
   }
+}
+
+function formatMoneyUSD(amount: number | null | undefined): string | null {
+  if (typeof amount !== "number" || !Number.isFinite(amount)) return null;
+  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(amount);
+}
+
+function toActivityItem(activity: ApiActivity): ActivityItem {
+  const actorId = activity.actor.id;
+  const actorLabel =
+    (activity.actor.name && activity.actor.name.trim()) ||
+    (activity.actor.username && activity.actor.username.trim()) ||
+    (actorId ? `User #${actorId}` : "Unknown user");
+
+  const base: Omit<ActivityItem, "description" | "details" | "status"> = {
+    id: activity.id,
+    type: activity.type,
+    userId: actorId ? String(actorId) : "",
+    userName: actorLabel,
+    userAvatar: undefined,
+    targetId: activity.target?.id != null ? String(activity.target.id) : undefined,
+    targetLabel: activity.target?.label || undefined,
+    timestamp: activity.timestamp,
+    metadata: activity.details as Record<string, unknown>,
+  };
+
+  if (activity.type === "login") {
+    const details = activity.workstation ? `Workstation: ${activity.workstation}` : undefined;
+    return { ...base, description: "Signed in", details, status: "success" };
+  }
+
+  if (activity.type === "checkout") {
+    const label = activity.target?.label ? ` (${activity.target.label})` : "";
+    return { ...base, description: `Checked out an item${label}`, status: "success" };
+  }
+
+  if (activity.type === "checkin") {
+    const label = activity.target?.label ? ` (${activity.target.label})` : "";
+    return { ...base, description: `Checked in an item${label}`, status: "success" };
+  }
+
+  if (activity.type === "hold") {
+    const cancelTime = activity.details?.cancel_time;
+    const fulfillmentTime = activity.details?.fulfillment_time;
+    const frozen = Boolean(activity.details?.frozen);
+
+    const status: ActivityItem["status"] = cancelTime ? "warning" : "info";
+    const verb = cancelTime
+      ? "Cancelled a hold"
+      : fulfillmentTime
+        ? "Fulfilled a hold"
+        : "Placed a hold";
+
+    const details = frozen ? "Frozen" : undefined;
+    return { ...base, description: verb, details, status };
+  }
+
+  if (activity.type === "payment") {
+    const amount = typeof activity.details?.amount === "number" ? activity.details.amount : null;
+    const amountLabel = formatMoneyUSD(amount);
+    const paymentType = typeof activity.details?.payment_type === "string" ? activity.details.payment_type : null;
+
+    const details = [paymentType, amountLabel].filter(Boolean).join(" • ") || undefined;
+    return { ...base, description: "Accepted a payment", details, status: "success" };
+  }
+
+  if (activity.type === "patron_change") {
+    const changes = activity.details?.changes;
+    const changedFields =
+      changes && typeof changes === "object"
+        ? Object.keys(changes).slice(0, 4).join(", ")
+        : "";
+    const details = changedFields ? `Updated: ${changedFields}${Object.keys(changes).length > 4 ? "…" : ""}` : undefined;
+    return { ...base, description: "Updated patron record", details, status: "info" };
+  }
+
+  // Fallback (should be unreachable if ApiActivityType stays in sync)
+  return { ...base, description: "Activity recorded", status: "info" };
 }
 
 // ============================================================================
@@ -277,14 +400,7 @@ function ActivityCard({ activity }: ActivityCardProps) {
         {/* Timestamp (full) */}
         <p className="text-[11px] text-muted-foreground pt-1">
           <Clock className="inline h-3 w-3 mr-1 -mt-0.5" />
-          {new Date(activity.timestamp).toLocaleString(undefined, {
-            weekday: "short",
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+          {formatFullTimestamp(activity.timestamp)}
         </p>
       </div>
     </div>
@@ -294,6 +410,7 @@ function ActivityCard({ activity }: ActivityCardProps) {
 interface FilterBarProps {
   activityType: ActivityType;
   onActivityTypeChange: (type: ActivityType) => void;
+  activityTypeOptions: ActivityTypeOption[];
   dateRange: string;
   onDateRangeChange: (range: string) => void;
   searchQuery: string;
@@ -305,6 +422,7 @@ interface FilterBarProps {
 function FilterBar({
   activityType,
   onActivityTypeChange,
+  activityTypeOptions,
   dateRange,
   onDateRangeChange,
   searchQuery,
@@ -326,7 +444,7 @@ function FilterBar({
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                {ACTIVITY_TYPES.map((type) => {
+                {activityTypeOptions.map((type) => {
                   const TypeIcon = type.icon;
                   return (
                     <SelectItem key={type.value} value={type.value}>
@@ -412,10 +530,10 @@ function ActivityStats({ activities, total }: ActivityStatsProps) {
     };
 
     activities.forEach((a) => {
-      if (a.type === "login" || a.type === "logout") counts.logins++;
+      if (a.type === "login") counts.logins++;
       else if (a.type === "checkout" || a.type === "checkin") counts.circulation++;
-      else if (a.type.startsWith("hold_")) counts.holds++;
-      else if (a.type === "payment" || a.type === "refund" || a.type === "fine") counts.payments++;
+      else if (a.type === "hold") counts.holds++;
+      else if (a.type === "payment") counts.payments++;
     });
 
     return counts;
@@ -498,7 +616,8 @@ export default function ActivityLogPage() {
   const debouncedSearch = useDebounce(searchQuery, DEBOUNCE_DELAY_MS);
 
   // Pagination state
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const pageSize = 25;
+  const [offset, setOffset] = useState(0);
   const [allActivities, setAllActivities] = useState<ActivityItem[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -509,57 +628,81 @@ export default function ActivityLogPage() {
   const apiUrl = useMemo(() => {
     const params = new URLSearchParams();
     if (activityType !== "all") params.set("type", activityType);
-    if (debouncedSearch) params.set("user", debouncedSearch);
-    if (cursor) params.set("cursor", cursor);
-    
     const dateParams = getDateRangeParams(dateRange);
-    if (dateParams.from) params.set("from", dateParams.from);
-    if (dateParams.to) params.set("to", dateParams.to);
-    
-    params.set("limit", "25");
+    if (dateParams.startDate) params.set("start_date", dateParams.startDate);
+    if (dateParams.endDate) params.set("end_date", dateParams.endDate);
+
+    params.set("limit", String(pageSize));
+    params.set("offset", String(offset));
     
     const queryString = params.toString();
     return `/api/evergreen/activity${queryString ? `?${queryString}` : ""}`;
-  }, [activityType, dateRange, debouncedSearch, cursor]);
+  }, [activityType, dateRange, offset, pageSize]);
 
   // Fetch activities
-  const { data, isLoading, error, refetch } = useApi<ActivityResponse>(apiUrl, {
+  const { data, isLoading, error, refetch } = useApi<ApiActivityResponse>(apiUrl, {
     revalidateOnFocus: false,
   });
 
   // Update local state when data changes
   useEffect(() => {
     if (data) {
-      if (cursor) {
-        // Append new activities
-        setAllActivities((prev) => [...prev, ...data.activities]);
+      const nextItems = Array.isArray(data.activities)
+        ? data.activities.flatMap((a) => {
+            try {
+              return [toActivityItem(a)];
+            } catch (_error) {
+              return [];
+            }
+          })
+        : [];
+      if (offset > 0) {
+        setAllActivities((prev) => [...prev, ...nextItems]);
       } else {
-        // Replace activities (fresh load or filter change)
-        setAllActivities(data.activities);
+        setAllActivities(nextItems);
       }
-      setHasMore(data.hasMore);
+      const count = typeof data.pagination?.count === "number" ? data.pagination.count : nextItems.length;
+      setHasMore(count >= pageSize);
       setIsLoadingMore(false);
     }
-  }, [data, cursor]);
+  }, [data, offset, pageSize]);
+
+  const patronChangeSupported = data?.capabilities?.patron_change !== false;
+
+  const activityTypeOptions = useMemo<ActivityTypeOption[]>(() => {
+    if (patronChangeSupported) return ACTIVITY_TYPES;
+    return ACTIVITY_TYPES.filter((t) => t.value !== "patron_change");
+  }, [patronChangeSupported]);
+
+  // If Evergreen doesn't support patron-change activity, keep the UI safe.
+  useEffect(() => {
+    if (!patronChangeSupported && activityType === "patron_change") {
+      setActivityType("all");
+    }
+  }, [activityType, patronChangeSupported]);
 
   // Reset pagination when filters change
   useEffect(() => {
-    setCursor(undefined);
+    setOffset(0);
     setAllActivities([]);
     setHasMore(true);
-  }, [activityType, dateRange, debouncedSearch]);
+  }, [activityType, dateRange]);
 
   // Infinite scroll observer
   useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") {
+      // Older browsers / hardened environments: fall back to the manual “Load More” button.
+      return;
+    }
     if (observerRef.current) {
       observerRef.current.disconnect();
     }
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore && data?.nextCursor) {
+        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
           setIsLoadingMore(true);
-          setCursor(data.nextCursor);
+          setOffset((prev) => prev + pageSize);
         }
       },
       { threshold: 0.1, rootMargin: "100px" }
@@ -574,16 +717,31 @@ export default function ActivityLogPage() {
         observerRef.current.disconnect();
       }
     };
-  }, [hasMore, isLoading, isLoadingMore, data?.nextCursor]);
+  }, [hasMore, isLoading, isLoadingMore, pageSize]);
 
   const handleRefresh = useCallback(() => {
-    setCursor(undefined);
+    setOffset(0);
     setAllActivities([]);
     setHasMore(true);
     refetch();
   }, [refetch]);
 
-  const totalCount = data?.total ?? allActivities.length;
+  const filteredActivities = useMemo(() => {
+    const q = (debouncedSearch || "").trim().toLowerCase();
+    if (!q) return allActivities;
+    return allActivities.filter((a) => {
+      const haystack = [
+        a.userName,
+        a.description,
+        a.details || "",
+        a.targetLabel || "",
+      ].join(" ").toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [allActivities, debouncedSearch]);
+
+  const shownCount = filteredActivities.length;
+  const loadedCount = allActivities.length;
 
   return (
     <PageContainer>
@@ -603,12 +761,18 @@ export default function ActivityLogPage() {
         <div className="flex flex-wrap gap-2 mt-2">
           <Badge variant="secondary" className="rounded-full">
             <History className="h-3 w-3 mr-1" />
-            {totalCount.toLocaleString()} activities
+            {shownCount.toLocaleString()} activities
           </Badge>
+          {!patronChangeSupported ? (
+            <Badge variant="outline" className="rounded-full border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300">
+              <AlertCircle className="h-3 w-3 mr-1" />
+              Patron changes unavailable
+            </Badge>
+          ) : null}
           {activityType !== "all" && (
             <Badge variant="outline" className="rounded-full">
               <Filter className="h-3 w-3 mr-1" />
-              {ACTIVITY_TYPES.find((t) => t.value === activityType)?.label}
+              {activityTypeOptions.find((t) => t.value === activityType)?.label}
             </Badge>
           )}
         </div>
@@ -619,16 +783,17 @@ export default function ActivityLogPage() {
         <FilterBar
           activityType={activityType}
           onActivityTypeChange={setActivityType}
+          activityTypeOptions={activityTypeOptions}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onRefresh={handleRefresh}
-          isRefreshing={isLoading && !cursor}
+          isRefreshing={isLoading && offset === 0}
         />
 
         {/* Stats Summary */}
-        <ActivityStats activities={allActivities} total={totalCount} />
+        <ActivityStats activities={filteredActivities} total={shownCount} />
 
         {/* Activity Feed */}
         <Card className="rounded-2xl border-border/70 shadow-sm">
@@ -640,7 +805,8 @@ export default function ActivityLogPage() {
                 <h3 className="font-semibold text-sm">Activity Feed</h3>
               </div>
               <span className="text-xs text-muted-foreground">
-                Showing {allActivities.length} of {totalCount.toLocaleString()}
+                Showing {shownCount.toLocaleString()}
+                {!!debouncedSearch && ` of ${loadedCount.toLocaleString()} loaded`}
               </span>
             </div>
 
@@ -648,7 +814,7 @@ export default function ActivityLogPage() {
             <ScrollArea className="h-[600px]">
               <div className="p-4 space-y-3">
                 {/* Initial Loading */}
-                {isLoading && !cursor && allActivities.length === 0 && (
+                {isLoading && offset === 0 && allActivities.length === 0 && (
                   <div className="py-12">
                     <ListSkeleton items={8} />
                   </div>
@@ -668,7 +834,7 @@ export default function ActivityLogPage() {
                 )}
 
                 {/* Empty State */}
-                {!isLoading && !error && allActivities.length === 0 && (
+                {!isLoading && !error && filteredActivities.length === 0 && (
                   <EmptyState
                     icon={Activity}
                     title="No activities found"
@@ -693,7 +859,7 @@ export default function ActivityLogPage() {
                 )}
 
                 {/* Activity List */}
-                {allActivities.map((activity) => (
+                {filteredActivities.map((activity) => (
                   <ActivityCard key={activity.id} activity={activity} />
                 ))}
 
@@ -706,12 +872,14 @@ export default function ActivityLogPage() {
                         <span className="text-sm">Loading more...</span>
                       </div>
                     ) : (
-                      <Button variant="ghost" size="sm" onClick={() => {
-                        if (data?.nextCursor) {
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
                           setIsLoadingMore(true);
-                          setCursor(data.nextCursor);
-                        }
-                      }}>
+                          setOffset((prev) => prev + pageSize);
+                        }}
+                      >
                         <ChevronDown className="h-4 w-4 mr-2" />
                         Load More
                       </Button>

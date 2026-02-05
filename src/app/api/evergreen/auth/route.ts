@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import {
   callOpenSRF,
@@ -11,7 +11,7 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { hashPassword } from "@/lib/password";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, recordSuccess } from "@/lib/rate-limit";
 import { isCookieSecure } from "@/lib/csrf";
 import { getPatronPhotoUrl } from "@/lib/db/evergreen";
 
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
   // Rate limiting - 5 attempts per 15 minutes per IP
-  const rateLimit = checkRateLimit(ip || "unknown", {
+  const rateLimit = await checkRateLimit(ip || "unknown", {
     maxAttempts: 5,
     windowMs: 15 * 60 * 1000, // 15 minutes
     endpoint: "staff-auth",
@@ -74,14 +74,23 @@ export async function POST(req: NextRequest) {
   if (!rateLimit.allowed) {
     const waitMinutes = Math.ceil(rateLimit.resetIn / 60000);
     logger.warn({ ip, requestId, rateLimit }, "Staff auth rate limit exceeded");
-    
-    return errorResponse(
-      `Too many login attempts. Please try again in ${waitMinutes} minute(s).`,
-      429,
+
+    const retryAfterSeconds = Math.max(1, Math.ceil(rateLimit.resetIn / 1000));
+    return NextResponse.json(
       {
-        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
-        limit: rateLimit.limit,
-        resetTime: new Date(rateLimit.resetTime).toISOString(),
+        ok: false,
+        error: `Too many login attempts. Please try again in ${waitMinutes} minute(s).`,
+        details: {
+          retryAfter: retryAfterSeconds,
+          limit: rateLimit.limit,
+          resetTime: new Date(rateLimit.resetTime).toISOString(),
+        },
+      },
+      {
+        status: 429,
+        headers: {
+          "retry-after": String(retryAfterSeconds),
+        },
       }
     );
   }
@@ -172,6 +181,7 @@ export async function POST(req: NextRequest) {
           actor: { username },
           ip,
           userAgent,
+          requestId,
           error: "seed_retry_failed",
         });
         return errorResponse("Failed to re-init auth seed for retry", 401);
@@ -195,6 +205,13 @@ export async function POST(req: NextRequest) {
           sameSite: "lax",
           maxAge: 60 * 60 * 8,
         });
+        cookieStore.set("stacksos_session_id", crypto.randomUUID(), {
+          httpOnly: true,
+          secure: cookieSecure,
+          sameSite: "lax",
+          maxAge: 60 * 60 * 8,
+          path: "/",
+        });
 
         const userResponse = await callOpenSRF(
           "open-ils.auth",
@@ -213,6 +230,7 @@ export async function POST(req: NextRequest) {
           },
           ip,
           userAgent,
+          requestId,
           details: { workstation, needsWorkstation: true },
         });
 
@@ -237,6 +255,13 @@ export async function POST(req: NextRequest) {
         sameSite: "lax",
         maxAge: 60 * 60 * 8,
       });
+      cookieStore.set("stacksos_session_id", crypto.randomUUID(), {
+        httpOnly: true,
+        secure: cookieSecure,
+        sameSite: "lax",
+        maxAge: 60 * 60 * 8,
+        path: "/",
+      });
 
       const userResponse = await callOpenSRF(
         "open-ils.auth",
@@ -258,6 +283,8 @@ export async function POST(req: NextRequest) {
         requestId,
         details: { workstation: workstation || null },
       });
+
+      await recordSuccess(ip || "unknown", "staff-auth");
 
       return successResponse({
         authtoken: authResult.payload.authtoken,
@@ -298,6 +325,7 @@ export async function DELETE(req: NextRequest) {
       await callOpenSRF("open-ils.auth", "open-ils.auth.session.delete", [authtoken]);
       cookieStore.delete("authtoken");
     }
+    cookieStore.delete("stacksos_session_id");
 
     await logAuditEvent({
       action: "auth.logout",
@@ -322,6 +350,18 @@ export async function GET(req: NextRequest) {
       return successResponse({ authenticated: false });
     }
 
+    const cookieStore = await cookies();
+    const sessionId = cookieStore.get("stacksos_session_id")?.value;
+    if (!sessionId) {
+      cookieStore.set("stacksos_session_id", crypto.randomUUID(), {
+        httpOnly: true,
+        secure: isCookieSecure(req),
+        sameSite: "lax",
+        maxAge: 60 * 60 * 8,
+        path: "/",
+      });
+    }
+
     const sessionResponse = await callOpenSRF(
       "open-ils.auth",
       "open-ils.auth.session.retrieve",
@@ -336,8 +376,8 @@ export async function GET(req: NextRequest) {
       return successResponse({ authenticated: true, user: enrichedUser, profileName });
     }
 
-    const cookieStore = await cookies();
     cookieStore.delete("authtoken");
+    cookieStore.delete("stacksos_session_id");
     return successResponse({ authenticated: false });
   } catch (error) {
     return serverErrorResponse(error, "Auth GET", req);

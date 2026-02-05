@@ -36,7 +36,7 @@ export default function FinesPage() {
       setIsLoading(true);
       fetchFines().finally(() => setIsLoading(false));
     }
-  }, [isLoggedIn]);
+  }, [fetchFines, isLoggedIn]);
 
   if (sessionLoading || !isLoggedIn) {
     return (

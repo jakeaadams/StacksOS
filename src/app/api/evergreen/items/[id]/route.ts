@@ -98,9 +98,8 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       updateData.editor = (actor as any).id;
     }
 
+    updateData.ischanged = 1;
     const payload: any = encodeFieldmapper("acp", updateData);
-    payload._isnew = false;
-    payload._ischanged = true;
 
     const updateResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.update.acp", [
       authtoken,
@@ -117,4 +116,3 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return serverErrorResponse(error, "Items PATCH", req);
   }
 }
-

@@ -1,5 +1,5 @@
 "use client";
-import { logger } from "@/lib/logger";
+import { clientLogger } from "@/lib/client-logger";
 import { fetchWithAuth } from "@/lib/client-fetch";
 
 import * as React from "react";
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { UnoptimizedImage } from "./unoptimized-image";
 import { toast } from "sonner";
 import { Loader2, Upload, ImageOff } from "lucide-react";
 
@@ -60,7 +61,7 @@ export function PatronPhotoUpload({
       formData.append("patronId", patronId.toString());
 
 	      // Upload to server
-	      const response = await fetchWithAuth("/api/upload-patron-photo", {
+	      const response = await fetchWithAuth("/api/patron-photos", {
 	        method: "POST",
 	        body: formData,
 	      });
@@ -85,7 +86,7 @@ export function PatronPhotoUpload({
       setUploadFile(null);
       setPreview(null);
     } catch (error) {
-      logger.error({ error: String(error) }, "Upload error");
+      clientLogger.error("Upload error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to upload photo");
     } finally {
       setLoading(false);
@@ -107,7 +108,7 @@ export function PatronPhotoUpload({
           <div className="flex justify-center">
             {preview ? (
               <div className="relative">
-                <img
+                <UnoptimizedImage
                   src={preview}
                   alt="Preview"
                   className="w-48 h-48 object-cover rounded-full border-4 border-muted"

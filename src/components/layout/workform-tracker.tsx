@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { useWorkforms, WorkformEntry, WorkformType } from "@/contexts/workforms-context";
+import { useWorkforms, WorkformEntry } from "@/contexts/workforms-context";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { BookOpen, Barcode, FileEdit, X, User, Pin } from "lucide-react";

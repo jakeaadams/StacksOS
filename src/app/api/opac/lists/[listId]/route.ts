@@ -82,7 +82,7 @@ export async function GET(
     });
   } catch (error) {
     logger.error({ error: String(error) }, "Error fetching list details");
-    return serverErrorResponse(error, "Failed to fetch list details");
+    return serverErrorResponse(error, "Failed to fetch list details", req);
   }
 }
 
@@ -127,7 +127,7 @@ export async function PATCH(
     return successResponse({ success: true, message: "List updated" });
   } catch (error) {
     logger.error({ error: String(error) }, "Error updating list");
-    return serverErrorResponse(error, "Failed to update list");
+    return serverErrorResponse(error, "Failed to update list", req);
   }
 }
 
@@ -161,6 +161,6 @@ export async function DELETE(
     return successResponse({ success: true, message: "List deleted" });
   } catch (error) {
     logger.error({ error: String(error) }, "Error deleting list");
-    return serverErrorResponse(error, "Failed to delete list");
+    return serverErrorResponse(error, "Failed to delete list", req);
   }
 }

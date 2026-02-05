@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession, PatronHold } from "@/hooks/usePatronSession";
+import { useLibrary } from "@/hooks/useLibrary";
+import { UnoptimizedImage } from "@/components/shared";
+import { featureFlags } from "@/lib/feature-flags";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   BookOpen,
   Clock,
@@ -30,6 +34,7 @@ const formatIcons: Record<string, React.ElementType> = {
 
 export default function HoldsPage() {
   const router = useRouter();
+  const { library } = useLibrary();
   const { 
     isLoggedIn, 
     isLoading: sessionLoading,
@@ -38,11 +43,19 @@ export default function HoldsPage() {
     cancelHold,
     suspendHold,
     activateHold,
+    changeHoldPickup,
   } = usePatronSession();
 
   const [isLoading, setIsLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    hold: PatronHold;
+    action: "cancel" | "suspend" | "activate";
+  } | null>(null);
+  const [pickupHold, setPickupHold] = useState<PatronHold | null>(null);
+  const [pickupLocationId, setPickupLocationId] = useState<number | null>(null);
+  const [pickupLoading, setPickupLoading] = useState(false);
 
   useEffect(() => {
     if (!sessionLoading && !isLoggedIn) {
@@ -55,7 +68,7 @@ export default function HoldsPage() {
       setIsLoading(true);
       fetchHolds().finally(() => setIsLoading(false));
     }
-  }, [isLoggedIn]);
+  }, [fetchHolds, isLoggedIn]);
 
   const handleAction = async (
     holdId: number, 
@@ -86,6 +99,33 @@ export default function HoldsPage() {
     setTimeout(() => setMessage(null), 5000);
   };
 
+  const pickupLocations = (library?.locations || []).filter((l) => l.isPickupLocation);
+
+  const openChangePickup = (hold: PatronHold) => {
+    setPickupHold(hold);
+    setPickupLocationId(hold.pickupLocationId);
+  };
+
+  const handleChangePickup = async () => {
+    if (!pickupHold || !pickupLocationId) return;
+    setPickupLoading(true);
+    setMessage(null);
+
+    try {
+      const res = await changeHoldPickup(pickupHold.id, pickupLocationId);
+      setMessage({
+        type: res.success ? "success" : "error",
+        text: res.message,
+      });
+      if (res.success) {
+        setPickupHold(null);
+      }
+    } finally {
+      setPickupLoading(false);
+      setTimeout(() => setMessage(null), 5000);
+    }
+  };
+
   if (sessionLoading || !isLoggedIn) {
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center">
@@ -101,6 +141,36 @@ export default function HoldsPage() {
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">
+      <ConfirmDialog
+        open={Boolean(confirmAction)}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null);
+        }}
+        title={
+          confirmAction?.action === "cancel"
+            ? "Cancel this hold?"
+            : confirmAction?.action === "suspend"
+              ? "Suspend this hold?"
+              : "Activate this hold?"
+        }
+        description={
+          confirmAction
+            ? `${confirmAction.hold.title}${confirmAction.hold.author ? ` by ${confirmAction.hold.author}` : ""}`
+            : ""
+        }
+        confirmText={
+          confirmAction?.action === "cancel"
+            ? "Cancel hold"
+            : confirmAction?.action === "suspend"
+              ? "Suspend"
+              : "Activate"
+        }
+        variant={confirmAction?.action === "cancel" ? "destructive" : "default"}
+        onConfirm={() => {
+          if (!confirmAction) return;
+          return handleAction(confirmAction.hold.id, confirmAction.action);
+        }}
+      />
       <div className="max-w-4xl mx-auto px-4">
         <Link 
           href="/opac/account"
@@ -161,7 +231,7 @@ export default function HoldsPage() {
                     <HoldCard 
                       key={hold.id} 
                       hold={hold}
-                      onCancel={() => handleAction(hold.id, "cancel")}
+                      onCancel={() => setConfirmAction({ hold, action: "cancel" })}
                       isLoading={actionLoading === hold.id}
                     />
                   ))}
@@ -181,7 +251,10 @@ export default function HoldsPage() {
                     <HoldCard 
                       key={hold.id} 
                       hold={hold}
-                      onCancel={() => handleAction(hold.id, "cancel")}
+                      onCancel={() => setConfirmAction({ hold, action: "cancel" })}
+                      onChangePickup={
+                        featureFlags.opacHoldsUXV2 ? () => openChangePickup(hold) : undefined
+                      }
                       isLoading={actionLoading === hold.id}
                     />
                   ))}
@@ -200,8 +273,11 @@ export default function HoldsPage() {
                     <HoldCard 
                       key={hold.id} 
                       hold={hold}
-                      onCancel={() => handleAction(hold.id, "cancel")}
-                      onSuspend={() => handleAction(hold.id, "suspend")}
+                      onCancel={() => setConfirmAction({ hold, action: "cancel" })}
+                      onSuspend={() => setConfirmAction({ hold, action: "suspend" })}
+                      onChangePickup={
+                        featureFlags.opacHoldsUXV2 ? () => openChangePickup(hold) : undefined
+                      }
                       isLoading={actionLoading === hold.id}
                     />
                   ))}
@@ -221,8 +297,11 @@ export default function HoldsPage() {
                     <HoldCard 
                       key={hold.id} 
                       hold={hold}
-                      onCancel={() => handleAction(hold.id, "cancel")}
-                      onActivate={() => handleAction(hold.id, "activate")}
+                      onCancel={() => setConfirmAction({ hold, action: "cancel" })}
+                      onActivate={() => setConfirmAction({ hold, action: "activate" })}
+                      onChangePickup={
+                        featureFlags.opacHoldsUXV2 ? () => openChangePickup(hold) : undefined
+                      }
                       isLoading={actionLoading === hold.id}
                     />
                   ))}
@@ -232,6 +311,53 @@ export default function HoldsPage() {
           </div>
         )}
       </div>
+
+      {pickupHold && featureFlags.opacHoldsUXV2 ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-card rounded-2xl max-w-md w-full shadow-xl border border-border p-6">
+            <h2 className="text-xl font-bold text-foreground mb-2">Change pickup location</h2>
+            <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+              {pickupHold.title}
+            </p>
+
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
+              New pickup location
+            </label>
+            <select
+              value={pickupLocationId || ""}
+              onChange={(e) => setPickupLocationId(parseInt(e.target.value, 10) || null)}
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              disabled={pickupLoading}
+            >
+              <option value="">Select a location…</option>
+              {pickupLocations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}
+                </option>
+              ))}
+            </select>
+
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setPickupHold(null)}
+                disabled={pickupLoading}
+                className="flex-1 py-2 border border-border rounded-lg text-foreground/80 hover:bg-muted/30 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleChangePickup}
+                disabled={pickupLoading || !pickupLocationId}
+                className="flex-1 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {pickupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -241,12 +367,14 @@ function HoldCard({
   onCancel,
   onSuspend,
   onActivate,
+  onChangePickup,
   isLoading,
 }: { 
   hold: PatronHold; 
   onCancel: () => void;
   onSuspend?: () => void;
   onActivate?: () => void;
+  onChangePickup?: () => void;
   isLoading: boolean;
 }) {
   const Icon = formatIcons[hold.format] || BookOpen;
@@ -270,7 +398,7 @@ function HoldCard({
                    ${hold.status === "ready" ? "border-green-200 bg-green-50/50" : "border-border"}`}>
       <div className="w-16 h-24 bg-muted rounded-lg overflow-hidden shrink-0">
         {hold.coverUrl ? (
-          <img 
+          <UnoptimizedImage
             src={hold.coverUrl} 
             alt={hold.title}
             className="w-full h-full object-cover"
@@ -297,22 +425,30 @@ function HoldCard({
         <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <MapPin className="h-4 w-4" />
-            {hold.pickupLocation}
+            {hold.pickupLocationName}
           </span>
           
-          {hold.position && hold.status === "pending" && (
+          {hold.status === "pending" && typeof hold.queuePosition === "number" ? (
             <>
               <span className="text-muted-foreground/70">•</span>
-              <span>Position {hold.position} of {hold.totalHolds}</span>
+              <span>
+                Position {hold.queuePosition}
+                {typeof hold.totalHolds === "number" ? ` of ${hold.totalHolds}` : ""}
+              </span>
             </>
-          )}
+          ) : hold.status === "pending" && featureFlags.opacHoldsUXV2 ? (
+            <>
+              <span className="text-muted-foreground/70">•</span>
+              <span>Queue position unavailable</span>
+            </>
+          ) : null}
 
           {hold.expirationDate && hold.status === "ready" && (
             <>
               <span className="text-muted-foreground/70">•</span>
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                Pickup by {hold.expirationDate}
+                Pickup by {new Date(hold.expirationDate).toLocaleDateString()}
               </span>
             </>
           )}
@@ -320,13 +456,23 @@ function HoldCard({
           {hold.suspendedUntil && hold.status === "suspended" && (
             <>
               <span className="text-muted-foreground/70">•</span>
-              <span>Until {hold.suspendedUntil}</span>
+              <span>Until {new Date(hold.suspendedUntil).toLocaleDateString()}</span>
             </>
           )}
         </div>
       </div>
 
       <div className="flex flex-col gap-2 shrink-0">
+        {onChangePickup && hold.status !== "ready" ? (
+          <button
+            type="button"
+            onClick={onChangePickup}
+            disabled={isLoading}
+            className="px-3 py-1.5 border border-border rounded-lg text-sm font-medium hover:bg-muted/30 transition-colors disabled:opacity-50"
+          >
+            Change pickup
+          </button>
+        ) : null}
         {onActivate && (
           <button type="button"
             onClick={onActivate}

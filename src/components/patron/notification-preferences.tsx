@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { toast } from "sonner";
 
@@ -18,11 +18,17 @@ interface NotificationPreferencesProps {
 
 interface Preferences {
   emailEnabled: boolean;
+  smsEnabled: boolean;
   holdReady: boolean;
   overdue: boolean;
   preOverdue: boolean;
   cardExpiration: boolean;
   fineBill: boolean;
+  smsHoldReady: boolean;
+  smsOverdue: boolean;
+  smsPreOverdue: boolean;
+  smsCardExpiration: boolean;
+  smsFineBill: boolean;
 }
 
 export function NotificationPreferences({ patronId }: NotificationPreferencesProps) {
@@ -33,11 +39,7 @@ export function NotificationPreferences({ patronId }: NotificationPreferencesPro
   const [hasChanges, setHasChanges] = useState(false);
   const [initialPreferences, setInitialPreferences] = useState<Preferences | null>(null);
 
-  useEffect(() => {
-    loadPreferences();
-  }, [patronId]);
-
-  const loadPreferences = async () => {
+  const loadPreferences = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -59,7 +61,11 @@ export function NotificationPreferences({ patronId }: NotificationPreferencesPro
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [patronId]);
+
+  useEffect(() => {
+    void loadPreferences();
+  }, [loadPreferences]);
 
   const handleToggle = (key: keyof Preferences) => {
     if (!preferences) return;
@@ -162,6 +168,34 @@ export function NotificationPreferences({ patronId }: NotificationPreferencesPro
     },
   ];
 
+  const smsNoticeTypes = [
+    {
+      key: "smsHoldReady" as keyof Preferences,
+      label: "Hold Ready (SMS)",
+      description: "Text me when my holds are ready for pickup",
+    },
+    {
+      key: "smsPreOverdue" as keyof Preferences,
+      label: "Pre-Overdue Courtesy (SMS)",
+      description: "Text me when items are due soon",
+    },
+    {
+      key: "smsOverdue" as keyof Preferences,
+      label: "Overdue Items (SMS)",
+      description: "Text me when items are overdue",
+    },
+    {
+      key: "smsCardExpiration" as keyof Preferences,
+      label: "Card Expiration (SMS)",
+      description: "Text me when my library card is expiring",
+    },
+    {
+      key: "smsFineBill" as keyof Preferences,
+      label: "Fines and Bills (SMS)",
+      description: "Text me about outstanding fines or fees",
+    },
+  ];
+
   return (
     <Card>
       <CardHeader>
@@ -171,52 +205,94 @@ export function NotificationPreferences({ patronId }: NotificationPreferencesPro
           ) : (
             <BellOff className="h-5 w-5 text-muted-foreground/70" />
           )}
-          <CardTitle>Email Notification Preferences</CardTitle>
+          <CardTitle>Notification Preferences</CardTitle>
         </div>
         <CardDescription>
-          Manage your email notification settings for library notices
+          Manage your email and SMS notification settings for library notices
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="email-enabled" className="text-base font-semibold">
-              Enable Email Notifications
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Master switch for all email notifications
-            </p>
+        <div className="rounded-lg border p-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="email-enabled" className="text-base font-semibold">
+                Email notifications
+              </Label>
+              <p className="text-sm text-muted-foreground">Master switch for all email notices</p>
+            </div>
+            <Switch
+              id="email-enabled"
+              checked={preferences.emailEnabled}
+              onCheckedChange={() => handleToggle("emailEnabled")}
+            />
           </div>
-          <Switch
-            id="email-enabled"
-            checked={preferences.emailEnabled}
-            onCheckedChange={() => handleToggle("emailEnabled")}
-          />
+
+          <div className="border-t mt-4 pt-4">
+            <div className="space-y-4">
+              {noticeTypes.map((type) => (
+                <div
+                  key={type.key}
+                  className={`flex items-center justify-between ${
+                    !preferences.emailEnabled ? "opacity-50" : ""
+                  }`}
+                >
+                  <div className="space-y-0.5">
+                    <Label htmlFor={type.key} className="font-medium">
+                      {type.label}
+                    </Label>
+                    <p className="text-sm text-muted-foreground">{type.description}</p>
+                  </div>
+                  <Switch
+                    id={type.key}
+                    checked={preferences[type.key]}
+                    onCheckedChange={() => handleToggle(type.key)}
+                    disabled={!preferences.emailEnabled}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="border-t pt-4">
-          <div className="space-y-4">
-            {noticeTypes.map((type) => (
-              <div
-                key={type.key}
-                className={`flex items-center justify-between ${
-                  !preferences.emailEnabled ? "opacity-50" : ""
-                }`}
-              >
-                <div className="space-y-0.5">
-                  <Label htmlFor={type.key} className="font-medium">
-                    {type.label}
-                  </Label>
-                  <p className="text-sm text-muted-foreground">{type.description}</p>
+        <div className="rounded-lg border p-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="sms-enabled" className="text-base font-semibold">
+                SMS notifications
+              </Label>
+              <p className="text-sm text-muted-foreground">Requires a valid phone number on your account</p>
+            </div>
+            <Switch
+              id="sms-enabled"
+              checked={preferences.smsEnabled}
+              onCheckedChange={() => handleToggle("smsEnabled")}
+            />
+          </div>
+
+          <div className="border-t mt-4 pt-4">
+            <div className="space-y-4">
+              {smsNoticeTypes.map((type) => (
+                <div
+                  key={type.key}
+                  className={`flex items-center justify-between ${
+                    !preferences.smsEnabled ? "opacity-50" : ""
+                  }`}
+                >
+                  <div className="space-y-0.5">
+                    <Label htmlFor={type.key} className="font-medium">
+                      {type.label}
+                    </Label>
+                    <p className="text-sm text-muted-foreground">{type.description}</p>
+                  </div>
+                  <Switch
+                    id={type.key}
+                    checked={preferences[type.key]}
+                    onCheckedChange={() => handleToggle(type.key)}
+                    disabled={!preferences.smsEnabled}
+                  />
                 </div>
-                <Switch
-                  id={type.key}
-                  checked={preferences[type.key]}
-                  onCheckedChange={() => handleToggle(type.key)}
-                  disabled={!preferences.emailEnabled}
-                />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
@@ -234,7 +310,7 @@ export function NotificationPreferences({ patronId }: NotificationPreferencesPro
 
         {!hasChanges && (
           <p className="text-sm text-muted-foreground text-center pt-4 border-t">
-            Changes are saved automatically when you toggle preferences
+            No unsaved changes
           </p>
         )}
       </CardContent>

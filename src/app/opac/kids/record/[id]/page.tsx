@@ -3,10 +3,12 @@ import { clientLogger } from "@/lib/client-logger";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
 
-import { useState, useEffect } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/usePatronSession";
+import { useKidsParentGate } from "@/contexts/kids-parent-gate-context";
 import { LoadingSpinner } from "@/components/shared/loading-state";
 import {
   BookOpen,
@@ -63,11 +65,41 @@ interface RelatedBook {
   coverUrl?: string;
 }
 
+function transformBookDetail(data: any): BookDetail {
+  const isbn = data.isbn || data.simple_record?.isbn;
+  return {
+    id: data.id || data.record_id,
+    title: data.title || data.simple_record?.title || "Unknown Title",
+    author: data.author || data.simple_record?.author || "",
+    coverUrl: isbn ? `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg` : undefined,
+    summary: data.summary || data.abstract,
+    subjects: data.subjects || [],
+    isbn: isbn,
+    publisher: data.publisher,
+    pubDate: data.pubdate || data.pub_date,
+    format: data.format || data.icon_format,
+    pageCount: data.pages || data.page_count,
+    readingLevel: data.lexile ? `Lexile ${data.lexile}` : data.ar_level ? `AR ${data.ar_level}` : undefined,
+    lexile: data.lexile,
+    arLevel: data.ar_level,
+    series: data.series,
+    holdings: (data.holdings || data.copies || []).map((h: any) => ({
+      locationId: h.location_id || h.circ_lib,
+      locationName: h.location_name || h.circ_lib_name || "Library",
+      callNumber: h.call_number || h.label,
+      available: h.available || 0,
+      total: h.total || 1,
+      status: h.status || (h.available > 0 ? "Available" : "Checked Out"),
+    })),
+  };
+}
+
 export default function KidsRecordDetailPage() {
   const params = useParams();
   const router = useRouter();
   const recordId = params.id as string;
   const { patron, isLoggedIn, placeHold } = usePatronSession();
+  const gate = useKidsParentGate();
 
   const [book, setBook] = useState<BookDetail | null>(null);
   const [relatedBooks, setRelatedBooks] = useState<RelatedBook[]>([]);
@@ -75,69 +107,20 @@ export default function KidsRecordDetailPage() {
   const [showHoldModal, setShowHoldModal] = useState(false);
   const [holdLoading, setHoldLoading] = useState(false);
   const [holdSuccess, setHoldSuccess] = useState(false);
-  const [holdError, setHoldError] = useState<string | null>(null);
+  const [holdError, setHoldError] = useState<{ message: string; nextSteps?: string[]; code?: string } | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [coverError, setCoverError] = useState(false);
 
-  useEffect(() => {
-    if (recordId) {
-      fetchBookDetail();
-    }
-  }, [recordId]);
-
-  const fetchBookDetail = async () => {
-    setIsLoading(true);
+  const fetchRelatedBooks = useCallback(async (subject: string) => {
     try {
-      const response = await fetchWithAuth(`/api/evergreen/catalog/${recordId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setBook(transformBookDetail(data));
-
-        // Fetch related books based on subject
-        if (data.subjects?.length > 0) {
-          fetchRelatedBooks(data.subjects[0]);
-        }
-      }
-    } catch (err) {
-      clientLogger.error("Error fetching book:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const transformBookDetail = (data: any): BookDetail => {
-    const isbn = data.isbn || data.simple_record?.isbn;
-    return {
-      id: data.id || data.record_id,
-      title: data.title || data.simple_record?.title || "Unknown Title",
-      author: data.author || data.simple_record?.author || "",
-      coverUrl: isbn ? `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg` : undefined,
-      summary: data.summary || data.abstract,
-      subjects: data.subjects || [],
-      isbn: isbn,
-      publisher: data.publisher,
-      pubDate: data.pubdate || data.pub_date,
-      format: data.format || data.icon_format,
-      pageCount: data.pages || data.page_count,
-      readingLevel: data.lexile ? `Lexile ${data.lexile}` : data.ar_level ? `AR ${data.ar_level}` : undefined,
-      lexile: data.lexile,
-      arLevel: data.ar_level,
-      series: data.series,
-      holdings: (data.holdings || data.copies || []).map((h: any) => ({
-        locationId: h.location_id || h.circ_lib,
-        locationName: h.location_name || h.circ_lib_name || "Library",
-        callNumber: h.call_number || h.label,
-        available: h.available || 0,
-        total: h.total || 1,
-        status: h.status || (h.available > 0 ? "Available" : "Checked Out"),
-      })),
-    };
-  };
-
-  const fetchRelatedBooks = async (subject: string) => {
-    try {
-      const response = await fetchWithAuth(
-        `/api/evergreen/catalog?subject=${encodeURIComponent(subject)}&audience=juvenile&limit=6`
-      );
+      const params = new URLSearchParams({
+        q: subject,
+        type: "subject",
+        audience: "juvenile",
+        limit: "6",
+        sort: "popularity",
+      });
+      const response = await fetchWithAuth(`/api/evergreen/catalog?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setRelatedBooks(
@@ -157,7 +140,33 @@ export default function KidsRecordDetailPage() {
     } catch (err) {
       clientLogger.error("Error fetching related books:", err);
     }
-  };
+  }, [recordId]);
+
+  const fetchBookDetail = useCallback(async () => {
+    if (!recordId) return;
+    setIsLoading(true);
+    try {
+      const response = await fetchWithAuth(`/api/evergreen/catalog/${recordId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setBook(transformBookDetail(data));
+        setCoverError(false);
+
+        // Fetch related books based on subject
+        if (data.subjects?.length > 0) {
+          void fetchRelatedBooks(data.subjects[0]);
+        }
+      }
+    } catch (err) {
+      clientLogger.error("Error fetching book:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchRelatedBooks, recordId]);
+
+  useEffect(() => {
+    void fetchBookDetail();
+  }, [fetchBookDetail]);
 
   const handlePlaceHold = async (pickupLocationId: number) => {
     if (!isLoggedIn || !patron) {
@@ -165,18 +174,30 @@ export default function KidsRecordDetailPage() {
       return;
     }
 
+    const ok = await gate.requestUnlock({ reason: "Place a hold" });
+    if (!ok) return;
+
     setHoldLoading(true);
     setHoldError(null);
 
     try {
-      await placeHold(parseInt(recordId), pickupLocationId);
+      const res = await placeHold(parseInt(recordId), pickupLocationId);
+      if (!res.success) {
+        setHoldError({
+          message: res.message || "Could not place hold. Please try again.",
+          nextSteps: res.details?.nextSteps,
+          code: res.details?.code,
+        });
+        return;
+      }
+
       setHoldSuccess(true);
       setTimeout(() => {
         setShowHoldModal(false);
         setHoldSuccess(false);
       }, 2000);
     } catch (err: any) {
-      setHoldError(err.message || "Could not place hold. Please try again.");
+      setHoldError({ message: err.message || "Could not place hold. Please try again." });
     } finally {
       setHoldLoading(false);
     }
@@ -240,22 +261,21 @@ export default function KidsRecordDetailPage() {
         <div className="md:flex">
           {/* Cover image */}
           <div className="md:w-1/3 p-6 md:p-8 bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100">
-            <div className="aspect-[2/3] rounded-2xl overflow-hidden shadow-xl mx-auto max-w-[250px]">
-              {book.coverUrl ? (
-                <img
+            <div className="aspect-[2/3] relative rounded-2xl overflow-hidden shadow-xl mx-auto max-w-[250px]">
+              {book.coverUrl && !coverError ? (
+                <Image
                   src={book.coverUrl}
                   alt={book.title}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
-                  }}
+                  fill
+                  sizes="250px"
+                  className="object-cover"
+                  onError={() => setCoverError(true)}
                 />
-              ) : null}
-              <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br 
-                            from-purple-200 to-pink-200 ${book.coverUrl ? "hidden" : ""}`}>
-                <FormatIcon className="h-20 w-20 text-purple-400" />
-              </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-200 to-pink-200">
+                  <FormatIcon className="h-20 w-20 text-purple-400" />
+                </div>
+              )}
             </div>
 
             {/* Reading level badges */}
@@ -517,11 +537,26 @@ export default function KidsRecordDetailPage() {
                       Choose where you want to pick up <strong>{book.title}</strong>:
                     </p>
 
-                    {holdError && (
-                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-                        {holdError}
+                    {holdError ? (
+                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                        <div className="font-medium">{holdError.message}</div>
+                        {holdError.nextSteps && holdError.nextSteps.length > 0 ? (
+                          <div className="mt-2">
+                            <div className="text-xs font-medium text-red-800/90">Next steps</div>
+                            <ul className="mt-1 list-disc pl-5 space-y-1">
+                              {holdError.nextSteps.map((step) => (
+                                <li key={step} className="text-sm text-red-700">
+                                  {step}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                        {holdError.code ? (
+                          <div className="mt-2 text-[11px] text-red-800/80 font-mono">Code: {holdError.code}</div>
+                        ) : null}
                       </div>
-                    )}
+                    ) : null}
 
                     <div className="space-y-2 mb-6">
                       {book.holdings.map((holding) => (
@@ -560,13 +595,15 @@ function RelatedBookCard({ book }: { book: RelatedBook }) {
 
   return (
     <Link href={`/opac/kids/record/${book.id}`} className="group block">
-      <div className="aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
+      <div className="aspect-[2/3] relative rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
                     shadow-md group-hover:shadow-lg transition-all group-hover:-translate-y-1">
         {book.coverUrl && !imageError ? (
-          <img
+          <Image
             src={book.coverUrl}
             alt={book.title}
-            className="w-full h-full object-cover"
+            fill
+            sizes="200px"
+            className="object-cover"
             onError={() => setImageError(true)}
           />
         ) : (

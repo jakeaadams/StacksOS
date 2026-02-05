@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import {
   callOpenSRF,
+  callPcrud,
   requireAuthToken,
   successResponse,
   errorResponse,
@@ -26,6 +27,13 @@ interface TransitRecord {
   call_number?: string;
 }
 
+function normalizeRows(payload: any): any[] {
+  if (!payload) return [];
+  if (Array.isArray(payload?.[0])) return payload[0];
+  if (Array.isArray(payload)) return payload;
+  return [];
+}
+
 /**
  * GET - Fetch transits to/from a location
  */
@@ -36,13 +44,19 @@ export async function GET(req: NextRequest) {
     const orgId = searchParams.get("org_id") || "1";
     const direction = searchParams.get("direction") || "incoming";
 
-    const transitResponse = await callOpenSRF(
-      "open-ils.circ",
-      "open-ils.circ.transit.retrieve_by_org",
-      [authtoken, parseInt(orgId), { direction }]
-    );
-
-    const rawTransits = transitResponse?.payload?.[0];
+    let rawTransits: any = null;
+    try {
+      const transitResponse = await callOpenSRF(
+        "open-ils.circ",
+        "open-ils.circ.transit.retrieve_by_org",
+        [authtoken, parseInt(orgId), { direction }]
+      );
+      rawTransits = transitResponse?.payload?.[0];
+    } catch (_error) {
+      // Some Evergreen installs do not expose open-ils.circ.transit.retrieve_by_org.
+      // Fall back to a pcrud query below.
+      rawTransits = null;
+    }
 
     if (Array.isArray(rawTransits)) {
       const transits: TransitRecord[] = rawTransits.map((t: any) => ({
@@ -63,20 +77,16 @@ export async function GET(req: NextRequest) {
       return successResponse({ transits });
     }
 
-    const pcrudResponse = await callOpenSRF(
-      "open-ils.pcrud",
-      "open-ils.pcrud.search.atc",
-      [
-        authtoken,
-        direction === "incoming"
-          ? { dest: parseInt(orgId), dest_recv_time: null }
-          : { source: parseInt(orgId), dest_recv_time: null },
-        { flesh: 2, flesh_fields: { atc: ["target_copy"], acp: ["call_number"] } },
-      ]
-    );
+    const pcrudResponse = await callPcrud("open-ils.pcrud.search.atc", [
+      authtoken,
+      direction === "incoming"
+        ? { dest: parseInt(orgId), dest_recv_time: null }
+        : { source: parseInt(orgId), dest_recv_time: null },
+      { flesh: 2, flesh_fields: { atc: ["target_copy"], acp: ["call_number"] } },
+    ]);
 
-    const pcrudTransits = pcrudResponse?.payload || [];
-    const transits: TransitRecord[] = pcrudTransits.map((t: any) => ({
+    const rows = normalizeRows(pcrudResponse?.payload);
+    const transits: TransitRecord[] = rows.map((t: any) => ({
       id: t.id,
       source: t.source,
       dest: t.dest,

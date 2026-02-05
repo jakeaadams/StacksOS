@@ -6,7 +6,7 @@ import { clientLogger } from "@/lib/client-logger";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +44,7 @@ import {
   Inbox,
   Printer,
   Trash2,
+  HelpCircle,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { escapeHtml, printHtml } from "@/lib/print";
@@ -100,6 +101,7 @@ interface PullListItem {
 type TabKey = "patron" | "title" | "pull" | "shelf" | "expired";
 
 export default function HoldsManagementPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabKey>("patron");
   const [titleId, setTitleId] = useState("");
@@ -888,6 +890,7 @@ export default function HoldsManagementPage() {
             icon: RefreshCw,
             loading: loading,
           },
+          { label: "Walkthrough", onClick: () => window.location.assign("/staff/training?workflow=holds"), icon: HelpCircle, variant: "outline" as const },
           ...(activeTab === "shelf" || activeTab === "expired"
             ? [
                 {
@@ -988,7 +991,21 @@ export default function HoldsManagementPage() {
                       ? "This patron has no active holds."
                       : "Enter a patron barcode to view holds."
                   }
-                />
+                  action={
+                    patronId
+                      ? { label: "Search catalog", onClick: () => router.push("/staff/catalog"), icon: Search }
+                      : { label: "Evergreen setup checklist", onClick: () => router.push("/staff/help#evergreen-setup") }
+                  }
+                  secondaryAction={
+                    patronId
+                      ? { label: "Hold policies", onClick: () => router.push("/staff/admin/policies/holds") }
+                      : undefined
+                  }
+                >
+                  <Button variant="ghost" size="sm" onClick={() => router.push("/staff/help#demo-data")}>
+                    Seed demo data
+                  </Button>
+                </EmptyState>
               }
             />
           </TabsContent>
@@ -1029,7 +1046,21 @@ export default function HoldsManagementPage() {
                       ? "No holds are currently placed on this title."
                       : "Paste a bibliographic record ID to view the queue."
                   }
-                />
+                  action={
+                    titleId.trim()
+                      ? { label: "Search catalog", onClick: () => router.push("/staff/catalog"), icon: Search }
+                      : { label: "Search catalog", onClick: () => router.push("/staff/catalog"), icon: Search }
+                  }
+                  secondaryAction={
+                    titleId.trim()
+                      ? { label: "Hold policies", onClick: () => router.push("/staff/admin/policies/holds") }
+                      : undefined
+                  }
+                >
+                  <Button variant="ghost" size="sm" onClick={() => router.push("/staff/help#demo-data")}>
+                    Seed demo data
+                  </Button>
+                </EmptyState>
               }
             />
           </TabsContent>
@@ -1045,7 +1076,13 @@ export default function HoldsManagementPage() {
                   icon={ListChecks}
                   title="Pull list empty"
                   description="There are no items to pull right now."
-                />
+                  action={{ label: "Search catalog", onClick: () => router.push("/staff/catalog"), icon: Search }}
+                  secondaryAction={{ label: "Hold policies", onClick: () => router.push("/staff/admin/policies/holds") }}
+                >
+                  <Button variant="ghost" size="sm" onClick={() => router.push("/staff/help#demo-data")}>
+                    Seed demo data
+                  </Button>
+                </EmptyState>
               }
             />
           </TabsContent>
@@ -1061,7 +1098,13 @@ export default function HoldsManagementPage() {
                   icon={Inbox}
                   title="Holds shelf is clear"
                   description="No items are waiting on the shelf."
-                />
+                  action={{ label: "Open pull list", onClick: () => setActiveTab("pull") }}
+                  secondaryAction={{ label: "Hold policies", onClick: () => router.push("/staff/admin/policies/holds") }}
+                >
+                  <Button variant="ghost" size="sm" onClick={() => router.push("/staff/help#demo-data")}>
+                    Seed demo data
+                  </Button>
+                </EmptyState>
               }
             />
           </TabsContent>
@@ -1077,7 +1120,13 @@ export default function HoldsManagementPage() {
                   icon={Clock}
                   title="No expired holds"
                   description="Expired holds will show up here when they occur."
-                />
+                  action={{ label: "Open holds shelf", onClick: () => setActiveTab("shelf") }}
+                  secondaryAction={{ label: "Hold policies", onClick: () => router.push("/staff/admin/policies/holds") }}
+                >
+                  <Button variant="ghost" size="sm" onClick={() => router.push("/staff/help#demo-data")}>
+                    Seed demo data
+                  </Button>
+                </EmptyState>
               }
             />
           </TabsContent>

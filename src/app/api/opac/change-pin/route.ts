@@ -4,6 +4,7 @@ import {
   successResponse,
   errorResponse,
   serverErrorResponse,
+  getRequestMeta,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
@@ -12,6 +13,7 @@ import { hashPassword } from "@/lib/password";
 
 // POST /api/opac/change-pin - Change patron PIN
 export async function POST(req: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
   try {
     const cookieStore = await cookies();
     const patronToken = cookieStore.get("patron_authtoken")?.value;
@@ -72,8 +74,9 @@ export async function POST(req: NextRequest) {
         entityId: user.id,
         status: "failure",
         actor: { id: user.id, username: user.usrname },
-        ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip"),
-        userAgent: req.headers.get("user-agent"),
+        ip,
+        userAgent,
+        requestId,
         details: { reason: "incorrect_current_pin" },
       });
       
@@ -97,8 +100,9 @@ export async function POST(req: NextRequest) {
         entityId: user.id,
         status: "failure",
         actor: { id: user.id, username: user.usrname },
-        ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip"),
-        userAgent: req.headers.get("user-agent"),
+        ip,
+        userAgent,
+        requestId,
         details: { reason: updateResult.desc },
       });
       
@@ -111,8 +115,9 @@ export async function POST(req: NextRequest) {
       entityId: user.id,
       status: "success",
       actor: { id: user.id, username: user.usrname },
-      ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip"),
-      userAgent: req.headers.get("user-agent"),
+      ip,
+      userAgent,
+      requestId,
     });
 
     logger.info({ patronId: user.id, username: user.usrname }, "PIN changed successfully");
@@ -120,6 +125,6 @@ export async function POST(req: NextRequest) {
     return successResponse({ success: true, message: "PIN changed successfully" });
   } catch (error) {
     logger.error({ error: String(error) }, "Error changing PIN");
-    return serverErrorResponse(error, "Failed to change PIN");
+    return serverErrorResponse(error, "OPAC Change PIN POST", req);
   }
 }

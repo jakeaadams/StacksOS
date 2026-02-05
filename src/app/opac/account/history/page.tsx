@@ -1,10 +1,11 @@
 "use client";
 import { clientLogger } from "@/lib/client-logger";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/usePatronSession";
+import { UnoptimizedImage } from "@/components/shared";
 import {
   History,
   BookOpen,
@@ -45,27 +46,20 @@ interface ReadingStats {
 
 export default function ReadingHistoryPage() {
   const router = useRouter();
-  const { isLoggedIn, patron } = usePatronSession();
+  const { isLoggedIn } = usePatronSession();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [stats, setStats] = useState<ReadingStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterYear, setFilterYear] = useState<string>("");
   const [sortBy, setSortBy] = useState<"date" | "title" | "author">("date");
   const itemsPerPage = 20;
 
-  useEffect(() => {
-    if (!isLoggedIn) {
-      router.push("/opac/login?redirect=/opac/account/history");
-      return;
-    }
-    fetchHistory();
-  }, [isLoggedIn, page, filterYear, sortBy]);
-
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -97,12 +91,25 @@ export default function ReadingHistoryPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filterYear, itemsPerPage, page, router, searchQuery, sortBy]);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push("/opac/login?redirect=/opac/account/history");
+      return;
+    }
+    fetchHistory();
+  }, [fetchHistory, isLoggedIn, router]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    const nextQuery = searchInput.trim();
+    const shouldRefetch = page === 1 && nextQuery === searchQuery;
     setPage(1);
-    fetchHistory();
+    setSearchQuery(nextQuery);
+    if (shouldRefetch) {
+      fetchHistory();
+    }
   };
 
   const exportHistory = async (format: "csv" | "json") => {
@@ -225,8 +232,8 @@ export default function ReadingHistoryPage() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
                 <input
                   type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Search your history..."
                   className="w-full pl-14 pr-4 py-2 border border-border rounded-lg
                            focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -308,7 +315,7 @@ export default function ReadingHistoryPage() {
                   {/* Cover */}
                   <div className="w-16 h-24 bg-muted/50 rounded-lg shrink-0 overflow-hidden">
                     {item.coverUrl ? (
-                      <img
+                      <UnoptimizedImage
                         src={item.coverUrl}
                         alt={item.title}
                         className="w-full h-full object-cover"

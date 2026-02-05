@@ -18,7 +18,7 @@ interface AuthorityRecord {
   id: string | number;
   heading: string;
   type: string;
-  linkedBibs: number;
+  linkedBibs?: number;
 }
 
 export default function AuthorityControlPage() {
@@ -43,7 +43,7 @@ export default function AuthorityControlPage() {
     try {
       const params = new URLSearchParams({
         q: searchQuery,
-        type: searchType,
+        axis: searchType === "all" ? "" : searchType,
         limit: "50",
       });
 
@@ -51,8 +51,16 @@ export default function AuthorityControlPage() {
       const data = await response.json();
 
       if (data.ok) {
-        setAuthorities(data.authorities || []);
-        setSetupMessage(data.message || null);
+        const results = Array.isArray(data.authorities) ? data.authorities : [];
+        setAuthorities(
+          results.map((r: any) => ({
+            id: r?.id ?? "",
+            heading: String(r?.heading ?? r?.value ?? ""),
+            type: String(r?.type ?? "main"),
+            linkedBibs: typeof r?.linkedBibs === "number" ? r.linkedBibs : 0,
+          }))
+        );
+        setSetupMessage(data.warning || data.message || null);
       } else {
         setError(data.error || "Search failed");
         setAuthorities([]);
@@ -109,7 +117,7 @@ export default function AuthorityControlPage() {
               placeholder="Search authority headings..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               className="pl-14 h-9"
             />
           </div>
@@ -135,11 +143,14 @@ export default function AuthorityControlPage() {
         {hasSearched && !loading && authorities.length === 0 && !error && (
           <div className="p-8 text-center text-muted-foreground space-y-3">
             <p>{setupMessage || "No authority records found matching your search"}</p>
-            {setupMessage && (
+            <div className="flex justify-center gap-2">
               <Button asChild size="sm" variant="outline">
                 <Link href="/staff/help#evergreen-setup">Evergreen setup checklist</Link>
               </Button>
-            )}
+              <Button asChild size="sm" variant="ghost">
+                <Link href="/staff/help#demo-data">Seed demo data</Link>
+              </Button>
+            </div>
           </div>
         )}
 
@@ -165,7 +176,7 @@ export default function AuthorityControlPage() {
                   <TableCell>
                     <div className="font-medium">{auth.heading}</div>
                   </TableCell>
-                  <TableCell className="text-center">{auth.linkedBibs}</TableCell>
+                  <TableCell className="text-center">{typeof auth.linkedBibs === "number" ? auth.linkedBibs : "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

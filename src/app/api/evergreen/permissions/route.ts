@@ -1,15 +1,15 @@
 import { NextRequest } from "next/server";
 import {
-
   callOpenSRF,
   successResponse,
   errorResponse,
   serverErrorResponse,
   getRequestMeta,
 } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
+import { featureFlags } from "@/lib/feature-flags";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
-
 
 // ============================================================================
 // GET - Fetch permission groups and permissions
@@ -166,13 +166,44 @@ export async function POST(req: NextRequest) {
   const { requestId } = getRequestMeta(req);
 
   try {
+    if (!featureFlags.permissionsExplorer) {
+      return errorResponse("Permission editors are disabled", 403);
+    }
+
     const body = await req.json();
     const { action, type, data } = body;
 
     // Require admin permissions for modifications
-    const { authtoken } = await requirePermissions(["GROUP_APPLICATION_PERM"]);
+    const { authtoken, actor } = await requirePermissions(["GROUP_APPLICATION_PERM"]);
 
     logger.info({ requestId, route: "api.evergreen.permissions", action, type }, "Permissions update");
+
+    const requestMeta = getRequestMeta(req);
+    const auditBase = {
+      actor,
+      orgId: actor?.ws_ou ?? actor?.home_ou,
+      ip: requestMeta.ip,
+      userAgent: requestMeta.userAgent,
+      requestId: requestMeta.requestId,
+    };
+
+    const audit = async (event: {
+      action: string;
+      entity: string;
+      entityId?: string | number;
+      status: "success" | "failure";
+      details?: Record<string, unknown>;
+      error?: string | null;
+    }) => {
+      try {
+        await logAuditEvent({
+          ...auditBase,
+          ...event,
+        });
+      } catch {
+        // Audit must never break the request path.
+      }
+    };
 
     switch (type) {
       case "group": {
@@ -204,12 +235,28 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await audit({
+              action: "perm.group.create",
+              entity: "pgt",
+              status: "failure",
+              error: result.textcode || "Failed to create group",
+              details: { name: data.name, parent: data.parent || null, applicationPerm: data.applicationPerm || null },
+            });
             return errorResponse(result.textcode || "Failed to create group", 400, result);
           }
 
+          const createdId = result?.id ?? result?.__p?.[0];
+          await audit({
+            action: "perm.group.create",
+            entity: "pgt",
+            entityId: createdId,
+            status: "success",
+            details: { name: data.name, parent: data.parent || null, applicationPerm: data.applicationPerm || null },
+          });
+
           return successResponse({
             created: true,
-            id: result?.id ?? result?.__p?.[0],
+            id: createdId,
             name: data.name,
           });
         }
@@ -254,8 +301,24 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await audit({
+              action: "perm.group.update",
+              entity: "pgt",
+              entityId: data.id,
+              status: "failure",
+              error: result.textcode || "Failed to update group",
+              details: { id: data.id, name: data.name ?? null, parent: data.parent ?? null },
+            });
             return errorResponse(result.textcode || "Failed to update group", 400, result);
           }
+
+          await audit({
+            action: "perm.group.update",
+            entity: "pgt",
+            entityId: data.id,
+            status: "success",
+            details: { id: data.id, name: data.name ?? null, parent: data.parent ?? null },
+          });
 
           return successResponse({
             updated: true,
@@ -292,12 +355,28 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await audit({
+              action: "perm.group_perm.add",
+              entity: "pgpm",
+              status: "failure",
+              error: result.textcode || "Failed to add permission",
+              details: { grp: data.grp, perm: data.perm, depth: data.depth ?? 0, grantable: Boolean(data.grantable) },
+            });
             return errorResponse(result.textcode || "Failed to add permission", 400, result);
           }
 
+          const createdId = result?.id ?? result?.__p?.[0];
+          await audit({
+            action: "perm.group_perm.add",
+            entity: "pgpm",
+            entityId: createdId,
+            status: "success",
+            details: { grp: data.grp, perm: data.perm, depth: data.depth ?? 0, grantable: Boolean(data.grantable) },
+          });
+
           return successResponse({
             added: true,
-            id: result?.id ?? result?.__p?.[0],
+            id: createdId,
             grp: data.grp,
             perm: data.perm,
           });
@@ -317,8 +396,24 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await audit({
+              action: "perm.group_perm.remove",
+              entity: "pgpm",
+              entityId: data.id,
+              status: "failure",
+              error: result.textcode || "Failed to remove permission",
+              details: { id: data.id },
+            });
             return errorResponse(result.textcode || "Failed to remove permission", 400, result);
           }
+
+          await audit({
+            action: "perm.group_perm.remove",
+            entity: "pgpm",
+            entityId: data.id,
+            status: "success",
+            details: { id: data.id },
+          });
 
           return successResponse({
             removed: true,
@@ -365,8 +460,24 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await audit({
+              action: "perm.group_perm.update",
+              entity: "pgpm",
+              entityId: data.id,
+              status: "failure",
+              error: result.textcode || "Failed to update mapping",
+              details: { id: data.id, depth: data.depth ?? null, grantable: data.grantable ?? null },
+            });
             return errorResponse(result.textcode || "Failed to update mapping", 400, result);
           }
+
+          await audit({
+            action: "perm.group_perm.update",
+            entity: "pgpm",
+            entityId: data.id,
+            status: "success",
+            details: { id: data.id, depth: data.depth ?? null, grantable: data.grantable ?? null },
+          });
 
           return successResponse({
             updated: true,

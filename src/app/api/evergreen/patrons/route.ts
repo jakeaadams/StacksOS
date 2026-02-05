@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-
   callOpenSRF,
   successResponse,
   errorResponse,
   notFoundResponse,
   serverErrorResponse,
-  parseJsonBody,
+  parseJsonBodyWithSchema,
   requireFields,
   encodeFieldmapper,
   getErrorMessage,
@@ -18,6 +17,7 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 
 
@@ -293,15 +293,17 @@ async function getDefaultProfileId(_authtoken: string): Promise<number> {
     "open-ils.actor.groups.tree.retrieve"
   );
   const tree = groupsResponse?.payload?.[0];
-  let found: number | null = null;
+  const candidates: Array<{ id: number; name: string }> = [];
 
   const walk = (node: any) => {
-    if (!node || found) return;
+    if (!node) return;
     const name = node.name ?? node[2];
     const id = node.id ?? node[0];
     if (typeof name === "string" && name.toLowerCase().includes("patron")) {
-      found = typeof id === "number" ? id : parseInt(String(id || ""), 10);
-      return;
+      const parsedId = typeof id === "number" ? id : parseInt(String(id || ""), 10);
+      if (Number.isFinite(parsedId)) {
+        candidates.push({ id: parsedId, name });
+      }
     }
     const children = node.children || node[3] || [];
     if (Array.isArray(children)) children.forEach(walk);
@@ -313,7 +315,19 @@ async function getDefaultProfileId(_authtoken: string): Promise<number> {
     walk(tree);
   }
 
-  return found || 2;
+  if (candidates.length === 0) return 2;
+
+  const normalized = candidates.map((c) => ({
+    ...c,
+    nameLower: c.name.toLowerCase(),
+  }));
+
+  const best =
+    normalized.find((c) => /\bpatrons?\b/.test(c.nameLower) && !c.nameLower.includes("api")) ||
+    normalized.find((c) => !c.nameLower.includes("api")) ||
+    normalized[0];
+
+  return best?.id ?? 2;
 }
 
 async function getDefaultPatronSettings(authtoken: string, homeOu: number) {
@@ -407,9 +421,9 @@ function generatePassword(length = 8): string {
 export async function POST(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
-    const { ip, userAgent } = getRequestMeta(req);
-    const body = await parseJsonBody<Record<string, any>>(req);
-    if (body instanceof NextResponse) return body;
+    const { ip, userAgent, requestId } = getRequestMeta(req);
+    const body = await parseJsonBodyWithSchema(req, z.object({}).passthrough());
+    if (body instanceof NextResponse) return body as any;
 
     const missing = requireFields(body, ["firstName", "lastName"]);
     if (missing) return missing;
@@ -420,25 +434,38 @@ export async function POST(req: NextRequest) {
       return errorResponse("First and last name are required", 400);
     }
 
-    const homeOu = await resolveHomeOu(body.homeLibrary || body.home_ou || body.homeOu);
-    const profileId = Number.isFinite(parseInt(body.profile, 10))
-      ? parseInt(body.profile, 10)
+    const homeOuCandidate = body.homeLibrary ?? body.home_ou ?? body.homeOu;
+    const homeOu = await resolveHomeOu(
+      typeof homeOuCandidate === "string" || typeof homeOuCandidate === "number"
+        ? homeOuCandidate
+        : undefined
+    );
+
+    const profileRaw = body.profile ?? body.profile_id ?? body.profileId;
+    const profileId = Number.isFinite(parseInt(String(profileRaw ?? ""), 10))
+      ? parseInt(String(profileRaw), 10)
       : await getDefaultProfileId(authtoken);
 
     const settings = await getDefaultPatronSettings(authtoken, homeOu);
-    const identType = Number.isFinite(parseInt(body.identType || body.ident_type, 10))
-      ? parseInt(body.identType || body.ident_type, 10)
+    const identTypeRaw = body.identType ?? body.ident_type;
+    const identType = Number.isFinite(parseInt(String(identTypeRaw ?? ""), 10))
+      ? parseInt(String(identTypeRaw), 10)
       : settings.identType;
 
-    const addressInput = body.address || {};
-    const street1 = String(addressInput.street1 || body.street1 || "").trim();
-    const street2 = String(addressInput.street2 || body.street2 || "").trim();
-    const city = String(addressInput.city || body.city || "").trim();
-    const state = String(addressInput.state || body.state || "").trim();
+    const addressInput =
+      typeof body.address === "object" && body.address !== null
+        ? (body.address as Record<string, unknown>)
+        : ({} as Record<string, unknown>);
+    const street1 = String(addressInput["street1"] || body.street1 || "").trim();
+    const street2 = String(addressInput["street2"] || body.street2 || "").trim();
+    const city = String(addressInput["city"] || body.city || "").trim();
+    const state = String(addressInput["state"] || body.state || "").trim();
     const postCode = String(
-      addressInput.post_code || addressInput.zip || body.post_code || body.zip || ""
+      addressInput["post_code"] || addressInput["zip"] || body.post_code || body.zip || ""
     ).trim();
-    const country = String(addressInput.country || body.country || settings.country || "US").trim();
+    const country = String(
+      addressInput["country"] || body.country || settings.country || "US"
+    ).trim();
 
     if (!street1 || !city || !postCode || !country) {
       return errorResponse("Address street, city, postal code, and country are required", 400);
@@ -565,6 +592,7 @@ export async function POST(req: NextRequest) {
       orgId: homeOu,
       ip,
       userAgent,
+      requestId,
       details: { barcode, generated },
     });
 
@@ -581,9 +609,9 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
-    const { ip, userAgent } = getRequestMeta(req);
-    const body = await parseJsonBody<Record<string, any>>(req);
-    if (body instanceof NextResponse) return body;
+    const { ip, userAgent, requestId } = getRequestMeta(req);
+    const body = await parseJsonBodyWithSchema(req, z.object({}).passthrough());
+    if (body instanceof NextResponse) return body as any;
 
     const patronId = parseInt(String(body.id || body.patronId || ""), 10);
     if (!Number.isFinite(patronId)) {
@@ -596,39 +624,111 @@ export async function PUT(req: NextRequest) {
       return notFoundResponse("Patron not found");
     }
 
-    // Build update object with only changed fields
-    const updates: Record<string, any> = {
-      id: patronId,
-      ischanged: 1,
+    const toLinkId = (value: unknown): number | null => {
+      if (!value || typeof value !== "object") return null;
+      const raw = (value as any).id;
+      if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+      const parsed = parseInt(String(raw ?? ""), 10);
+      return Number.isFinite(parsed) ? parsed : null;
     };
+
+    const toFieldmapperObject = (value: unknown): any | null => {
+      if (!value || typeof value !== "object") return null;
+      const classId = (value as any).__class;
+      if (typeof classId !== "string" || !classId.trim()) return null;
+      return encodeFieldmapper(classId, value as Record<string, any>);
+    };
+
+    // Evergreen expects a full-enough patron object for updates (notably:
+    // `last_xact_id` for collision checking and required group/home fields).
+    // Start from the current patron record and apply only the requested changes.
+    const updates: Record<string, any> = { id: patronId, ischanged: 1 };
+    const requestedUpdates: string[] = [];
+
+    for (const [key, value] of Object.entries(currentPatron)) {
+      if (key === "__class" || key === "id") continue;
+      if (Array.isArray(value)) continue;
+      if (value && typeof value === "object") {
+        const linkId = toLinkId(value);
+        if (linkId !== null) updates[key] = linkId;
+        continue;
+      }
+      updates[key] = value;
+    }
+
+    // Evergreen's `open-ils.actor.patron.update` expects cards/addresses to be present
+    // (at least for many installs). If we send `[]`, Evergreen can accept the call but
+    // silently drop unrelated field updates (email/profile/etc). Preserve the existing
+    // collections and only mutate them when explicitly requested.
+    updates.cards = Array.isArray((currentPatron as any).cards)
+      ? (currentPatron as any).cards
+          .map((c: any) => toFieldmapperObject(c))
+          .filter(Boolean)
+      : [];
+    updates.addresses = Array.isArray((currentPatron as any).addresses)
+      ? (currentPatron as any).addresses
+          .map((a: any) => toFieldmapperObject(a))
+          .filter(Boolean)
+      : [];
+
+    // These are optional collections, but Evergreen expects arrayrefs (not null).
+    updates.waiver_entries = Array.isArray((currentPatron as any).waiver_entries) ? (currentPatron as any).waiver_entries : [];
+    updates.survey_responses = Array.isArray((currentPatron as any).survey_responses) ? (currentPatron as any).survey_responses : [];
+    updates.stat_cat_entries = Array.isArray((currentPatron as any).stat_cat_entries) ? (currentPatron as any).stat_cat_entries : [];
 
     // Basic fields
     if (body.firstName !== undefined || body.first_given_name !== undefined) {
       updates.first_given_name = String(body.firstName || body.first_given_name || "").trim();
+      requestedUpdates.push("first_given_name");
     }
     if (body.lastName !== undefined || body.family_name !== undefined) {
       updates.family_name = String(body.lastName || body.family_name || "").trim();
+      requestedUpdates.push("family_name");
     }
     if (body.email !== undefined) {
       updates.email = body.email ? String(body.email).trim() : null;
+      requestedUpdates.push("email");
     }
     if (body.phone !== undefined || body.day_phone !== undefined) {
       updates.day_phone = (body.phone || body.day_phone) ? String(body.phone || body.day_phone).trim() : null;
+      requestedUpdates.push("day_phone");
     }
     if (body.homeLibrary !== undefined || body.home_ou !== undefined) {
       updates.home_ou = parseInt(String(body.homeLibrary || body.home_ou), 10);
+      requestedUpdates.push("home_ou");
     }
     if (body.profile !== undefined) {
       updates.profile = parseInt(String(body.profile), 10);
+      requestedUpdates.push("profile");
     }
     if (body.expireDate !== undefined || body.expire_date !== undefined) {
       updates.expire_date = body.expireDate || body.expire_date;
+      requestedUpdates.push("expire_date");
     }
     if (body.active !== undefined) {
       updates.active = body.active === true || body.active === "t";
+      requestedUpdates.push("active");
     }
     if (body.barred !== undefined) {
       updates.barred = body.barred === true || body.barred === "t";
+      requestedUpdates.push("barred");
+    }
+
+    // Password/PIN reset (staff-side).
+    //
+    // Evergreen's `open-ils.actor.patron.update` supports setting `passwd` for
+    // existing users and will handle hashing/storage internally.
+    const rawPassword = body.password ?? body.passwd ?? body.pin;
+    if (rawPassword !== undefined) {
+      const password = String(rawPassword || "").trim();
+      if (!password) {
+        return errorResponse("Password cannot be empty", 400);
+      }
+      if (password.length < 4) {
+        return errorResponse("Password must be at least 4 characters", 400);
+      }
+      updates.passwd = password;
+      requestedUpdates.push("passwd");
     }
 
     const patron = encodeFieldmapper("au", updates);
@@ -640,7 +740,8 @@ export async function PUT(req: NextRequest) {
     );
 
     const result = response?.payload?.[0];
-    if (!result || isOpenSRFEvent(result) || result.ilsevent) {
+    const lastEvent = (result as any)?.last_event;
+    if (!result || isOpenSRFEvent(result) || result.ilsevent || isOpenSRFEvent(lastEvent)) {
       return errorResponse(
         getErrorMessage(result, "Patron update failed"),
         400,
@@ -649,6 +750,28 @@ export async function PUT(req: NextRequest) {
     }
 
     const normalized = normalizePatron(result);
+    const mismatch = requestedUpdates.find((k) => {
+      if (k === "passwd") return false;
+      if (k === "first_given_name") return normalized.first_given_name !== updates.first_given_name;
+      if (k === "family_name") return normalized.family_name !== updates.family_name;
+      if (k === "email") return (normalized.email || null) !== (updates.email || null);
+      if (k === "day_phone") return (normalized.day_phone || null) !== (updates.day_phone || null);
+      if (k === "home_ou") return Number(normalized.home_ou) !== Number(updates.home_ou);
+      if (k === "profile") return Number(normalized.profile) !== Number(updates.profile);
+      if (k === "expire_date") return String(normalized.expire_date || "") !== String(updates.expire_date || "");
+      if (k === "active") return Boolean(normalized.active) !== Boolean(updates.active === "t" || updates.active === true);
+      if (k === "barred") return Boolean(normalized.barred) !== Boolean(updates.barred === "t" || updates.barred === true);
+      return false;
+    });
+    if (mismatch) {
+      logger.warn(
+        { requestId, route: "api.evergreen.patrons", patronId, mismatch },
+        "Evergreen accepted patron.update but did not persist requested changes"
+      );
+      return errorResponse("Patron update did not persist (Evergreen rejected one or more field updates)", 502, {
+        mismatch,
+      });
+    }
 
     await logAuditEvent({
       action: "patron.update",
@@ -658,7 +781,10 @@ export async function PUT(req: NextRequest) {
       actor,
       ip,
       userAgent,
-      details: { updates: Object.keys(updates).filter(k => k !== "id" && k !== "ischanged") },
+      requestId,
+      details: {
+        updates: requestedUpdates.map((k) => (k === "passwd" ? "password" : k)),
+      },
     });
 
     return successResponse({ patron: normalized });
@@ -671,9 +797,9 @@ export async function PUT(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
-    const { ip, userAgent } = getRequestMeta(req);
-    const body = await parseJsonBody<Record<string, any>>(req);
-    if (body instanceof NextResponse) return body;
+    const { ip, userAgent, requestId } = getRequestMeta(req);
+    const body = await parseJsonBodyWithSchema(req, z.object({}).passthrough());
+    if (body instanceof NextResponse) return body as any;
 
     const action = body.action;
     const patronId = parseInt(String(body.patronId || body.patron_id || ""), 10);
@@ -721,6 +847,7 @@ export async function PATCH(req: NextRequest) {
         actor,
         ip,
         userAgent,
+        requestId,
         details: { penaltyType, note },
       });
 
@@ -753,6 +880,7 @@ export async function PATCH(req: NextRequest) {
         actor,
         ip,
         userAgent,
+        requestId,
         details: { penaltyId },
       });
 
@@ -798,6 +926,7 @@ export async function PATCH(req: NextRequest) {
         actor,
         ip,
         userAgent,
+        requestId,
         details: { title, public: isPublic },
       });
 
@@ -830,6 +959,7 @@ export async function PATCH(req: NextRequest) {
         actor,
         ip,
         userAgent,
+        requestId,
         details: { noteId },
       });
 

@@ -16,6 +16,7 @@ import {
   EmptyState,
   ErrorBoundary,
   PlaceHoldDialog,
+  UnoptimizedImage,
 } from "@/components/shared";
 import { CoverArtPicker } from "@/components/shared/cover-art-picker";
 import { AddItemDialog } from "@/components/cataloging/add-item-dialog";
@@ -121,7 +122,7 @@ function CoverImage({
       {!loaded && (
         <div className="absolute inset-0 bg-muted rounded-xl animate-pulse" />
       )}
-      <img
+      <UnoptimizedImage
         src={coverUrl}
         alt={"Cover of " + title}
         className={"absolute inset-0 h-full w-full object-contain bg-muted rounded-xl shadow-md transition-opacity " + (loaded ? "opacity-100" : "opacity-0")}
@@ -620,6 +621,11 @@ export default function CatalogRecordPage() {
                 <EmptyState
                   title="No copies"
                   description="No copies are attached to this record."
+                  action={{ label: "Add item", onClick: () => setAddItemOpen(true) }}
+                  secondaryAction={{
+                    label: "Seed demo data",
+                    onClick: () => router.push("/staff/help#demo-data"),
+                  }}
                 />
               }
             />

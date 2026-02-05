@@ -1,12 +1,24 @@
 import { Page } from "@playwright/test";
 
+export function getStaffCredentials(): { username: string; password: string } {
+  const username = process.env.E2E_STAFF_USER;
+  const password = process.env.E2E_STAFF_PASS;
+
+  if (!username || !password) {
+    throw new Error("Missing E2E_STAFF_USER/E2E_STAFF_PASS for staff-authenticated E2E tests.");
+  }
+
+  return { username, password };
+}
+
 /**
  * Login helper function for tests that need authentication
  */
-export async function loginAsStaff(page: Page, username = "jake", password = "jake") {
+export async function loginAsStaff(page: Page, username?: string, password?: string) {
+  const creds = username && password ? { username, password } : getStaffCredentials();
   await page.goto("/login");
-  await page.locator("input#username").fill(username);
-  await page.locator("input#password").fill(password);
+  await page.locator("input#username").fill(creds.username);
+  await page.locator("input#password").fill(creds.password);
   await page.locator("button[type='submit']").click();
   await page.waitForURL(/\/staff/, { timeout: 15000 });
 }

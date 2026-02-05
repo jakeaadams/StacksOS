@@ -9,10 +9,34 @@ import {
 } from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
 import { useApi } from "@/hooks";
+import { featureFlags } from "@/lib/feature-flags";
 import { Send, Link as LinkIcon } from "lucide-react";
 
 export default function ILLPage() {
     const { data } = useApi<any>("/api/evergreen/ping", { immediate: true });
+
+    if (!featureFlags.ill) {
+        return (
+            <PageContainer>
+                <PageHeader
+                    title="Interlibrary Loan"
+                    subtitle="Interlibrary loan is behind a feature flag until a provider is integrated."
+                    breadcrumbs={[{ label: "ILL" }]}
+                />
+                <PageContent>
+                    <Card>
+                        <CardContent className="py-12">
+                            <EmptyState
+                                icon={Send}
+                                title="ILL is disabled"
+                                description="This route is hidden by default to avoid dead UI. Enable ILL once a provider workflow is fully integrated."
+                            />
+                        </CardContent>
+                    </Card>
+                </PageContent>
+            </PageContainer>
+        );
+    }
 
     return (
         <PageContainer>

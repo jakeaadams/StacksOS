@@ -1,6 +1,7 @@
 import { callOpenSRF, isOpenSRFEvent, requireAuthToken } from "@/lib/api";
 import { getActorFromToken } from "@/lib/audit";
 import { logger } from "@/lib/logger";
+import { requireStaffSession } from "@/lib/session/staff-session";
 
 export type RbacMode = "strict" | "warn" | "off";
 
@@ -20,7 +21,13 @@ export class PermissionError extends Error {
   }
 }
 
-const RBAC_MODE = (process.env.STACKSOS_RBAC_MODE || "warn") as RbacMode;
+function resolveRbacMode(): RbacMode {
+  const raw = String(process.env.STACKSOS_RBAC_MODE || "").trim().toLowerCase();
+  if (raw === "strict" || raw === "warn" || raw === "off") return raw;
+  return process.env.NODE_ENV === "production" ? "strict" : "warn";
+}
+
+const RBAC_MODE = resolveRbacMode();
 
 function normalizePermPayload(payload: any, perms: string[]): Record<string, boolean> | null {
   if (!payload) return null;
@@ -102,6 +109,10 @@ export async function requirePermissions(perms: string[], orgId?: number): Promi
   }
 
   const actor = await getActorFromToken(authtoken);
+  const actorId = typeof actor?.id === "number" ? actor.id : parseInt(String(actor?.id ?? ""), 10);
+  if (Number.isFinite(actorId)) {
+    await requireStaffSession(actorId);
+  }
   const resolvedOrgId = orgId ?? actor?.ws_ou ?? actor?.home_ou;
 
   const { map, event } = await tryPermCheck(authtoken, perms, resolvedOrgId);

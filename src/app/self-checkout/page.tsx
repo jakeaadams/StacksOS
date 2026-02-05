@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { toast } from "sonner";
 import {
@@ -148,7 +147,7 @@ export default function SelfCheckoutPage() {
         setLastError(data.error || "Invalid barcode or PIN");
         playSound("error");
       }
-    } catch (error) {
+    } catch {
       setLastError("Connection error. Please try again.");
       playSound("error");
     } finally {
@@ -191,7 +190,7 @@ export default function SelfCheckoutPage() {
         setLastError(data.error || "Could not check out item");
         playSound("error");
       }
-    } catch (error) {
+    } catch {
       setLastError("Connection error. Please try again.");
       playSound("error");
     } finally {

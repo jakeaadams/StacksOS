@@ -7,14 +7,14 @@ import { cookies } from "next/headers";
 import { decodeOpenSRFResponse } from "./fieldmapper";
 import type { OpenSRFResponse, OpenSRFEvent } from "./types";
 import { logger } from "@/lib/logger";
+import { fetchEvergreen } from "./evergreen-fetch";
+import { opensrfRequestDurationSeconds, opensrfRequestsTotal } from "@/lib/metrics";
 
 function resolveEvergreenBaseUrl(): string {
   const raw = process.env.EVERGREEN_BASE_URL;
   if (raw && raw.trim()) return raw.trim();
   throw new Error("EVERGREEN_BASE_URL is not set. Configure it in .env.local/.env.production.");
 }
-
-const EVERGREEN_BASE = resolveEvergreenBaseUrl();
 
 // Avoid spamming logs for Evergreen capability mismatches (method not found).
 // Keyed by `${service}.${method}`.
@@ -32,99 +32,154 @@ export async function callOpenSRF<T = any>(
   method: string,
   params: any[] = []
 ): Promise<OpenSRFResponse<T>> {
-  const url = `${EVERGREEN_BASE.replace(/\/+$/, "")}/osrf-gateway-v1`;
+  const startedNs = process.hrtime.bigint();
+  let outcome: "success" | "timeout" | "method_not_found" | "error" = "success";
 
-  // Use POST body instead of querystring to avoid leaking sensitive values
-  // (e.g. authtokens, password hashes) into intermediary access logs.
-  const body = new URLSearchParams({ service, method });
-  for (const param of params) {
-    body.append("param", JSON.stringify(param));
-  }
-  // URLSearchParams encodes spaces as "+", but the Evergreen OpenSRF gateway
-  // does not consistently decode "+" back to spaces inside param payloads.
-  // This breaks queries like order_by: { auact: "event_time DESC" } by turning
-  // it into "event_time+DESC" on the server side. Force %20 encoding instead.
-  const bodyString = body.toString().replaceAll("+", "%20");
-
-  const timeoutMsRaw = process.env.STACKSOS_EVERGREEN_TIMEOUT_MS;
-  const timeoutMs = Number.isFinite(Number(timeoutMsRaw)) ? Number(timeoutMsRaw) : 15000;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  let res: Response;
   try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: bodyString,
-      cache: "no-store",
-      signal: controller.signal,
-    });
-  } catch (err) {
-    const e = err instanceof Error ? err : new Error(String(err));
-    if (e.name === "AbortError") {
-      throw new Error(`OpenSRF timeout after ${timeoutMs}ms (${service}.${method})`);
+    // Some Evergreen installs expose pcrud reads via `open-ils.pcrud.*.atomic`
+    // but require a stateful client-managed transaction for writes.
+    // `open-ils.permacrud` provides CRUD methods that manage their own
+    // transaction per call, which works reliably behind the stateless gateway.
+    let resolvedService = service;
+    let resolvedMethod = method;
+    if (service === "open-ils.pcrud") {
+      const match = method.match(
+        /^open-ils\.pcrud\.(create|update|delete)\.([A-Za-z0-9_]+)(?:\.atomic)?$/
+      );
+      if (match) {
+        resolvedService = "open-ils.permacrud";
+        resolvedMethod = `open-ils.permacrud.${match[1]}.${match[2]}`;
+      }
     }
-    throw e;
-  } finally {
-    clearTimeout(timer);
-  }
 
-  if (!res.ok) {
-    throw new Error(`OpenSRF HTTP error: ${res.status} ${res.statusText}`);
-  }
+    const evergreenBase = resolveEvergreenBaseUrl();
+    const url = `${evergreenBase.replace(/\/+$/, "")}/osrf-gateway-v1`;
 
-  const json = await res.json();
+    // Use POST body instead of querystring to avoid leaking sensitive values
+    // (e.g. authtokens, password hashes) into intermediary access logs.
+    const body = new URLSearchParams({ service: resolvedService, method: resolvedMethod });
+    for (const param of params) {
+      body.append("param", JSON.stringify(param));
+    }
+    // URLSearchParams encodes spaces as "+", but the Evergreen OpenSRF gateway
+    // does not consistently decode "+" back to spaces inside param payloads.
+    // This breaks queries like order_by: { auact: "event_time DESC" } by turning
+    // it into "event_time+DESC" on the server side. Force %20 encoding instead.
+    const bodyString = body.toString().replaceAll("+", "%20");
 
-  // osrf-gateway encodes many failures in the JSON "status" field (often while
-  // still returning HTTP 200). If we ignore this, missing methods/signature
-  // issues look like empty payloads and the UI feels "fake".
-  const statusRaw = (json as any)?.status;
-  const status =
-    typeof statusRaw === "number"
-      ? statusRaw
-      : Number.isFinite(Number(statusRaw))
-        ? Number(statusRaw)
-        : null;
+    const timeoutMsRaw = process.env.STACKSOS_EVERGREEN_TIMEOUT_MS;
+    const timeoutMs = Number.isFinite(Number(timeoutMsRaw)) ? Number(timeoutMsRaw) : 15000;
 
-  if (status && status !== 200) {
-    const debug = (json as any)?.debug;
-    const debugText = typeof debug === "string" ? debug : "";
-    const isMethodNotFound =
-      status === 404 && debugText.toLowerCase().includes("method [") && debugText.toLowerCase().includes("not found");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    if (isMethodNotFound) {
-      const key = `${service}.${method}`;
-      if (!missingMethodOnce.has(key)) {
-        missingMethodOnce.add(key);
-        logger.info(
-          { component: "opensrf", service, method, status, paramCount: params.length, debug },
-          "OpenSRF capability mismatch: method not found"
+    let res: Response;
+    try {
+      res = await fetchEvergreen(url, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: bodyString,
+        cache: "no-store",
+        signal: controller.signal,
+      });
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      if (e.name === "AbortError") {
+        throw new Error(`OpenSRF timeout after ${timeoutMs}ms (${service}.${method})`);
+      }
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!res.ok) {
+      throw new Error(`OpenSRF HTTP error: ${res.status} ${res.statusText}`);
+    }
+
+    const json = await res.json();
+
+    // osrf-gateway encodes many failures in the JSON "status" field (often while
+    // still returning HTTP 200). If we ignore this, missing methods/signature
+    // issues look like empty payloads and the UI feels "fake".
+    const statusRaw = (json as any)?.status;
+    const status =
+      typeof statusRaw === "number"
+        ? statusRaw
+        : Number.isFinite(Number(statusRaw))
+          ? Number(statusRaw)
+          : null;
+
+    if (status && status !== 200) {
+      const debug = (json as any)?.debug;
+      const debugText = typeof debug === "string" ? debug : "";
+      const isMethodNotFound =
+        status === 404 &&
+        debugText.toLowerCase().includes("method [") &&
+        debugText.toLowerCase().includes("not found");
+
+      if (isMethodNotFound) {
+        const key = `${resolvedService}.${resolvedMethod}`;
+        if (!missingMethodOnce.has(key)) {
+          missingMethodOnce.add(key);
+          logger.info(
+            {
+              component: "opensrf",
+              service: resolvedService,
+              method: resolvedMethod,
+              status,
+              paramCount: params.length,
+              debug,
+            },
+            "OpenSRF capability mismatch: method not found"
+          );
+        }
+      } else {
+        logger.error(
+          {
+            component: "opensrf",
+            service: resolvedService,
+            method: resolvedMethod,
+            status,
+            paramCount: params.length,
+            debug,
+          },
+          "OpenSRF gateway error"
         );
       }
-    } else {
-      logger.error(
-        { component: "opensrf", service, method, status, paramCount: params.length, debug },
-        "OpenSRF gateway error"
+
+      const err = new Error(
+        `OpenSRF gateway error (${resolvedService}.${resolvedMethod}): status ${status}${debug ? ` - ${debug}` : ""}`
       );
+      if (isMethodNotFound) {
+        (err as any).code = "OSRF_METHOD_NOT_FOUND";
+      }
+      throw err;
     }
 
-    const err = new Error(
-      `OpenSRF gateway error (${service}.${method}): status ${status}${
-        debug ? ` - ${debug}` : ""
-      }`
-    );
-    if (isMethodNotFound) {
-      (err as any).code = "OSRF_METHOD_NOT_FOUND";
+    return decodeOpenSRFResponse(json);
+  } catch (error) {
+    const e = error instanceof Error ? error : new Error(String(error));
+    const code = typeof (e as any).code === "string" ? String((e as any).code) : "";
+    if (code === "OSRF_METHOD_NOT_FOUND") outcome = "method_not_found";
+    else if (e.message.startsWith("OpenSRF timeout after")) outcome = "timeout";
+    else outcome = "error";
+    throw e;
+  } finally {
+    const durationSeconds = Number(process.hrtime.bigint() - startedNs) / 1e9;
+    try {
+      const isPcrudWrite =
+        service === "open-ils.pcrud" && method.match(/^open-ils\.pcrud\.(create|update|delete)\./);
+      const metricService = isPcrudWrite ? "open-ils.permacrud" : service;
+      const metricMethod = isPcrudWrite ? method.replace(/^open-ils\.pcrud\./, "open-ils.permacrud.") : method;
+      opensrfRequestsTotal.inc({ service: metricService, method: metricMethod, outcome });
+      opensrfRequestDurationSeconds.observe({ service: metricService, method: metricMethod, outcome }, durationSeconds);
+    } catch {
+      // Metrics must never break production traffic.
     }
-    throw err;
   }
-
-  return decodeOpenSRFResponse(json);
 }
 
 // ============================================================================
@@ -286,5 +341,8 @@ export async function getCopyStatuses() {
     "open-ils.search",
     "open-ils.search.config.copy_status.retrieve.all"
   );
-  return response?.payload || [];
+  const payload = response?.payload;
+  if (Array.isArray(payload?.[0])) return payload[0] as any;
+  if (Array.isArray(payload)) return payload as any;
+  return [];
 }

@@ -1,7 +1,7 @@
 "use client";
 import { clientLogger } from "@/lib/client-logger";
 
-import { useState, useEffect, createContext, useContext, ReactNode } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from "react";
 
 export interface LibraryHours {
   day: string;
@@ -67,7 +67,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchLibraryInfo = async () => {
+  const fetchLibraryInfo = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -118,17 +118,18 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         setLibrary(libraryInfo);
 
         // Set default location if not already set
-        if (!currentLocation && libraryInfo.locations.length > 0) {
-          // Try to get from localStorage or use first location
-          const savedLocationId = typeof window !== "undefined"
-            ? localStorage.getItem("preferredLocationId")
-            : null;
+        if (libraryInfo.locations.length > 0) {
+          setCurrentLocation((prev) => {
+            if (prev) return prev;
 
-          const savedLocation = savedLocationId
-            ? libraryInfo.locations.find(l => l.id === parseInt(savedLocationId))
-            : null;
-
-          setCurrentLocation(savedLocation || libraryInfo.locations[0]);
+            const savedLocationId = typeof window !== "undefined"
+              ? localStorage.getItem("preferredLocationId")
+              : null;
+            const savedLocation = savedLocationId
+              ? libraryInfo.locations.find((l) => l.id === parseInt(savedLocationId, 10))
+              : null;
+            return savedLocation || libraryInfo.locations[0];
+          });
         }
       }
     } catch (err) {
@@ -145,11 +146,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchLibraryInfo();
-  }, []);
+    void fetchLibraryInfo();
+  }, [fetchLibraryInfo]);
 
   const handleSetCurrentLocation = (location: LibraryLocation) => {
     setCurrentLocation(location);

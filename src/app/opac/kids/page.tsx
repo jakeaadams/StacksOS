@@ -3,9 +3,10 @@ import { clientLogger } from "@/lib/client-logger";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/usePatronSession";
+import { UnoptimizedImage } from "@/components/shared";
 import {
   Search,
   Sparkles,
@@ -53,27 +54,51 @@ interface FeaturedBook {
   readingLevel?: string;
 }
 
+function getCoverUrl(record: any): string | undefined {
+  const isbn = record.isbn || record.simple_record?.isbn;
+  if (isbn) {
+    return `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`;
+  }
+  return undefined;
+}
+
+function getReadingLevel(record: any): string | undefined {
+  if (record.lexile) return `Lexile ${record.lexile}`;
+  if (record.ar_level) return `AR ${record.ar_level}`;
+  return undefined;
+}
+
+function transformBooks(records: any[]): FeaturedBook[] {
+  return records.map((record: any) => ({
+    id: record.id || record.record_id,
+    title: record.title || record.simple_record?.title || "Unknown Title",
+    author: record.author || record.simple_record?.author || "",
+    coverUrl: getCoverUrl(record),
+    readingLevel: record.reading_level || getReadingLevel(record),
+  }));
+}
+
 const browseCategories: CategoryItem[] = [
-  { icon: Wand2, label: "Magic & Fantasy", query: "subject:fantasy", color: "text-purple-600", bgColor: "bg-purple-100" },
-  { icon: Rocket, label: "Space & Sci-Fi", query: "subject:science fiction", color: "text-blue-600", bgColor: "bg-blue-100" },
-  { icon: Ghost, label: "Spooky Stories", query: "subject:horror", color: "text-muted-foreground", bgColor: "bg-muted/50" },
-  { icon: Swords, label: "Adventure", query: "subject:adventure", color: "text-red-600", bgColor: "bg-red-100" },
-  { icon: Heart, label: "Friendship", query: "subject:friendship", color: "text-pink-600", bgColor: "bg-pink-100" },
-  { icon: Laugh, label: "Funny Books", query: "subject:humor", color: "text-yellow-600", bgColor: "bg-yellow-100" },
-  { icon: Dog, label: "Dogs", query: "subject:dogs", color: "text-amber-600", bgColor: "bg-amber-100" },
-  { icon: Cat, label: "Cats", query: "subject:cats", color: "text-orange-600", bgColor: "bg-orange-100" },
-  { icon: Fish, label: "Ocean Life", query: "subject:ocean", color: "text-cyan-600", bgColor: "bg-cyan-100" },
-  { icon: Bug, label: "Bugs & Insects", query: "subject:insects", color: "text-lime-600", bgColor: "bg-lime-100" },
-  { icon: Bird, label: "Birds", query: "subject:birds", color: "text-sky-600", bgColor: "bg-sky-100" },
-  { icon: TreePine, label: "Nature", query: "subject:nature", color: "text-green-600", bgColor: "bg-green-100" },
-  { icon: Microscope, label: "Science", query: "subject:science", color: "text-teal-600", bgColor: "bg-teal-100" },
-  { icon: Globe, label: "World & Culture", query: "subject:geography", color: "text-indigo-600", bgColor: "bg-indigo-100" },
-  { icon: Clock, label: "History", query: "subject:history", color: "text-stone-600", bgColor: "bg-stone-100" },
-  { icon: Music, label: "Music & Dance", query: "subject:music", color: "text-fuchsia-600", bgColor: "bg-fuchsia-100" },
-  { icon: Palette, label: "Art & Crafts", query: "subject:art", color: "text-rose-600", bgColor: "bg-rose-100" },
-  { icon: Gamepad2, label: "Games & Sports", query: "subject:sports", color: "text-emerald-600", bgColor: "bg-emerald-100" },
-  { icon: Car, label: "Things That Go", query: "subject:vehicles", color: "text-slate-600", bgColor: "bg-slate-100" },
-  { icon: Crown, label: "Princesses", query: "subject:princesses", color: "text-violet-600", bgColor: "bg-violet-100" },
+  { icon: Wand2, label: "Magic & Fantasy", query: "fantasy", color: "text-purple-600", bgColor: "bg-purple-100" },
+  { icon: Rocket, label: "Space & Sci-Fi", query: "science fiction", color: "text-blue-600", bgColor: "bg-blue-100" },
+  { icon: Ghost, label: "Spooky Stories", query: "horror", color: "text-muted-foreground", bgColor: "bg-muted/50" },
+  { icon: Swords, label: "Adventure", query: "adventure", color: "text-red-600", bgColor: "bg-red-100" },
+  { icon: Heart, label: "Friendship", query: "friendship", color: "text-pink-600", bgColor: "bg-pink-100" },
+  { icon: Laugh, label: "Funny Books", query: "humor", color: "text-yellow-600", bgColor: "bg-yellow-100" },
+  { icon: Dog, label: "Dogs", query: "dogs", color: "text-amber-600", bgColor: "bg-amber-100" },
+  { icon: Cat, label: "Cats", query: "cats", color: "text-orange-600", bgColor: "bg-orange-100" },
+  { icon: Fish, label: "Ocean Life", query: "ocean", color: "text-cyan-600", bgColor: "bg-cyan-100" },
+  { icon: Bug, label: "Bugs & Insects", query: "insects", color: "text-lime-600", bgColor: "bg-lime-100" },
+  { icon: Bird, label: "Birds", query: "birds", color: "text-sky-600", bgColor: "bg-sky-100" },
+  { icon: TreePine, label: "Nature", query: "nature", color: "text-green-600", bgColor: "bg-green-100" },
+  { icon: Microscope, label: "Science", query: "science", color: "text-teal-600", bgColor: "bg-teal-100" },
+  { icon: Globe, label: "World & Culture", query: "geography", color: "text-indigo-600", bgColor: "bg-indigo-100" },
+  { icon: Clock, label: "History", query: "history", color: "text-stone-600", bgColor: "bg-stone-100" },
+  { icon: Music, label: "Music & Dance", query: "music", color: "text-fuchsia-600", bgColor: "bg-fuchsia-100" },
+  { icon: Palette, label: "Art & Crafts", query: "art", color: "text-rose-600", bgColor: "bg-rose-100" },
+  { icon: Gamepad2, label: "Games & Sports", query: "sports", color: "text-emerald-600", bgColor: "bg-emerald-100" },
+  { icon: Car, label: "Things That Go", query: "vehicles", color: "text-slate-600", bgColor: "bg-slate-100" },
+  { icon: Crown, label: "Princesses", query: "princesses", color: "text-violet-600", bgColor: "bg-violet-100" },
 ];
 
 export default function KidsHomePage() {
@@ -83,11 +108,7 @@ export default function KidsHomePage() {
   const [newBooks, setNewBooks] = useState<FeaturedBook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchContent();
-  }, []);
-
-  const fetchContent = async () => {
+  const fetchContent = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -111,32 +132,11 @@ export default function KidsHomePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const transformBooks = (records: any[]): FeaturedBook[] => {
-    return records.map((record: any) => ({
-      id: record.id || record.record_id,
-      title: record.title || record.simple_record?.title || "Unknown Title",
-      author: record.author || record.simple_record?.author || "",
-      coverUrl: getCoverUrl(record),
-      readingLevel: record.reading_level || getReadingLevel(record),
-    }));
-  };
-
-  const getCoverUrl = (record: any): string | undefined => {
-    const isbn = record.isbn || record.simple_record?.isbn;
-    if (isbn) {
-      return `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`;
-    }
-    return undefined;
-  };
-
-  const getReadingLevel = (record: any): string | undefined => {
-    // Check for AR/Lexile levels in record
-    if (record.lexile) return `Lexile ${record.lexile}`;
-    if (record.ar_level) return `AR ${record.ar_level}`;
-    return undefined;
-  };
+  useEffect(() => {
+    void fetchContent();
+  }, [fetchContent]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,7 +241,7 @@ export default function KidsHomePage() {
             {browseCategories.map((category) => (
               <Link
                 key={category.label}
-                href={`/opac/kids/search?${category.query}`}
+                href={`/opac/kids/search?type=subject&q=${encodeURIComponent(category.query)}`}
                 className="flex flex-col items-center gap-2 p-3 md:p-4 rounded-2xl bg-card 
                          shadow-sm hover:shadow-lg border-2 border-transparent
                          hover:border-purple-200 transition-all group"
@@ -423,7 +423,7 @@ function KidsBookCard({ book }: { book: FeaturedBook }) {
       <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
                     shadow-md group-hover:shadow-xl transition-all group-hover:-translate-y-1">
         {book.coverUrl && !imageError ? (
-          <img
+          <UnoptimizedImage
             src={book.coverUrl}
             alt={book.title}
             className="w-full h-full object-cover"

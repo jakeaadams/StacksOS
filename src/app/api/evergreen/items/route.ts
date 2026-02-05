@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import {
   callOpenSRF,
+  encodeFieldmapper,
   successResponse,
   errorResponse,
   notFoundResponse,
@@ -9,8 +10,12 @@ import {
   getErrorMessage,
   isOpenSRFEvent,
   fmBoolean,
+  parseJsonBodyWithSchema,
+  getRequestMeta,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { logAuditEvent } from "@/lib/audit";
+import { z } from "zod";
 
 function getId(value: any): number | undefined {
   if (typeof value === "number") return value;
@@ -214,7 +219,7 @@ export async function GET(req: NextRequest) {
                 name: [patron.family_name, patron.first_given_name].filter(Boolean).join(", "),
               });
             }
-          } catch (err) {
+          } catch {
             // Skip on error
           }
         }
@@ -297,9 +302,28 @@ export async function GET(req: NextRequest) {
 // POST - Create a new item (copy) with call number
 // ============================================================================
 export async function POST(req: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+  let actorIdForAudit: number | null = null;
   try {
-    const { authtoken } = await requirePermissions(["CREATE_COPY"]);
-    const body = await req.json();
+    const { authtoken, actor } = await requirePermissions(["CREATE_COPY", "CREATE_VOLUME"]);
+    const bodyParsed = await parseJsonBodyWithSchema(
+      req,
+      z.object({
+        bibId: z.coerce.number().int().positive(),
+        barcode: z.string().trim().min(1),
+        callNumber: z.string().trim().min(1),
+        circLib: z.coerce.number().int().positive(),
+        owningLib: z.coerce.number().int().positive().optional(),
+        locationId: z.coerce.number().int().positive().optional(),
+        status: z.coerce.number().int().optional().default(0),
+        price: z.union([z.number(), z.string()]).optional(),
+        holdable: z.boolean().optional().default(true),
+        circulate: z.boolean().optional().default(true),
+        opacVisible: z.boolean().optional().default(true),
+      }).passthrough()
+    );
+    if (bodyParsed instanceof Response) return bodyParsed as any;
+    const body = bodyParsed;
 
     const {
       bibId,
@@ -315,187 +339,167 @@ export async function POST(req: NextRequest) {
       opacVisible = true,
     } = body;
 
-    // Validate required fields
-    if (!bibId) return errorResponse("bibId is required", 400);
-    if (!barcode) return errorResponse("barcode is required", 400);
-    if (!callNumber) return errorResponse("callNumber is required", 400);
-    if (!circLib) return errorResponse("circLib is required", 400);
-
     const effectiveOwningLib = owningLib || circLib;
+    const actorIdRaw = actor?.id ?? actor?.usr ?? actor?.user_id;
+    const actorId = typeof actorIdRaw === "number" ? actorIdRaw : parseInt(String(actorIdRaw ?? ""), 10);
+    if (!Number.isFinite(actorId)) {
+      return errorResponse("Unable to resolve staff user id for item creation", 500);
+    }
+    actorIdForAudit = actorId;
 
-    // Check if barcode already exists
-    const existingCopy = await callOpenSRF(
-      "open-ils.search",
-      "open-ils.search.asset.copy.find_by_barcode",
-      [barcode]
-    );
+    // Verify bib exists (via OpenSRF, not direct DB; the StacksOS DB user is intentionally least-privileged).
+    const bibRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.bre", [authtoken, bibId]);
+    const bib = bibRes?.payload?.[0];
+    if (!bib || bib.ilsevent || (bib as any)?.deleted === "t" || (bib as any)?.deleted === true) {
+      await logAuditEvent({
+        action: "catalog.item.create",
+        status: "failure",
+        actor: { id: actorId },
+        ip,
+        userAgent,
+        requestId,
+        details: { barcode, bibId },
+        error: "bib_not_found",
+      });
+      return notFoundResponse("Bib record not found");
+    }
 
-    if (existingCopy?.payload?.[0] && !existingCopy.payload[0].ilsevent) {
+    // Check if barcode already exists (OpenSRF is authoritative).
+    const existingCopyRes = await callOpenSRF("open-ils.search", "open-ils.search.asset.copy.find_by_barcode", [
+      barcode,
+    ]);
+    const existingCopy = existingCopyRes?.payload?.[0];
+    if (existingCopy && !existingCopy.ilsevent) {
+      await logAuditEvent({
+        action: "catalog.item.create",
+        status: "failure",
+        actor: { id: actorId },
+        ip,
+        userAgent,
+        requestId,
+        details: { barcode, bibId, owningLib: effectiveOwningLib, circLib },
+        error: "barcode_exists",
+      });
       return errorResponse(`Barcode ${barcode} already exists`, 409);
     }
 
-    // Step 1: Find or create call number (volume)
-    // First, search for existing call number with same label on this record
-    const existingVolumes = await callOpenSRF(
-      "open-ils.search",
-      "open-ils.search.asset.call_number.retrieve_by_label",
-      [callNumber, bibId, effectiveOwningLib]
-    );
+    const normalizedPrice =
+      price === null || price === undefined || price === ""
+        ? null
+        : typeof price === "number"
+          ? Number.isFinite(price) ? price : null
+          : Number.isFinite(parseFloat(String(price)))
+            ? parseFloat(String(price))
+            : null;
 
-    let volumeId: number;
+    // Find or create a call number (volume)
+    const volSearchRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.acn.atomic", [
+      authtoken,
+      { record: bibId, owning_lib: effectiveOwningLib, label: callNumber, deleted: "f" },
+      { limit: 1 },
+    ]);
+    const volRows = Array.isArray(volSearchRes?.payload?.[0]) ? (volSearchRes.payload[0] as any[]) : [];
+    const existingVol = volRows[0];
 
-    if (existingVolumes?.payload?.[0] && !existingVolumes.payload[0].ilsevent) {
-      // Use existing volume
-      volumeId = existingVolumes.payload[0].id || existingVolumes.payload[0];
+    let resolvedVolumeId: number;
+    const existingVolumeId =
+      typeof existingVol?.id === "number" ? existingVol.id : parseInt(String(existingVol?.id ?? ""), 10);
+    if (Number.isFinite(existingVolumeId) && existingVolumeId > 0) {
+      resolvedVolumeId = existingVolumeId;
     } else {
-      // Create new call number (volume)
-      const volumeResult = await callOpenSRF(
-        "open-ils.cat",
-        "open-ils.cat.call_number.create",
-        [
-          authtoken,
-          {
-            "__c": "acn",
-            "__p": {
-              "record": bibId,
-              "owning_lib": effectiveOwningLib,
-              "label": callNumber,
-              "label_class": 1, // Generic
-            }
-          }
-        ]
-      );
+      const payload: any = encodeFieldmapper("acn", {
+        creator: actorId,
+        editor: actorId,
+        record: bibId,
+        owning_lib: effectiveOwningLib,
+        label: callNumber,
+        label_class: 1,
+        deleted: "f",
+        isnew: 1,
+        ischanged: 1,
+      });
 
-      if (!volumeResult?.payload?.[0] || volumeResult.payload[0].ilsevent) {
-        // Try alternative method
-        const altResult = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.create.acn",
-          [
-            authtoken,
-            {
-              "__c": "acn",
-              "__p": [
-                null, // id
-                null, // creator
-                null, // create_date
-                null, // editor
-                null, // edit_date
-                bibId, // record
-                effectiveOwningLib, // owning_lib
-                callNumber, // label
-                null, // deleted
-                null, // prefix
-                null, // suffix
-                1, // label_class
-              ]
-            }
-          ]
-        );
-
-        if (!altResult?.payload?.[0] || altResult.payload[0].ilsevent) {
-          const errMsg = getErrorMessage(altResult?.payload?.[0], "Failed to create call number") || "Failed to create call number";
-          return errorResponse(errMsg, 500);
-        }
-        volumeId = altResult.payload[0].id || altResult.payload[0];
-      } else {
-        volumeId = volumeResult.payload[0].id || volumeResult.payload[0];
+      const createVolRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acn", [authtoken, payload]);
+      const volResult = createVolRes?.payload?.[0];
+      const createdId =
+        typeof volResult === "number"
+          ? volResult
+          : typeof (volResult as any)?.id === "number"
+            ? (volResult as any).id
+            : parseInt(String((volResult as any)?.id ?? volResult ?? ""), 10);
+      if (!Number.isFinite(createdId) || createdId <= 0) {
+        const msg = getErrorMessage(volResult, "Failed to create call number");
+        return errorResponse(msg, 400, volResult);
       }
+      resolvedVolumeId = createdId;
     }
 
-    // Step 2: Create the copy (item)
-    const copyResult = await callOpenSRF(
-      "open-ils.cat",
-      "open-ils.cat.copy.create",
-      [
-        authtoken,
-        {
-          "__c": "acp",
-          "__p": {
-            "call_number": volumeId,
-            "circ_lib": circLib,
-            "barcode": barcode,
-            "status": status,
-            "location": locationId || 1,
-            "holdable": holdable ? "t" : "f",
-            "circulate": circulate ? "t" : "f",
-            "opac_visible": opacVisible ? "t" : "f",
-            "price": price || null,
-            "loan_duration": 2, // Normal
-            "fine_level": 2, // Normal
-          }
-        }
-      ]
-    );
+    const boolToEg = (v: boolean) => (v ? "t" : "f");
+    const copyPayload: any = encodeFieldmapper("acp", {
+      barcode,
+      call_number: resolvedVolumeId,
+      circ_lib: circLib,
+      creator: actorId,
+      editor: actorId,
+      status,
+      location: locationId || 1,
+      holdable: boolToEg(Boolean(holdable)),
+      circulate: boolToEg(Boolean(circulate)),
+      opac_visible: boolToEg(Boolean(opacVisible)),
+      price: normalizedPrice,
+      loan_duration: 2,
+      fine_level: 2,
+      deleted: "f",
+      isnew: 1,
+      ischanged: 1,
+    });
 
-    let copyId: number;
+    const createCopyRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acp", [authtoken, copyPayload]);
+    const copyResult = createCopyRes?.payload?.[0];
+    const copyId =
+      typeof copyResult === "number"
+        ? copyResult
+        : typeof (copyResult as any)?.id === "number"
+          ? (copyResult as any).id
+          : parseInt(String((copyResult as any)?.id ?? copyResult ?? ""), 10);
 
-    if (!copyResult?.payload?.[0] || copyResult.payload[0].ilsevent) {
-      // Try pcrud method
-      const pcrudResult = await callOpenSRF(
-        "open-ils.pcrud",
-        "open-ils.pcrud.create.acp",
-        [
-          authtoken,
-          {
-            "__c": "acp",
-            "__p": [
-              null, // id
-              volumeId, // call_number
-              barcode, // barcode
-              null, // creator
-              null, // create_date
-              null, // editor
-              null, // edit_date
-              null, // copy_number
-              status, // status
-              locationId || 1, // location
-              null, // loan_duration
-              null, // fine_level
-              null, // age_protect
-              circLib, // circ_lib
-              null, // circ_modifier
-              circulate ? "t" : "f", // circulate
-              null, // deposit
-              null, // deposit_amount
-              null, // ref
-              holdable ? "t" : "f", // holdable
-              null, // price
-              null, // barcode_checksum
-              null, // floating
-              null, // dummy_title
-              null, // dummy_author
-              null, // alert_message
-              opacVisible ? "t" : "f", // opac_visible
-              null, // deleted
-              null, // circ_as_type
-              null, // dummy_isbn
-              null, // preset_search
-              null, // mint_condition
-              null, // cost
-            ]
-          }
-        ]
-      );
-
-      if (!pcrudResult?.payload?.[0] || pcrudResult.payload[0].ilsevent) {
-        const errMsg = getErrorMessage(pcrudResult?.payload?.[0], "Failed to create item") || "Failed to create item";
-        return errorResponse(errMsg, 500);
-      }
-      copyId = pcrudResult.payload[0].id || pcrudResult.payload[0];
-    } else {
-      copyId = copyResult.payload[0].id || copyResult.payload[0];
+    if (!Number.isFinite(copyId) || copyId <= 0 || isOpenSRFEvent(copyResult) || (copyResult as any)?.ilsevent) {
+      const msg = getErrorMessage(copyResult, "Failed to create item");
+      return errorResponse(msg, 400, copyResult);
     }
+
+    await logAuditEvent({
+      action: "catalog.item.create",
+      status: "success",
+      actor: { id: actorId },
+      ip,
+      userAgent,
+      requestId,
+      details: { barcode, bibId, circLib, owningLib: effectiveOwningLib, copyId, volumeId: resolvedVolumeId },
+    });
 
     return successResponse({
       ok: true,
       copyId,
-      volumeId,
+      volumeId: resolvedVolumeId,
       barcode,
       message: "Item created successfully",
     });
 
   } catch (error) {
+    try {
+      await logAuditEvent({
+        action: "catalog.item.create",
+        status: "failure",
+        actor: actorIdForAudit ? { id: actorIdForAudit } : { username: "unknown" },
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(error as any, "internal_error"),
+      });
+    } catch {
+      // ignore audit failures
+    }
     return serverErrorResponse(error, "Create Item", req);
   }
 }

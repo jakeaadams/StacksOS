@@ -67,15 +67,15 @@ const LOGIN_ORG_OVERRIDE_KEY = "stacksos_login_org_override";
 function getEnvToneClasses(tone?: string | null) {
   const t = String(tone || "").toLowerCase();
   if (t === "training" || t === "test") {
-    return "bg-[#ff6f61] text-white"; // coral-ish
+    return "bg-rose-700 text-white";
   }
   if (t === "sandbox" || t === "staging") {
-    return "bg-amber-600 text-white";
+    return "bg-amber-800 text-white";
   }
   if (t === "dev" || t === "development") {
-    return "bg-slate-700 text-white";
+    return "bg-slate-800 text-white";
   }
-  return "bg-blue-700 text-white"; // prod/default
+  return "bg-blue-800 text-white"; // prod/default
 }
 
 export function TopNav({
@@ -90,7 +90,7 @@ export function TopNav({
   onLogout,
   orgs = [],
   evergreenOk = true,
-  evergreenStatus,
+  evergreenStatus: _evergreenStatus,
 }: TopNavProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -179,7 +179,7 @@ export function TopNav({
       formData.append("file", uploadPhotoFile);
       formData.append("patronId", String(userId));
 
-      const res = await fetchWithAuth("/api/upload-patron-photo", {
+      const res = await fetchWithAuth("/api/patron-photos", {
         method: "POST",
         body: formData,
       });
@@ -351,7 +351,13 @@ export function TopNav({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => setShortcutsOpen(true)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full"
+                  onClick={() => setShortcutsOpen(true)}
+                  aria-label="Keyboard shortcuts"
+                >
                   <Keyboard className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -394,6 +400,9 @@ export function TopNav({
                   size="icon"
                   className="h-9 w-9 rounded-full"
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  aria-label={
+                    mounted && theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
+                  }
                 >
                   {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </Button>

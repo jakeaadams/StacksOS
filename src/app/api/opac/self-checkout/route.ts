@@ -47,7 +47,6 @@ export async function POST(req: NextRequest) {
     // Check for errors
     if (result.ilsevent) {
       // Handle specific error codes
-      const eventCode = result.ilsevent;
       const textCode = result.textcode;
 
       if (textCode === "COPY_NOT_AVAILABLE") {
@@ -101,7 +100,7 @@ export async function POST(req: NextRequest) {
             author = bib.author || "";
           }
         }
-      } catch (error) {
+      } catch {
         // Use default title if lookup fails
       }
     }
@@ -133,7 +132,7 @@ export async function DELETE(req: NextRequest) {
           "open-ils.auth.session.delete",
           [authtoken]
         );
-      } catch (error) {
+      } catch {
         // Ignore _errors during logout
       }
     }

@@ -8,9 +8,7 @@ import {
   isSuccessResult,
   getErrorMessage,
   isOpenSRFEvent,
-  getCopyByBarcode,
   getPatronById,
-  encodeFieldmapper,
   getRequestMeta,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";

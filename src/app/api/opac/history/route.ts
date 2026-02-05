@@ -6,18 +6,12 @@ import {
   serverErrorResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { cookies } from "next/headers";
+import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 
 // GET /api/opac/history - Get patron reading history
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-    const patronId = cookieStore.get("patron_id")?.value;
-
-    if (!patronToken || !patronId) {
-      return errorResponse("Not authenticated", 401);
-    }
+    const { patronToken, patronId } = await requirePatronSession();
 
     const searchParams = req.nextUrl.searchParams;
     const page = parseInt(searchParams.get("page") || "1");
@@ -31,7 +25,7 @@ export async function GET(req: NextRequest) {
     const settingsResponse = await callOpenSRF(
       "open-ils.actor",
       "open-ils.actor.patron.settings.retrieve",
-      [patronToken, parseInt(patronId), ["history.circ.retention_start"]]
+      [patronToken, patronId, ["history.circ.retention_start"]]
     );
 
     const settings = settingsResponse.payload?.[0] || {};
@@ -51,7 +45,7 @@ export async function GET(req: NextRequest) {
     const historyResponse = await callOpenSRF(
       "open-ils.actor",
       "open-ils.actor.history.circ.visible",
-      [patronToken, parseInt(patronId)]
+      [patronToken, patronId]
     );
 
     const rawHistory = historyResponse.payload?.[0] || [];
@@ -194,7 +188,10 @@ export async function GET(req: NextRequest) {
       historyEnabled: true,
     });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return errorResponse(error.message, error.status);
+    }
     logger.error({ error: String(error) }, "Error fetching history");
-    return serverErrorResponse(error, "Failed to fetch reading history");
+    return serverErrorResponse(error, "Failed to fetch reading history", req);
   }
 }

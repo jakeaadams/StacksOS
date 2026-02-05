@@ -136,13 +136,13 @@ test.describe("Patron UX", () => {
       });
     });
 
-    await page.route("**/api/upload-patron-photo**", async (route) => {
+    await page.route("**/api/patron-photos**", async (route) => {
       const req = route.request();
       if (req.method() === "GET") {
         return route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify({ success: true, url: photoDataUrl }),
+          body: JSON.stringify({ ok: true, success: true, url: photoDataUrl }),
         });
       }
 

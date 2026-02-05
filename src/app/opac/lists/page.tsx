@@ -1,523 +1,320 @@
 "use client";
-import { clientLogger } from "@/lib/client-logger";
 
-import { fetchWithAuth } from "@/lib/client-fetch";
-
-import { useState, useEffect } from "react";
+import * as React from "react";
 import Link from "next/link";
+import { fetchWithAuth } from "@/lib/client-fetch";
+import { clientLogger } from "@/lib/client-logger";
+import { featureFlags } from "@/lib/feature-flags";
 import { usePatronSession } from "@/hooks/usePatronSession";
 import { BookCard } from "@/components/opac/BookCard";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
-  Heart,
-  BookOpen,
-  Clock,
-  CheckCircle,
-  Plus,
-  Trash2,
-  Edit3,
-  Share2,
-  Lock,
-  Globe,
-  Users,
-  MoreVertical,
-  Star,
-  List,
-  Grid,
+  ArrowRight,
   ChevronRight,
-  Search,
-  X,
+  Heart,
+  Library,
   Loader2,
+  Sparkles,
+  TrendingUp,
 } from "lucide-react";
 
-interface ListItem {
+type StaffPick = {
   id: number;
-  bibId: number;
+  recordId: number;
   title: string;
   author: string;
   coverUrl?: string;
-  dateAdded: string;
-  notes?: string;
-}
+  staffName?: string;
+  staffBranch?: string;
+  review?: string;
+};
 
-interface UserList {
+type PublicList = {
   id: number;
   name: string;
   description?: string;
-  visibility: "private" | "shared" | "public";
-  itemCount: number;
-  items: ListItem[];
-  createdAt: string;
-  updatedAt: string;
-  isDefault: boolean;
-  icon: "heart" | "book" | "clock" | "check" | "star" | "list";
+  ownerName?: string | null;
+  itemCount?: number | null;
+  editTime?: string | null;
+};
+
+async function safeGetJson(url: string) {
+  try {
+    const res = await fetchWithAuth(url);
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok && json?.ok !== false, json };
+  } catch (error) {
+    return { ok: false, json: { error: String(error) } };
+  }
 }
 
-const defaultLists: UserList[] = [
-  {
-    id: 1,
-    name: "Want to Read",
-    description: "Books I want to check out",
-    visibility: "private",
-    itemCount: 0,
-    items: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    isDefault: true,
-    icon: "heart",
-  },
-  {
-    id: 2,
-    name: "Currently Reading",
-    description: "Books I am reading now",
-    visibility: "private",
-    itemCount: 0,
-    items: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    isDefault: true,
-    icon: "book",
-  },
-  {
-    id: 3,
-    name: "Completed",
-    description: "Books I have finished",
-    visibility: "private",
-    itemCount: 0,
-    items: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    isDefault: true,
-    icon: "check",
-  },
-];
+function CuratedLinkCard({
+  href,
+  title,
+  description,
+  icon: Icon,
+  accent,
+}: {
+  href: string;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  accent: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-2xl border border-border/70 bg-card p-5 shadow-sm hover:shadow-md hover:border-primary/40 transition-all"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl", accent)}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+      </div>
+      <div className="mt-4">
+        <div className="font-semibold text-foreground">{title}</div>
+        <div className="mt-1 text-sm text-muted-foreground">{description}</div>
+      </div>
+    </Link>
+  );
+}
 
-const iconMap: Record<string, React.ElementType> = {
-  heart: Heart,
-  book: BookOpen,
-  clock: Clock,
-  check: CheckCircle,
-  star: Star,
-  list: List,
-};
+export default function OpacListsPage() {
+  const { isLoggedIn } = usePatronSession();
+  const browseEnabled = featureFlags.opacBrowseV2;
 
-const visibilityIcons: Record<string, React.ElementType> = {
-  private: Lock,
-  shared: Users,
-  public: Globe,
-};
+  const [picks, setPicks] = React.useState<StaffPick[]>([]);
+  const [publicLists, setPublicLists] = React.useState<PublicList[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-export default function ListsPage() {
-  const { isLoggedIn, patron } = usePatronSession();
-  const [lists, setLists] = useState<UserList[]>(defaultLists);
-  const [selectedList, setSelectedList] = useState<UserList | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  React.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
 
-  // New list form state
-  const [newListName, setNewListName] = useState("");
-  const [newListDescription, setNewListDescription] = useState("");
-  const [newListVisibility, setNewListVisibility] = useState<"private" | "shared" | "public">("private");
-  const [isCreating, setIsCreating] = useState(false);
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      fetchLists();
-    } else {
-      setIsLoading(false);
-    }
-  }, [isLoggedIn]);
-
-  const fetchLists = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetchWithAuth("/api/opac/lists");
-      if (response.ok) {
-        const data = await response.json();
-        setLists(data.lists || defaultLists);
+    void (async () => {
+      if (!browseEnabled) {
+        setPicks([]);
+        setPublicLists([]);
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      clientLogger.error("Error fetching lists:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      const [picksRes, listsRes] = await Promise.all([
+        safeGetJson("/api/opac/staff-picks?limit=12"),
+        safeGetJson("/api/opac/public-lists?limit=24"),
+      ]);
 
-  const handleCreateList = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newListName.trim()) return;
+      if (cancelled) return;
 
-    setIsCreating(true);
-    try {
-      const response = await fetchWithAuth("/api/opac/lists", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newListName,
-          description: newListDescription,
-          visibility: newListVisibility,
-        }),
+      if (!picksRes.ok && !listsRes.ok) {
+        setError("Could not load curated lists. Please try again.");
+        setPicks([]);
+        setPublicLists([]);
+        setLoading(false);
+        return;
+      }
+
+      const nextPicks = Array.isArray(picksRes.json?.picks) ? (picksRes.json.picks as StaffPick[]) : [];
+      const nextListsRaw = Array.isArray(listsRes.json?.lists) ? (listsRes.json.lists as PublicList[]) : [];
+
+      // Avoid duplicating staff-pick lists in the "Public lists" section.
+      const nextLists = nextListsRaw.filter((l) => {
+        const name = String(l?.name || "").toLowerCase();
+        return !(name.includes("staff pick") || name.includes("staff recommendation"));
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setLists((prev) => [...prev, data.list]);
-        setShowCreateModal(false);
-        setNewListName("");
-        setNewListDescription("");
-        setNewListVisibility("private");
-      }
-    } catch (err) {
-      clientLogger.error("Error creating list:", err);
-    } finally {
-      setIsCreating(false);
-    }
-  };
+      setPicks(nextPicks);
+      setPublicLists(nextLists);
+      setLoading(false);
+    })().catch((e) => {
+      if (cancelled) return;
+      clientLogger.error("Failed to load OPAC lists:", e);
+      setError("Could not load curated lists.");
+      setLoading(false);
+    });
 
-  const handleDeleteList = async (listId: number) => {
-    if (!confirm("Are you sure you want to delete this list?")) return;
+    return () => {
+      cancelled = true;
+    };
+  }, [browseEnabled]);
 
-    try {
-      await fetchWithAuth(`/api/opac/lists/${listId}`, { method: "DELETE" });
-      setLists((prev) => prev.filter((l) => l.id !== listId));
-      if (selectedList?.id === listId) {
-        setSelectedList(null);
-      }
-    } catch (err) {
-      clientLogger.error("Error deleting list:", err);
-    }
-  };
-
-  if (!isLoggedIn) {
+  if (!browseEnabled) {
     return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+      <div className="min-h-[70vh] flex items-center justify-center px-6 py-16 bg-muted/30">
         <div className="max-w-md w-full bg-card rounded-2xl shadow-sm border border-border p-8 text-center">
           <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Heart className="h-8 w-8 text-primary-600" />
+            <Library className="h-8 w-8 text-primary-600" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-4">
-            My Lists
-          </h1>
+          <h1 className="text-2xl font-bold text-foreground mb-4">Curated lists are disabled</h1>
           <p className="text-muted-foreground mb-6">
-            Create reading lists, save books you want to read, and track what you have finished.
-            Log in to access your lists.
+            Browse experiences are behind an experimental feature flag.
           </p>
-          <Link
-            href="/opac/login"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white 
-                     rounded-lg font-medium hover:bg-primary-700 transition-colors"
-          >
-            Log In
-            <ChevronRight className="h-4 w-4" />
-          </Link>
+          <Button asChild className="rounded-xl">
+            <Link href="/opac/search">Search the catalog</Link>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+    <div className="py-10">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-start justify-between gap-6 flex-wrap">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">My Lists</h1>
-            <p className="text-muted-foreground mt-1">
-              Organize your reading with custom lists
+            <h1 className="text-3xl font-bold text-foreground">Curated lists</h1>
+            <p className="mt-2 text-muted-foreground max-w-2xl">
+              Browse staff picks and shareable lists curated by your library community.
             </p>
           </div>
-          <button type="button"
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg
-                     font-medium hover:bg-primary-700 transition-colors"
-          >
-            <Plus className="h-5 w-5" />
-            Create New List
-          </button>
+
+          {featureFlags.opacLists ? (
+            <Button asChild className="rounded-xl">
+              <Link href="/opac/account/lists">
+                <Heart className="h-4 w-4 mr-2" />
+                My lists
+              </Link>
+            </Button>
+          ) : (
+            <div className="text-sm text-muted-foreground">
+              Personal lists are currently disabled.
+            </div>
+          )}
         </div>
 
-        <div className="grid lg:grid-cols-4 gap-8">
-          {/* Lists sidebar */}
-          <div className="lg:col-span-1">
-            <nav className="bg-card rounded-xl border border-border overflow-hidden">
-              <div className="p-4 border-b border-border">
-                <h2 className="font-semibold text-foreground">Your Lists</h2>
-              </div>
-              <div className="divide-y divide-border/50">
-                {lists.map((list) => {
-                  const Icon = iconMap[list.icon] || List;
-                  const VisIcon = visibilityIcons[list.visibility];
-                  const isSelected = selectedList?.id === list.id;
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <CuratedLinkCard
+            href="/opac/new-titles"
+            title="New titles"
+            description="Fresh arrivals and recent additions."
+            icon={Sparkles}
+            accent="bg-violet-500/10 text-violet-600"
+          />
+          <CuratedLinkCard
+            href="/opac/search?sort=popularity"
+            title="Popular right now"
+            description="Most requested and trending items."
+            icon={TrendingUp}
+            accent="bg-emerald-500/10 text-emerald-600"
+          />
+          <CuratedLinkCard
+            href="/opac/browse"
+            title="Browse categories"
+            description="Explore by subject, format, and more."
+            icon={Library}
+            accent="bg-sky-500/10 text-sky-600"
+          />
+        </div>
 
-                  return (
-                    <button type="button"
-                      key={list.id}
-                      onClick={() => setSelectedList(list)}
-                      className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors
-                        ${isSelected ? "bg-primary-50" : "hover:bg-muted/30"}`}
-                    >
-                      <div className={`p-2 rounded-lg ${isSelected ? "bg-primary-100" : "bg-muted/50"}`}>
-                        <Icon className={`h-4 w-4 ${isSelected ? "text-primary-600" : "text-muted-foreground"}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-medium truncate ${isSelected ? "text-primary-700" : "text-foreground"}`}>
-                          {list.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <VisIcon className="h-3 w-3" />
-                          {list.itemCount} items
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </nav>
+        {loading ? (
+          <div className="mt-10 flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading…
+          </div>
+        ) : error ? (
+          <div className="mt-10 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-900">
+            {error}
+          </div>
+        ) : null}
 
-            {/* Staff Picks & Community Lists */}
-            <div className="mt-6 bg-card rounded-xl border border-border overflow-hidden">
-              <div className="p-4 border-b border-border">
-                <h2 className="font-semibold text-foreground">Discover</h2>
-              </div>
-              <div className="p-2">
-                <Link
-                  href="/opac/lists/staff-picks"
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/30 transition-colors"
-                >
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Star className="h-4 w-4 text-purple-600" />
-                  </div>
-                  <span className="font-medium text-foreground">Staff Picks</span>
-                </Link>
-                <Link
-                  href="/opac/lists/community"
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/30 transition-colors"
-                >
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Users className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <span className="font-medium text-foreground">Community Lists</span>
-                </Link>
-              </div>
+        <section className="mt-10">
+          <div className="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Staff picks</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Hand-picked recommendations from your library staff.
+              </p>
             </div>
+            <Link href="/opac/search?sort=smart" className="text-sm text-primary hover:underline underline-offset-2">
+              Explore more
+              <ArrowRight className="inline h-4 w-4 ml-1" />
+            </Link>
           </div>
 
-          {/* List content */}
-          <div className="lg:col-span-3">
-            {selectedList ? (
-              <div className="bg-card rounded-xl border border-border">
-                {/* List header */}
-                <div className="p-6 border-b border-border">
+          {picks.length === 0 ? (
+            <div className="mt-4 rounded-2xl border border-border/70 bg-card p-6 text-sm text-muted-foreground">
+              No staff picks are configured yet. Create a public Evergreen bookbag with “staff pick” in the name to
+              enable this section.
+            </div>
+          ) : (
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {picks.map((p) => (
+                <div key={p.id} className="space-y-2">
+                  <BookCard
+                    id={p.recordId}
+                    title={p.title}
+                    author={p.author}
+                    coverUrl={p.coverUrl}
+                    variant="grid"
+                    showAvailability={false}
+                    showFormats={false}
+                    showRating={false}
+                  />
+                  {(p.staffBranch || p.staffName) && (
+                    <div className="flex flex-wrap gap-1">
+                      {p.staffBranch ? <Badge variant="secondary">{p.staffBranch}</Badge> : null}
+                      {p.staffName ? <Badge variant="outline">{p.staffName}</Badge> : null}
+                    </div>
+                  )}
+                  {p.review ? (
+                    <p className="text-xs text-muted-foreground line-clamp-2">{p.review}</p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-12">
+          <div className="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Public lists</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Shareable lists published from Evergreen.
+              </p>
+            </div>
+            {!isLoggedIn ? (
+              <Link href="/opac/login?redirect=/opac/lists" className="text-sm text-primary hover:underline underline-offset-2">
+                Log in for personal lists
+              </Link>
+            ) : null}
+          </div>
+
+          {publicLists.length === 0 ? (
+            <div className="mt-4 rounded-2xl border border-border/70 bg-card p-6 text-sm text-muted-foreground">
+              No public lists found.
+            </div>
+          ) : (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {publicLists.map((l) => (
+                <Link
+                  key={l.id}
+                  href={`/opac/lists/${l.id}`}
+                  className="group rounded-2xl border border-border/70 bg-card p-5 shadow-sm hover:shadow-md hover:border-primary/40 transition-all"
+                >
                   <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h2 className="text-2xl font-bold text-foreground">{selectedList.name}</h2>
-                      {selectedList.description && (
-                        <p className="text-muted-foreground mt-1">{selectedList.description}</p>
-                      )}
-                      <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          {(() => {
-                            const VisIcon = visibilityIcons[selectedList.visibility];
-                            return <VisIcon className="h-4 w-4" />;
-                          })()}
-                          {selectedList.visibility === "private" ? "Private" : 
-                           selectedList.visibility === "shared" ? "Shared with link" : "Public"}
-                        </span>
-                        <span>{selectedList.itemCount} items</span>
-                      </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-foreground truncate">{l.name}</div>
+                      {l.description ? (
+                        <div className="mt-1 text-sm text-muted-foreground line-clamp-2">{l.description}</div>
+                      ) : null}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button type="button"
-                        onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
-                        className="p-2 text-muted-foreground/70 hover:text-muted-foreground rounded-lg hover:bg-muted/50"
-                        title={viewMode === "grid" ? "Switch to list view" : "Switch to grid view"}
-                      >
-                        {viewMode === "grid" ? <List className="h-5 w-5" /> : <Grid className="h-5 w-5" />}
-                      </button>
-                      {!selectedList.isDefault && (
-                        <>
-                          <button type="button" className="p-2 text-muted-foreground/70 hover:text-muted-foreground rounded-lg hover:bg-muted/50">
-                            <Share2 className="h-5 w-5" />
-                          </button>
-                          <button className="p-2 text-muted-foreground/70 hover:text-muted-foreground rounded-lg hover:bg-muted/50">
-                            <Edit3 className="h-5 w-5" />
-                          </button>
-                          <button type="button"
-                            onClick={() => handleDeleteList(selectedList.id)}
-                            className="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
                   </div>
-                </div>
-
-                {/* List items */}
-                <div className="p-6">
-                  {selectedList.items.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <BookOpen className="h-8 w-8 text-muted-foreground/70" />
-                      </div>
-                      <h3 className="text-lg font-medium text-foreground mb-2">
-                        This list is empty
-                      </h3>
-                      <p className="text-muted-foreground mb-6">
-                        Browse the catalog and click the heart icon to add items to this list.
-                      </p>
-                      <Link
-                        href="/opac/search"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white 
-                                 rounded-lg font-medium hover:bg-primary-700 transition-colors"
-                      >
-                        <Search className="h-4 w-4" />
-                        Browse Catalog
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className={viewMode === "grid" 
-                      ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4" 
-                      : "space-y-4"
-                    }>
-                      {selectedList.items.map((item) => (
-                        <BookCard
-                          key={item.id}
-                          id={item.bibId}
-                          title={item.title}
-                          author={item.author}
-                          coverUrl={item.coverUrl}
-                          variant={viewMode === "grid" ? "grid" : "list"}
-                          showFormats={false}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-card rounded-xl border border-border p-12 text-center">
-                <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <List className="h-8 w-8 text-primary-600" />
-                </div>
-                <h3 className="text-lg font-medium text-foreground mb-2">
-                  Select a list to view
-                </h3>
-                <p className="text-muted-foreground">
-                  Choose a list from the sidebar or create a new one.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Create List Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-card rounded-2xl shadow-xl max-w-md w-full">
-            <div className="p-6 border-b border-border flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-foreground">Create New List</h2>
-              <button type="button"
-                onClick={() => setShowCreateModal(false)}
-                className="p-2 text-muted-foreground/70 hover:text-muted-foreground rounded-lg hover:bg-muted/50"
-              >
-                <X className="h-5 w-5" />
-              </button>
+                  <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                    {typeof l.itemCount === "number" ? <span>{l.itemCount} items</span> : null}
+                    {l.ownerName ? <span className="truncate">• {l.ownerName}</span> : null}
+                  </div>
+                </Link>
+              ))}
             </div>
-            <form onSubmit={handleCreateList} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
-                  List Name *
-                </label>
-                <input
-                  type="text"
-                  value={newListName}
-                  onChange={(e) => setNewListName(e.target.value)}
-                  placeholder="e.g., Summer Reading, Book Club Picks"
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={newListDescription}
-                  onChange={(e) => setNewListDescription(e.target.value)}
-                  placeholder="What is this list about?"
-                  rows={3}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
-                  Visibility
-                </label>
-                <div className="space-y-2">
-                  {[
-                    { value: "private", label: "Private", desc: "Only you can see this list", icon: Lock },
-                    { value: "shared", label: "Shared", desc: "Anyone with the link can view", icon: Users },
-                    { value: "public", label: "Public", desc: "Visible in community lists", icon: Globe },
-                  ].map((option) => (
-                    <label
-                      key={option.value}
-                      className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors
-                        ${newListVisibility === option.value 
-                          ? "border-primary-500 bg-primary-50" 
-                          : "border-border hover:border-border"}`}
-                    >
-                      <input
-                        type="radio"
-                        name="visibility"
-                        value={option.value}
-                        checked={newListVisibility === option.value}
-                        onChange={(e) => setNewListVisibility(e.target.value as any)}
-                        className="sr-only"
-                      />
-                      <option.icon className={`h-5 w-5 ${newListVisibility === option.value ? "text-primary-600" : "text-muted-foreground/70"}`} />
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">{option.label}</p>
-                        <p className="text-xs text-muted-foreground">{option.desc}</p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 border border-border text-foreground/80 rounded-lg font-medium
-                           hover:bg-muted/30 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button type="submit"
-                  disabled={isCreating || !newListName.trim()}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium
-                           hover:bg-primary-700 transition-colors disabled:opacity-50 
-                           disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isCreating ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4" />
-                      Create List
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          )}
+        </section>
+      </div>
     </div>
   );
 }

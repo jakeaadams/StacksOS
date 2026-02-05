@@ -8,12 +8,12 @@ Playwright E2E tests have been successfully configured for StacksOS.
 
 ### Run Stable Tests (Recommended for Quick Verification)
 ```bash
-npx playwright test smoke.spec.ts -g 'homepage|OPAC|staff login page|empty login'
+npx playwright test e2e/smoke.spec.ts -g 'homepage|OPAC|staff login page|empty login'
 ```
 
 ### Run All Smoke Tests
 ```bash
-npx playwright test smoke.spec.ts
+npx playwright test e2e/smoke.spec.ts
 ```
 
 ### Run All Tests
@@ -52,8 +52,20 @@ npx playwright test -g "checkout"
 
 ## Test Credentials
 
-- Username: `jake`
-- Password: `jake`
+E2E tests use Evergreen staff credentials. Provide them via env vars:
+
+```bash
+export E2E_STAFF_USER="your_evergreen_username"
+export E2E_STAFF_PASS="your_evergreen_password"
+```
+
+Optional (mutating OPAC hold workflow):
+
+```bash
+export E2E_MUTATE=1
+export E2E_PATRON_BARCODE="29000000001234"
+export E2E_PATRON_PIN="DEMO1234"
+```
 
 ## Verified Working Tests
 

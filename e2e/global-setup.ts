@@ -2,6 +2,8 @@ import { chromium, type FullConfig } from "@playwright/test";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { getStaffCredentials } from "./helpers";
+
 export default async function globalSetup(config: FullConfig) {
   const authFile = path.resolve("e2e/.auth/staff.json");
   await fs.mkdir(path.dirname(authFile), { recursive: true });
@@ -11,8 +13,7 @@ export default async function globalSetup(config: FullConfig) {
     (config.projects[0]?.use as { baseURL?: string } | undefined)?.baseURL ||
     "http://localhost:3001";
 
-  const username = process.env.E2E_STAFF_USER || "jake";
-  const password = process.env.E2E_STAFF_PASS || "jake";
+  const { username, password } = getStaffCredentials();
 
   const browser = await chromium.launch();
   const context = await browser.newContext({

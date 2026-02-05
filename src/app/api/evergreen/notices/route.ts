@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import {
 
   callOpenSRF,
@@ -10,19 +10,66 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
-import { logger } from "@/lib/logger";
-import { sendNotice, sendBatchNotices } from "@/lib/email";
+import { sendNotice } from "@/lib/email";
 import type { NoticeType, NoticeContext } from "@/lib/email";
+import { getActiveTemplate, createNotificationEvent, createDelivery, markDeliveryAttempt } from "@/lib/db/notifications";
+import { renderTemplateString } from "@/lib/notifications/render";
+import { sendSms } from "@/lib/sms/provider";
 
 
 interface PatronNoticePreferences {
   patronId: number;
   emailEnabled: boolean;
+  smsEnabled: boolean;
+  // Email toggles (back-compat keys keep the original names)
   holdReady: boolean;
   overdue: boolean;
   preOverdue: boolean;
   cardExpiration: boolean;
   fineBill: boolean;
+
+  // SMS toggles
+  smsHoldReady: boolean;
+  smsOverdue: boolean;
+  smsPreOverdue: boolean;
+  smsCardExpiration: boolean;
+  smsFineBill: boolean;
+}
+
+function isNoticeTypeEnabled(prefs: PatronNoticePreferences, noticeType: NoticeType, channel: "email" | "sms") {
+  if (channel === "email") {
+    if (!prefs.emailEnabled) return false;
+    switch (noticeType) {
+      case "hold_ready":
+        return prefs.holdReady;
+      case "overdue":
+        return prefs.overdue;
+      case "pre_overdue":
+        return prefs.preOverdue;
+      case "card_expiration":
+        return prefs.cardExpiration;
+      case "fine_bill":
+        return prefs.fineBill;
+      default:
+        return false;
+    }
+  }
+
+  if (!prefs.smsEnabled) return false;
+  switch (noticeType) {
+    case "hold_ready":
+      return prefs.smsHoldReady;
+    case "overdue":
+      return prefs.smsOverdue;
+    case "pre_overdue":
+      return prefs.smsPreOverdue;
+    case "card_expiration":
+      return prefs.smsCardExpiration;
+    case "fine_bill":
+      return prefs.smsFineBill;
+    default:
+      return false;
+  }
 }
 
 async function getPatronPreferences(
@@ -38,6 +85,12 @@ async function getPatronPreferences(
     "stacksos.email.notices.pre_overdue",
     "stacksos.email.notices.card_expiration",
     "stacksos.email.notices.fine_bill",
+    "stacksos.sms.notices.enabled",
+    "stacksos.sms.notices.hold_ready",
+    "stacksos.sms.notices.overdue",
+    "stacksos.sms.notices.pre_overdue",
+    "stacksos.sms.notices.card_expiration",
+    "stacksos.sms.notices.fine_bill",
   ];
 
   const response = await callOpenSRF("open-ils.actor", "open-ils.actor.patron.settings.retrieve", [
@@ -51,11 +104,17 @@ async function getPatronPreferences(
   return {
     patronId,
     emailEnabled: settings["stacksos.email.notices.enabled"]?.value !== false,
+    smsEnabled: settings["stacksos.sms.notices.enabled"]?.value !== false,
     holdReady: settings["stacksos.email.notices.hold_ready"]?.value !== false,
     overdue: settings["stacksos.email.notices.overdue"]?.value !== false,
     preOverdue: settings["stacksos.email.notices.pre_overdue"]?.value !== false,
     cardExpiration: settings["stacksos.email.notices.card_expiration"]?.value !== false,
     fineBill: settings["stacksos.email.notices.fine_bill"]?.value !== false,
+    smsHoldReady: settings["stacksos.sms.notices.hold_ready"]?.value !== false,
+    smsOverdue: settings["stacksos.sms.notices.overdue"]?.value !== false,
+    smsPreOverdue: settings["stacksos.sms.notices.pre_overdue"]?.value !== false,
+    smsCardExpiration: settings["stacksos.sms.notices.card_expiration"]?.value !== false,
+    smsFineBill: settings["stacksos.sms.notices.fine_bill"]?.value !== false,
   };
 }
 
@@ -66,11 +125,17 @@ async function setPatronPreferences(
 ): Promise<void> {
   const settingMap: Record<string, string> = {
     emailEnabled: "stacksos.email.notices.enabled",
+    smsEnabled: "stacksos.sms.notices.enabled",
     holdReady: "stacksos.email.notices.hold_ready",
     overdue: "stacksos.email.notices.overdue",
     preOverdue: "stacksos.email.notices.pre_overdue",
     cardExpiration: "stacksos.email.notices.card_expiration",
     fineBill: "stacksos.email.notices.fine_bill",
+    smsHoldReady: "stacksos.sms.notices.hold_ready",
+    smsOverdue: "stacksos.sms.notices.overdue",
+    smsPreOverdue: "stacksos.sms.notices.pre_overdue",
+    smsCardExpiration: "stacksos.sms.notices.card_expiration",
+    smsFineBill: "stacksos.sms.notices.fine_bill",
   };
 
   for (const [key, value] of Object.entries(preferences)) {
@@ -113,7 +178,7 @@ async function getLibraryInfo(authtoken: string, orgId: number) {
 // GET - Retrieve patron notification preferences
 export async function GET(req: NextRequest) {
   try {
-    const { authtoken, actor } = await requirePermissions(["VIEW_USER"]);
+    const { authtoken } = await requirePermissions(["VIEW_USER"]);
     const searchParams = req.nextUrl.searchParams;
     const patronId = parseInt(searchParams.get("patron_id") || "0");
 
@@ -136,7 +201,8 @@ export async function POST(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
     const body = await req.json();
-    const { patron_id, notice_type, items, holds, bills, expiration_date } = body;
+    const { patron_id, notice_type, items, holds, bills, expiration_date, channel } = body;
+    const noticeChannel = channel === "sms" ? "sms" : "email";
 
     if (!patron_id || !notice_type) {
       return errorResponse("patron_id and notice_type required", 400);
@@ -156,21 +222,9 @@ export async function POST(req: NextRequest) {
       return errorResponse("Patron not found", 404);
     }
 
-    if (!patron.email) {
-      return errorResponse("Patron has no email address", 400);
-    }
-
     // Check preferences
     const preferences = await getPatronPreferences(authtoken, patron_id);
-    if (!preferences.emailEnabled) {
-      return errorResponse("Patron has disabled email notifications", 400);
-    }
-
-    const preferenceKey = notice_type.replace(/_/g, "");
-    if (
-      preferenceKey in preferences &&
-      !(preferences as any)[preferenceKey === "preOverdue" ? "preOverdue" : preferenceKey]
-    ) {
+    if (!isNoticeTypeEnabled(preferences, noticeType, noticeChannel)) {
       return errorResponse(`Patron has disabled ${notice_type} notifications`, 400);
     }
 
@@ -183,7 +237,7 @@ export async function POST(req: NextRequest) {
         id: patron.id,
         firstName: patron.first_given_name || "",
         lastName: patron.family_name || "",
-        email: patron.email,
+        email: patron.email || "patron@example.org",
         barcode: patron.card?.barcode || undefined,
       },
       library,
@@ -195,8 +249,47 @@ export async function POST(req: NextRequest) {
       unsubscribeUrl: `${process.env.STACKSOS_BASE_URL || ""}/opac/account/settings?unsubscribe=email`,
     };
 
-    // Send notice
-    await sendNotice({ type: noticeType, context });
+    let notificationEventId: string | null = null;
+    let deliveryId: number | null = null;
+
+    if (noticeChannel === "email") {
+      if (!patron.email) return errorResponse("Patron has no email address", 400);
+      const sendResult = await sendNotice({ type: noticeType, context, createdBy: actor?.id ?? null });
+      notificationEventId = sendResult.eventId;
+      deliveryId = sendResult.deliveryId;
+    } else {
+      const phone =
+        String(patron.day_phone || patron.other_phone || patron.evening_phone || patron.phone || "").trim();
+      if (!phone) return errorResponse("Patron has no phone number for SMS", 400);
+
+      const eventId = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+      await createNotificationEvent({
+        id: eventId,
+        channel: "sms",
+        noticeType,
+        patronId: patron_id,
+        recipient: phone,
+        createdBy: actor?.id ?? null,
+        context,
+      });
+      const delId = await createDelivery({ eventId, provider: String(process.env.STACKSOS_SMS_PROVIDER || "console") });
+
+      const active = await getActiveTemplate("sms", noticeType);
+      const msgTemplate = active?.body_template || "{{library.name}} notice for {{patron.firstName}}";
+      const message = renderTemplateString(msgTemplate, context, { html: false });
+
+      try {
+        await sendSms({ to: phone, message });
+        if (delId) await markDeliveryAttempt({ deliveryId: delId, status: "sent" });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (delId) await markDeliveryAttempt({ deliveryId: delId, status: "failed", error: msg });
+        throw e;
+      }
+
+      notificationEventId = eventId;
+      deliveryId = delId;
+    }
 
     // Audit log
     await logAuditEvent({
@@ -204,14 +297,14 @@ export async function POST(req: NextRequest) {
       entity: "email_notice",
       entityId: patron_id,
       status: "success",
-      details: { noticeType, patronId: patron_id, recipient: patron.email },
+      details: { noticeType, patronId: patron_id, channel: noticeChannel, recipient: noticeChannel === "email" ? patron.email : undefined, notificationEventId, deliveryId },
       actor,
       ip,
       userAgent,
       requestId,
     });
 
-    return successResponse({ sent: true, recipient: patron.email });
+    return successResponse({ sent: true, channel: noticeChannel, recipient: noticeChannel === "email" ? patron.email : undefined, notificationEventId, deliveryId });
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
 

@@ -6,6 +6,7 @@ import {
 } from "@/lib/api";
 
 import { cookies } from "next/headers";
+import { getOpacPatronPrefs } from "@/lib/db/opac";
 
 /**
  * OPAC Session Check
@@ -68,6 +69,7 @@ export async function GET(req: NextRequest) {
         );
 
         const finesSummary = finesResponse?.payload?.[0];
+        const prefs = await getOpacPatronPrefs(Number(user.id));
 
         return successResponse({
           authenticated: true,
@@ -77,7 +79,7 @@ export async function GET(req: NextRequest) {
             lastName: patron.family_name,
             email: patron.email,
             phone: patron.day_phone || patron.evening_phone,
-            barcode: patron.card?.barcode,
+            cardNumber: patron.card?.barcode,
             homeLibrary: patron.home_ou,
             profileName: patron.profile?.name,
             expireDate: patron.expire_date,
@@ -85,6 +87,8 @@ export async function GET(req: NextRequest) {
             holdCount: holds.length,
             readyHoldsCount: holds.filter((h: any) => h.shelf_time).length,
             fineBalance: parseFloat(finesSummary?.balance_owed || "0"),
+            defaultPickupLocation: prefs.defaultPickupLocation,
+            defaultSearchLocation: prefs.defaultSearchLocation,
           },
         });
       }

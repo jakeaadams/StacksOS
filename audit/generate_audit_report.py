@@ -21,6 +21,8 @@ import re
 from pathlib import Path
 from datetime import datetime, timezone
 
+from dep_scan import dependency_closure, read_text as read_text_cached
+
 ROOT = Path(__file__).resolve().parent.parent
 AUDIT_DIR = ROOT / "audit" / "api"
 SUMMARY_TSV = AUDIT_DIR / "summary.tsv"
@@ -32,8 +34,28 @@ API_ROUTES = list((ROOT / "src" / "app" / "api" / "evergreen").glob("*/route.ts"
 SIDEBAR = ROOT / "src" / "components" / "layout" / "sidebar.tsx"
 
 API_PREFIX_RE = re.compile(r"/api/evergreen/([a-z0-9-]+)")
+OTHER_API_ROOT_RE = re.compile(r"/api/(?!evergreen/)([a-z0-9-]+)")
 CALL_OSRF_RE = re.compile(r"callOpenSRF\(\s*\"([^\"]+)\"")
 HREF_RE = re.compile(r"href:\s*\"([^\"]+)\"")
+
+# Heuristic: only these endpoints are expected to have "baseline" config/demo
+# data in a healthy sandbox. Operational screens (holds/bills/lost/etc.) can be
+# legitimately empty and should not be treated as broken UX signals.
+CONFIG_EMPTY_SIGNAL_ENDPOINTS = {
+    "calendars_snapshot",
+    "admin_settings_org",
+    "templates_copy",
+    "buckets_list",
+    "copy_tags",
+    "stat_categories",
+    "course_reserves",
+    "scheduled_reports_schedules",
+    "workstations_list",
+    "booking_resources",
+    "booking_reservations",
+    "authority_search",
+    "acq_invoices",
+}
 
 
 def utc_stamp() -> str:
@@ -57,8 +79,13 @@ def load_summary():
 
 
 def extract_api_usage(file_path: Path):
-    text = file_path.read_text(encoding="utf-8")
+    text = read_text_cached(file_path)
     return sorted(set(API_PREFIX_RE.findall(text)))
+
+
+def extract_other_api_roots(file_path: Path):
+    text = read_text_cached(file_path)
+    return sorted(set(OTHER_API_ROOT_RE.findall(text)))
 
 
 def extract_open_srf_services(file_path: Path):
@@ -100,15 +127,54 @@ def build_feature_matrix():
     page_rows = []
     used_modules = set()
 
+    staff_layout = ROOT / "src" / "app" / "staff" / "layout.tsx"
+    baseline_files: set[Path] = set()
+    baseline_modules: set[str] = set()
+    baseline_other_api: set[str] = set()
+    if staff_layout.exists():
+        baseline_files = dependency_closure(ROOT, [staff_layout], max_files=1200)
+        for f in baseline_files:
+            baseline_modules.update(extract_api_usage(f))
+            baseline_other_api.update(extract_other_api_roots(f))
+
     for page in sorted(STAFF_PAGES):
-        apis = extract_api_usage(page)
-        for a in apis:
+        files = dependency_closure(ROOT, [page], max_files=1200)
+        apis_full: set[str] = set()
+        other_api_full: set[str] = set()
+        for f in files:
+            apis_full.update(extract_api_usage(f))
+            other_api_full.update(extract_other_api_roots(f))
+        for a in apis_full:
             used_modules.add(a)
         rel = page.relative_to(ROOT)
-        page_rows.append({"page": str(rel), "route": route_from_page(page), "apis": apis})
+
+        # Reduce noise: show page-local calls beyond the staff layout baseline.
+        #
+        # Important: subtract by *files*, not by adapter name. If a page makes its
+        # own `/api/evergreen/patrons` calls and the staff layout also happens to
+        # touch `patrons` (e.g., universal search), we still want this page to be
+        # credited for using `patrons`.
+        local_files = files - baseline_files if baseline_files else files
+        apis: set[str] = set()
+        other_api: set[str] = set()
+        for f in local_files:
+            apis.update(extract_api_usage(f))
+            other_api.update(extract_other_api_roots(f))
+
+        page_rows.append(
+            {
+                "page": str(rel),
+                "route": route_from_page(page),
+                "apis": sorted(apis),
+                "other_api": sorted(other_api),
+                "apis_full": sorted(apis_full),
+                "other_api_full": sorted(other_api_full),
+            }
+        )
 
     api_routes = sorted([p.parent.name for p in API_ROUTES])
-    unused = [m for m in api_routes if m not in used_modules]
+    used_anywhere = used_modules | baseline_modules
+    unused = [m for m in api_routes if m not in used_anywhere]
 
     # NOTE: This file is meant for humans (and agents) to spot wiring gaps fast.
     FEATURE_MD.write_text(
@@ -116,21 +182,28 @@ def build_feature_matrix():
         f"Generated: {utc_stamp()}\n\n"
         "## API Routes (adapter modules)\n\n"
         + "\n".join(f"- {route}" for route in api_routes)
-        + "\n\n## Staff Pages\n\n"
-        + "| Route | Page | API usage |\n| --- | --- | --- |\n"
+        + "\n\n## Staff Baseline API Usage (Layout)\n\n"
+        + (
+            f"- Evergreen adapters: {', '.join(sorted(baseline_modules)) if baseline_modules else '-'}\n"
+            f"- Other `/api/*`: {', '.join(sorted(baseline_other_api)) if baseline_other_api else '-'}\n"
+            if staff_layout.exists()
+            else "- No `src/app/staff/layout.tsx` found\n"
+        )
+        + "\n\n## Staff Pages (Page-local)\n\n"
+        + "| Route | Page | Evergreen adapters (page-local) | Other `/api/*` (page-local) |\n| --- | --- | --- | --- |\n"
         + "\n".join(
-            f"| `{row['route']}` | `{row['page']}` | {', '.join(row['apis']) if row['apis'] else '-'} |"
+            f"| `{row['route']}` | `{row['page']}` | {', '.join(row['apis']) if row['apis'] else '-'} | {', '.join(row['other_api']) if row['other_api'] else '-'} |"
             for row in page_rows
         )
-        + "\n\n## Unconnected Pages\n\n"
+        + "\n\n## Unconnected Pages (No page-local `/api/*` Usage Beyond Staff Layout)\n\n"
         + (
             "\n".join(
                 f"- `{row['route']}` (`{row['page']}`)"
                 for row in page_rows
-                if not row["apis"]
+                if not row["apis"] and not row["other_api"]
             )
             + "\n"
-            if any(not row["apis"] for row in page_rows)
+            if any((not row["apis"] and not row["other_api"]) for row in page_rows)
             else "- None\n"
         )
         + "\n## Unused Adapter Modules\n\n"
@@ -170,13 +243,19 @@ def build_report():
 
             # Heuristic empty-data / missing-config detection.
             if "message" in data and isinstance(data.get("message"), str):
-                msg = data["message"].lower()
-                if "not configured" in msg or ("no" in msg and ("configured" in msg or "found" in msg)):
-                    empty_modules.append((name, data.get("message")))
+                msg = data["message"].strip()
+                msg_lower = msg.lower()
+                looks_like_input_error = msg_lower.startswith("provide ") or "required" in msg_lower
+                if not looks_like_input_error and (
+                    "not configured" in msg_lower
+                    or ("no" in msg_lower and ("configured" in msg_lower or "found" in msg_lower))
+                ):
+                    empty_modules.append((name, msg))
 
-            for key, value in data.items():
-                if isinstance(value, list) and len(value) == 0:
-                    empty_modules.append((name, f"{key} is empty"))
+            if name in CONFIG_EMPTY_SIGNAL_ENDPOINTS:
+                for key, value in data.items():
+                    if isinstance(value, list) and len(value) == 0:
+                        empty_modules.append((name, f"{key} is empty"))
 
     # Adapter module coverage vs audit surface
     api_modules = sorted([p.parent.name for p in API_ROUTES])

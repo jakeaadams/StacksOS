@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
+import { callOpenSRF, getRequestMeta, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { sendEmail } from "@/lib/email";
@@ -98,7 +99,7 @@ export async function GET(req: NextRequest) {
           const payload = response?.payload || [];
           const typeList = Array.isArray(payload?.[0]) ? payload[0] : payload;
           reasons = (Array.isArray(typeList) ? typeList : []).map((t: any) => ({ id: t.id, code: t.code || t.name || "Type " + t.id, description: t.description || t.label || "" }));
-        } catch (error) { reasons = [{ id: 1, code: "not_received", description: "Item not received" }, { id: 2, code: "damaged", description: "Item received damaged" }, { id: 3, code: "wrong_item", description: "Wrong item received" }, { id: 4, code: "short_shipment", description: "Short shipment" }]; }
+        } catch (_error) { reasons = [{ id: 1, code: "not_received", description: "Item not received" }, { id: 2, code: "damaged", description: "Item received damaged" }, { id: 3, code: "wrong_item", description: "Wrong item received" }, { id: 4, code: "short_shipment", description: "Short shipment" }]; }
         return successResponse({ reasons });
       }
       case "summary": {
@@ -124,8 +125,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+
   try {
-    const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
+    const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN", "ADMIN_ACQ_CLAIM"]);
     const body = await req.json();
     const { action } = body;
     logger.debug({ route: "api.evergreen.acquisitions.claims", action }, "Claims POST");
@@ -157,8 +160,22 @@ export async function POST(req: NextRequest) {
             try { await sendClaimNotification(authtoken, lineitemId, claimType, notes); }
             catch (emailError) { logger.warn({ route: "api.evergreen.acquisitions.claims", lineitemId, err: String(emailError) }, "Failed to send claim notification"); }
           }
+
+          await logAuditEvent({
+            action: "acq.claim.create",
+            entity: "acq_claim",
+            entityId: lineitemId || null,
+            status: errors.length > 0 ? "failure" : "success",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            details: { lineitemId, lineitemDetailIds: lineitemDetailIds || null, claimTypeId: claimType, claimedCount, sendNotification: Boolean(sendNotification) },
+            error: errors.length > 0 ? errors.slice(0, 3).join("; ") : null,
+          });
+
           return successResponse({ claimed: true, count: claimedCount, errors: errors.length > 0 ? errors : undefined }, "Claimed " + claimedCount + " item(s)");
-        } catch (error) { return errorResponse("Failed to create claim", 500); }
+        } catch (_error) { return errorResponse("Failed to create claim", 500); }
       }
       case "cancel_claim": {
         const { claimId, lineitemDetailId, notes } = body;
@@ -167,8 +184,21 @@ export async function POST(req: NextRequest) {
           const response = await callOpenSRF("open-ils.acq", "open-ils.acq.claim.cancel", [authtoken, claimId || lineitemDetailId, notes || ""]);
           const result = response?.payload?.[0];
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to cancel claim", 400);
+
+          await logAuditEvent({
+            action: "acq.claim.cancel",
+            entity: "acq_claim",
+            entityId: claimId || lineitemDetailId,
+            status: "success",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            details: { claimId: claimId || null, lineitemDetailId: lineitemDetailId || null },
+          });
+
           return successResponse({ cancelled: true, claimId: claimId || lineitemDetailId }, "Claim cancelled");
-        } catch (error) { return errorResponse("Failed to cancel claim", 500); }
+        } catch (_error) { return errorResponse("Failed to cancel claim", 500); }
       }
       case "receive": {
         const { lineitemDetailId, notes } = body;
@@ -178,8 +208,21 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to receive item", 400);
           if (notes) { try { await callOpenSRF("open-ils.acq", "open-ils.acq.claim.resolve", [authtoken, lineitemDetailId, notes]); } catch (resolveError) { logger.warn({ route: "api.evergreen.acquisitions.claims", action, lineitemDetailId, err: String(resolveError) }, "Failed to resolve claim"); } }
+
+          await logAuditEvent({
+            action: "acq.claim.receive",
+            entity: "acq_lineitem_detail",
+            entityId: lineitemDetailId,
+            status: "success",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            details: { lineitemDetailId, resolved: Boolean(notes) },
+          });
+
           return successResponse({ received: true, lineitemDetailId }, "Item received");
-        } catch (error) { return errorResponse("Failed to receive item", 500); }
+        } catch (_error) { return errorResponse("Failed to receive item", 500); }
       }
       case "batch_claim": {
         const { items, claimTypeId, notes, sendNotification } = body;
@@ -187,6 +230,7 @@ export async function POST(req: NextRequest) {
         const claimType = claimTypeId || 1;
         let claimedCount = 0;
         const errors: string[] = [];
+        const notifiedLineitemIds = new Set<number>();
         for (const item of items) {
           const { lineitemDetailId, lineitemId } = item;
           try {
@@ -196,9 +240,36 @@ export async function POST(req: NextRequest) {
             else { errors.push("Item missing lineitemDetailId or lineitemId"); continue; }
             const result = response?.payload?.[0];
             if (result?.ilsevent) errors.push("Item " + (lineitemDetailId || lineitemId) + ": " + (result.textcode || "Failed"));
-            else claimedCount++;
+            else {
+              claimedCount++;
+              const li = parseInt(String(lineitemId ?? ""), 10);
+              if (sendNotification && Number.isFinite(li) && li > 0) notifiedLineitemIds.add(li);
+            }
           } catch (error) { errors.push("Item " + (lineitemDetailId || lineitemId) + ": " + String(error)); }
         }
+
+        if (sendNotification && notifiedLineitemIds.size > 0) {
+          for (const li of notifiedLineitemIds) {
+            try {
+              await sendClaimNotification(authtoken, li, claimType, notes);
+            } catch (emailError) {
+              logger.warn({ route: "api.evergreen.acquisitions.claims", lineitemId: li, err: String(emailError) }, "Failed to send claim notification");
+            }
+          }
+        }
+
+        await logAuditEvent({
+          action: "acq.claim.batch_create",
+          entity: "acq_claim",
+          status: errors.length > 0 ? "failure" : "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          details: { total: items.length, claimedCount, claimTypeId: claimType, sendNotification: Boolean(sendNotification), notifiedLineitemIds: Array.from(notifiedLineitemIds).slice(0, 50) },
+          error: errors.length > 0 ? errors.slice(0, 3).join("; ") : null,
+        });
+
         return successResponse({ claimed: true, count: claimedCount, total: items.length, errors: errors.length > 0 ? errors : undefined }, "Claimed " + claimedCount + " of " + items.length + " item(s)");
       }
       case "add_note": {
@@ -209,8 +280,21 @@ export async function POST(req: NextRequest) {
           const response = await callOpenSRF("open-ils.acq", "open-ils.acq.claim.note.add", [authtoken, claimId || lineitemDetailId, note]);
           const result = response?.payload?.[0];
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to add note", 400);
+
+          await logAuditEvent({
+            action: "acq.claim.note.add",
+            entity: "acq_claim",
+            entityId: claimId || lineitemDetailId,
+            status: "success",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            details: { claimId: claimId || null, lineitemDetailId: lineitemDetailId || null, noteLength: String(note).length },
+          });
+
           return successResponse({ added: true, claimId: claimId || lineitemDetailId }, "Note added to claim");
-        } catch (error) { return errorResponse("Failed to add note", 500); }
+        } catch (_error) { return errorResponse("Failed to add note", 500); }
       }
       default: return errorResponse("Invalid action. Use: claim, cancel_claim, receive, batch_claim, add_note", 400);
     }

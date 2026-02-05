@@ -1,7 +1,7 @@
 "use client";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   PageContainer,
@@ -101,6 +101,72 @@ export default function Z3950Page() {
     }
   }, [selectedService, services]);
 
+  /**
+   * Import a Z39.50 record into Evergreen as a bib record
+   */
+  const importRecord = useCallback(async (record: Z3950Record) => {
+    if (!record.marcxml) {
+      toast.error("Cannot import record", {
+        description: "No MARC XML data available",
+      });
+      return;
+    }
+
+    setImportingIds((prev) => new Set(prev).add(record.id));
+
+    try {
+      // Determine source based on service
+      const source =
+        record.service.toLowerCase() === "oclc"
+          ? "OCLC"
+          : record.service.toUpperCase();
+
+      const res = await fetchWithAuth("/api/evergreen/marc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          marcxml: record.marcxml,
+          source,
+          auto_tcn: true,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || json.ok === false) {
+        throw new Error(json.error || "Import failed");
+      }
+
+      const recordId = json.record?.id;
+      const tcn = json.record?.tcn;
+
+      toast.success("Record imported successfully", {
+        description: `Record ID: ${recordId}${tcn ? ` | TCN: ${tcn}` : ""}`,
+        action: recordId
+          ? {
+              label: "View Record",
+              onClick: () => router.push(`/staff/catalog/record/${recordId}`),
+            }
+          : undefined,
+      });
+
+      // Remove the imported record from results
+      setSearchState((prev) => ({
+        ...prev,
+        results: prev.results.filter((r) => r.id !== record.id),
+      }));
+    } catch (err: any) {
+      const errorMessage = err?.message || "Import failed";
+      toast.error("Failed to import record", { description: errorMessage });
+    } finally {
+      setImportingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(record.id);
+        return next;
+      });
+    }
+  }, [router]);
+
   // Define table columns
   const columns = useMemo<ColumnDef<Z3950Record>[]>(
     () => [
@@ -179,7 +245,7 @@ export default function Z3950Page() {
         },
       },
     ],
-    [importingIds, services]
+    [importRecord, importingIds, services]
   );
 
   /**
@@ -245,72 +311,6 @@ export default function Z3950Page() {
         totalResults: 0,
       }));
       toast.error("Search failed", { description: errorMessage });
-    }
-  };
-
-  /**
-   * Import a Z39.50 record into Evergreen as a bib record
-   */
-  const importRecord = async (record: Z3950Record) => {
-    if (!record.marcxml) {
-      toast.error("Cannot import record", {
-        description: "No MARC XML data available",
-      });
-      return;
-    }
-
-    setImportingIds((prev) => new Set(prev).add(record.id));
-
-    try {
-      // Determine source based on service
-      const source =
-        record.service.toLowerCase() === "oclc"
-          ? "OCLC"
-          : record.service.toUpperCase();
-
-      const res = await fetchWithAuth("/api/evergreen/marc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          marcxml: record.marcxml,
-          source,
-          auto_tcn: true,
-        }),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok || json.ok === false) {
-        throw new Error(json.error || "Import failed");
-      }
-
-      const recordId = json.record?.id;
-      const tcn = json.record?.tcn;
-
-      toast.success("Record imported successfully", {
-        description: `Record ID: ${recordId}${tcn ? ` | TCN: ${tcn}` : ""}`,
-        action: recordId
-          ? {
-              label: "View Record",
-              onClick: () => router.push(`/staff/catalog/record/${recordId}`),
-            }
-          : undefined,
-      });
-
-      // Remove the imported record from results
-      setSearchState((prev) => ({
-        ...prev,
-        results: prev.results.filter((r) => r.id !== record.id),
-      }));
-    } catch (err: any) {
-      const errorMessage = err?.message || "Import failed";
-      toast.error("Failed to import record", { description: errorMessage });
-    } finally {
-      setImportingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(record.id);
-        return next;
-      });
     }
   };
 

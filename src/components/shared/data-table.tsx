@@ -108,6 +108,8 @@ export interface DataTableProps<TData, TValue> {
   toolbar?: React.ReactNode;
   /** Row click handler */
   onRowClick?: (row: TData) => void;
+  /** Custom per-row className */
+  getRowClassName?: (row: TData) => string;
   /** Highlight row on hover */
   hoverHighlight?: boolean;
   /** Striped rows */
@@ -211,6 +213,7 @@ export function DataTable<TData, TValue>({
   emptyState,
   toolbar,
   onRowClick,
+  getRowClassName,
   hoverHighlight = true,
   striped = false,
   compact = false,
@@ -398,7 +401,8 @@ export function DataTable<TData, TValue>({
                     onRowClick && "cursor-pointer",
                     hoverHighlight && "hover:bg-muted/50",
                     onRowClick && "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset",
-                    striped && index % 2 === 1 && "bg-muted/25"
+                    striped && index % 2 === 1 && "bg-muted/25",
+                    getRowClassName?.(row.original)
                   )}
                   onClick={() => onRowClick?.(row.original)}
                   tabIndex={onRowClick ? 0 : undefined}

@@ -33,6 +33,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/shared/loading-state";
+import { UnoptimizedImage } from "@/components/shared";
 
 interface Category {
   id: string;
@@ -53,26 +54,26 @@ interface Book {
 }
 
 const categories: Category[] = [
-  { id: "fantasy", label: "Magic & Fantasy", query: "subject:fantasy", icon: Wand2, color: "text-purple-600", bgColor: "bg-purple-100", description: "Dragons, wizards, and magical adventures!" },
-  { id: "scifi", label: "Space & Sci-Fi", query: "subject:science fiction", icon: Rocket, color: "text-blue-600", bgColor: "bg-blue-100", description: "Explore space and the future!" },
-  { id: "horror", label: "Spooky Stories", query: "subject:horror", icon: Ghost, color: "text-muted-foreground", bgColor: "bg-muted/50", description: "Thrilling and scary tales!" },
-  { id: "adventure", label: "Adventure", query: "subject:adventure", icon: Swords, color: "text-red-600", bgColor: "bg-red-100", description: "Epic quests and exciting journeys!" },
-  { id: "friendship", label: "Friendship", query: "subject:friendship", icon: Heart, color: "text-pink-600", bgColor: "bg-pink-100", description: "Stories about friends and relationships!" },
-  { id: "humor", label: "Funny Books", query: "subject:humor", icon: Laugh, color: "text-yellow-600", bgColor: "bg-yellow-100", description: "Books that will make you laugh!" },
-  { id: "dogs", label: "Dogs", query: "subject:dogs", icon: Dog, color: "text-amber-600", bgColor: "bg-amber-100", description: "All about our furry friends!" },
-  { id: "cats", label: "Cats", query: "subject:cats", icon: Cat, color: "text-orange-600", bgColor: "bg-orange-100", description: "Purrfect stories about cats!" },
-  { id: "ocean", label: "Ocean Life", query: "subject:ocean", icon: Fish, color: "text-cyan-600", bgColor: "bg-cyan-100", description: "Dive into underwater worlds!" },
-  { id: "insects", label: "Bugs & Insects", query: "subject:insects", icon: Bug, color: "text-lime-600", bgColor: "bg-lime-100", description: "Creepy crawly creatures!" },
-  { id: "birds", label: "Birds", query: "subject:birds", icon: Bird, color: "text-sky-600", bgColor: "bg-sky-100", description: "Feathered friends that fly!" },
-  { id: "nature", label: "Nature", query: "subject:nature", icon: TreePine, color: "text-green-600", bgColor: "bg-green-100", description: "The great outdoors!" },
-  { id: "science", label: "Science", query: "subject:science", icon: Microscope, color: "text-teal-600", bgColor: "bg-teal-100", description: "Discover how things work!" },
-  { id: "geography", label: "World & Culture", query: "subject:geography", icon: Globe, color: "text-indigo-600", bgColor: "bg-indigo-100", description: "Explore countries and cultures!" },
-  { id: "history", label: "History", query: "subject:history", icon: Clock, color: "text-stone-600", bgColor: "bg-stone-100", description: "Learn about the past!" },
-  { id: "music", label: "Music & Dance", query: "subject:music", icon: Music, color: "text-fuchsia-600", bgColor: "bg-fuchsia-100", description: "Sing, dance, and play!" },
-  { id: "art", label: "Art & Crafts", query: "subject:art", icon: Palette, color: "text-rose-600", bgColor: "bg-rose-100", description: "Get creative!" },
-  { id: "sports", label: "Games & Sports", query: "subject:sports", icon: Gamepad2, color: "text-emerald-600", bgColor: "bg-emerald-100", description: "Play and compete!" },
-  { id: "vehicles", label: "Things That Go", query: "subject:vehicles", icon: Car, color: "text-slate-600", bgColor: "bg-slate-100", description: "Cars, trucks, trains, and planes!" },
-  { id: "princesses", label: "Princesses", query: "subject:princesses", icon: Crown, color: "text-violet-600", bgColor: "bg-violet-100", description: "Royal adventures!" },
+  { id: "fantasy", label: "Magic & Fantasy", query: "fantasy", icon: Wand2, color: "text-purple-600", bgColor: "bg-purple-100", description: "Dragons, wizards, and magical adventures!" },
+  { id: "scifi", label: "Space & Sci-Fi", query: "science fiction", icon: Rocket, color: "text-blue-600", bgColor: "bg-blue-100", description: "Explore space and the future!" },
+  { id: "horror", label: "Spooky Stories", query: "horror", icon: Ghost, color: "text-muted-foreground", bgColor: "bg-muted/50", description: "Thrilling and scary tales!" },
+  { id: "adventure", label: "Adventure", query: "adventure", icon: Swords, color: "text-red-600", bgColor: "bg-red-100", description: "Epic quests and exciting journeys!" },
+  { id: "friendship", label: "Friendship", query: "friendship", icon: Heart, color: "text-pink-600", bgColor: "bg-pink-100", description: "Stories about friends and relationships!" },
+  { id: "humor", label: "Funny Books", query: "humor", icon: Laugh, color: "text-yellow-600", bgColor: "bg-yellow-100", description: "Books that will make you laugh!" },
+  { id: "dogs", label: "Dogs", query: "dogs", icon: Dog, color: "text-amber-600", bgColor: "bg-amber-100", description: "All about our furry friends!" },
+  { id: "cats", label: "Cats", query: "cats", icon: Cat, color: "text-orange-600", bgColor: "bg-orange-100", description: "Purrfect stories about cats!" },
+  { id: "ocean", label: "Ocean Life", query: "ocean", icon: Fish, color: "text-cyan-600", bgColor: "bg-cyan-100", description: "Dive into underwater worlds!" },
+  { id: "insects", label: "Bugs & Insects", query: "insects", icon: Bug, color: "text-lime-600", bgColor: "bg-lime-100", description: "Creepy crawly creatures!" },
+  { id: "birds", label: "Birds", query: "birds", icon: Bird, color: "text-sky-600", bgColor: "bg-sky-100", description: "Feathered friends that fly!" },
+  { id: "nature", label: "Nature", query: "nature", icon: TreePine, color: "text-green-600", bgColor: "bg-green-100", description: "The great outdoors!" },
+  { id: "science", label: "Science", query: "science", icon: Microscope, color: "text-teal-600", bgColor: "bg-teal-100", description: "Discover how things work!" },
+  { id: "geography", label: "World & Culture", query: "geography", icon: Globe, color: "text-indigo-600", bgColor: "bg-indigo-100", description: "Explore countries and cultures!" },
+  { id: "history", label: "History", query: "history", icon: Clock, color: "text-stone-600", bgColor: "bg-stone-100", description: "Learn about the past!" },
+  { id: "music", label: "Music & Dance", query: "music", icon: Music, color: "text-fuchsia-600", bgColor: "bg-fuchsia-100", description: "Sing, dance, and play!" },
+  { id: "art", label: "Art & Crafts", query: "art", icon: Palette, color: "text-rose-600", bgColor: "bg-rose-100", description: "Get creative!" },
+  { id: "sports", label: "Games & Sports", query: "sports", icon: Gamepad2, color: "text-emerald-600", bgColor: "bg-emerald-100", description: "Play and compete!" },
+  { id: "vehicles", label: "Things That Go", query: "vehicles", icon: Car, color: "text-slate-600", bgColor: "bg-slate-100", description: "Cars, trucks, trains, and planes!" },
+  { id: "princesses", label: "Princesses", query: "princesses", icon: Crown, color: "text-violet-600", bgColor: "bg-violet-100", description: "Royal adventures!" },
 ];
 
 function BrowseContent() {
@@ -100,7 +101,7 @@ function BrowseContent() {
     setIsLoading(true);
     try {
       const response = await fetchWithAuth(
-        `/api/evergreen/catalog?${query}&audience=juvenile&limit=24`
+        `/api/evergreen/catalog?q=${encodeURIComponent(query)}&type=subject&audience=juvenile&limit=24&sort=popularity`
       );
       if (response.ok) {
         const data = await response.json();
@@ -225,7 +226,7 @@ function BookCard({ book }: { book: Book }) {
       <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
                     shadow-md group-hover:shadow-xl transition-all group-hover:-translate-y-1">
         {book.coverUrl && !imageError ? (
-          <img
+          <UnoptimizedImage
             src={book.coverUrl}
             alt={book.title}
             className="w-full h-full object-cover"

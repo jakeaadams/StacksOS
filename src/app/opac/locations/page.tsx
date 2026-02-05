@@ -3,9 +3,8 @@ import { clientLogger } from "@/lib/client-logger";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useLibrary } from "@/hooks/useLibrary";
 import { LoadingSpinner } from "@/components/shared/loading-state";
 import {
   MapPin,
@@ -16,13 +15,7 @@ import {
   ChevronUp,
   Navigation,
   Building2,
-  Accessibility,
-  Car,
-  Wifi,
-  Printer,
   BookOpen,
-  Users,
-  Coffee,
 } from "lucide-react";
 
 interface LibraryLocation {
@@ -62,37 +55,93 @@ const DAY_LABELS: Record<string, string> = {
   sunday: "Sun",
 };
 
-const AMENITY_ICONS: Record<string, React.ElementType> = {
-  wifi: Wifi,
-  printing: Printer,
-  meeting_rooms: Users,
-  study_rooms: BookOpen,
-  parking: Car,
-  accessible: Accessibility,
-  cafe: Coffee,
-};
+function parseHours(_hoursStr: string | undefined): LibraryLocation["hours"] | undefined {
+  // Evergreen hours format varies - this is a basic placeholder parser.
+  return {
+    monday: { open: "9:00 AM", close: "8:00 PM" },
+    tuesday: { open: "9:00 AM", close: "8:00 PM" },
+    wednesday: { open: "9:00 AM", close: "8:00 PM" },
+    thursday: { open: "9:00 AM", close: "8:00 PM" },
+    friday: { open: "9:00 AM", close: "6:00 PM" },
+    saturday: { open: "10:00 AM", close: "5:00 PM" },
+    sunday: "closed",
+  };
+}
+
+function transformOrgTree(tree: any): LibraryLocation[] {
+  const locations: LibraryLocation[] = [];
+
+  const processNode = (node: any) => {
+    // Only include branches (type 3 in Evergreen is typically Branch)
+    if (node.ou_type === 3 || node.ou_type?.id === 3 || node.children?.length === 0) {
+      locations.push({
+        id: node.id,
+        name: node.name,
+        shortName: node.shortname || node.short_name || node.name,
+        type: node.ou_type?.name || "Branch",
+        address: node.billing_address || node.mailing_address ? {
+          street1: node.billing_address?.street1 || node.mailing_address?.street1,
+          street2: node.billing_address?.street2 || node.mailing_address?.street2,
+          city: node.billing_address?.city || node.mailing_address?.city,
+          state: node.billing_address?.state || node.mailing_address?.state,
+          zip: node.billing_address?.post_code || node.mailing_address?.post_code,
+        } : undefined,
+        phone: node.phone,
+        email: node.email,
+        hours: parseHours(node.hours_of_operation),
+        isMainBranch: node.parent_ou === 1,
+      });
+    }
+
+    if (node.children) {
+      node.children.forEach(processNode);
+    }
+  };
+
+  processNode(tree);
+  return locations;
+}
+
+function isCurrentlyOpen(hours: LibraryLocation["hours"]): boolean {
+  if (!hours) return false;
+  const now = new Date();
+  const dayName = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1];
+  const todayHours = hours[dayName];
+  if (todayHours === "closed" || !todayHours) return false;
+  // Simplified check - real implementation would parse times properly
+  const hour = now.getHours();
+  return hour >= 9 && hour < 20;
+}
+
+function formatAddress(address: LibraryLocation["address"]): string {
+  if (!address) return "";
+  const parts = [
+    address.street1,
+    address.street2,
+    `${address.city || ""}, ${address.state || ""} ${address.zip || ""}`.trim(),
+  ].filter(Boolean);
+  return parts.join(", ");
+}
+
+function getDirectionsUrl(location: LibraryLocation): string {
+  const address = formatAddress(location.address);
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address || location.name)}`;
+}
 
 export default function LocationsPage() {
-  const { library } = useLibrary();
   const [locations, setLocations] = useState<LibraryLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedLocation, setExpandedLocation] = useState<number | null>(null);
   const [filter, setFilter] = useState<"all" | "open">("all");
 
-  useEffect(() => {
-    fetchLocations();
-  }, []);
-
-  const fetchLocations = async () => {
+  const fetchLocations = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetchWithAuth("/api/evergreen/org-tree");
       if (response.ok) {
         const data = await response.json();
-        // Transform org tree to locations
         const locs = transformOrgTree(data.tree || data);
         setLocations(locs);
-        // Auto-expand first location
         if (locs.length > 0) {
           setExpandedLocation(locs[0].id);
         }
@@ -102,83 +151,11 @@ export default function LocationsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const transformOrgTree = (tree: any): LibraryLocation[] => {
-    const locations: LibraryLocation[] = [];
-    
-    const processNode = (node: any) => {
-      // Only include branches (type 3 in Evergreen is typically Branch)
-      if (node.ou_type === 3 || node.ou_type?.id === 3 || node.children?.length === 0) {
-        locations.push({
-          id: node.id,
-          name: node.name,
-          shortName: node.shortname || node.short_name || node.name,
-          type: node.ou_type?.name || "Branch",
-          address: node.billing_address || node.mailing_address ? {
-            street1: node.billing_address?.street1 || node.mailing_address?.street1,
-            street2: node.billing_address?.street2 || node.mailing_address?.street2,
-            city: node.billing_address?.city || node.mailing_address?.city,
-            state: node.billing_address?.state || node.mailing_address?.state,
-            zip: node.billing_address?.post_code || node.mailing_address?.post_code,
-          } : undefined,
-          phone: node.phone,
-          email: node.email,
-          hours: parseHours(node.hours_of_operation),
-          isMainBranch: node.parent_ou === 1,
-        });
-      }
-      
-      // Process children
-      if (node.children) {
-        node.children.forEach(processNode);
-      }
-    };
-    
-    processNode(tree);
-    return locations;
-  };
-
-  const parseHours = (hoursStr: string | undefined): LibraryLocation["hours"] | undefined => {
-    if (!hoursStr) return undefined;
-    // Evergreen hours format varies - this is a basic parser
-    // Real implementation would parse the actual format
-    return {
-      monday: { open: "9:00 AM", close: "8:00 PM" },
-      tuesday: { open: "9:00 AM", close: "8:00 PM" },
-      wednesday: { open: "9:00 AM", close: "8:00 PM" },
-      thursday: { open: "9:00 AM", close: "8:00 PM" },
-      friday: { open: "9:00 AM", close: "6:00 PM" },
-      saturday: { open: "10:00 AM", close: "5:00 PM" },
-      sunday: "closed",
-    };
-  };
-
-  const isCurrentlyOpen = (hours: LibraryLocation["hours"]): boolean => {
-    if (!hours) return false;
-    const now = new Date();
-    const dayName = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1];
-    const todayHours = hours[dayName];
-    if (todayHours === "closed" || !todayHours) return false;
-    // Simplified check - real implementation would parse times properly
-    const hour = now.getHours();
-    return hour >= 9 && hour < 20;
-  };
-
-  const formatAddress = (address: LibraryLocation["address"]): string => {
-    if (!address) return "";
-    const parts = [
-      address.street1,
-      address.street2,
-      `${address.city || ""}, ${address.state || ""} ${address.zip || ""}`.trim(),
-    ].filter(Boolean);
-    return parts.join(", ");
-  };
-
-  const getDirectionsUrl = (location: LibraryLocation): string => {
-    const address = formatAddress(location.address);
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address || location.name)}`;
-  };
+  useEffect(() => {
+    void fetchLocations();
+  }, [fetchLocations]);
 
   const filteredLocations = filter === "open" 
     ? locations.filter(loc => isCurrentlyOpen(loc.hours))

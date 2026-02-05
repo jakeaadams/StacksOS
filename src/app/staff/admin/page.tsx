@@ -21,7 +21,11 @@ import {
   Server,
   Tag,
   KeyRound,
+  Mail,
+  ShieldAlert,
   ClipboardList,
+  ClipboardCheck,
+  SlidersHorizontal,
   ArrowRight,
 } from "lucide-react";
 
@@ -76,7 +80,7 @@ export default function AdminHubPage() {
         href: "/staff/admin/workstations",
         icon: Monitor,
         tone: "bg-purple-500/10 text-purple-600",
-        enabled: featureFlags.adminWorkstations || true,
+        enabled: featureFlags.adminWorkstations,
       },
       {
         title: "Settings",
@@ -84,6 +88,36 @@ export default function AdminHubPage() {
         href: "/staff/admin/settings",
         icon: Settings2,
         tone: "bg-amber-500/10 text-amber-700",
+      },
+      {
+        title: "Policy Editors",
+        description: "Advanced Evergreen-backed policy views (experimental).",
+        href: "/staff/admin/policies",
+        icon: SlidersHorizontal,
+        tone: "bg-slate-500/10 text-slate-700",
+        badge: "Experimental",
+        enabled: featureFlags.policyEditors,
+      },
+      {
+        title: "Notifications",
+        description: "Edit notice templates and review delivery logs.",
+        href: "/staff/admin/notifications",
+        icon: Mail,
+        tone: "bg-cyan-500/10 text-cyan-700",
+      },
+      {
+        title: "Ops",
+        description: "Incident banners, release notes, and support workflows.",
+        href: "/staff/admin/ops",
+        icon: ShieldAlert,
+        tone: "bg-orange-500/10 text-orange-700",
+      },
+      {
+        title: "Go-live",
+        description: "Operational checklist for pilot readiness.",
+        href: "/staff/admin/go-live",
+        icon: ClipboardCheck,
+        tone: "bg-teal-500/10 text-teal-700",
       },
       {
         title: "Item Statuses",
@@ -99,7 +133,7 @@ export default function AdminHubPage() {
         icon: Server,
         tone: "bg-slate-500/10 text-slate-700",
         badge: "Read-only",
-        enabled: featureFlags.serverAdmin || true,
+        enabled: featureFlags.serverAdmin,
       },
     ],
     []

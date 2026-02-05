@@ -4,7 +4,8 @@ import { clientLogger } from "@/lib/client-logger";
 import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import Image from "next/image";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Search,
@@ -29,90 +30,116 @@ interface SearchResult {
   totalCopies: number;
 }
 
-interface FilterOptions {
-  format: string;
-  readingLevel: string;
-  availability: string;
+const SORT_OPTIONS = [
+  { value: "relevance", label: "Relevance" },
+  { value: "popularity", label: "Popular" },
+  { value: "create_date", label: "New" },
+  { value: "title_asc", label: "Title A–Z" },
+];
+
+function getCoverUrl(record: any): string | undefined {
+  const isbn = record.isbn || record.simple_record?.isbn;
+  if (isbn) {
+    return `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`;
+  }
+  return undefined;
+}
+
+function transformResults(records: any[]): SearchResult[] {
+  return records.map((record: any) => ({
+    id: record.id || record.record_id,
+    title: record.title || record.simple_record?.title || "Unknown Title",
+    author: record.author || record.simple_record?.author || "",
+    coverUrl: getCoverUrl(record),
+    format: record.format || record.icon_format,
+    readingLevel: record.lexile ? `Lexile ${record.lexile}` : record.ar_level ? `AR ${record.ar_level}` : undefined,
+    availableCopies: record.available_copies || record.availability?.available || 0,
+    totalCopies: record.total_copies || record.availability?.total || 0,
+  }));
 }
 
 function KidsSearchContent() {
   const searchParams = useSearchParams();
-  const initialQuery = searchParams.get("q") || searchParams.get("subject") || "";
-  
-  const [query, setQuery] = useState(initialQuery);
+  const router = useRouter();
+
+  const query = searchParams.get("q") || "";
+  const type = searchParams.get("type") || "";
+  const sort = searchParams.get("sort") || "relevance";
+  const order = searchParams.get("order") || "";
+  const format = searchParams.get("format") || "";
+  const availableOnly = searchParams.get("available") === "true";
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+
+  const [searchInput, setSearchInput] = useState(query);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
-  const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<FilterOptions>({
-    format: "",
-    readingLevel: "",
-    availability: "",
-  });
 
   const limit = 24;
 
+  useEffect(() => {
+    setSearchInput(query);
+  }, [query]);
+
+  const updateSearchParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null || value === "") {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    }
+
+    // Reset to page 1 when anything but page changes
+    if (!("page" in updates)) {
+      params.delete("page");
+    }
+
+    router.push(`/opac/kids/search?${params.toString()}`);
+  }, [router, searchParams]);
+
   const searchCatalog = useCallback(async () => {
-    if (!query.trim() && !initialQuery) return;
+    const hasBrowseIntent = Boolean(query) || Boolean(format) || availableOnly || sort !== "relevance";
+    if (!hasBrowseIntent) return;
 
     setIsLoading(true);
     try {
-      const params = new URLSearchParams({
-        q: query || initialQuery,
-        audience: "juvenile",
-        limit: String(limit),
-        offset: String((page - 1) * limit),
-      });
+      const params = new URLSearchParams();
+      if (query) params.set("q", query);
+      if (type) params.set("type", type);
+      params.set("audience", "juvenile");
+      params.set("limit", String(limit));
+      params.set("offset", String((page - 1) * limit));
 
-      if (filters.format) params.append("format", filters.format);
-      if (filters.availability === "available") params.append("available", "true");
+      if (sort) params.set("sort", sort);
+      if (order) params.set("order", order);
+      if (format) params.set("format", format);
+      if (availableOnly) params.set("available", "true");
 
       const response = await fetchWithAuth(`/api/evergreen/catalog?${params}`);
       if (response.ok) {
         const data = await response.json();
         setResults(transformResults(data.records || []));
-        setTotalResults(data.total || data.records?.length || 0);
+        const totalCount = Number(data.count) || (Array.isArray(data.records) ? data.records.length : 0);
+        setTotalResults(totalCount);
       }
     } catch (err) {
       clientLogger.error("Search error:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [query, initialQuery, page, filters]);
+  }, [availableOnly, format, order, page, query, sort, type]);
 
-  useEffect(() => {
-    if (query || initialQuery) {
-      searchCatalog();
-    }
-  }, [searchCatalog]);
-
-  const transformResults = (records: any[]): SearchResult[] => {
-    return records.map((record: any) => ({
-      id: record.id || record.record_id,
-      title: record.title || record.simple_record?.title || "Unknown Title",
-      author: record.author || record.simple_record?.author || "",
-      coverUrl: getCoverUrl(record),
-      format: record.format || record.icon_format,
-      readingLevel: record.lexile ? `Lexile ${record.lexile}` : record.ar_level ? `AR ${record.ar_level}` : undefined,
-      availableCopies: record.available_copies || record.availability?.available || 0,
-      totalCopies: record.total_copies || record.availability?.total || 0,
-    }));
-  };
-
-  const getCoverUrl = (record: any): string | undefined => {
-    const isbn = record.isbn || record.simple_record?.isbn;
-    if (isbn) {
-      return `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`;
-    }
-    return undefined;
-  };
+	  useEffect(() => {
+	    void searchCatalog();
+	  }, [searchCatalog]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setPage(1);
-    searchCatalog();
+    updateSearchParams({ q: searchInput });
   };
 
   const totalPages = Math.ceil(totalResults / limit);
@@ -125,8 +152,8 @@ function KidsSearchContent() {
           <div className="relative">
             <input
               type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search for books..."
               className="w-full pl-5 pr-14 py-4 text-lg rounded-full border-2 border-purple-200 
                        text-foreground placeholder:text-muted-foreground/70 bg-card
@@ -154,6 +181,29 @@ function KidsSearchContent() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Sort */}
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Sort:</span>
+              <select
+                value={sort}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  updateSearchParams({
+                    sort: next,
+                    order: next === "create_date" ? "desc" : null,
+                  });
+                }}
+                className="px-3 py-2 rounded-xl border-2 border-border bg-card text-sm
+                         focus:outline-none focus:border-purple-400"
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Filter toggle */}
             <button type="button"
               onClick={() => setShowFilters(!showFilters)}
@@ -192,8 +242,8 @@ function KidsSearchContent() {
               <div>
                 <label className="block text-sm font-medium text-foreground/80 mb-1">Format</label>
                 <select
-                  value={filters.format}
-                  onChange={(e) => setFilters({ ...filters, format: e.target.value })}
+                  value={format}
+                  onChange={(e) => updateSearchParams({ format: e.target.value || null })}
                   className="px-3 py-2 rounded-lg border border-border focus:border-purple-400 focus:outline-none"
                 >
                   <option value="">All Formats</option>
@@ -207,8 +257,8 @@ function KidsSearchContent() {
               <div>
                 <label className="block text-sm font-medium text-foreground/80 mb-1">Availability</label>
                 <select
-                  value={filters.availability}
-                  onChange={(e) => setFilters({ ...filters, availability: e.target.value })}
+                  value={availableOnly ? "available" : ""}
+                  onChange={(e) => updateSearchParams({ available: e.target.value === "available" ? "true" : null })}
                   className="px-3 py-2 rounded-lg border border-border focus:border-purple-400 focus:outline-none"
                 >
                   <option value="">All</option>
@@ -217,7 +267,7 @@ function KidsSearchContent() {
               </div>
 
               <button type="button"
-                onClick={() => setFilters({ format: "", readingLevel: "", availability: "" })}
+                onClick={() => updateSearchParams({ format: null, available: null })}
                 className="self-end px-4 py-2 text-sm text-purple-600 hover:text-purple-700"
               >
                 Clear Filters
@@ -252,7 +302,7 @@ function KidsSearchContent() {
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-4 mt-8">
               <button type="button"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                onClick={() => updateSearchParams({ page: String(Math.max(1, page - 1)) })}
                 disabled={page === 1}
                 className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border
                          text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed
@@ -267,7 +317,7 @@ function KidsSearchContent() {
               </span>
 
               <button type="button"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() => updateSearchParams({ page: String(Math.min(totalPages, page + 1)) })}
                 disabled={page === totalPages}
                 className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border
                          text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed
@@ -279,7 +329,7 @@ function KidsSearchContent() {
             </div>
           )}
         </>
-      ) : query || initialQuery ? (
+      ) : (query || format || availableOnly || sort !== "relevance") ? (
         <div className="text-center py-20 bg-card rounded-3xl">
           <div className="w-20 h-20 mx-auto mb-4 bg-purple-100 rounded-full flex items-center justify-center">
             <Search className="h-10 w-10 text-purple-300" />
@@ -316,16 +366,18 @@ function KidsSearchResultCard({ book }: { book: SearchResult }) {
     <Link href={`/opac/kids/record/${book.id}`} className="group block">
       <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
                     shadow-md group-hover:shadow-xl transition-all group-hover:-translate-y-1">
-        {book.coverUrl && !imageError ? (
-          <img
-            src={book.coverUrl}
-            alt={book.title}
-            className="w-full h-full object-cover"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <BookOpen className="h-12 w-12 text-purple-300" />
+	        {book.coverUrl && !imageError ? (
+	          <Image
+	            src={book.coverUrl}
+	            alt={book.title}
+	            fill
+	            sizes="240px"
+	            className="object-cover"
+	            onError={() => setImageError(true)}
+	          />
+	        ) : (
+	          <div className="w-full h-full flex items-center justify-center">
+	            <BookOpen className="h-12 w-12 text-purple-300" />
           </div>
         )}
 
@@ -369,17 +421,19 @@ function KidsSearchResultListItem({ book }: { book: SearchResult }) {
       className="flex gap-4 p-4 bg-card rounded-2xl border-2 border-transparent 
                hover:border-purple-200 hover:shadow-md transition-all group"
     >
-      <div className="w-20 h-28 shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100">
-        {book.coverUrl && !imageError ? (
-          <img
-            src={book.coverUrl}
-            alt={book.title}
-            className="w-full h-full object-cover"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <BookOpen className="h-8 w-8 text-purple-300" />
+	      <div className="w-20 h-28 shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100">
+	        {book.coverUrl && !imageError ? (
+	          <Image
+	            src={book.coverUrl}
+	            alt={book.title}
+	            width={80}
+	            height={112}
+	            className="w-full h-full object-cover"
+	            onError={() => setImageError(true)}
+	          />
+	        ) : (
+	          <div className="w-full h-full flex items-center justify-center">
+	            <BookOpen className="h-8 w-8 text-purple-300" />
           </div>
         )}
       </div>

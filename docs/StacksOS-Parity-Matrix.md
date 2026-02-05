@@ -1,10 +1,20 @@
-# StacksOS Parity Matrix (Features x Vendors)
+# StacksOS Parity Matrix (Features x Vendors) — Research Only (Non-Canonical)
 
-Date: 2026-01-25
+Date: 2026-02-05
 
 Purpose:
 - Track feature parity (and differentiation) against major ILS/LSP competitors.
 - Be explicit about evidence quality so we do not bake incorrect assumptions into the roadmap.
+
+Canonical source of truth:
+- `docs/StacksOS-Execution-Backlog.md` is the canonical execution plan and may move faster than this matrix.
+- If this matrix and the execution backlog conflict, treat the backlog as authoritative.
+- For a repo-derived “what’s wired up”, see `audit/FEATURE_MATRIX.md` (generated via `./audit/run_all.sh`).
+
+Status:
+- This file is **not kept in lockstep** with implementation details and exists primarily for competitive research and
+  roadmap framing.
+- Treat the **StacksOS** column here as a best-effort snapshot, not a release checklist.
 
 Vendors (columns):
 - Alma (Ex Libris)
@@ -130,7 +140,7 @@ Gap score (StacksOS):
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | MOD-RPT-001 | Role dashboards | partial | 1 | I | I | I | D | I | I | I | I | I | I |
 | MOD-RPT-002 | CSV export | partial | 1 | I | I | I | D | I | I | I | I | I | I |
-| MOD-RPT-003 | Scheduled reports | missing | 0 | I | I | I | I | I | I | I | I | I | I |
+| MOD-RPT-003 | Scheduled reports | done | 2 | I | I | I | I | I | I | I | I | I | I |
 
 ---
 
@@ -155,7 +165,7 @@ P1 expands StacksOS from a pilot-ready staff client into a true SaaS experience:
 | SEC-SSO-001 | Staff SSO (SAML/OIDC) | missing | 0 | I | I | I | I | I | I | I | I | I | I |
 | SEC-MFA-001 | Staff MFA | missing | 0 | I | I | I | I | I | D | I | I | I | I |
 | SEC-SESSION-001 | Session controls (idle timeout, device revocation) | partial | 1 | I | I | I | I | I | I | I | I | I | I |
-| SEC-IP-001 | IP allowlists + geo controls | missing | 0 | I | I | I | I | I | I | I | I | I | I |
+| SEC-IP-001 | IP allowlists + geo controls | partial | 1 | I | I | I | I | I | I | I | I | I | I |
 | SEC-AUDIT-010 | Tamper-evident audit export | missing | 0 | I | I | I | I | I | I | I | I | I | I |
 | SEC-RBAC-010 | Break-glass workflow (time-bound elevation + reason) | missing | 0 | I | I | I | I | I | I | I | I | I | I |
 
@@ -379,4 +389,3 @@ Symphony WorkFlows:
 Alma:
 - Predictive patterns: https://knowledge.exlibrisgroup.com/Alma/Product_Documentation/010Alma_Online_Help_(English)/Physical_Resource_Management/016Managing_Physical_Resources/Prediction_Patterns
 - Claiming: https://knowledge.exlibrisgroup.com/Alma/Product_Materials/050Alma_FAQs/Acquisitions/Claims
-

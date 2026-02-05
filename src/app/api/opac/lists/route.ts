@@ -6,7 +6,7 @@ import {
   serverErrorResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { cookies } from "next/headers";
+import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 
 // In a production app, lists would be stored in a database (PostgreSQL)
 // For now, we store in Evergreen user settings or a custom table
@@ -14,19 +14,13 @@ import { cookies } from "next/headers";
 // GET /api/opac/lists - Get all user lists
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-    const patronId = cookieStore.get("patron_id")?.value;
-
-    if (!patronToken || !patronId) {
-      return errorResponse("Not authenticated", 401);
-    }
+    const { patronToken, patronId } = await requirePatronSession();
 
     // Get user bookbags (Evergreen term for lists)
     const bagsResponse = await callOpenSRF(
       "open-ils.actor",
       "open-ils.actor.container.flesh",
-      [patronToken, "user", "biblio", parseInt(patronId)]
+      [patronToken, "user", "biblio", patronId]
     );
 
     const bags = bagsResponse.payload?.[0] || [];
@@ -55,44 +49,20 @@ export async function GET(req: NextRequest) {
         }))
       : [];
 
-    // Add default lists if they dont exist
-    const defaultNames = ["Want to Read", "Currently Reading", "Completed"];
-    for (const name of defaultNames) {
-      if (!lists.find((l: any) => l.name === name)) {
-        lists.unshift({
-          id: `default-${name.toLowerCase().replace(/\s+/g, "-")}`,
-          name,
-          description: "",
-          visibility: "private",
-          itemCount: 0,
-          items: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isDefault: true,
-          icon: name === "Want to Read" ? "heart" 
-              : name === "Currently Reading" ? "book" 
-              : "check",
-        });
-      }
-    }
-
     return successResponse({ lists });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return errorResponse(error.message, error.status);
+    }
     logger.error({ error: String(error) }, "Error fetching lists");
-    return serverErrorResponse(error, "Failed to fetch lists");
+    return serverErrorResponse(error, "Failed to fetch lists", req);
   }
 }
 
 // POST /api/opac/lists - Create a new list
 export async function POST(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-    const patronId = cookieStore.get("patron_id")?.value;
-
-    if (!patronToken || !patronId) {
-      return errorResponse("Not authenticated", 401);
-    }
+    const { patronToken, patronId } = await requirePatronSession();
 
     const { name, description, visibility } = await req.json();
 
@@ -108,7 +78,7 @@ export async function POST(req: NextRequest) {
         patronToken,
         "biblio",
         {
-          owner: parseInt(patronId),
+          owner: patronId,
           btype: "bookbag",
           name: name.trim(),
           description: description || "",
@@ -138,7 +108,10 @@ export async function POST(req: NextRequest) {
 
     return successResponse({ list: newList });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return errorResponse(error.message, error.status);
+    }
     logger.error({ error: String(error) }, "Error creating list");
-    return serverErrorResponse(error, "Failed to create list");
+    return serverErrorResponse(error, "Failed to create list", req);
   }
 }

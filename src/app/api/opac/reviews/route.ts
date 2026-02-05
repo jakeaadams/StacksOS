@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
     // Check if patron has borrowed this item (for verified badge)
     if (patronId > 0 && verified) {
       try {
-        const circRes = await callOpenSRF(
+        await callOpenSRF(
           "open-ils.circ",
           "open-ils.circ.patron_items_by_copy",
           [selfCheckoutToken!, patronId]

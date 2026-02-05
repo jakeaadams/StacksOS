@@ -3,7 +3,7 @@
 import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { ColumnDef } from "@tanstack/react-table";
 
@@ -39,6 +39,7 @@ import {
   CheckCircle2,
   CreditCard,
   DollarSign,
+  HelpCircle,
   Loader2,
   Printer,
   Search,
@@ -295,6 +296,7 @@ function buildRefundReceiptHtml(args: {
 }
 
 function BillsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
 
@@ -577,7 +579,7 @@ function BillsContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [loadTransactions, outstanding, patron, paymentAmount, paymentMethod, paymentNote, selected, user, view]);
+  }, [loadTransactions, outstanding, patron, payBillsMutation, paymentAmount, paymentMethod, paymentNote, selected, user, view]);
 
   const openRefund = useCallback((row: TransactionRow) => {
     if (!patron) {
@@ -665,7 +667,7 @@ function BillsContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [loadTransactions, patron, refundAmount, refundNote, refundTarget, user, view]);
+  }, [loadTransactions, patron, refundAmount, refundMutation, refundNote, refundTarget, user, view]);
 
   const printStatement = useCallback(() => {
     if (!patron) {
@@ -916,6 +918,7 @@ function BillsContent() {
             disabled: !patron,
             variant: "outline",
           },
+          { label: "Walkthrough", onClick: () => window.location.assign("/staff/training?workflow=bills"), icon: HelpCircle, variant: "outline" },
         ]}
       >
         {headerBadges}
@@ -983,6 +986,16 @@ function BillsContent() {
                           ? "This patron has no outstanding balance."
                           : "No transactions found."
                         : "Scan a patron barcode to view bills and payments."
+                    }
+                    action={
+                      patron
+                        ? { label: "Open patron record", onClick: () => router.push(`/staff/patrons/${patron.id}`) }
+                        : { label: "Seed demo data", onClick: () => router.push("/staff/help#demo-data") }
+                    }
+                    secondaryAction={
+                      patron
+                        ? { label: "How billing works", onClick: () => router.push("/staff/help#evergreen-setup") }
+                        : { label: "Search patrons", onClick: () => router.push("/staff/patrons") }
                     }
                   />
                 )

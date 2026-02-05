@@ -1,6 +1,6 @@
 # StacksOS Codebase Audit
 
-Date: 2026-01-24
+Date: 2026-02-05
 Scope: staff app + Evergreen adapter APIs
 
 ## Current state (high-level)
@@ -23,15 +23,15 @@ Dev (hot reload; shows Next.js dev badge):
 
 ```bash
 cd ~/projects/stacksos
-pnpm dev --hostname 0.0.0.0 --port 3000
+npm run dev -- -H 0.0.0.0 -p 3000
 ```
 
 Prod (no dev badge; faster; requires restart on changes):
 
 ```bash
 cd ~/projects/stacksos
-pnpm build
-PORT=3000 pnpm start
+npm run build
+npm run start -- -H 0.0.0.0 -p 3000
 ```
 
 Login (dev + prod):
@@ -57,7 +57,8 @@ BASE_URL=http://localhost:3000 ./audit/run_api_audit.sh
 ```
 
 Notes:
-- Some endpoints return empty lists because the Evergreen sandbox currently has no data configured (funds/vendors/booking resource types/etc.). This is expected and is not an adapter failure.
+- If no staff credentials are set and you run in a TTY, `./audit/run_api_audit.sh` will prompt for them.
+- The audit writes sensitive artifacts (cookie jar + patron identifiers). Treat the `audit/` folder as confidential.
 
 ## Workflow QA (end-to-end)
 
@@ -71,9 +72,11 @@ cd ~/projects/stacksos
 BASE_URL=http://localhost:3000 ./audit/run_workflow_qa.sh
 ```
 
-Default sandbox records (override via env vars):
-- Patron barcode: `29000000001234` (Jake Adams)
-- Item barcode: `39000000001235` (Harry Potter and the Goblet of Fire)
+Default sandbox records:
+- Prefer `audit/demo_data.json` (written by `node scripts/seed-sandbox-demo-data.mjs`) for stable fixtures.
+- If you do not have `audit/demo_data.json`, the fallback barcodes are:
+  - Patron barcode: `29000000001234` (StacksOS demo patron)
+  - Item barcode: `39000000001235` (demo item)
 
 What it validates:
 - Auth + workstation auto-register
@@ -133,6 +136,22 @@ grep -R 'href="#"' -n src/app/staff src/components || true
   - `src/lib/audit.ts` prints to stdout for development
 
 ## Recommended next audit passes
+
+### Mutation audits (DISPOSABLE DATASET ONLY)
+
+Purpose:
+- Exercise write paths (checkout/checkin loops, holds placement, select admin mutations) to catch regression in real state
+  transitions.
+
+Hard rule:
+- Run only against a disposable Evergreen dataset (staging/sandbox). Mutation mode is destructive.
+
+How to run (interactive; seeds demo data first):
+
+```bash
+cd ~/projects/stacksos
+STACKSOS_AUDIT_CONFIRM_MUTATION=I_UNDERSTAND BASE_URL=http://localhost:3000 ./audit/run_mutation_sandbox.sh
+```
 
 1) Flow-based audit: manually exercise the top 10 staff workflows end-to-end (checkout/checkin/holds/bills/patron register/catalog search/MARC edit/Z39.50 import/acq receive/serials list/booking create).
 2) Permission audit: run each workflow under a restricted Evergreen staff account and ensure StacksOS RBAC matches expected outcomes.

@@ -2,8 +2,8 @@
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { clientLogger } from "@/lib/client-logger";
 
-import * as React from "react";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, Upload, ExternalLink, Check, ImageOff } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { UnoptimizedImage } from "@/components/shared/unoptimized-image";
 
 export interface CoverArtPickerProps {
   open: boolean;
@@ -52,6 +53,17 @@ function getCoverProviderOrder(): CoverOption["provider"][] {
   return ordered;
 }
 
+function convertToISBN10(isbn13: string): string | null {
+  if (isbn13.length !== 13 || !isbn13.startsWith("978")) return null;
+  const base = isbn13.substring(3, 12);
+  let checksum = 0;
+  for (let i = 0; i < 9; i++) {
+    checksum += parseInt(base[i]) * (10 - i);
+  }
+  const check = (11 - (checksum % 11)) % 11;
+  return base + (check === 10 ? "X" : check.toString());
+}
+
 export function CoverArtPicker({
   open,
   onOpenChange,
@@ -67,14 +79,20 @@ export function CoverArtPicker({
   const [customUrl, setCustomUrl] = useState("");
   const [selectedCover, setSelectedCover] = useState<CoverOption | null>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) {
-      fetchCoverOptions();
+    if (!uploadFile) {
+      setUploadPreviewUrl(null);
+      return;
     }
-  }, [open, isbn, title, author]);
 
-  const fetchCoverOptions = async () => {
+    const url = URL.createObjectURL(uploadFile);
+    setUploadPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [uploadFile]);
+
+  const fetchCoverOptions = useCallback(async () => {
     setLoading(true);
     const options: CoverOption[] = [];
     const providerOrder = getCoverProviderOrder();
@@ -181,18 +199,12 @@ export function CoverArtPicker({
     } finally {
       setLoading(false);
     }
-  };
+  }, [author, currentCoverUrl, isbn, title]);
 
-  const convertToISBN10 = (isbn13: string): string | null => {
-    if (isbn13.length !== 13 || !isbn13.startsWith("978")) return null;
-    const base = isbn13.substring(3, 12);
-    let checksum = 0;
-    for (let i = 0; i < 9; i++) {
-      checksum += parseInt(base[i]) * (10 - i);
-    }
-    const check = (11 - (checksum % 11)) % 11;
-    return base + (check === 10 ? "X" : check.toString());
-  };
+  useEffect(() => {
+    if (!open) return;
+    void fetchCoverOptions();
+  }, [fetchCoverOptions, open]);
 
   const handleSelectCover = (cover: CoverOption) => {
     setSelectedCover(cover);
@@ -352,7 +364,7 @@ export function CoverArtPicker({
             </div>
             {customUrl && (
               <div className="border rounded-lg p-4 flex items-center justify-center bg-muted/50">
-                <img
+                <UnoptimizedImage
                   src={customUrl}
                   alt="Preview"
                   className="max-h-64 object-contain"
@@ -380,10 +392,10 @@ export function CoverArtPicker({
                 Supported formats: JPG, PNG, GIF, WEBP (max 5MB)
               </p>
             </div>
-            {uploadFile && (
+            {uploadPreviewUrl && (
               <div className="border rounded-lg p-4 flex items-center justify-center bg-muted/50">
-                <img
-                  src={URL.createObjectURL(uploadFile)}
+                <UnoptimizedImage
+                  src={uploadPreviewUrl}
                   alt="Preview"
                   className="max-h-64 object-contain"
                 />
@@ -431,12 +443,14 @@ function CoverThumbnail({
       {!loaded && (
         <div className="absolute inset-0 bg-muted animate-pulse" />
       )}
-      <img
+      <Image
         src={cover.thumbnail}
         alt={cover.source}
-        className={`w-full h-full object-contain bg-muted ${loaded ? "opacity-100" : "opacity-0"}`}
+        fill
+        sizes="160px"
+        className={`object-contain bg-muted ${loaded ? "opacity-100" : "opacity-0"}`}
         onError={() => setError(true)}
-        onLoad={() => setLoaded(true)}
+        onLoadingComplete={() => setLoaded(true)}
       />
       {selected && (
         <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full p-1">

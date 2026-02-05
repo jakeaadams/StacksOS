@@ -358,11 +358,11 @@ export default function LoginPage() {
 
                 {showOrgSelector && (
                   <div className="space-y-2">
-                    <Label>Location (optional)</Label>
+                    <Label htmlFor="location">Location (optional)</Label>
                     <div className="relative">
                       <Building2 className="absolute left-4 top-2.5 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
                       <Select value={orgOverride} onValueChange={setOrgOverride}>
-                        <SelectTrigger className="pl-14">
+                        <SelectTrigger id="location" className="pl-14">
                           <SelectValue placeholder="Use your home library" />
                         </SelectTrigger>
                         <SelectContent className="max-h-64">

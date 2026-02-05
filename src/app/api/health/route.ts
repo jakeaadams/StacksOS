@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callOpenSRF } from "@/lib/api/client";
+import { fetchEvergreen } from "@/lib/api/evergreen-fetch";
 import { getEvergreenPool } from "@/lib/db/evergreen";
 
 const startTime = Date.now();
@@ -42,16 +42,83 @@ async function checkDatabase(): Promise<HealthCheck> {
 async function checkEvergreen(): Promise<HealthCheck> {
   const start = Date.now();
   try {
-    // Simple check - get the version
-    const response = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.authenticate.init",
-      ["__health_check__"]
-    );
-    // Even if user doesn't exist, a successful response means Evergreen is up
+    const evergreenBase = process.env.EVERGREEN_BASE_URL;
+    if (!evergreenBase) {
+      return {
+        status: "down",
+        latency: Date.now() - start,
+        error: "EVERGREEN_BASE_URL is not set",
+      };
+    }
+
+    // Hit the OpenSRF gateway directly so we can treat "unknown user" as a
+    // successful Evergreen connection. Evergreen frequently returns `status: 404`
+    // for nonexistent users in `authenticate.init`, which should not fail the
+    // service liveness/readiness check.
+    const url = `${evergreenBase.replace(/\/+$/, "")}/osrf-gateway-v1`;
+
+    const body = new URLSearchParams({
+      service: "open-ils.auth",
+      method: "open-ils.auth.authenticate.init",
+    });
+    body.append("param", JSON.stringify("__health_check__"));
+    const bodyString = body.toString().replaceAll("+", "%20");
+
+    const res = await fetchEvergreen(url, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: bodyString,
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      return {
+        status: "down",
+        latency: Date.now() - start,
+        error: `OpenSRF HTTP error: ${res.status} ${res.statusText}`,
+      };
+    }
+
+    const json: unknown = await res.json();
+    const statusRaw = (json as any)?.status;
+    const status =
+      typeof statusRaw === "number"
+        ? statusRaw
+        : Number.isFinite(Number(statusRaw))
+          ? Number(statusRaw)
+          : null;
+
+    const debugRaw = (json as any)?.debug;
+    const debug = typeof debugRaw === "string" ? debugRaw : "";
+    const methodNotFound =
+      status === 404 &&
+      debug.toLowerCase().includes("method [") &&
+      debug.toLowerCase().includes("not found");
+
+    if (methodNotFound) {
+      return {
+        status: "down",
+        latency: Date.now() - start,
+        error: debug || "OpenSRF method not found",
+      };
+    }
+
+    // `authenticate.init` returns status 404 for nonexistent users, which is
+    // expected for this check. Any 2xx/404 response means Evergreen is reachable.
+    if (status === 200 || status === 404) {
+      return {
+        status: "up",
+        latency: Date.now() - start,
+      };
+    }
+
     return {
-      status: "up",
+      status: "down",
       latency: Date.now() - start,
+      error: `OpenSRF gateway returned status ${status ?? "unknown"}`,
     };
   } catch (error) {
     return {
@@ -62,7 +129,7 @@ async function checkEvergreen(): Promise<HealthCheck> {
   }
 }
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   const [dbCheck, evergreenCheck] = await Promise.all([
     checkDatabase(),
     checkEvergreen(),

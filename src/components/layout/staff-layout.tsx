@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { KeyboardProvider } from "@/components/keyboard/keyboard-shortcuts";
 import { AlertTriangle, Loader2 } from "lucide-react";
-import { KeyboardShortcutsOverlay, SessionTimeoutWarning } from "@/components/shared";
+import { KeyboardShortcutsOverlay, SessionTimeoutWarning, IdleTimeoutWarning } from "@/components/shared";
 import { useApi } from "@/hooks";
 import { WorkformsProvider } from "@/contexts/workforms-context";
 import { clientLogger } from "@/lib/client-logger";
@@ -34,9 +34,12 @@ export function StaffLayout({ children }: StaffLayoutProps) {
     revalidateOnFocus: true,
     revalidateInterval: 60_000,
   });
+  const { data: envData } = useApi<any>("/api/env", { immediate: true, revalidateInterval: 5 * 60_000 });
 
   const evergreenOk = !!pingData?.ok;
   const evergreenStatus = typeof pingData?.status === "number" ? pingData.status : undefined;
+  const idleTimeoutMinutes =
+    typeof envData?.env?.idleTimeoutMinutes === "number" ? envData.env.idleTimeoutMinutes : null;
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -173,6 +176,7 @@ export function StaffLayout({ children }: StaffLayoutProps) {
           warningBeforeMinutes={5}
           onSessionExpiring={handleSessionExpiring}
         />
+        {idleTimeoutMinutes ? <IdleTimeoutWarning idleTimeoutMinutes={idleTimeoutMinutes} warningBeforeMinutes={2} /> : null}
         <Toaster position="top-right" richColors />
       </div>
       </WorkformsProvider>

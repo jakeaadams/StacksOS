@@ -1,11 +1,30 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import {
   callOpenSRF,
   successResponse,
   errorResponse,
+  parseJsonBodyWithSchema,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
+import { getOpacPrivacyPrefs, upsertOpacPrivacyPrefs } from "@/lib/db/opac";
+
+const updatesSchema = z
+  .object({
+    email: z.string().trim().email().optional(),
+    phone: z.string().trim().min(0).optional(),
+    smsNumber: z.string().trim().min(0).optional(),
+    smsCarrier: z.string().trim().min(0).optional(),
+    holdNotifyEmail: z.boolean().optional(),
+    holdNotifySms: z.boolean().optional(),
+    holdNotifyPhone: z.boolean().optional(),
+    overdueNotifyEmail: z.boolean().optional(),
+    keepHistory: z.boolean().optional(),
+    personalizedRecommendations: z.boolean().optional(),
+    readingHistoryPersonalization: z.boolean().optional(),
+  })
+  .passthrough();
 
 // GET /api/opac/settings - Get patron settings
 export async function GET(_req: NextRequest) {
@@ -47,6 +66,7 @@ export async function GET(_req: NextRequest) {
     );
 
     const rawSettings = settingsResponse?.payload?.[0] || {};
+    const privacyPrefs = await getOpacPrivacyPrefs(Number(user.id));
 
     // Get patron details for email/phone
     const patronResponse = await callOpenSRF(
@@ -70,6 +90,8 @@ export async function GET(_req: NextRequest) {
         holdNotifyPhone: holdNotify.includes("phone"),
         overdueNotifyEmail: true, // Usually controlled at library level
         keepHistory: rawSettings["history.circ.retention_start"] !== null,
+        personalizedRecommendations: privacyPrefs.personalizedRecommendations,
+        readingHistoryPersonalization: privacyPrefs.readingHistoryPersonalization,
       },
     });
   } catch (error) {
@@ -88,7 +110,9 @@ export async function PUT(req: NextRequest) {
       return errorResponse("Not authenticated", 401);
     }
 
-    const updates = await req.json();
+    const updatesParsed = await parseJsonBodyWithSchema(req, updatesSchema);
+    if (updatesParsed instanceof Response) return updatesParsed as any;
+    const updates = updatesParsed;
 
     // Get session to get patron ID
     const sessionResponse = await callOpenSRF(
@@ -120,6 +144,10 @@ export async function PUT(req: NextRequest) {
       settingsToUpdate["opac.default_sms_carrier"] = updates.smsCarrier;
     }
 
+    if (typeof updates.keepHistory === "boolean") {
+      settingsToUpdate["history.circ.retention_start"] = updates.keepHistory ? new Date().toISOString() : null;
+    }
+
     // Update patron settings via Evergreen
     const updateResponse = await callOpenSRF(
       "open-ils.actor",
@@ -144,6 +172,13 @@ export async function PUT(req: NextRequest) {
         "open-ils.actor.patron.update",
         [patronToken, patronUpdate]
       );
+    }
+
+    if (typeof updates.personalizedRecommendations === "boolean" || typeof updates.readingHistoryPersonalization === "boolean") {
+      await upsertOpacPrivacyPrefs(Number(user.id), {
+        personalizedRecommendations: updates.personalizedRecommendations,
+        readingHistoryPersonalization: updates.readingHistoryPersonalization,
+      });
     }
 
     return successResponse({ success: true });

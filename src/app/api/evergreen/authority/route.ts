@@ -1,19 +1,27 @@
 import { NextRequest } from "next/server";
-import { successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
+import { parseJsonBodyWithSchema, successResponse, errorResponse, serverErrorResponse, getErrorMessage, isOpenSRFEvent } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { callOpenSRF, requireAuthToken } from "@/lib/api/client";
+import { callOpenSRF } from "@/lib/api/client";
+import { requirePermissions } from "@/lib/permissions";
+import { z } from "zod";
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const query = searchParams.get("q") || "";
-  const axis = searchParams.get("axis") || ""; // author, subject, title, etc.
+  const axis = searchParams.get("axis") || searchParams.get("type") || ""; // author, subject, title, etc.
+  const limit = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") || "50", 10)));
+  const offset = Math.max(0, parseInt(searchParams.get("offset") || "0", 10));
 
   try {
     if (!query) {
       return errorResponse("Query required", 400);
     }
 
-    const authtoken = await requireAuthToken();
+    const { authtoken } = await requirePermissions(["STAFF_LOGIN"]);
     const requestId = req.headers.get("x-request-id") || null;
     
     logger.debug({ requestId, route: "api.evergreen.authority", query, axis }, "Authority search");
@@ -29,23 +37,18 @@ export async function GET(req: NextRequest) {
           authtoken,
           query,
           axis || null, // authority type filter (author, subject, title, etc.)
-          10, // limit results
-          0,  // offset
+          limit, // limit results
+          offset,  // offset
         ]
       );
     } catch (error) {
       // Evergreen installs vary; many don't expose authority browse in OpenSRF.
-      // Treat "method not found" as "not configured" instead of a hard 500.
+      // Fall back to searching authority.record_entry via PCrud (no direct DB access required).
       if (error && typeof error === "object" && (error as any).code === "OSRF_METHOD_NOT_FOUND") {
-        return successResponse({
-          count: 0,
-          authorities: [],
-          query,
-          axis: axis || null,
-          warning: "Authority search is not configured on this Evergreen server.",
-        });
+        response = null;
+      } else {
+        throw error;
       }
-      throw error;
     }
 
     const authorities = response?.payload || [];
@@ -58,6 +61,7 @@ export async function GET(req: NextRequest) {
           id: index,
           heading: auth,
           type: axis || "unknown",
+          linkedBibs: 0,
         };
       }
       
@@ -67,17 +71,121 @@ export async function GET(req: NextRequest) {
         type: auth?.type || axis || "unknown",
         see_also: auth?.see_also || [],
         see_from: auth?.see_from || [],
+        linkedBibs: typeof auth?.linkedBibs === "number" ? auth.linkedBibs : 0,
       };
     });
 
+    if (results.length > 0) {
+      return successResponse({
+        count: results.length,
+        authorities: results,
+        query,
+        axis: axis || null,
+        warning: null,
+        message: null,
+      });
+    }
+
+    const term = escapeRegex(query);
+    const pcrud = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.are.atomic", [
+      authtoken,
+      {
+        deleted: "f",
+        "-or": [{ heading: { "~*": term } }, { simple_heading: { "~*": term } }],
+      },
+      { limit, offset, order_by: { are: "heading" } },
+    ]);
+    const rows = Array.isArray(pcrud?.payload?.[0]) ? (pcrud.payload[0] as any[]) : [];
+    const fallback = rows.map((r: any) => ({
+      id: r.id,
+      heading: r.heading || r.simple_heading || "",
+      type: axis || "main",
+      linkedBibs: 0,
+    }));
+
     return successResponse({
-      count: results.length,
-      authorities: results,
+      count: fallback.length,
+      authorities: fallback,
       query,
       axis: axis || null,
+      warning:
+        response
+          ? "OpenSRF authority browse returned no results; using authority record search."
+          : "Authority browse is not available via OpenSRF on this Evergreen server; using authority record search.",
+      message: null,
     });
 
   } catch (error) {
     return serverErrorResponse(error, "Authority GET", req);
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await parseJsonBodyWithSchema(
+      req,
+      z
+        .object({
+          action: z.enum(["seed"] as const),
+          headings: z.array(z.string().trim().min(1).max(255)).min(1).max(25),
+        })
+        .strict()
+    );
+    if (body instanceof Response) return body as any;
+
+    const { authtoken, actor } = await requirePermissions(["CREATE_AUTHORITY_RECORD", "IMPORT_MARC"]);
+    const actorId = typeof actor?.id === "number" ? actor.id : parseInt(String(actor?.id ?? ""), 10);
+    const owner = Number(actor?.ws_ou ?? actor?.home_ou ?? 1) || 1;
+
+    const created: Array<{ id: number; heading: string }> = [];
+    for (const heading of body.headings) {
+      // Idempotency: if record_entry already includes this heading, skip create.
+      try {
+        const exact = `^${escapeRegex(heading)}$`;
+        const existing = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.are.atomic", [
+          authtoken,
+          { deleted: "f", simple_heading: { "~*": exact } },
+          { limit: 1 },
+        ]);
+        const rows = Array.isArray(existing?.payload?.[0]) ? (existing.payload[0] as any[]) : [];
+        if (rows.length > 0) {
+          continue;
+        }
+      } catch {
+        // ignore; proceed with create
+      }
+
+      const control = `STACKSOS-DEMO-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const safeHeading = String(heading).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+      const marc =
+        `<?xml version="1.0" encoding="UTF-8"?>` +
+        `<record xmlns="http://www.loc.gov/MARC21/slim">` +
+        `<leader>00000nz  a2200000 a 4500</leader>` +
+        `<controlfield tag="001">${control}</controlfield>` +
+        `<controlfield tag="008">      ||||||||||||||||||||||||||||||||||</controlfield>` +
+        `<datafield tag="040" ind1=" " ind2=" "><subfield code="a">StacksOS</subfield><subfield code="c">StacksOS</subfield></datafield>` +
+        `<datafield tag="150" ind1=" " ind2=" "><subfield code="a">${safeHeading}</subfield></datafield>` +
+        `</record>`;
+
+      const res = await callOpenSRF("open-ils.cat", "open-ils.cat.authority.record.import", [
+        authtoken,
+        marc,
+        "StacksOS Demo",
+      ]);
+      const row = res?.payload?.[0];
+      if (!row || isOpenSRFEvent(row) || (row as any)?.ilsevent) {
+        const msg = getErrorMessage(row, "Failed to import authority record");
+        logger.warn({ heading, owner, actorId, msg }, "Authority import failed");
+        continue;
+      }
+
+      const id =
+        typeof (row as any)?.id === "number" ? (row as any).id : parseInt(String((row as any)?.id ?? ""), 10);
+      if (Number.isFinite(id) && id > 0) created.push({ id, heading });
+    }
+
+    return successResponse({ created, count: created.length });
+  } catch (error) {
+    return serverErrorResponse(error, "Authority POST", req);
   }
 }

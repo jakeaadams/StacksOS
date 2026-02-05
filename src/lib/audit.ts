@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { callOpenSRF, isOpenSRFEvent } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { recordPatronChangeEvent } from "@/lib/db/patron-change";
 
 export interface AuditActor {
   id?: number;
@@ -98,14 +99,51 @@ export async function logAuditEvent(event: AuditEvent): Promise<void> {
 
   if (AUDIT_MODE === "stdout") {
     process.stdout.write(line);
-    return;
+  } else {
+    try {
+      await fs.mkdir(path.dirname(AUDIT_LOG_PATH), { recursive: true });
+      await fs.appendFile(AUDIT_LOG_PATH, line, "utf8");
+    } catch (err) {
+      const e = err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) };
+      logger.warn({ error: e, path: AUDIT_LOG_PATH }, "Failed to write audit log");
+    }
   }
 
+  // Best-effort: persist patron-change activity into the Evergreen "library" schema.
+  // This powers the Staff Activity feed even when Evergreen doesn't expose patron-change history.
   try {
-    await fs.mkdir(path.dirname(AUDIT_LOG_PATH), { recursive: true });
-    await fs.appendFile(AUDIT_LOG_PATH, line, "utf8");
-  } catch (err) {
-    const e = err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) };
-    logger.warn({ error: e, path: AUDIT_LOG_PATH }, "Failed to write audit log");
+    if (!process.env.EVERGREEN_DB_PASSWORD) return;
+    if (sanitized.status !== "success" || sanitized.entity !== "patron") return;
+    const rawId = sanitized.entityId;
+    const patronId = typeof rawId === "number" ? rawId : parseInt(String(rawId ?? ""), 10);
+    if (!Number.isFinite(patronId)) return;
+
+    const details = sanitized.details as any;
+    const updates = Array.isArray(details?.updates) ? details.updates : null;
+    const changes =
+      updates && updates.length
+        ? Object.fromEntries(
+            updates
+              .map((k: unknown) => String(k || "").trim())
+              .filter(Boolean)
+              .slice(0, 32)
+              .map((k: string) => [k, true])
+          )
+        : null;
+
+    await recordPatronChangeEvent({
+      patronId,
+      action: sanitized.action,
+      actor: {
+        id: sanitized.actor?.id,
+        username: sanitized.actor?.username,
+        name: sanitized.actor?.name,
+        workstation: sanitized.actor?.workstation,
+      },
+      requestId: sanitized.requestId ?? null,
+      changes,
+    });
+  } catch (error) {
+    logger.warn({ error: String(error) }, "Failed to persist audit activity");
   }
 }

@@ -19,6 +19,8 @@ import re
 from pathlib import Path
 from datetime import datetime, timezone
 
+from dep_scan import dependency_closure, read_text as read_text_cached
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "audit" / "REPO_INVENTORY.md"
 
@@ -28,11 +30,30 @@ SIDEBAR = ROOT / "src" / "components" / "layout" / "sidebar.tsx"
 
 HREF_RE = re.compile(r"href:\s*\"([^\"]+)\"")
 API_USAGE_RE = re.compile(r"/api/evergreen/([a-z0-9-]+)")
+ANY_API_RE = re.compile(r"/api/[A-Za-z0-9_/-]+")
 TODO_RE = re.compile(r"\b(TODO|FIXME|XXX)\b")
 
 
 def utc_stamp() -> str:
     return datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
+
+
+def is_dynamic_route(route: str) -> bool:
+    return "[" in route and "]" in route
+
+
+def parent_sidebar_route(route: str, sidebar_hrefs: list[str]) -> str | None:
+    """Return the closest sidebar route that is a path-segment parent of `route`."""
+    if not route.startswith("/staff/"):
+        return None
+    best: str | None = None
+    for href in sidebar_hrefs:
+        if href in ("/staff", "/staff/"):
+            continue
+        if route.startswith(href + "/"):
+            if best is None or len(href) > len(best):
+                best = href
+    return best
 
 
 def route_from_page(page_path: Path) -> str:
@@ -85,6 +106,17 @@ def main() -> None:
     # Route coverage
     staff_route_set = set(r for r, _ in staff_routes)
     unlinked_routes = [r for r, _ in staff_routes if r not in sidebar_hrefs]
+    unlinked_candidates: list[str] = []
+    unlinked_secondary: list[tuple[str, str]] = []
+    for r in unlinked_routes:
+        if is_dynamic_route(r):
+            unlinked_secondary.append((r, "dynamic (detail page)"))
+            continue
+        parent = parent_sidebar_route(r, sidebar_hrefs)
+        if parent:
+            unlinked_secondary.append((r, f"child of {parent}"))
+            continue
+        unlinked_candidates.append(r)
 
     # API usage per page
     page_api_usage = []
@@ -93,15 +125,28 @@ def main() -> None:
     todo_hits = []
 
     for route, page in staff_routes:
-        text = read_text(page)
-        mods = sorted(set(API_USAGE_RE.findall(text)))
+        files = dependency_closure(ROOT, [page], max_files=800)
+        mods: set[str] = set()
+        any_api = False
+        for f in files:
+            t = read_text_cached(f)
+            mods.update(API_USAGE_RE.findall(t))
+            if not any_api and ANY_API_RE.search(t):
+                any_api = True
         page_api_usage.append((route, page, mods))
         for m in mods:
             all_used_modules.add(m)
-        if not mods:
+        if not any_api:
             unconnected_pages.append((route, page))
-        if TODO_RE.search(text):
+        if TODO_RE.search(read_text_cached(page)):
             todo_hits.append((route, page))
+
+    # Include staff layout-level usage in module coverage.
+    staff_layout = STAFF_DIR / "layout.tsx"
+    if staff_layout.exists():
+        baseline_files = dependency_closure(ROOT, [staff_layout], max_files=1200)
+        for f in baseline_files:
+            all_used_modules.update(API_USAGE_RE.findall(read_text_cached(f)))
 
     unused_api_modules = [m for m in api_modules if m not in all_used_modules]
 
@@ -123,17 +168,25 @@ def main() -> None:
         lines.append("- Sidebar links: OK (every sidebar href has a page.tsx)\n")
 
     lines.append("## Staff Pages Not Linked In Sidebar\n")
-    lines.append("Note: some unlinked pages are expected (detail pages), but they should be intentional.\n")
+    lines.append("Rule: primary navigation should not miss true hub pages.\n")
 
-    if unlinked_routes:
-        for r in sorted(unlinked_routes):
+    if unlinked_candidates:
+        lines.append("### Needs IA decision (hub-like pages)\n")
+        for r in sorted(unlinked_candidates):
             lines.append(f"- `{r}`")
         lines.append("")
-    else:
+
+    if unlinked_secondary:
+        lines.append("### Intentional (detail pages / subpages)\n")
+        for r, reason in sorted(unlinked_secondary):
+            lines.append(f"- `{r}` ({reason})")
+        lines.append("")
+
+    if not unlinked_candidates and not unlinked_secondary:
         lines.append("- None\n")
 
-    lines.append("## Pages With No Adapter API Usage\n")
-    lines.append("These pages do not reference `/api/evergreen/*` at all. They are likely static or incomplete.\n")
+    lines.append("## Pages With No API Usage (Static)\n")
+    lines.append("These pages (and their local imports) do not reference `/api/*`. This can be OK (docs/static), but review periodically.\n")
     if unconnected_pages:
         for route, page in unconnected_pages:
             lines.append(f"- `{route}` (`{page.relative_to(ROOT)}`)")

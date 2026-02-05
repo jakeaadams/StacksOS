@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
@@ -51,6 +52,7 @@ function formatDateTime(date?: Date | string | null) {
 }
 
 export default function OfflineCirculationPage() {
+  const router = useRouter();
   const [isOnline, setIsOnline] = useState(true);
   const [activeTab, setActiveTab] = useState("checkout");
   const [patronBarcode, setPatronBarcode] = useState("");
@@ -322,19 +324,19 @@ export default function OfflineCirculationPage() {
     setItemBarcode("");
   };
 
-  const handleRetryTransaction = async (tx: OfflineTransaction) => {
+  const handleRetryTransaction = useCallback(async (tx: OfflineTransaction) => {
     try {
       // Reset status to pending and retry upload
       await offlineDB.updateTransactionStatus(tx.id, "pending");
       toast.info("Transaction queued for retry");
       await loadPendingTransactions();
       await loadSyncStatus();
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to retry transaction");
     }
-  };
+  }, [loadPendingTransactions, loadSyncStatus]);
 
-  const handleDiscardTransaction = async (tx: OfflineTransaction) => {
+  const handleDiscardTransaction = useCallback(async (tx: OfflineTransaction) => {
     if (!confirm("Discard this transaction? This cannot be undone.")) return;
     try {
       await offlineDB.updateTransactionStatus(tx.id, "processed");
@@ -344,12 +346,12 @@ export default function OfflineCirculationPage() {
     } catch (_error) {
       toast.error("Failed to discard transaction");
     }
-  };
+  }, [loadPendingTransactions, loadSyncStatus]);
 
-  const viewErrorDetails = (tx: OfflineTransaction) => {
+  const viewErrorDetails = useCallback((tx: OfflineTransaction) => {
     setSelectedErrorTx(tx);
     setShowErrorDialog(true);
-  };
+  }, []);
   const sessionColumns = useMemo<ColumnDef<SessionItem>[]>(
     () => [
       {
@@ -521,6 +523,26 @@ export default function OfflineCirculationPage() {
       </PageHeader>
 
       <PageContent>
+        {(syncStatus.blockList.count === 0 || syncStatus.policies.count === 0) && (
+          <Card className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20">
+            <CardContent className="pt-6">
+              <EmptyState
+                icon={Download}
+                title="Offline cache not synced"
+                description="Download policies and block lists before relying on offline circulation. You can still record transactions, but you may miss blocks/policy checks without cached data."
+                action={{
+                  label: "Sync offline data",
+                  onClick: () => void handleDownloadData(),
+                }}
+                secondaryAction={{
+                  label: "Offline help",
+                  onClick: () => router.push("/staff/help#runbook"),
+                }}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid gap-6 lg:grid-cols-[320px,1fr]">
           <div className="space-y-6">
             <Card>

@@ -99,9 +99,8 @@ test.describe("Catalog Workflows", () => {
       // Wait for page to load
       await page.waitForLoadState("networkidle");
       
-      // Look for search elements
-      const hasSearchElements = await page.locator("input[type='text'], input[type='search'], button").first().isVisible().catch(() => false);
-      expect(hasSearchElements).toBeTruthy();
+      // Look for the staff catalog search input specifically (avoid hidden buttons/inputs)
+      await expect(page.getByPlaceholder(/Title, author, ISBN, keyword/i)).toBeVisible();
     });
 
     test("staff catalog search works", async ({ page }) => {
@@ -158,8 +157,8 @@ test.describe("Catalog Workflows", () => {
     });
 
     test("record details load when accessed directly", async ({ page }) => {
-      // Try to access a catalog record page (using ID 1 as example)
-      await page.goto("/staff/catalog/1");
+      const recordId = process.env.E2E_RECORD_ID || "10";
+      await page.goto(`/staff/catalog/record/${recordId}`);
       
       // Page should load (even if record doesn't exist, page structure should load)
       await expect(page.locator("body")).toBeVisible();
@@ -194,7 +193,7 @@ test.describe("Catalog Workflows", () => {
     });
 
     test("search results can be accessed", async ({ page }) => {
-      await page.goto("/opac/search?query=test");
+      await page.goto("/opac/search?q=test");
       
       // Wait for page load
       await page.waitForLoadState("domcontentloaded");

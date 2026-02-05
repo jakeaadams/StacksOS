@@ -15,10 +15,6 @@ import { requirePermissions } from "@/lib/permissions";
 import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 
-
-// StacksOS-specific settings keys (namespaced to avoid collisions)
-const STACKSOS_SETTINGS_PREFIX = "stacksos.";
-
 const ALLOWED_SETTINGS = [
   "stacksos.dashboard.layout",
   "stacksos.dashboard.widgets",
@@ -87,7 +83,7 @@ export async function GET(req: NextRequest) {
           // Parse JSON strings for complex values
           try {
             settings[key] = typeof value === "string" ? JSON.parse(value) : value;
-          } catch (error) {
+          } catch {
             settings[key] = value;
           }
         }

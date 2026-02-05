@@ -6,6 +6,8 @@
 
 import { test, expect } from "@playwright/test";
 
+import { getStaffCredentials } from "./helpers";
+
 async function getCsrfToken(request: any): Promise<string> {
   const response = await request.get("/api/csrf-token");
   expect(response.status()).toBe(200);
@@ -121,12 +123,13 @@ test.describe("API Endpoints E2E", () => {
     });
 
     test("POST /api/evergreen/auth with valid credentials returns user data", async ({ request }) => {
+      const { username, password } = getStaffCredentials();
       const token = await getCsrfToken(request);
       const response = await request.post("/api/evergreen/auth", {
         headers: { "x-csrf-token": token, "x-forwarded-for": `e2e-staff-valid-${Date.now()}` },
         data: {
-          username: "jake",
-          password: "jake",
+          username,
+          password,
         },
       });
       

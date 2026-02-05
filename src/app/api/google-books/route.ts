@@ -72,14 +72,33 @@ async function fetchGoogleBook(isbn: string): Promise<GoogleBookData | null> {
 async function searchGoogleBooks(query: string, maxResults: number, startIndex: number): Promise<{
   totalItems: number;
   items: GoogleBooksSearchItem[];
+  rateLimited?: boolean;
+  retryAfterSeconds?: number | null;
 }> {
   const safeMaxResults = Math.max(1, Math.min(maxResults || 8, 12));
   const safeStartIndex = Math.max(0, Math.min(startIndex || 0, 200));
   const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=${safeMaxResults}&startIndex=${safeStartIndex}`;
 
+  const now = Date.now();
+  if (now < rateLimitUntilMs) {
+    return {
+      totalItems: 0,
+      items: [],
+      rateLimited: true,
+      retryAfterSeconds: Math.max(1, Math.ceil((rateLimitUntilMs - now) / 1000)),
+    };
+  }
+
   const res = await fetch(url, {
     next: { revalidate: 86400 }, // Cache for 24 hours
   });
+
+  if (res.status === 429) {
+    const retryAfterHeader = String(res.headers.get("retry-after") || "").trim();
+    const retryAfterSeconds = retryAfterHeader && /^\d+$/.test(retryAfterHeader) ? parseInt(retryAfterHeader, 10) : 60;
+    rateLimitUntilMs = Date.now() + Math.max(10, retryAfterSeconds) * 1000;
+    return { totalItems: 0, items: [], rateLimited: true, retryAfterSeconds };
+  }
 
   if (!res.ok) {
     throw new Error(`Google Books HTTP error: ${res.status} ${res.statusText}`);
@@ -117,6 +136,8 @@ async function searchGoogleBooks(query: string, maxResults: number, startIndex: 
 
   return { totalItems, items };
 }
+
+let rateLimitUntilMs = 0;
 
 // GET /api/google-books?isbn=9780123456789
 // GET /api/google-books?isbns=9780123456789,9780987654321 (batch)
@@ -162,7 +183,7 @@ export async function GET(request: NextRequest) {
       const result = await searchGoogleBooks(q, maxResults, startIndex);
       return NextResponse.json({ ok: true, query: q, ...result });
     } catch (error) {
-      logger.error({ error: String(error), query: q }, "Error searching Google Books");
+      logger.warn({ error: String(error), query: q }, "Google Books search failed");
       return NextResponse.json(
         { ok: false, error: "Failed to search Google Books" },
         { status: 502 }

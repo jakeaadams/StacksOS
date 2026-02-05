@@ -3,16 +3,19 @@ import {
   encodeFieldmapper,
   errorResponse,
   fmBoolean,
+  fmNumber,
+  fmString,
   getErrorMessage,
   getCopyStatuses,
   isOpenSRFEvent,
-  parseJsonBody,
+  parseJsonBodyWithSchema,
   requireAuthToken,
   serverErrorResponse,
   successResponse,
 } from "@/lib/api";
 import { getActorFromToken } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { z } from "zod";
 
 function toNumber(value: any): number {
   const num = typeof value === "number" ? value : Number(value);
@@ -88,35 +91,11 @@ async function checkPerms(authtoken: string, perms: string[], orgId?: number): P
   return null;
 }
 
-function throwPermissionDenied(message: string, missing: string[] = []): never {
-  const err: any = new Error(message);
-  err.name = "PermissionError";
-  err.missing = missing;
-  throw err;
-}
-
-async function requireStrictPermissions(required: string[]) {
-  const authtoken = await requireAuthToken();
-  const actor = await getActorFromToken(authtoken);
-  const orgId = actor?.ws_ou ?? actor?.home_ou;
-
-  const map = await checkPerms(authtoken, required, orgId);
-  if (!map) {
-    throwPermissionDenied("Permission check failed");
-  }
-  const missing = required.filter((p) => !map[p]);
-  if (missing.length > 0) {
-    throwPermissionDenied("Permission denied", missing);
-  }
-
-  return { authtoken, actor, orgId };
-}
-
 function boolToEg(value: any): "t" | "f" {
   return value === true || value === "t" || value === 1 ? "t" : "f";
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const authtoken = await requireAuthToken();
     const actor = await getActorFromToken(authtoken);
@@ -130,16 +109,20 @@ export async function GET() {
 
     const statuses = rows
       .map((s: any) => ({
-        id: toNumber(s?.id),
-        name: toString(s?.name ?? s?.label),
-        holdable: fmBoolean(s, "holdable"),
-        opacVisible: fmBoolean(s, "opac_visible"),
-        copyActive: fmBoolean(s, "copy_active"),
-        isAvailable: fmBoolean(s, "is_available"),
-        restrictCopyDelete: fmBoolean(s, "restrict_copy_delete"),
-        hopelessProne: fmBoolean(s, "hopeless_prone"),
+        // Evergreen returns fieldmapper objects for ccs with values in __p.
+        // Index order for ccs (config.copy_status):
+        // [holdable, id, name, opac_visible, copy_active, restrict_copy_delete, is_available, hopeless_prone]
+        id: fmNumber(s, "id", 1) ?? toNumber(s?.id ?? s?.[1]),
+        name: fmString(s, "name", 2) ?? fmString(s, "label", 2) ?? toString(s?.name ?? s?.label ?? s?.[2]),
+        holdable: fmBoolean(s, "holdable", 0) ?? fmBoolean(s, "holdable") ?? false,
+        opacVisible: fmBoolean(s, "opac_visible", 3) ?? fmBoolean(s, "opac_visible") ?? false,
+        copyActive: fmBoolean(s, "copy_active", 4) ?? fmBoolean(s, "copy_active") ?? false,
+        restrictCopyDelete: fmBoolean(s, "restrict_copy_delete", 5) ?? fmBoolean(s, "restrict_copy_delete") ?? false,
+        isAvailable: fmBoolean(s, "is_available", 6) ?? fmBoolean(s, "is_available") ?? false,
+        hopelessProne: fmBoolean(s, "hopeless_prone", 7) ?? fmBoolean(s, "hopeless_prone") ?? false,
       }))
-      .filter((s: any) => s.id > 0 && s.name.trim().length > 0)
+      // Include core status id=0 ("Available").
+      .filter((s: any) => Number.isFinite(s.id) && s.id >= 0 && s.name.trim().length > 0)
       .sort((a: any, b: any) => a.id - b.id);
 
     return successResponse({
@@ -147,7 +130,7 @@ export async function GET() {
       permissions: permMap || {},
     });
   } catch (error) {
-    return serverErrorResponse(error, "GET /api/evergreen/copy-statuses");
+    return serverErrorResponse(error, "GET /api/evergreen/copy-statuses", req);
   }
 }
 
@@ -155,13 +138,28 @@ export async function POST(req: Request) {
   try {
     const { authtoken, actor, result: permResult } = await requirePermissions(["CREATE_COPY_STATUS"]);
     const orgId = permResult.orgId;
-    const body = await parseJsonBody<Record<string, any>>(req);
-    if (body instanceof Response) return body;
+    const body = await parseJsonBodyWithSchema(
+      req,
+      z
+        .object({
+          name: z.string().trim().min(1),
+          holdable: z.boolean().optional(),
+          opacVisible: z.boolean().optional(),
+          opac_visible: z.boolean().optional(),
+          copyActive: z.boolean().optional(),
+          copy_active: z.boolean().optional(),
+          isAvailable: z.boolean().optional(),
+          is_available: z.boolean().optional(),
+          restrictCopyDelete: z.boolean().optional(),
+          restrict_copy_delete: z.boolean().optional(),
+          hopelessProne: z.boolean().optional(),
+          hopeless_prone: z.boolean().optional(),
+        })
+        .passthrough()
+    );
+    if (body instanceof Response) return body as any;
 
-    const name = String(body.name || "").trim();
-    if (!name) {
-      return errorResponse("name is required", 400);
-    }
+    const name = body.name;
 
     const payload: any = encodeFieldmapper("ccs", {
       name,
@@ -199,13 +197,30 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const { authtoken } = await requirePermissions(["UPDATE_COPY_STATUS"]);
-    const body = await parseJsonBody<Record<string, any>>(req);
-    if (body instanceof Response) return body;
+    const body = await parseJsonBodyWithSchema(
+      req,
+      z
+        .object({
+          id: z.number().int().positive(),
+          force: z.boolean().optional(),
+          name: z.string().trim().optional(),
+          holdable: z.boolean().optional(),
+          opacVisible: z.boolean().optional(),
+          opac_visible: z.boolean().optional(),
+          copyActive: z.boolean().optional(),
+          copy_active: z.boolean().optional(),
+          isAvailable: z.boolean().optional(),
+          is_available: z.boolean().optional(),
+          restrictCopyDelete: z.boolean().optional(),
+          restrict_copy_delete: z.boolean().optional(),
+          hopelessProne: z.boolean().optional(),
+          hopeless_prone: z.boolean().optional(),
+        })
+        .passthrough()
+    );
+    if (body instanceof Response) return body as any;
 
-    const id = parseInt(String(body.id ?? ""), 10);
-    if (!Number.isFinite(id)) {
-      return errorResponse("id is required", 400);
-    }
+    const id = body.id;
 
     const force = body.force === true;
     if (id < 100 && !force) {
@@ -217,7 +232,6 @@ export async function PUT(req: Request) {
     if (!existing || (existing as any)?.ilsevent) {
       return errorResponse("Status not found", 404);
     }
-
     const nameRaw = body.name !== undefined ? String(body.name).trim() : undefined;
     if (nameRaw !== undefined && !nameRaw) {
       return errorResponse("name cannot be empty", 400);
@@ -267,13 +281,18 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const { authtoken } = await requirePermissions(["DELETE_COPY_STATUS"]);
-    const body = await parseJsonBody<Record<string, any>>(req);
-    if (body instanceof Response) return body;
+    const body = await parseJsonBodyWithSchema(
+      req,
+      z
+        .object({
+          id: z.number().int().positive(),
+          force: z.boolean().optional(),
+        })
+        .passthrough()
+    );
+    if (body instanceof Response) return body as any;
 
-    const id = parseInt(String(body.id ?? ""), 10);
-    if (!Number.isFinite(id)) {
-      return errorResponse("id is required", 400);
-    }
+    const id = body.id;
 
     const force = body.force === true;
     if (id < 100 && !force) {

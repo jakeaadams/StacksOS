@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -48,6 +49,7 @@ interface PullListItem {
 }
 
 export default function PullListPage() {
+  const router = useRouter();
   const { user, getOrgName } = useAuth();
   const defaultOrgId = user?.activeOrgId ?? user?.homeLibraryId ?? 1;
 
@@ -457,7 +459,20 @@ export default function PullListPage() {
           <EmptyState
             icon={BookMarked}
             title="No items to pull"
-          />
+            description="There are no pending holds requiring pulls right now."
+            action={{
+              label: "Open holds shelf",
+              onClick: () => router.push("/staff/circulation/holds-shelf"),
+            }}
+            secondaryAction={{
+              label: "Hold policies",
+              onClick: () => router.push("/staff/admin/policies/holds"),
+            }}
+          >
+            <Button variant="ghost" size="sm" onClick={() => router.push("/staff/help#demo-data")}>
+              Seed demo data
+            </Button>
+          </EmptyState>
         ) : (
           <DataTable
             columns={columns}

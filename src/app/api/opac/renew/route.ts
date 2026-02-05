@@ -6,22 +6,17 @@ import {
   serverErrorResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { cookies } from "next/headers";
+import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 
 // POST /api/opac/renew - Renew a single item
 export async function POST(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-    const patronId = cookieStore.get("patron_id")?.value;
+    const { patronToken } = await requirePatronSession();
 
-    if (!patronToken || !patronId) {
-      return errorResponse("Not authenticated", 401);
-    }
+    const { copyBarcode, circId, checkoutId } = await req.json();
+    const resolvedCircId = circId ?? checkoutId;
 
-    const { copyBarcode, circId } = await req.json();
-
-    if (!copyBarcode && !circId) {
+    if (!copyBarcode && !resolvedCircId) {
       return errorResponse("Copy barcode or circulation ID required");
     }
 
@@ -30,7 +25,7 @@ export async function POST(req: NextRequest) {
     if (copyBarcode) {
       renewParams.copy_barcode = copyBarcode;
     } else {
-      renewParams.circ = circId;
+      renewParams.circ = resolvedCircId;
     }
 
     const renewResponse = await callOpenSRF(
@@ -71,7 +66,10 @@ export async function POST(req: NextRequest) {
       renewalsRemaining: result?.circ?.renewal_remaining,
     });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return errorResponse(error.message, error.status);
+    }
     logger.error({ error: String(error) }, "Error renewing item");
-    return serverErrorResponse(error, "Failed to renew item");
+    return serverErrorResponse(error, "Failed to renew item", req);
   }
 }

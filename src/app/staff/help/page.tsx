@@ -110,6 +110,66 @@ export default function HelpPage() {
           </CardContent>
         </Card>
 
+        <Card id="demo-data" className="rounded-2xl border-border/70">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Seed demo data (sandbox)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>
+              If you are evaluating StacksOS in a fresh Evergreen sandbox, seed realistic demo data to avoid empty
+              screens (patrons, bibs/items, acquisitions, serials, booking, authority).
+            </p>
+            <div className="rounded-lg border bg-muted/30 p-3 text-xs">
+              <div className="font-mono">node scripts/seed-sandbox-demo-data.mjs</div>
+              <div className="mt-2 text-muted-foreground">
+                Optional env: <span className="font-mono">STACKSOS_BASE_URL</span>,{" "}
+                <span className="font-mono">SEED_STAFF_USERNAME</span>,{" "}
+                <span className="font-mono">SEED_STAFF_PASSWORD</span>,{" "}
+                <span className="font-mono">SEED_WORKSTATION</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This writes <span className="font-mono">audit/demo_data.json</span> which the automated audits use for
+              stable barcodes.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card id="serials" className="rounded-2xl border-border/70">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Serials setup</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              Serials screens require Evergreen subscriptions and (optionally) routing lists. If Serials is empty:
+            </p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Create at least one subscription in Evergreen.</li>
+              <li>Create a distribution + stream (routing lists are keyed by stream).</li>
+              <li>Optional: configure routing users for that stream.</li>
+            </ul>
+            <p className="text-xs text-muted-foreground">
+              Tip: the seed script creates a minimal demo subscription + routing entry for sandbox installs.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card id="runbook" className="rounded-2xl border-border/70">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Runbook (operator quickstart)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>These are the minimum operational commands for pilots:</p>
+            <div className="rounded-lg border bg-muted/30 p-3 text-xs space-y-1">
+              <div className="font-mono">BASE_URL=http://127.0.0.1:3000 ./audit/run_all.sh</div>
+              <div className="font-mono">STACKSOS_AUDIT_MUTATE=1 BASE_URL=http://127.0.0.1:3000 ./audit/run_all.sh</div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Mutation mode should be used only on sandboxes or controlled staging environments.
+            </p>
+          </CardContent>
+        </Card>
+
         <Card id="ill" className="rounded-2xl border-border/70">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">ILL (Interlibrary Loan)</CardTitle>

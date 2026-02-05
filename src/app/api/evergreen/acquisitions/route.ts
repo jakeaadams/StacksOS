@@ -1,13 +1,16 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import {
   callOpenSRF,
+  callPcrud,
+  encodeFieldmapper,
   getCopyByBarcode,
   getErrorMessage,
   getRequestMeta,
   isOpenSRFEvent,
   isSuccessResult,
   notFoundResponse,
-  parseJsonBody,
+  parseJsonBodyWithSchema,
   successResponse,
   errorResponse,
   serverErrorResponse,
@@ -17,6 +20,16 @@ import { query } from "@/lib/db/evergreen";
 import { requirePermissions } from "@/lib/permissions";
 import { ACQUISITIONS_PERMS, CIRCULATION_PERMS } from "@/lib/permissions-map";
 import { logger } from "@/lib/logger";
+
+function parsePositiveIntId(value: unknown): number | null {
+  const numeric = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(numeric)) return null;
+
+  const intValue = Math.trunc(numeric);
+  if (intValue <= 0) return null;
+
+  return intValue;
+}
 
 /**
  * Acquisitions API
@@ -30,7 +43,7 @@ export async function GET(req: NextRequest) {
   const id = searchParams.get("id");
 
   try {
-    const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
+    const { authtoken, actor: _actor } = await requirePermissions(["STAFF_LOGIN"]);
 
     logger.debug({ route: "api.evergreen.acquisitions", action, id }, "Acquisitions GET");
 
@@ -188,27 +201,43 @@ export async function GET(req: NextRequest) {
 
       case "invoices": {
         // Get invoices (Evergreen 3.16 has no open-ils.acq.invoice.search)
+        const receiverOrgId =
+          parsePositiveIntId((_actor as any)?.ws_ou ?? (_actor as any)?.home_ou) ?? 1;
         let response: any | null = null;
 
         try {
           response = await callOpenSRF(
             "open-ils.cstore",
             "open-ils.cstore.direct.acqinv.search.atomic",
-            [authtoken, {}, { limit: 200, order_by: { acqinv: "recv_date DESC" } }]
+            [authtoken, { receiver: receiverOrgId }, { limit: 200, order_by: { acqinv: "recv_date DESC" } }]
           );
-        } catch (error) {
+        } catch (_error) {
           try {
             response = await callOpenSRF(
               "open-ils.cstore",
               "open-ils.cstore.direct.acqinv.search",
-              [authtoken, {}, { limit: 200, order_by: { acqinv: "recv_date DESC" } }]
+              [authtoken, { receiver: receiverOrgId }, { limit: 200, order_by: { acqinv: "recv_date DESC" } }]
             );
-          } catch (error) {
-            logger.warn({ route: "api.evergreen.acquisitions", action, err: String(error) }, "Invoices lookup failed");
-            return successResponse({
-              invoices: [],
-              message: "Invoices not available in this Evergreen configuration",
-            });
+          } catch (_error2) {
+            // Some Evergreen installs do not expose cstore direct methods for acquisitions.
+            // Fall back to pcrud search before treating this as "not available".
+            try {
+                response = await callPcrud(
+                  "open-ils.pcrud.search.acqinv",
+                  [authtoken, { receiver: receiverOrgId }, { limit: 200, order_by: { acqinv: "recv_date DESC" } }]
+                );
+              } catch (err) {
+              const code = err && typeof err === "object" ? (err as any).code : undefined;
+              if (code === "OSRF_METHOD_NOT_FOUND") {
+                logger.info({ route: "api.evergreen.acquisitions", action }, "Invoices lookup not supported on this Evergreen install");
+              } else {
+                logger.warn({ route: "api.evergreen.acquisitions", action, err: String(err) }, "Invoices lookup failed");
+              }
+              return successResponse({
+                invoices: [],
+                message: "Invoices not available in this Evergreen configuration",
+              });
+            }
           }
         }
 
@@ -231,6 +260,108 @@ export async function GET(req: NextRequest) {
         }));
 
         return successResponse({ invoices: mappedInvoices });
+      }
+
+      case "invoice_methods": {
+        // Receive methods for invoices (acq.im)
+        await requirePermissions(["CREATE_INVOICE"]);
+        const response = await callOpenSRF(
+          "open-ils.pcrud",
+          "open-ils.pcrud.search.acqim.atomic",
+          [authtoken, { code: { "!=": null } }, { order_by: { acqim: "name" }, limit: 100 }]
+        );
+        const methods = (response?.payload?.[0] || []).map((m: any) => ({
+          code: m?.code ?? m?.__p?.[0],
+          name: m?.name ?? m?.__p?.[1],
+        })).filter((m: any) => m.code);
+        return successResponse({ methods });
+      }
+
+      case "invoice": {
+        if (!id) return errorResponse("Invoice id required", 400);
+        await requirePermissions(["VIEW_INVOICE"]);
+        const invoiceId = parseInt(String(id), 10);
+        if (!Number.isFinite(invoiceId)) return errorResponse("Invalid invoice id", 400);
+
+        const invRes = await callOpenSRF(
+          "open-ils.pcrud",
+          "open-ils.pcrud.retrieve.acqinv",
+          [authtoken, invoiceId]
+        );
+        const invoice = invRes?.payload?.[0];
+        if (!invoice || invoice.ilsevent) return notFoundResponse("Invoice not found");
+
+        const entriesRes = await callOpenSRF(
+          "open-ils.pcrud",
+          "open-ils.pcrud.search.acqie.atomic",
+          [authtoken, { invoice: invoiceId }, { order_by: { acqie: "id" }, limit: 500 }]
+        );
+        const entries = entriesRes?.payload?.[0] || [];
+
+        const entryIds: number[] = Array.isArray(entries)
+          ? entries
+              .map((e: any) => (typeof e?.id === "number" ? e.id : parseInt(String(e?.id ?? ""), 10)))
+              .filter((n: number) => Number.isFinite(n))
+          : [];
+
+        const fundDebits =
+          entryIds.length > 0
+            ? await query<{
+                id: number;
+                invoice_entry: number;
+                fund: number;
+                fund_name: string;
+                fund_code: string;
+                currency_type: string;
+                amount: string;
+                debit_type: string;
+                encumbrance: boolean;
+                create_time: string;
+              }>(
+                `
+                  select
+                    fd.id,
+                    fd.invoice_entry,
+                    fd.fund,
+                    f.name as fund_name,
+                    f.code as fund_code,
+                    f.currency_type,
+                    fd.amount::text as amount,
+                    fd.debit_type,
+                    fd.encumbrance,
+                    fd.create_time
+                  from acq.fund_debit fd
+                  join acq.fund f on f.id = fd.fund
+                  where fd.invoice_entry = any($1::int[])
+                  order by fd.invoice_entry, fd.id
+                `,
+                [entryIds]
+              )
+            : [];
+
+        return successResponse({
+          invoice: {
+            id: invoice.id,
+            inv_ident: invoice.inv_ident || invoice.vendor_invoice_id || null,
+            provider: typeof invoice.provider === "object" ? invoice.provider?.id : invoice.provider,
+            receiver: typeof invoice.receiver === "object" ? invoice.receiver?.id : invoice.receiver,
+            recv_date: invoice.recv_date,
+            recv_method: typeof invoice.recv_method === "object" ? invoice.recv_method?.code : invoice.recv_method,
+            close_date: invoice.close_date,
+            closed_by: typeof invoice.closed_by === "object" ? invoice.closed_by?.id : invoice.closed_by,
+          },
+          entries: Array.isArray(entries)
+            ? entries.map((e: any) => ({
+                id: e.id,
+                purchase_order: typeof e.purchase_order === "object" ? e.purchase_order?.id : e.purchase_order,
+                lineitem: typeof e.lineitem === "object" ? e.lineitem?.id : e.lineitem,
+                inv_item_count: e.inv_item_count,
+                cost_billed: e.cost_billed,
+                note: e.note || null,
+              }))
+            : [],
+          fundDebits,
+        });
       }
 
       case "po": {
@@ -326,10 +457,9 @@ export async function GET(req: NextRequest) {
 // POST - Create/modify acquisitions data
 export async function POST(req: NextRequest) {
   try {
-    const body = await parseJsonBody<Record<string, any>>(req);
-    if (body instanceof Response) return body;
-
-    const { action } = body;
+    const body = await parseJsonBodyWithSchema(req, z.object({ action: z.string().trim().min(1) }).passthrough());
+    if (body instanceof Response) return body as any;
+    const action = (body as any).action as string;
     const { ip, userAgent, requestId } = getRequestMeta(req);
 
     logger.debug({ route: "api.evergreen.acquisitions", action }, "Acquisitions POST");
@@ -399,9 +529,335 @@ export async function POST(req: NextRequest) {
         return successResponse({ po: result });
       }
 
+      case "create_invoice": {
+        const { authtoken, actor } = await requirePermissions(["CREATE_INVOICE"]);
+        const providerId = parseInt(String(body.providerId ?? body.provider ?? ""), 10);
+        const receiver = parseInt(String(body.receiver ?? actor?.ws_ou ?? actor?.home_ou ?? ""), 10);
+        const recvMethod = String(body.recvMethod ?? body.recv_method ?? "").trim();
+        const invIdent = String(body.invIdent ?? body.inv_ident ?? body.vendor_invoice_id ?? "").trim();
+
+        if (!Number.isFinite(providerId)) return errorResponse("providerId required", 400);
+        if (!Number.isFinite(receiver)) return errorResponse("receiver required", 400);
+        if (!recvMethod) return errorResponse("recvMethod required", 400);
+        if (!invIdent) return errorResponse("invIdent required", 400);
+
+        const payload: any = encodeFieldmapper("acqinv", {
+          receiver,
+          provider: providerId,
+          shipper: providerId,
+          recv_date: new Date().toISOString(),
+          recv_method: recvMethod,
+          inv_ident: invIdent,
+          note: body.note ? String(body.note).trim() : undefined,
+          isnew: 1,
+          ischanged: 1,
+        });
+
+        const res = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acqinv", [authtoken, payload]);
+        const result = res?.payload?.[0];
+        if (!result || isOpenSRFEvent(result) || (result as any).ilsevent) {
+          const msg = getErrorMessage(result, "Failed to create invoice");
+          await logAuditEvent({ action: "acq.invoice.create", entity: "acqinv", status: "failure", actor, ip, userAgent, requestId, error: msg, details: { providerId, receiver, recvMethod, invIdent } });
+          return errorResponse(msg, 400, result);
+        }
+
+        await logAuditEvent({
+          action: "acq.invoice.create",
+          entity: "acqinv",
+          entityId: typeof result === "number" ? result : (result as any)?.id,
+          status: "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          details: { providerId, receiver, recvMethod, invIdent },
+        });
+
+        return successResponse({ invoiceId: typeof result === "number" ? result : (result as any)?.id, invoice: result });
+      }
+
+      case "add_invoice_entry": {
+        const { authtoken, actor } = await requirePermissions(["ADMIN_INVOICE"]);
+        const invoiceId = parseInt(String(body.invoiceId ?? body.invoice ?? ""), 10);
+        const purchaseOrderId = body.purchaseOrderId !== undefined ? parseInt(String(body.purchaseOrderId), 10) : null;
+        const lineitemId = body.lineitemId !== undefined ? parseInt(String(body.lineitemId), 10) : null;
+        const invItemCount = parseInt(String(body.invItemCount ?? body.inv_item_count ?? "1"), 10);
+        let costBilled = body.costBilled !== undefined ? String(body.costBilled) : undefined;
+        const note = body.note ? String(body.note).trim() : undefined;
+
+        if (!Number.isFinite(invoiceId)) return errorResponse("invoiceId required", 400);
+        if (!Number.isFinite(invItemCount) || invItemCount <= 0) return errorResponse("invItemCount must be > 0", 400);
+
+        const rawSplits = body.splits ?? body.fundSplits ?? null;
+        const splits: Array<{ fundId: number; amount: number }> = [];
+        if (rawSplits !== null && rawSplits !== undefined) {
+          if (!Array.isArray(rawSplits)) return errorResponse("splits must be an array", 400);
+          for (const s of rawSplits) {
+            const fundId = parseInt(String((s as any)?.fundId ?? (s as any)?.fund_id ?? ""), 10);
+            const amount = parseFloat(String((s as any)?.amount ?? ""));
+            if (!Number.isFinite(fundId) || fundId <= 0) return errorResponse("Invalid fundId in splits", 400);
+            if (!Number.isFinite(amount) || amount <= 0) return errorResponse("Invalid amount in splits", 400);
+            splits.push({ fundId, amount: Math.round(amount * 100) / 100 });
+          }
+          const seen = new Set<number>();
+          for (const s of splits) {
+            if (seen.has(s.fundId)) return errorResponse("Duplicate fundId in splits", 400);
+            seen.add(s.fundId);
+          }
+          const sum = Math.round(splits.reduce((a, s) => a + s.amount, 0) * 100) / 100;
+          if (!costBilled || !String(costBilled).trim()) {
+            costBilled = sum.toFixed(2);
+          } else {
+            const cb = Math.round(parseFloat(String(costBilled)) * 100) / 100;
+            if (!Number.isFinite(cb)) return errorResponse("Invalid costBilled", 400);
+            if (Math.abs(cb - sum) > 0.01) return errorResponse("Fund splits must sum to costBilled", 400);
+            costBilled = cb.toFixed(2);
+          }
+        }
+
+        if (splits.length > 0) {
+          // Creating fund debits requires fund admin perms.
+          await requirePermissions(["ADMIN_ACQ_FUND"]);
+        }
+
+        const payload: any = encodeFieldmapper("acqie", {
+          invoice: invoiceId,
+          purchase_order: Number.isFinite(purchaseOrderId as any) ? purchaseOrderId : undefined,
+          lineitem: Number.isFinite(lineitemId as any) ? lineitemId : undefined,
+          inv_item_count: invItemCount,
+          cost_billed: costBilled,
+          note,
+          billed_per_item: "t",
+          isnew: 1,
+          ischanged: 1,
+        });
+
+        const res = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acqie", [authtoken, payload]);
+        const result = res?.payload?.[0];
+        if (!result || isOpenSRFEvent(result) || (result as any).ilsevent) {
+          const msg = getErrorMessage(result, "Failed to add invoice entry");
+          await logAuditEvent({ action: "acq.invoice_entry.create", entity: "acqie", status: "failure", actor, ip, userAgent, requestId, error: msg, details: { invoiceId, purchaseOrderId, lineitemId, invItemCount } });
+          return errorResponse(msg, 400, result);
+        }
+
+        const entryId = typeof result === "number" ? result : (result as any)?.id;
+
+        const createdFundDebitIds: number[] = [];
+        if (splits.length > 0) {
+          try {
+            const fundRows = await query<{ id: number; currency_type: string }>(
+              `select id, currency_type from acq.fund where id = any($1::int[])`,
+              [splits.map((s) => s.fundId)]
+            );
+            const fundCurrency = new Map<number, string>();
+            for (const f of fundRows) fundCurrency.set(f.id, String(f.currency_type || "USD"));
+
+            for (const s of splits) {
+              const currency = fundCurrency.get(s.fundId) || "USD";
+              const fdPayload: any = encodeFieldmapper("acqfdeb", {
+                fund: s.fundId,
+                origin_amount: s.amount.toFixed(2),
+                origin_currency_type: currency,
+                amount: s.amount.toFixed(2),
+                encumbrance: "f",
+                debit_type: "invoice",
+                invoice_entry: entryId,
+                isnew: 1,
+                ischanged: 1,
+              });
+              const fdRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acqfdeb", [authtoken, fdPayload]);
+              const fdResult = fdRes?.payload?.[0];
+              if (!fdResult || isOpenSRFEvent(fdResult) || (fdResult as any).ilsevent) {
+                throw new Error(getErrorMessage(fdResult, "Failed to create fund debit"));
+              }
+              const fdId = typeof fdResult === "number" ? fdResult : (fdResult as any)?.id;
+              if (Number.isFinite(fdId)) createdFundDebitIds.push(fdId);
+            }
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            // Best-effort rollback of newly created debits and the invoice entry.
+            for (const fdId of createdFundDebitIds) {
+              try {
+                await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.acqfdeb", [authtoken, fdId]);
+              } catch {
+                // ignore
+              }
+            }
+            try {
+              if (entryId) await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.acqie", [authtoken, entryId]);
+            } catch {
+              // ignore
+            }
+            await logAuditEvent({
+              action: "acq.invoice_entry.create",
+              entity: "acqie",
+              entityId: entryId,
+              status: "failure",
+              actor,
+              ip,
+              userAgent,
+              requestId,
+              error: msg,
+              details: { invoiceId, purchaseOrderId, lineitemId, invItemCount, splits },
+            });
+            return errorResponse(msg, 400);
+          }
+        }
+
+        await logAuditEvent({
+          action: "acq.invoice_entry.create",
+          entity: "acqie",
+          entityId: entryId,
+          status: "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          details: { invoiceId, purchaseOrderId, lineitemId, invItemCount, splits },
+        });
+
+        return successResponse({ entryId, entry: result, fundDebitIds: createdFundDebitIds });
+      }
+
+      case "set_invoice_entry_splits": {
+        const { authtoken, actor } = await requirePermissions(["ADMIN_INVOICE", "ADMIN_ACQ_FUND"]);
+        const invoiceEntryId = parseInt(String(body.invoiceEntryId ?? body.invoice_entry_id ?? body.entryId ?? body.entry_id ?? ""), 10);
+        if (!Number.isFinite(invoiceEntryId)) return errorResponse("invoiceEntryId required", 400);
+        const rawSplits = body.splits ?? body.fundSplits ?? null;
+        if (!Array.isArray(rawSplits) || rawSplits.length === 0) return errorResponse("splits array required", 400);
+
+        const splits: Array<{ fundId: number; amount: number }> = [];
+        for (const s of rawSplits) {
+          const fundId = parseInt(String((s as any)?.fundId ?? (s as any)?.fund_id ?? ""), 10);
+          const amount = parseFloat(String((s as any)?.amount ?? ""));
+          if (!Number.isFinite(fundId) || fundId <= 0) return errorResponse("Invalid fundId in splits", 400);
+          if (!Number.isFinite(amount) || amount <= 0) return errorResponse("Invalid amount in splits", 400);
+          splits.push({ fundId, amount: Math.round(amount * 100) / 100 });
+        }
+
+        const seen = new Set<number>();
+        for (const s of splits) {
+          if (seen.has(s.fundId)) return errorResponse("Duplicate fundId in splits", 400);
+          seen.add(s.fundId);
+        }
+
+        const existing = await query<{ id: number }>(
+          `select id from acq.fund_debit where invoice_entry = $1 order by id`,
+          [invoiceEntryId]
+        );
+        for (const row of existing) {
+          try {
+            await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.acqfdeb", [authtoken, row.id]);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            await logAuditEvent({
+              action: "acq.invoice_entry.splits.set",
+              entity: "acqie",
+              entityId: invoiceEntryId,
+              status: "failure",
+              actor,
+              ip,
+              userAgent,
+              requestId,
+              error: msg,
+              details: { invoiceEntryId, step: "delete_existing", fundDebitId: row.id },
+            });
+            return errorResponse("Failed to delete existing fund splits", 500);
+          }
+        }
+
+        const fundRows = await query<{ id: number; currency_type: string }>(
+          `select id, currency_type from acq.fund where id = any($1::int[])`,
+          [splits.map((s) => s.fundId)]
+        );
+        const fundCurrency = new Map<number, string>();
+        for (const f of fundRows) fundCurrency.set(f.id, String(f.currency_type || "USD"));
+
+        const createdFundDebitIds: number[] = [];
+        for (const s of splits) {
+          const currency = fundCurrency.get(s.fundId) || "USD";
+          const fdPayload: any = encodeFieldmapper("acqfdeb", {
+            fund: s.fundId,
+            origin_amount: s.amount.toFixed(2),
+            origin_currency_type: currency,
+            amount: s.amount.toFixed(2),
+            encumbrance: "f",
+            debit_type: "invoice",
+            invoice_entry: invoiceEntryId,
+            isnew: 1,
+            ischanged: 1,
+          });
+          const fdRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acqfdeb", [authtoken, fdPayload]);
+          const fdResult = fdRes?.payload?.[0];
+          if (!fdResult || isOpenSRFEvent(fdResult) || (fdResult as any).ilsevent) {
+            const msg = getErrorMessage(fdResult, "Failed to create fund debit");
+            await logAuditEvent({
+              action: "acq.invoice_entry.splits.set",
+              entity: "acqie",
+              entityId: invoiceEntryId,
+              status: "failure",
+              actor,
+              ip,
+              userAgent,
+              requestId,
+              error: msg,
+              details: { invoiceEntryId, step: "create", splits },
+            });
+            return errorResponse(msg, 400, fdResult);
+          }
+          const fdId = typeof fdResult === "number" ? fdResult : (fdResult as any)?.id;
+          if (Number.isFinite(fdId)) createdFundDebitIds.push(fdId);
+        }
+
+        await logAuditEvent({
+          action: "acq.invoice_entry.splits.set",
+          entity: "acqie",
+          entityId: invoiceEntryId,
+          status: "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          details: { invoiceEntryId, splits, createdFundDebitIds },
+        });
+
+        return successResponse({ updated: true, invoiceEntryId, fundDebitIds: createdFundDebitIds });
+      }
+
+      case "close_invoice": {
+        const { authtoken, actor } = await requirePermissions(["CREATE_INVOICE"]);
+        const invoiceId = parseInt(String(body.invoiceId ?? body.invoice ?? ""), 10);
+        if (!Number.isFinite(invoiceId)) return errorResponse("invoiceId required", 400);
+
+        const invRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.acqinv", [authtoken, invoiceId]);
+        const existing = invRes?.payload?.[0];
+        if (!existing || (existing as any).ilsevent) return notFoundResponse("Invoice not found");
+
+        const updatePayload: any = encodeFieldmapper("acqinv", {
+          ...(existing as any),
+          close_date: new Date().toISOString(),
+          closed_by: actor?.id,
+          ischanged: 1,
+        });
+
+        const res = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.update.acqinv", [
+          authtoken,
+          updatePayload,
+        ]);
+        const result = res?.payload?.[0];
+        if (!result || isOpenSRFEvent(result) || (result as any).ilsevent) {
+          const msg = getErrorMessage(result, "Failed to close invoice");
+          await logAuditEvent({ action: "acq.invoice.close", entity: "acqinv", entityId: invoiceId, status: "failure", actor, ip, userAgent, requestId, error: msg });
+          return errorResponse(msg, 400, result);
+        }
+
+        await logAuditEvent({ action: "acq.invoice.close", entity: "acqinv", entityId: invoiceId, status: "success", actor, ip, userAgent, requestId });
+        return successResponse({ closed: true, invoiceId });
+      }
+
       case "receive_lineitem": {
         const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.receive_lineitem]);
-        const { lineitemId } = body;
+        const lineitemId = parsePositiveIntId(body.lineitemId);
         if (!lineitemId) {
           return errorResponse("Lineitem ID required", 400);
         }
@@ -445,7 +901,7 @@ export async function POST(req: NextRequest) {
 
       case "receive_lineitem_detail": {
         const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.receive_lineitem]);
-        const detailId = body.detailId ?? body.lineitemDetailId ?? body.lineitem_detail_id;
+        const detailId = parsePositiveIntId(body.detailId ?? body.lineitemDetailId ?? body.lineitem_detail_id);
         if (!detailId) {
           return errorResponse("Detail ID required", 400);
         }
@@ -489,7 +945,7 @@ export async function POST(req: NextRequest) {
 
       case "unreceive_lineitem_detail": {
         const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.receive_lineitem]);
-        const detailId = body.detailId ?? body.lineitemDetailId ?? body.lineitem_detail_id;
+        const detailId = parsePositiveIntId(body.detailId ?? body.lineitemDetailId ?? body.lineitem_detail_id);
         if (!detailId) {
           return errorResponse("Detail ID required", 400);
         }
@@ -533,7 +989,8 @@ export async function POST(req: NextRequest) {
 
       case "cancel_lineitem": {
         const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.cancel_lineitem]);
-        const { lineitemId, reason } = body;
+        const lineitemId = parsePositiveIntId(body.lineitemId);
+        const { reason } = body;
         if (!lineitemId) {
           return errorResponse("Lineitem ID required", 400);
         }
@@ -586,7 +1043,8 @@ export async function POST(req: NextRequest) {
 
       case "claim_lineitem": {
         const { authtoken, actor } = await requirePermissions(["ADMIN_ACQ_CLAIM"]);
-        const { lineitemId, claimType } = body;
+        const lineitemId = parsePositiveIntId(body.lineitemId);
+        const { claimType } = body;
         if (!lineitemId) {
           return errorResponse("Lineitem ID required", 400);
         }

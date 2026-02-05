@@ -1,11 +1,11 @@
 # StacksOS Runbook (Dev + Pilot Ops)
 
-Last updated: 2026-02-02
+Last updated: 2026-02-05
 
 StacksOS is a Next.js staff client that calls Evergreen (OpenSRF) as the system-of-record.
 
 - StacksOS VM: `stacksos` (code in `/home/jake/projects/stacksos`)
-- Evergreen VM: `evergreen` (OpenSRF gateway at `EVERGREEN_BASE_URL`)
+- Evergreen VM: `evergreenils` (OpenSRF gateway at `EVERGREEN_BASE_URL`)
 
 ---
 
@@ -60,18 +60,45 @@ On `stacksos`:
 ```bash
 cd /home/jake/projects/stacksos
 npm run build
-npm run start -- -H 0.0.0.0 -p 3000
+npm run start -- -H 127.0.0.1 -p 3000
 ```
+
+Notes:
+- For pilots, bind the app to localhost and expose it via a reverse proxy (recommended) or a hardened TCP forwarder.
+- This VM uses `stacksos-proxy.service` (socat) to expose `192.168.1.233:3000` → `127.0.0.1:3000`.
 
 ### Production via systemd (recommended for pilots)
 
 This VM is already configured with `stacksos.service`.
+It expects:
+- `evergreen-db-tunnel.service` (localhost DB tunnel) and
+- `stacksos-proxy.service` (LAN forwarder), if you want LAN access on port 3000.
 
-Deploy + restart:
+Deploy + restart (recommended):
 
 ```bash
-cd /home/jake/projects/stacksos && npm run build && sudo systemctl restart stacksos.service
+cd /home/jake/projects/stacksos
+bash scripts/upgrade-stacksos.sh
+```
+
+Why: the upgrade script builds into `.next.build`, stops the service, swaps the build, then restarts. This prevents a common "unstyled UI" failure mode caused by CSS/JS chunk mismatches during upgrades.
+
+Manual deploy (no audit gate):
+
+```bash
+sudo systemctl stop stacksos.service
+cd /home/jake/projects/stacksos
+npm run build
+sudo systemctl start stacksos.service
 curl -sS http://127.0.0.1:3000/api/health
+```
+
+Rollback helper (restores a previous `.next` snapshot):
+
+```bash
+cd /home/jake/projects/stacksos
+bash scripts/snapshot-build.sh
+bash scripts/rollback-build.sh <timestamp>
 ```
 
 Operational commands:
@@ -111,6 +138,8 @@ Run on `stacksos`:
 
 ```bash
 cd /home/jake/projects/stacksos
+export STACKSOS_AUDIT_STAFF_USERNAME="your_evergreen_username"
+export STACKSOS_AUDIT_STAFF_PASSWORD="your_evergreen_password"
 BASE_URL=http://127.0.0.1:3000 ./audit/run_all.sh
 ```
 
@@ -128,6 +157,8 @@ This validates:
 Run on stacksos:
 
     cd /home/jake/projects/stacksos
+    export STACKSOS_AUDIT_STAFF_USERNAME="your_evergreen_username"
+    export STACKSOS_AUDIT_STAFF_PASSWORD="your_evergreen_password"
     BASE_URL=http://127.0.0.1:3000 ./audit/run_perf.sh
 
 By default, the perf harness runs **read-only** (to avoid polluting the Evergreen sandbox with synthetic circulation).
@@ -153,16 +184,35 @@ StacksOS is mostly stateless; the key logs are:
 
 - Audit log (append-only): `/home/jake/projects/stacksos/.logs/audit.log`
 - Dev server log (if you redirect output): `/home/jake/projects/stacksos/.logs/dev.log`
-- Idempotency replay cache (safe retries): `/home/jake/projects/stacksos/.logs/idempotency/`
-  - OK to delete old entries; they are recreated as needed.
+- Idempotency replay cache (safe retries):
+  - Redis when `STACKSOS_REDIS_URL` is set (recommended for multi-instance)
+  - Otherwise: `/home/jake/projects/stacksos/.logs/idempotency/` (OK to delete old entries; they are recreated as needed)
 
 Environment controls:
 - `STACKSOS_AUDIT_MODE=file|stdout|off`
 - `STACKSOS_AUDIT_LOG_PATH=/path/to/audit.log`
 - `STACKSOS_LOG_LEVEL=debug|info|warn|error`
 - `STACKSOS_EVERGREEN_TIMEOUT_MS=15000` (OpenSRF gateway fetch timeout)
+- `STACKSOS_REDIS_URL=redis://...` (enables shared rate limiting + idempotency in multi-instance deployments)
+- `STACKSOS_REDIS_PREFIX=stacksos` (namespaces Redis keys by environment/tenant)
+- `STACKSOS_METRICS_SECRET=<long-random-value>` (protects `/api/metrics` in production)
 - `STACKSOS_PATRON_BARCODE_MODE=generate|require` (default: `generate`)
 - `STACKSOS_PATRON_BARCODE_PREFIX=29` (used when mode is `generate`)
+
+---
+
+## Metrics (Prometheus)
+
+If configured, StacksOS exposes Prometheus-style metrics at:
+
+- `GET /api/metrics`
+
+Production protection:
+- Set `STACKSOS_METRICS_SECRET` and pass it as `x-stacksos-metrics-secret`.
+- If `STACKSOS_METRICS_SECRET` is missing in production, `/api/metrics` returns HTTP 501 (not configured).
+
+Docs:
+- `docs/OBSERVABILITY.md`
 
 ---
 
@@ -183,6 +233,42 @@ Behavior:
 
 ---
 
+## AI Ops (P2 Governance)
+
+StacksOS AI features are **draft-only** and are designed to be instantly disable-able per tenant.
+
+### Enable/Disable Quickly
+
+AI is considered enabled only when **both** conditions are true:
+- `NEXT_PUBLIC_STACKSOS_EXPERIMENTAL=1` (feature gate)
+- Tenant AI config has `ai.enabled=true` (or `STACKSOS_AI_ENABLED=true`)
+
+Fast-disable procedure for an incident:
+1) Set tenant `ai.enabled=false` in `tenants/<tenantId>.json` (or set `STACKSOS_AI_ENABLED=false` in env)
+2) Restart StacksOS (`sudo systemctl restart stacksos.service`)
+3) Verify `/api/status` and a staff AI action returns “AI is disabled for this tenant”
+
+### Logs + Telemetry
+
+AI-related events:
+- Audit log: `/home/jake/projects/stacksos/.logs/audit.log` (look for `ai.suggestion.*`)
+- DB telemetry: `library.ai_calls` (latency/usage/cost best-effort)
+- Draft storage: `library.ai_drafts` (redacted inputs + outputs; prompt hashes + template/version)
+
+### Prompt Provenance
+
+StacksOS records:
+- `prompt_hash` (hash of system+user prompt hashes)
+- `prompt_template` and `prompt_version` (template identifiers for repeatable evaluations)
+
+### Key Rotation / Provider Outage
+
+If the model provider is down or credentials are compromised:
+- Rotate/replace provider keys (env vars or secret store)
+- Disable AI immediately as above
+- Re-enable only after verifying budgets, rate limits, and redaction behavior
+
+
 ## Workstations
 
 Evergreen requires a workstation for staff circulation flows.
@@ -202,10 +288,30 @@ For pilots:
 - Back up Evergreen database + config (system-of-record).
 - Back up StacksOS:
   - `/home/jake/projects/stacksos/.env.local`
+  - `/home/jake/projects/stacksos/tenants/*.json`
   - `/home/jake/projects/stacksos/docs/*`
   - `/home/jake/projects/stacksos/.logs/audit.log`
 
 StacksOS code can be re-deployed from the filesystem copy; there is no GitHub requirement.
+
+### Optional: automated StacksOS backups (systemd timer)
+
+Repo includes `ops/stacksos/stacksos-backup.*` which can be installed on the StacksOS host:
+
+```bash
+sudo cp ops/stacksos/stacksos-backup.* /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now stacksos-backup.timer
+```
+
+Backups default to `/var/backups/stacksos` with retention controlled by `STACKSOS_BACKUP_RETENTION_DAYS`.
+
+### Restore drill (pilot cadence)
+
+Quarterly (recommended for pilots):
+1) Restore Evergreen DB/config on a staging host (verify login + circulation).
+2) Restore StacksOS config/docs/audit log (verify `/api/health` and staff login).
+3) Run `BASE_URL=http://127.0.0.1:3000 ./audit/run_all.sh` and record time-to-restore (RTO/RPO).
 
 ---
 
@@ -215,8 +321,10 @@ StacksOS code can be re-deployed from the filesystem copy; there is no GitHub re
 - Find PID with `lsof -i :3000` and stop the old process.
 
 2) **Evergreen TLS errors (self-signed cert)**
-- Dev uses `NODE_TLS_REJECT_UNAUTHORIZED=0` in `.env.local`.
-- For production, prefer installing a proper certificate on Evergreen.
+- Prefer trusting the Evergreen CA from StacksOS:
+  - `NODE_EXTRA_CA_CERTS=/path/to/evergreen-ca.crt` (recommended), or
+  - `STACKSOS_EVERGREEN_CA_FILE=/path/to/evergreen-ca.crt`
+- Avoid `NODE_TLS_REJECT_UNAUTHORIZED=0` (MITM risk), especially outside a disposable sandbox.
 
 3) **"Permission denied" on a workflow**
 - The UI should show the missing Evergreen permission(s).

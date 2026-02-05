@@ -4,7 +4,7 @@
  * Tests the CSRF token generation and validation functionality
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   generateCSRFToken,
   validateCSRFToken,

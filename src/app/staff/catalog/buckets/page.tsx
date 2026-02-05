@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { FolderOpen, Plus, Trash2, Edit2, Share2, RefreshCw, Loader2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import { featureFlags } from "@/lib/feature-flags";
 
 interface Bucket {
   id: number;
@@ -33,6 +34,7 @@ interface Bucket {
 }
 
 export default function RecordBucketsPage() {
+  const enabled = featureFlags.recordBuckets;
   const [buckets, setBuckets] = useState<Bucket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -62,8 +64,9 @@ export default function RecordBucketsPage() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     fetchBuckets();
-  }, [fetchBuckets]);
+  }, [enabled, fetchBuckets]);
 
   const handleCreate = async () => {
     if (!newBucketName.trim()) {
@@ -208,7 +211,29 @@ export default function RecordBucketsPage() {
       icon: Plus,
       onClick: () => setShowCreateDialog(true),
     },
-  ], [fetchBuckets, isLoading]);
+	  ], [fetchBuckets, isLoading]);
+
+  if (!enabled) {
+    return (
+      <PageContainer>
+        <PageHeader
+          title="Record Buckets"
+          subtitle="Buckets are behind a feature flag until bulk workflows are fully validated."
+          breadcrumbs={[
+            { label: "Catalog", href: "/staff/catalog" },
+            { label: "Record Buckets" },
+          ]}
+        />
+        <PageContent>
+          <EmptyState
+            icon={FolderOpen}
+            title="Record Buckets is disabled"
+            description="This feature is hidden by default to avoid dead UI. Enable it once bucket create/edit/delete + permissions are verified on your Evergreen."
+          />
+        </PageContent>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>
@@ -228,10 +253,15 @@ export default function RecordBucketsPage() {
           <EmptyState
             icon={FolderOpen}
             title="No buckets yet"
-            description="Create your first bucket to start organizing records"
+            description="Create your first bucket to start organizing records."
             action={{
               label: "Create Bucket",
               onClick: () => setShowCreateDialog(true),
+              icon: Plus,
+            }}
+            secondaryAction={{
+              label: "Seed demo data",
+              onClick: () => window.location.assign("/staff/help#demo-data"),
             }}
           />
         ) : (

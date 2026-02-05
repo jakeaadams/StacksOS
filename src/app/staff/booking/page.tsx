@@ -4,6 +4,7 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { ColumnDef } from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
 import {
 
   PageContainer,
@@ -82,6 +83,7 @@ function formatDate(dateStr: string) {
 }
 
 export default function BookingPage() {
+  const router = useRouter();
   const [resources, setResources] = useState<Resource[]>([]);
   const [resourceTypes, setResourceTypes] = useState<ResourceType[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -415,6 +417,16 @@ export default function BookingPage() {
                             ? resourcesMessage || "Configure bookable resources in Evergreen administration"
                             : "Create a new booking to get started.")
                         }
+                        action={
+                          resources.length > 0
+                            ? { label: "New booking", onClick: () => setNewBookingOpen(true), icon: Plus }
+                            : { label: "Evergreen setup checklist", onClick: () => router.push("/staff/help#evergreen-setup") }
+                        }
+                        secondaryAction={
+                          resources.length === 0
+                            ? { label: "Seed demo data", onClick: () => router.push("/staff/help#demo-data") }
+                            : undefined
+                        }
                       />
                     }
                   />
@@ -440,7 +452,11 @@ export default function BookingPage() {
                         description={resourcesMessage || "Create booking resources in Evergreen to enable reservations."}
                         action={{
                           label: "Evergreen setup checklist",
-                          onClick: () => window.location.assign("/staff/help#evergreen-setup"),
+                          onClick: () => router.push("/staff/help#evergreen-setup"),
+                        }}
+                        secondaryAction={{
+                          label: "Seed demo data",
+                          onClick: () => router.push("/staff/help#demo-data"),
                         }}
                       />
                     }
@@ -467,7 +483,11 @@ export default function BookingPage() {
                         description={typesMessage || "Create resource types in Evergreen administration."}
                         action={{
                           label: "Evergreen setup checklist",
-                          onClick: () => window.location.assign("/staff/help#evergreen-setup"),
+                          onClick: () => router.push("/staff/help#evergreen-setup"),
+                        }}
+                        secondaryAction={{
+                          label: "Seed demo data",
+                          onClick: () => router.push("/staff/help#demo-data"),
                         }}
                       />
                     }

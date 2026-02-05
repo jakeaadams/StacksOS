@@ -2,7 +2,7 @@
 
 import { fetchWithAuth } from "@/lib/client-fetch";
 
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -13,8 +13,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-import { Save, Check, AlertTriangle, Plus, Trash2, HelpCircle, Loader2, Columns2, X } from "lucide-react";
+import { Save, Check, AlertTriangle, Plus, Trash2, HelpCircle, Loader2, Columns2, X, Sparkles, ThumbsDown, ThumbsUp, ClipboardList, Users } from "lucide-react";
+import { featureFlags } from "@/lib/feature-flags";
 
 
 interface MarcField {
@@ -28,6 +30,29 @@ interface MarcRecord {
   leader: string;
   fields: MarcField[];
 }
+
+type AiCatalogingSuggestion = {
+  id: string;
+  type: "subject" | "summary" | "series";
+  confidence: number;
+  message: string;
+  suggestedValue: string;
+  provenance?: string[];
+};
+
+type RecordPresence = {
+  actorName: string | null;
+  activity: "viewing" | "editing";
+  lastSeenAt: string;
+};
+
+type RecordTask = {
+  id: number;
+  title: string;
+  body: string | null;
+  status: "open" | "done" | "canceled";
+  createdAt: string;
+};
 
 const marcFieldDescriptions: Record<string, string> = {
   "001": "Control Number",
@@ -255,6 +280,24 @@ function MarcEditorContent() {
   const [compareError, setCompareError] = useState<string | null>(null);
   const [diffOnly, setDiffOnly] = useState(false);
 
+  const canAi = featureFlags.ai;
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiDraftId, setAiDraftId] = useState<string | null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState<AiCatalogingSuggestion[]>([]);
+  const [aiDecisions, setAiDecisions] = useState<Record<string, "accepted" | "rejected">>({});
+  const [aiExpandedDiffs, setAiExpandedDiffs] = useState<Record<string, boolean>>({});
+
+  const [tasksPanelOpen, setTasksPanelOpen] = useState(false);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [tasksError, setTasksError] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<RecordTask[]>([]);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskBody, setNewTaskBody] = useState("");
+
+  const [presence, setPresence] = useState<RecordPresence[]>([]);
+
   const baseLines = useMemo(() => recordToLines(record), [record]);
   const compareLines = useMemo(() => (compareRecord ? recordToLines(compareRecord) : []), [compareRecord]);
   const diff = useMemo(() => {
@@ -298,10 +341,209 @@ function MarcEditorContent() {
     };
   }, [baseLines, compareLines, compareRecord]);
 
+  const extractFirst = (tag: string, code: string): string | null => {
+    const f = record.fields.find((x) => String(x.tag || "").trim() === tag);
+    if (!f) return null;
+    const sub = (f.subfields || []).find((s) => String(s.code || "").trim() === code);
+    const v = sub ? String(sub.value || "").trim() : "";
+    return v ? v : null;
+  };
+
+  const applySuggestionToRecord = (base: MarcRecord, s: AiCatalogingSuggestion): MarcRecord => {
+    const suggestedValue = String(s?.suggestedValue || "").trim();
+    if (!suggestedValue) return base;
+
+    const next: MarcRecord = { ...base, fields: base.fields.map((f) => ({ ...f, subfields: [...f.subfields] })) };
+
+    const addFieldSorted = (field: MarcField) => {
+      next.fields = [...next.fields, field].sort((a, b) => a.tag.localeCompare(b.tag));
+    };
+
+    if (s.type === "subject") {
+      addFieldSorted({ tag: "650", ind1: " ", ind2: "0", subfields: [{ code: "a", value: suggestedValue }] });
+    } else if (s.type === "summary") {
+      const idx = next.fields.findIndex((f) => f.tag === "520");
+      if (idx >= 0) {
+        const f = next.fields[idx];
+        const sfIdx = f.subfields.findIndex((sf) => sf.code === "a");
+        if (sfIdx >= 0) f.subfields[sfIdx] = { code: "a", value: suggestedValue };
+        else f.subfields.push({ code: "a", value: suggestedValue });
+      } else {
+        addFieldSorted({ tag: "520", ind1: " ", ind2: " ", subfields: [{ code: "a", value: suggestedValue }] });
+      }
+    } else if (s.type === "series") {
+      const idx = next.fields.findIndex((f) => f.tag === "490");
+      if (idx >= 0) {
+        const f = next.fields[idx];
+        const sfIdx = f.subfields.findIndex((sf) => sf.code === "a");
+        if (sfIdx >= 0) f.subfields[sfIdx] = { code: "a", value: suggestedValue };
+        else f.subfields.push({ code: "a", value: suggestedValue });
+      } else {
+        addFieldSorted({ tag: "490", ind1: "1", ind2: " ", subfields: [{ code: "a", value: suggestedValue }] });
+      }
+    }
+
+    return next;
+  };
+
+  const applySuggestion = (s: AiCatalogingSuggestion) => {
+    const suggestedValue = String(s?.suggestedValue || "").trim();
+    if (!suggestedValue) return;
+    setRecord((prev) => applySuggestionToRecord(prev, s));
+    setHasChanges(true);
+  };
+
+  const decideSuggestion = async (decision: "accepted" | "rejected", suggestionId: string, reason?: string) => {
+    if (!aiDraftId) return;
+    try {
+      await fetchWithAuth(`/api/ai/drafts/${aiDraftId}/decision`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision, suggestionId, reason: reason || undefined }),
+      });
+    } catch (e) {
+      // Best-effort; do not block cataloging on audit decision.
+      clientLogger.warn("AI draft decision failed", e);
+    }
+  };
+
+  const runAi = async () => {
+    if (!canAi) return;
+    setAiPanelOpen(true);
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const marcXml = buildMarcXml(record);
+      const title = extractFirst("245", "a") || undefined;
+      const author = extractFirst("100", "a") || extractFirst("110", "a") || undefined;
+      const isbn = extractFirst("020", "a") || undefined;
+      const recordIdNum = recordId && /^\d+$/.test(recordId) ? parseInt(recordId, 10) : undefined;
+
+      const res = await fetchWithAuth("/api/ai/cataloging-suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recordId: recordIdNum, title, author, isbn, marcXml, allowExternalLookups: false }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.ok === false) throw new Error(json.error || "AI request failed");
+      setAiDraftId(json.draftId || null);
+      setAiSuggestions(Array.isArray(json.response?.suggestions) ? json.response.suggestions : []);
+      setAiDecisions({});
+      setAiExpandedDiffs({});
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : String(e));
+      setAiDraftId(null);
+      setAiSuggestions([]);
+      setAiDecisions({});
+      setAiExpandedDiffs({});
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const recordIdNum = recordId && /^\d+$/.test(recordId) ? parseInt(recordId, 10) : 0;
+
+  const loadPresence = useCallback(async () => {
+    if (!recordIdNum) return;
+    try {
+      const res = await fetchWithAuth(
+        `/api/collaboration/presence?recordType=bib&recordId=${recordIdNum}`
+      );
+      const json = await res.json();
+      if (!res.ok || json.ok === false) return;
+      setPresence(Array.isArray(json.presence) ? json.presence : []);
+    } catch {
+      // Best-effort.
+    }
+  }, [recordIdNum]);
+
+  const heartbeatPresence = useCallback(async (activity: "viewing" | "editing") => {
+    if (!recordIdNum) return;
+    try {
+      await fetchWithAuth("/api/collaboration/presence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recordType: "bib", recordId: recordIdNum, activity }),
+      });
+    } catch {
+      // Best-effort.
+    }
+  }, [recordIdNum]);
+
+  const loadTasks = async () => {
+    if (!recordIdNum) return;
+    setTasksLoading(true);
+    setTasksError(null);
+    try {
+      const res = await fetchWithAuth(
+        `/api/collaboration/tasks?recordType=bib&recordId=${recordIdNum}`
+      );
+      const json = await res.json();
+      if (!res.ok || json.ok === false) throw new Error(json.error || "Failed to load tasks");
+      setTasks(Array.isArray(json.tasks) ? json.tasks : []);
+    } catch (e) {
+      setTasksError(e instanceof Error ? e.message : String(e));
+      setTasks([]);
+    } finally {
+      setTasksLoading(false);
+    }
+  };
+
+  const createTask = async () => {
+    if (!recordIdNum) return;
+    const title = newTaskTitle.trim();
+    if (!title) return;
+    try {
+      const res = await fetchWithAuth("/api/collaboration/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recordType: "bib",
+          recordId: recordIdNum,
+          title,
+          body: newTaskBody.trim() || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.ok === false) throw new Error(json.error || "Failed to create task");
+      setNewTaskTitle("");
+      setNewTaskBody("");
+      await loadTasks();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const setTaskStatus = async (taskId: number, status: "open" | "done" | "canceled") => {
+    try {
+      const res = await fetchWithAuth("/api/collaboration/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId, status }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.ok === false) throw new Error(json.error || "Failed to update task");
+      await loadTasks();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   useEffect(() => {
     if (!recordId) return;
     void loadRecord(recordId);
   }, [recordId]);
+
+  useEffect(() => {
+    if (!recordIdNum) return;
+    void heartbeatPresence("editing");
+    void loadPresence();
+    const t = window.setInterval(() => {
+      void heartbeatPresence("editing");
+      void loadPresence();
+    }, 20000);
+    return () => window.clearInterval(t);
+  }, [heartbeatPresence, loadPresence, recordIdNum]);
 
   useEffect(() => {
     const id = compareIdParam && /^\d+$/.test(compareIdParam) ? compareIdParam : "";
@@ -543,6 +785,20 @@ function MarcEditorContent() {
               <Plus className="h-4 w-4 mr-1" />Add Field
             </Button>
             <div className="flex-1" />
+            {presence.length > 0 && (
+              <Badge variant="secondary" className="hidden sm:inline-flex items-center gap-2">
+                <Users className="h-3.5 w-3.5" />
+                {(() => {
+                  const names = presence
+                    .map((p) => p.actorName || "Staff")
+                    .slice(0, 2)
+                    .join(", ");
+                  const extra = presence.length > 2 ? ` +${presence.length - 2}` : "";
+                  const verb = presence.some((p) => p.activity === "editing") ? "editing" : "viewing";
+                  return `${names}${extra} ${verb}`;
+                })()}
+              </Badge>
+            )}
             <Button
               size="sm"
               variant={comparePanelOpen ? "default" : "outline"}
@@ -560,6 +816,40 @@ function MarcEditorContent() {
             >
               <Columns2 className="h-4 w-4 mr-1" />
               Compare
+            </Button>
+            {canAi && (
+              <Button
+                size="sm"
+                variant={aiPanelOpen ? "default" : "outline"}
+                onClick={() => {
+                  if (aiPanelOpen) {
+                    setAiPanelOpen(false);
+                    return;
+                  }
+                  void runAi();
+                }}
+                title="AI cataloging suggestions (draft-only)"
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                AI
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant={tasksPanelOpen ? "default" : "outline"}
+              onClick={() => {
+                if (tasksPanelOpen) {
+                  setTasksPanelOpen(false);
+                  return;
+                }
+                setTasksPanelOpen(true);
+                void loadTasks();
+              }}
+              title="Record tasks/notes (draft-only)"
+              disabled={!recordIdNum}
+            >
+              <ClipboardList className="h-4 w-4 mr-1" />
+              Tasks
             </Button>
             {comparePanelOpen && (
               <Button
@@ -596,6 +886,25 @@ function MarcEditorContent() {
                   {err}
                 </div>
               ))}
+            </div>
+          )}
+
+          {presence.some((p) => p.activity === "editing") && (
+            <div className="px-4 py-2 border-b bg-background">
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  {(() => {
+                    const editing = presence.filter((p) => p.activity === "editing");
+                    const names = editing
+                      .map((p) => p.actorName || "Staff")
+                      .slice(0, 2)
+                      .join(", ");
+                    const extra = editing.length > 2 ? ` +${editing.length - 2}` : "";
+                    return `${names}${extra} is editing this record. Changes are not locked; review diffs before saving to avoid overwrites.`;
+                  })()}
+                </AlertDescription>
+              </Alert>
             </div>
           )}
 
@@ -740,8 +1049,281 @@ function MarcEditorContent() {
                 </CardContent>
               </Card>
 
-              {(comparePanelOpen || showHelp) && (
+              {(comparePanelOpen || showHelp || aiPanelOpen || tasksPanelOpen) && (
                 <div className="w-full lg:w-[420px] shrink-0 space-y-4">
+                  {aiPanelOpen && (
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-base flex items-center justify-between">
+                          <span className="inline-flex items-center gap-2">
+                            <Sparkles className="h-4 w-4" />
+                            AI suggestions
+                          </span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={() => setAiPanelOpen(false)}
+                            title="Close AI panel"
+                          >
+                            <X className="h-4 w-4" />
+                            <span className="sr-only">Close AI panel</span>
+                          </Button>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="text-sm text-muted-foreground">
+                          Draft-only suggestions. Nothing is applied until you accept a suggestion, and nothing is saved
+                          until you click Save Record.
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" onClick={() => void runAi()} disabled={aiLoading}>
+                            {aiLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                            Generate suggestions
+                          </Button>
+                          {aiDraftId ? <Badge variant="outline">Draft {aiDraftId.slice(0, 8)}</Badge> : null}
+                        </div>
+
+                        {aiError && (
+                          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                            {aiError}
+                          </div>
+                        )}
+
+                        {!aiLoading && aiSuggestions.length === 0 && !aiError ? (
+                          <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                            No suggestions yet.
+                          </div>
+                        ) : null}
+
+                        <div className="space-y-3">
+                          {aiSuggestions.map((s) => {
+                            const decision = aiDecisions[s.id];
+                            const preview = applySuggestionToRecord(record, s);
+                            const previewDiff = (() => {
+                              const before = toCounts(recordToLines(record));
+                              const after = toCounts(recordToLines(preview));
+                              const keys = new Set<string>([...before.keys(), ...after.keys()]);
+                              const rows = [...keys]
+                                .map((line) => {
+                                  const b = before.get(line) || 0;
+                                  const a = after.get(line) || 0;
+                                  if (a === b) return null;
+                                  if (a > b) return { line, kind: "added" as const };
+                                  return { line, kind: "removed" as const };
+                                })
+                                .filter(Boolean) as Array<{ line: string; kind: "added" | "removed" }>;
+
+                              const added = rows.filter((r) => r.kind === "added");
+                              const removed = rows.filter((r) => r.kind === "removed");
+                              return { added, removed };
+                            })();
+
+                            const showDiff = Boolean(aiExpandedDiffs[s.id]);
+                            const canAccept = !decision || decision !== "accepted";
+                            const canReject = !decision || decision !== "rejected";
+
+                            return (
+                              <div key={s.id} className="rounded-lg border bg-background p-3 space-y-2">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <Badge variant="outline">{s.type}</Badge>
+                                      <Badge variant="outline">
+                                        {Math.round((Number(s.confidence || 0) || 0) * 100)}%
+                                      </Badge>
+                                      {decision ? (
+                                        <Badge className={decision === "accepted" ? "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10" : "bg-rose-500/10 text-rose-700 hover:bg-rose-500/10"}>
+                                          {decision}
+                                        </Badge>
+                                      ) : null}
+                                    </div>
+                                    <div className="text-sm font-medium mt-1">{s.message}</div>
+                                  </div>
+                                </div>
+
+                                <div className="rounded-md border bg-muted/30 px-2 py-2 font-mono text-xs whitespace-pre-wrap">
+                                  {s.suggestedValue}
+                                </div>
+
+                                {Array.isArray(s.provenance) && s.provenance.length > 0 ? (
+                                  <div className="text-xs text-muted-foreground space-y-1">
+                                    <div className="font-medium text-foreground/80">Provenance</div>
+                                    <ul className="list-disc pl-5">
+                                      {s.provenance.slice(0, 5).map((p, idx) => (
+                                        <li key={idx}>{p}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                ) : null}
+
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
+                                        applySuggestion(s);
+                                        setAiDecisions((prev) => ({ ...prev, [s.id]: "accepted" }));
+                                        void decideSuggestion("accepted", s.id);
+                                      }}
+                                      disabled={!canAccept}
+                                    >
+                                      <ThumbsUp className="h-4 w-4 mr-1" />
+                                      Accept
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setAiDecisions((prev) => ({ ...prev, [s.id]: "rejected" }));
+                                        void decideSuggestion("rejected", s.id);
+                                      }}
+                                      disabled={!canReject}
+                                    >
+                                      <ThumbsDown className="h-4 w-4 mr-1" />
+                                      Reject
+                                    </Button>
+                                  </div>
+
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      setAiExpandedDiffs((prev) => ({ ...prev, [s.id]: !Boolean(prev[s.id]) }))
+                                    }
+                                    disabled={previewDiff.added.length + previewDiff.removed.length === 0}
+                                  >
+                                    {showDiff ? "Hide diff" : "Show diff"}
+                                  </Button>
+                                </div>
+
+                                {showDiff ? (
+                                  <div className="rounded-lg border bg-background max-h-[260px] overflow-auto">
+                                    <div className="p-2 font-mono text-xs space-y-1">
+                                      {previewDiff.removed.map((r) => (
+                                        <div key={`r-${r.line}`} className="rounded-md px-2 py-1 bg-rose-50 text-rose-900">
+                                          <span className="inline-block w-4 text-center mr-1">-</span>
+                                          <span className="break-words">{r.line}</span>
+                                        </div>
+                                      ))}
+                                      {previewDiff.added.map((r) => (
+                                        <div key={`a-${r.line}`} className="rounded-md px-2 py-1 bg-emerald-50 text-emerald-900">
+                                          <span className="inline-block w-4 text-center mr-1">+</span>
+                                          <span className="break-words">{r.line}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {tasksPanelOpen && (
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-base flex items-center justify-between">
+                          <span className="inline-flex items-center gap-2">
+                            <ClipboardList className="h-4 w-4" />
+                            Tasks & notes
+                          </span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={() => setTasksPanelOpen(false)}
+                            title="Close tasks panel"
+                          >
+                            <X className="h-4 w-4" />
+                            <span className="sr-only">Close tasks panel</span>
+                          </Button>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {!recordIdNum ? (
+                          <div className="text-sm text-muted-foreground">Save the record first to attach tasks.</div>
+                        ) : (
+                          <>
+                            <div className="space-y-2">
+                              <Input
+                                value={newTaskTitle}
+                                onChange={(e) => setNewTaskTitle(e.target.value)}
+                                placeholder="Task title"
+                              />
+                              <Input
+                                value={newTaskBody}
+                                onChange={(e) => setNewTaskBody(e.target.value)}
+                                placeholder="Optional note"
+                              />
+                              <Button size="sm" onClick={() => void createTask()} disabled={!newTaskTitle.trim()}>
+                                Add task
+                              </Button>
+                            </div>
+
+                            {tasksError ? (
+                              <div className="text-sm text-muted-foreground">Failed to load tasks: {tasksError}</div>
+                            ) : null}
+
+                            {tasksLoading ? (
+                              <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {tasks.length === 0 ? (
+                                  <div className="text-sm text-muted-foreground">No tasks yet.</div>
+                                ) : (
+                                  tasks.map((t) => (
+                                    <div key={t.id} className="rounded-lg border bg-background p-3 space-y-2">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <div className="text-sm font-medium">{t.title}</div>
+                                        <Badge variant="outline">{t.status}</Badge>
+                                      </div>
+                                      {t.body ? (
+                                        <div className="text-xs text-muted-foreground whitespace-pre-wrap">{t.body}</div>
+                                      ) : null}
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => void setTaskStatus(t.id, "open")}
+                                          disabled={t.status === "open"}
+                                        >
+                                          Open
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => void setTaskStatus(t.id, "done")}
+                                          disabled={t.status === "done"}
+                                        >
+                                          Done
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => void setTaskStatus(t.id, "canceled")}
+                                          disabled={t.status === "canceled"}
+                                        >
+                                          Cancel
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {comparePanelOpen && (
                     <Card>
                       <CardHeader className="py-3">

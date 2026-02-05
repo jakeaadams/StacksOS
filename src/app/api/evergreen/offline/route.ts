@@ -1,11 +1,13 @@
 import { NextRequest } from "next/server";
 import {
   callOpenSRF,
+  callPcrud,
   requireAuthToken,
   successResponse,
   errorResponse,
   serverErrorResponse,
   isSuccessResult,
+  extractPayload,
   getErrorMessage,
   getCopyByBarcode,
 } from "@/lib/api";
@@ -49,29 +51,29 @@ export async function GET(req: NextRequest) {
       case "policies": {
         // Get circulation rules/loan policies from Evergreen config
         try {
-          // Fetch circ duration rules
-          const durationResponse = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.search.cdr.atomic",
-            [authtoken, { id: { "!=" : null } }, { flesh: 0, limit: 100 }]
+          // Prefer pcrud `*.atomic` methods (faster, no transaction management),
+          // but fall back automatically when the Evergreen install does not
+          // expose the atomic variant.
+          const durationResponse = await callPcrud(
+            "open-ils.pcrud.search.crcd",
+            [authtoken, { id: { "!=": null } }, { flesh: 0, limit: 100 }]
           );
-          const durations = durationResponse?.payload?.[0] || [];
+          const durationsRaw = extractPayload<any>(durationResponse);
+          const durations = Array.isArray(durationsRaw) ? durationsRaw : [];
 
-          // Fetch circ recurring fine rules
-          const fineResponse = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.search.crrf.atomic",
-            [authtoken, { id: { "!=" : null } }, { flesh: 0, limit: 100 }]
+          const fineResponse = await callPcrud(
+            "open-ils.pcrud.search.crrf",
+            [authtoken, { id: { "!=": null } }, { flesh: 0, limit: 100 }]
           );
-          const fines = fineResponse?.payload?.[0] || [];
+          const finesRaw = extractPayload<any>(fineResponse);
+          const fines = Array.isArray(finesRaw) ? finesRaw : [];
 
-          // Fetch max fine rules
-          const maxFineResponse = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.search.cmrf.atomic",
-            [authtoken, { id: { "!=" : null } }, { flesh: 0, limit: 100 }]
+          const maxFineResponse = await callPcrud(
+            "open-ils.pcrud.search.crmf",
+            [authtoken, { id: { "!=": null } }, { flesh: 0, limit: 100 }]
           );
-          const maxFines = maxFineResponse?.payload?.[0] || [];
+          const maxFinesRaw = extractPayload<any>(maxFineResponse);
+          const maxFines = Array.isArray(maxFinesRaw) ? maxFinesRaw : [];
 
           // Build policies from Evergreen config
           const policies = durations.map((d: any) => ({
@@ -86,7 +88,7 @@ export async function GET(req: NextRequest) {
           const fineRules = fines.map((f: any) => ({
             id: f.id,
             name: f.name,
-            fineAmount: parseFloat(f.normal_amount || "0.10"),
+            fineAmount: parseFloat(String(f.normal ?? f.normal_amount ?? "0.10")),
             fineInterval: f.recurrence_interval || "1 day",
           }));
 
@@ -104,7 +106,12 @@ export async function GET(req: NextRequest) {
             })),
           });
         } catch (error) {
-          logger.error({ error: String(error) }, "Error fetching policies");
+          const code = error && typeof error === "object" ? (error as any).code : undefined;
+          if (code === "OSRF_METHOD_NOT_FOUND") {
+            logger.warn({ route: "api.evergreen.offline", type: "policies" }, "Offline policies not available on this Evergreen install");
+          } else {
+            logger.error({ error: String(error) }, "Error fetching policies");
+          }
           // Return safe defaults if fetch fails
           return successResponse({
             policies: [

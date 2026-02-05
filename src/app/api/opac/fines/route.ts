@@ -6,24 +6,18 @@ import {
   serverErrorResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { cookies } from "next/headers";
+import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 
 // GET /api/opac/fines - Get patron fines/fees
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-    const patronId = cookieStore.get("patron_id")?.value;
-
-    if (!patronToken || !patronId) {
-      return errorResponse("Not authenticated", 401);
-    }
+    const { patronToken, patronId } = await requirePatronSession();
 
     // Get transactions with balance
     const finesResponse = await callOpenSRF(
       "open-ils.actor",
       "open-ils.actor.user.transactions.have_balance.fleshed",
-      [patronToken, parseInt(patronId)]
+      [patronToken, patronId]
     );
 
     const transactions = finesResponse.payload?.[0] || [];
@@ -66,7 +60,7 @@ export async function GET(req: NextRequest) {
                 };
               }
             }
-          } catch (error) {
+          } catch {
             // Item info is optional, continue without it
           }
         }
@@ -101,21 +95,18 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return errorResponse(error.message, error.status);
+    }
     logger.error({ error: String(error) }, "Error fetching fines");
-    return serverErrorResponse(error, "Failed to fetch fines");
+    return serverErrorResponse(error, "Failed to fetch fines", req);
   }
 }
 
 // POST /api/opac/fines/pay - Pay fines (if online payment is enabled)
 export async function POST(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-    const patronId = cookieStore.get("patron_id")?.value;
-
-    if (!patronToken || !patronId) {
-      return errorResponse("Not authenticated", 401);
-    }
+    const { patronToken, patronId } = await requirePatronSession();
 
     const { transactionIds, amount, paymentType = "credit_card_payment" } = await req.json();
 
@@ -135,14 +126,14 @@ export async function POST(req: NextRequest) {
       [
         patronToken,
         {
-          userid: parseInt(patronId),
+          userid: patronId,
           payments: transactionIds.map((id: number) => [
             id,
             amount / transactionIds.length,
           ]),
           payment_type: paymentType,
         },
-        parseInt(patronId),
+        patronId,
       ]
     );
 
@@ -157,7 +148,10 @@ export async function POST(req: NextRequest) {
       message: "Payment recorded successfully",
     });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return errorResponse(error.message, error.status);
+    }
     logger.error({ error: String(error) }, "Error processing payment");
-    return serverErrorResponse(error, "Failed to process payment");
+    return serverErrorResponse(error, "Failed to process payment", req);
   }
 }

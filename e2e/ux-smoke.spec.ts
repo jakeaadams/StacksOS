@@ -1,5 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
+import { getStaffCredentials } from "./helpers";
+
 async function expectNoCsrfBanner(page: Page) {
   // Give client-side requests a beat to surface any error banners/toasts.
   await page.waitForTimeout(1500);
@@ -8,8 +10,7 @@ async function expectNoCsrfBanner(page: Page) {
 
 test.describe("UX smoke (CSRF)", () => {
   test("core routes load without CSRF banners", async ({ page }) => {
-    const username = process.env.E2E_STAFF_USER || "jake";
-    const password = process.env.E2E_STAFF_PASS || "jake";
+    const { username, password } = getStaffCredentials();
 
     await page.goto("/login");
     await page.locator("input#username").fill(username);

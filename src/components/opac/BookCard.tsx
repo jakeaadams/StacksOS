@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { WhyThisResultDialog, type ExplainFilter } from "@/components/opac/WhyThisResultDialog";
 import { 
   Book, 
   Headphones, 
@@ -10,6 +12,7 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  HelpCircle,
   Heart,
   Plus,
   Star,
@@ -34,11 +37,20 @@ export interface BookCardProps {
   publicationYear?: number;
   summary?: string;
   subjects?: string[];
+  rankingLabel?: string;
+  rankingReason?: string;
+  explainQuery?: string;
+  explainSort?: "relevance" | "smart";
+  explainRankingMode?: "keyword" | "hybrid";
+  explainRankingScore?: number;
+  explainFilters?: ExplainFilter[];
   // Availability
   availableNow?: boolean;
   totalCopies?: number;
   availableCopies?: number;
   holdCount?: number;
+  /** When false, hides availability UI (use when availability is not known). */
+  showAvailability?: boolean;
   // Display options
   variant?: "grid" | "list" | "compact";
   showFormats?: boolean;
@@ -146,10 +158,18 @@ export function BookCard({
   reviewCount: propReviewCount,
   publicationYear,
   summary,
-  availableNow = false,
+  subjects,
+  rankingLabel,
+  rankingReason,
+  explainQuery,
+  explainSort,
+  explainRankingMode = "keyword",
+  explainRankingScore,
+  explainFilters,
   totalCopies = 0,
   availableCopies = 0,
   holdCount = 0,
+  showAvailability = true,
   variant = "grid",
   showFormats = true,
   showRating = true,
@@ -162,6 +182,9 @@ export function BookCard({
   const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [googleRating, setGoogleRating] = useState<{ rating: number; count: number } | null>(null);
+
+  const canExplain =
+    Boolean(explainSort) && (Boolean(explainQuery?.trim()) || (Array.isArray(explainFilters) && explainFilters.length > 0));
 
   // Fetch Google Books rating if isbn provided and no rating passed
   useEffect(() => {
@@ -205,11 +228,12 @@ export function BookCard({
           <div className={`relative aspect-[2/3] bg-muted/50 overflow-hidden
                          ${isKidsMode ? "aspect-square" : ""}`}>
             {coverUrl && !imageError ? (
-              <img
+              <Image
                 src={coverUrl}
                 alt={`Cover of ${title}`}
-                className="w-full h-full object-cover transition-transform duration-300 
-                         group-hover:scale-105"
+                fill
+                sizes={isKidsMode ? "256px" : "320px"}
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
                 onError={() => setImageError(true)}
               />
             ) : (
@@ -228,9 +252,43 @@ export function BookCard({
             )}
 
             {/* Availability badge overlay */}
-            <div className="absolute top-2 left-2">
-              <AvailabilityBadge availableCopies={availableCopies} holdCount={holdCount} />
-            </div>
+            {showAvailability ? (
+              <div className="absolute top-2 left-2">
+                <AvailabilityBadge availableCopies={availableCopies} holdCount={holdCount} />
+              </div>
+            ) : null}
+
+            {canExplain ? (
+              <div className="absolute top-2 right-2">
+                <WhyThisResultDialog
+                  query={explainQuery || ""}
+                  sort={explainSort || "relevance"}
+                  rankingMode={explainRankingMode}
+                  title={title}
+                  author={author}
+                  summary={summary}
+                  subjects={subjects}
+                  availableCopies={availableCopies}
+                  totalCopies={totalCopies}
+                  holdCount={holdCount}
+                  semanticReason={rankingReason}
+                  semanticScore={explainRankingScore}
+                  filters={explainFilters}
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className="inline-flex items-center justify-center rounded-full bg-card/90 border border-border/70 shadow-sm p-1.5 text-muted-foreground hover:text-primary-700 hover:border-primary-300 transition-colors"
+                    aria-label="Why this result?"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                  </button>
+                </WhyThisResultDialog>
+              </div>
+            ) : null}
 
             {/* Quick actions on hover */}
             {isHovered && (
@@ -319,10 +377,12 @@ export function BookCard({
         >
           <div className="relative w-24 h-36 bg-muted/50 rounded-lg overflow-hidden">
             {coverUrl && !imageError ? (
-              <img
+              <Image
                 src={coverUrl}
                 alt={`Cover of ${title}`}
-                className="w-full h-full object-cover"
+                fill
+                sizes="96px"
+                className="object-cover"
                 onError={() => setImageError(true)}
               />
             ) : (
@@ -352,6 +412,47 @@ export function BookCard({
             <p className="text-muted-foreground text-sm">{publicationYear}</p>
           )}
 
+          {(rankingLabel || rankingReason) && (
+            <div className="mt-2">
+              {rankingLabel && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-sky-50 text-sky-700 rounded-full text-xs font-medium">
+                  {rankingLabel}
+                </span>
+              )}
+              {rankingReason && (
+                <p className="text-muted-foreground text-xs mt-1 line-clamp-2">{rankingReason}</p>
+              )}
+            </div>
+          )}
+
+          {canExplain ? (
+            <div className="mt-2">
+              <WhyThisResultDialog
+                query={explainQuery || ""}
+                sort={explainSort || "relevance"}
+                rankingMode={explainRankingMode}
+                title={title}
+                author={author}
+                summary={summary}
+                subjects={subjects}
+                availableCopies={availableCopies}
+                totalCopies={totalCopies}
+                holdCount={holdCount}
+                semanticReason={rankingReason}
+                semanticScore={explainRankingScore}
+                filters={explainFilters}
+              >
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary-700 transition-colors"
+                >
+                  <HelpCircle className="h-3.5 w-3.5" />
+                  Why this result?
+                </button>
+              </WhyThisResultDialog>
+            </div>
+          ) : null}
+
           {showRating && (
             <div className="mt-2">
               <StarRating rating={rating} reviewCount={reviewCount} />
@@ -362,11 +463,13 @@ export function BookCard({
             <p className="text-muted-foreground text-sm mt-2 line-clamp-2">{summary}</p>
           )}
 
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <AvailabilityBadge availableCopies={availableCopies} holdCount={holdCount} />
-            
-            {showFormats && formats.length > 0 && (
-              <div className="flex flex-wrap gap-1">
+	          <div className="mt-3 flex flex-wrap items-center gap-3">
+	            {showAvailability ? (
+	              <AvailabilityBadge availableCopies={availableCopies} holdCount={holdCount} />
+	            ) : null}
+	            
+	            {showFormats && formats.length > 0 && (
+	              <div className="flex flex-wrap gap-1">
                 {formats.map((format) => {
                   const Icon = formatIcons[format.type] || Book;
                   return (
@@ -419,10 +522,12 @@ export function BookCard({
     >
       <div className="relative w-12 h-16 bg-muted/50 rounded overflow-hidden shrink-0">
         {coverUrl && !imageError ? (
-          <img
+          <Image
             src={coverUrl}
             alt={`Cover of ${title}`}
-            className="w-full h-full object-cover"
+            fill
+            sizes="48px"
+            className="object-cover"
             onError={() => setImageError(true)}
           />
         ) : (
@@ -439,16 +544,16 @@ export function BookCard({
         {author && (
           <p className="text-muted-foreground text-xs line-clamp-1">{author}</p>
         )}
-        {showRating && rating && (
-          <div className="flex items-center gap-1 mt-1">
-            <Star className="h-3 w-3 text-amber-400" fill="currentColor" />
-            <span className="text-xs text-muted-foreground">{rating.toFixed(1)}</span>
-          </div>
-        )}
-      </div>
-      <AvailabilityBadge availableCopies={availableCopies} holdCount={holdCount} />
-    </Link>
-  );
-}
+	        {showRating && rating && (
+	          <div className="flex items-center gap-1 mt-1">
+	            <Star className="h-3 w-3 text-amber-400" fill="currentColor" />
+	            <span className="text-xs text-muted-foreground">{rating.toFixed(1)}</span>
+	          </div>
+	        )}
+	      </div>
+	      {showAvailability ? <AvailabilityBadge availableCopies={availableCopies} holdCount={holdCount} /> : null}
+	    </Link>
+	  );
+	}
 
 export default BookCard;

@@ -48,6 +48,10 @@ import {
   UserCog,
   Sliders,
   Inbox,
+  LifeBuoy,
+  Bell,
+  KeyRound,
+  Gavel,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
@@ -79,11 +83,24 @@ const mainNav: NavSection[] = [
       { title: "Activity Log", href: "/staff/activity", icon: Activity }],
   },
   {
+    title: "Training & Support",
+      defaultOpen: false,
+      items: [
+        { title: "Training", href: "/staff/training", icon: GraduationCap },
+        { title: "Support", href: "/staff/support", icon: LifeBuoy },
+        { title: "Help & Runbook", href: "/staff/help", icon: FileQuestion },
+        { title: "Status", href: "/status", icon: Activity },
+        { title: "Release Notes", href: "/release-notes", icon: FileText },
+      ],
+  },
+  {
     title: "Circulation",
     defaultOpen: true,
     items: [
+      { title: "Circulation Desk", href: "/staff/circulation", icon: ArrowLeftRight },
       { title: "Check Out", href: "/staff/circulation/checkout", icon: ArrowLeftRight, shortcut: "F1" },
       { title: "Check In", href: "/staff/circulation/checkin", icon: Package, shortcut: "F2" },
+      { title: "Transits", href: "/staff/circulation/transits", icon: Truck },
       { title: "Renew Items", href: "/staff/circulation/renew", icon: Clock },
       { title: "Holds", href: "/staff/circulation/holds-management", icon: BookMarked },
       { title: "Pull List", href: "/staff/circulation/pull-list", icon: ClipboardList },
@@ -109,12 +126,14 @@ const mainNav: NavSection[] = [
     title: "Cataloging",
     defaultOpen: true,
     items: [
+      { title: "Cataloging Home", href: "/staff/cataloging", icon: FileText },
       { title: "Search Catalog", href: "/staff/catalog", icon: Search, shortcut: "F5" },
       { title: "Create Record", href: "/staff/catalog/create", icon: FileText },
       { title: "MARC Editor", href: "/staff/cataloging/marc-editor", icon: Edit3 },
       { title: "Authority Control", href: "/staff/cataloging/authority", icon: Share2 },
       { title: "Z39.50 Search", href: "/staff/cataloging/z3950", icon: Globe },
       { title: "Holdings", href: "/staff/cataloging/holdings", icon: Layers },
+      { title: "Templates", href: "/staff/cataloging/templates", icon: FileText },
       { title: "MARC Import", href: "/staff/cataloging/import", icon: Download },
       ...(featureFlags.recordBuckets
         ? [{ title: "Record Buckets", href: "/staff/catalog/buckets", icon: FolderOpen }]
@@ -152,6 +171,7 @@ const mainNav: NavSection[] = [
     title: "Acquisitions",
     defaultOpen: false,
     items: [
+      { title: "Overview", href: "/staff/acquisitions", icon: ShoppingCart },
       { title: "Selection Lists", href: "/staff/acquisitions/selection", icon: ClipboardList },
       { title: "Purchase Orders", href: "/staff/acquisitions/orders", icon: ShoppingCart },
       { title: "Receiving", href: "/staff/acquisitions/receiving", icon: Truck },
@@ -160,6 +180,8 @@ const mainNav: NavSection[] = [
       { title: "Funds", href: "/staff/acquisitions/funds", icon: CreditCard },
       { title: "Funding Sources", href: "/staff/acquisitions/funding-sources", icon: Layers },
       { title: "Allocations", href: "/staff/acquisitions/allocations", icon: ArrowLeftRight },
+      { title: "Claims", href: "/staff/acquisitions/claims", icon: AlertCircle },
+      { title: "EDI", href: "/staff/acquisitions/edi", icon: Send },
     ],
   },
   {
@@ -176,6 +198,7 @@ const mainNav: NavSection[] = [
     defaultOpen: false,
     items: [
       { title: "Dashboard", href: "/staff/reports", icon: BarChart3 },
+      { title: "Report Builder", href: "/staff/reports/builder", icon: Edit3 },
       ...(featureFlags.reportTemplates
         ? [{ title: "Report Templates", href: "/staff/reports/templates", icon: FileText }]
         : []),
@@ -192,11 +215,20 @@ const mainNav: NavSection[] = [
     defaultOpen: false,
     items: [
       { title: "Local Admin", href: "/staff/admin", icon: Settings },
+      { title: "Permissions", href: "/staff/admin/permissions", icon: KeyRound },
+      { title: "Go-live", href: "/staff/admin/go-live", icon: ClipboardList },
+      { title: "Ops", href: "/staff/admin/ops", icon: Activity },
+      { title: "Notifications", href: "/staff/admin/notifications", icon: Bell },
       { title: "System Settings", href: "/staff/admin/settings", icon: Sliders },
       { title: "My Settings", href: "/staff/settings", icon: UserCog },
-      { title: "Policy Inspector", href: "/staff/admin/policy-inspector", icon: Database },
-      { title: "Item Statuses", href: "/staff/admin/item-statuses", icon: Tag },
-      { title: "Stat Categories", href: "/staff/admin/stat-categories", icon: BarChart3 },
+	      { title: "Policy Inspector", href: "/staff/admin/policy-inspector", icon: Database },
+	      ...(featureFlags.policyEditors
+	        ? [{ title: "Policy Editors", href: "/staff/admin/policies", icon: Gavel, badge: "New", badgeVariant: "outline" as const }]
+	        : []),
+	      { title: "Item Statuses", href: "/staff/admin/item-statuses", icon: Tag },
+      ...(featureFlags.statCategories
+        ? [{ title: "Stat Categories", href: "/staff/admin/stat-categories", icon: BarChart3 }]
+        : []),
       ...(featureFlags.copyTags
         ? [{ title: "Copy Tags", href: "/staff/admin/copy-tags", icon: BookMarked }]
         : []),

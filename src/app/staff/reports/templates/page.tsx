@@ -1,14 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useMemo, useState } from "react";
 import {
   PageContainer,
   PageHeader,
   PageContent,
   DataTable,
   EmptyState,
-  LoadingSpinner,
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,7 +63,6 @@ const REPORT_TEMPLATES: ReportTemplate[] = [
 ];
 
 export default function ReportTemplatesPage() {
-  const router = useRouter();
   const enabled = featureFlags.reportTemplates;
   const [searchQuery, setSearchQuery] = useState("");
   const [isRunning, setIsRunning] = useState<string | null>(null);
@@ -79,7 +76,7 @@ export default function ReportTemplatesPage() {
     );
   }, [searchQuery]);
 
-  const handleRunReport = async (template: ReportTemplate) => {
+  const handleRunReport = useCallback(async (template: ReportTemplate) => {
     setIsRunning(template.id);
     try {
       const response = await fetchWithAuth(`/api/evergreen/reports?action=${template.apiAction}`);
@@ -91,12 +88,12 @@ export default function ReportTemplatesPage() {
       } else {
         toast.error("Report failed", { description: data.error || "Unknown error" });
       }
-    } catch (error) {
+    } catch {
       toast.error("Report failed", { description: "Network error" });
     } finally {
       setIsRunning(null);
     }
-  };
+  }, []);
 
   const columns: ColumnDef<ReportTemplate>[] = useMemo(() => [
     {
@@ -149,7 +146,7 @@ export default function ReportTemplatesPage() {
         </Button>
       ),
     },
-  ], [isRunning]);
+  ], [handleRunReport, isRunning]);
 
   const starredTemplates = REPORT_TEMPLATES.filter(t => t.isStarred);
 

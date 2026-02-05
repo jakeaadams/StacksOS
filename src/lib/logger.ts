@@ -22,6 +22,8 @@ const LEVELS: Record<LogLevel, number> = {
 function resolveMinLevel(): number {
   const raw = String(process.env.STACKSOS_LOG_LEVEL || "").toLowerCase() as LogLevel;
   if (raw && raw in LEVELS) return LEVELS[raw];
+  // Keep unit test output clean by default. Override with STACKSOS_LOG_LEVEL.
+  if (process.env.VITEST || process.env.NODE_ENV === "test") return LEVELS.error;
   return process.env.NODE_ENV === "production" ? LEVELS.info : LEVELS.debug;
 }
 

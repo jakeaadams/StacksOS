@@ -1,0 +1,7 @@
+[Unit]
+Description=StacksOS backup (config + docs + audit log)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /home/jake/projects/stacksos/ops/stacksos/stacksos_backup.sh
+

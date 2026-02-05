@@ -105,16 +105,20 @@ export function OPACFooter() {
                   Search Catalog
                 </Link>
               </li>
-              <li>
-                <Link href="/opac/search?new=true" className="text-sm hover:text-white transition-colors">
-                  New Arrivals
-                </Link>
-              </li>
-              <li>
-                <Link href="/opac/lists" className="text-sm hover:text-white transition-colors">
-                  Staff Picks
-                </Link>
-              </li>
+              {featureFlags.opacBrowseV2 ? (
+                <>
+                  <li>
+                    <Link href="/opac/new-titles" className="text-sm hover:text-white transition-colors">
+                      New Arrivals
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/opac/lists" className="text-sm hover:text-white transition-colors">
+                      Staff Picks
+                    </Link>
+                  </li>
+                </>
+              ) : null}
               <li>
                 {featureFlags.opacKids ? (
                   <Link href="/opac/kids" className="text-sm hover:text-white transition-colors">

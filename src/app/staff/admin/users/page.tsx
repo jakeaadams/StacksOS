@@ -87,7 +87,7 @@ export default function UserManagementPage() {
       }));
       setStaffUsers(users);
       setHasLoaded(true);
-    } catch (error) {
+    } catch {
       const message = "Failed to load users";
       setLoadError(message);
       toast.error(message);

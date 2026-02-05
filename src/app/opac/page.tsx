@@ -4,7 +4,8 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 import { clientLogger } from "@/lib/client-logger";
 import { featureFlags } from "@/lib/feature-flags";
 
-import { useState, useEffect } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useLibrary } from "@/hooks/useLibrary";
 import { usePatronSession } from "@/hooks/usePatronSession";
@@ -43,20 +44,45 @@ interface StaffPick {
   review: string;
 }
 
+function getCoverUrl(record: any): string | undefined {
+  const isbn = record.isbn || record.simple_record?.isbn;
+  if (isbn) {
+    return `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`;
+  }
+  return undefined;
+}
+
+function transformCatalogResults(records: any[]): FeaturedBook[] {
+  return records.map((record: any) => ({
+    id: record.id || record.record_id,
+    title: record.title || record.simple_record?.title || "Unknown Title",
+    author: record.author || record.simple_record?.author || "",
+    coverUrl: getCoverUrl(record),
+    availableCopies: record.available_copies || record.availability?.available || 0,
+    totalCopies: record.total_copies || record.availability?.total || 0,
+    rating: record.rating,
+  }));
+}
+
 export default function OPACHomePage() {
   const { library, currentLocation } = useLibrary();
   const { patron, isLoggedIn, holds } = usePatronSession();
+  const browseEnabled = featureFlags.opacBrowseV2;
   const [searchQuery, setSearchQuery] = useState("");
   const [newArrivals, setNewArrivals] = useState<FeaturedBook[]>([]);
   const [popularItems, setPopularItems] = useState<FeaturedBook[]>([]);
   const [staffPicks, setStaffPicks] = useState<StaffPick[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchFeaturedContent();
-  }, []);
+  const fetchFeaturedContent = useCallback(async () => {
+    if (!browseEnabled) {
+      setNewArrivals([]);
+      setPopularItems([]);
+      setStaffPicks([]);
+      setIsLoading(false);
+      return;
+    }
 
-  const fetchFeaturedContent = async () => {
     try {
       setIsLoading(true);
       
@@ -75,7 +101,7 @@ export default function OPACHomePage() {
         const data = await popularResponse.json();
         setPopularItems(transformCatalogResults(data.records || []));
       }
-
+      
       // Fetch staff picks from Evergreen public bookbags
       try {
         const staffPicksResponse = await fetchWithAuth("/api/opac/staff-picks?limit=4");
@@ -83,7 +109,7 @@ export default function OPACHomePage() {
           const picksData = await staffPicksResponse.json();
           setStaffPicks(picksData.picks || []);
         }
-      } catch (error) {
+      } catch {
         // Staff picks are optional - don't fail if unavailable
       }
 
@@ -92,29 +118,11 @@ export default function OPACHomePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [browseEnabled]);
 
-  const transformCatalogResults = (records: any[]): FeaturedBook[] => {
-    return records.map((record: any) => ({
-      id: record.id || record.record_id,
-      title: record.title || record.simple_record?.title || "Unknown Title",
-      author: record.author || record.simple_record?.author || "",
-      coverUrl: getCoverUrl(record),
-      availableCopies: record.available_copies || record.availability?.available || 0,
-      totalCopies: record.total_copies || record.availability?.total || 0,
-      rating: record.rating,
-    }));
-  };
-
-  const getCoverUrl = (record: any): string | undefined => {
-    // Try multiple sources for cover images
-    const isbn = record.isbn || record.simple_record?.isbn;
-    if (isbn) {
-      // Use Open Library covers
-      return `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`;
-    }
-    return undefined;
-  };
+  useEffect(() => {
+    void fetchFeaturedContent();
+  }, [fetchFeaturedContent]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,9 +131,9 @@ export default function OPACHomePage() {
     }
   };
 
-  const QuickSearchChip = ({ label, query }: { label: string; query: string }) => (
+  const QuickSearchChip = ({ label, href }: { label: string; href: string }) => (
     <Link
-      href={`/opac/search?q=${encodeURIComponent(query)}`}
+      href={href}
       className="px-4 py-2 bg-card rounded-full text-sm font-medium text-foreground/80 
                hover:bg-primary-50 hover:text-primary-700 transition-colors shadow-sm"
     >
@@ -201,10 +209,13 @@ export default function OPACHomePage() {
 
           {/* Quick search suggestions */}
           <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <QuickSearchChip label="New Releases" query="new:true" />
-            <QuickSearchChip label="Popular" query="popular:true" />
-            <QuickSearchChip label="Award Winners" query="subject:award winners" />
-            <QuickSearchChip label="Book Club" query="subject:book club" />
+            <QuickSearchChip
+              label="New Releases"
+              href={browseEnabled ? "/opac/new-titles" : "/opac/search?sort=create_date&order=desc"}
+            />
+            <QuickSearchChip label="Popular" href="/opac/search?sort=popularity" />
+            <QuickSearchChip label="Award Winners" href={`/opac/search?q=${encodeURIComponent("subject: award winners")}`} />
+            <QuickSearchChip label="Book Club" href={`/opac/search?q=${encodeURIComponent("subject: book club")}`} />
           </div>
         </div>
       </section>
@@ -277,118 +288,122 @@ export default function OPACHomePage() {
       </section>
 
       {/* New Arrivals */}
-      <section className="py-12 md:py-16 bg-card">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 rounded-lg">
-                <Sparkles className="h-6 w-6 text-amber-600" />
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                New Arrivals
-              </h2>
-            </div>
-            <Link
-              href="/opac/search?sort=create_date&order=desc"
-              className="flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
-            >
-              View All
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="aspect-[2/3] bg-muted rounded-lg mb-2" />
-                  <div className="h-4 bg-muted rounded mb-1" />
-                  <div className="h-3 bg-muted rounded w-2/3" />
+      {browseEnabled ? (
+        <section className="py-12 md:py-16 bg-card">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <Sparkles className="h-6 w-6 text-amber-600" />
                 </div>
-              ))}
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+                  New Arrivals
+                </h2>
+              </div>
+              <Link
+                href="/opac/new-titles"
+                className="flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
+              >
+                View All
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
-          ) : newArrivals.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-              {newArrivals.map((book) => (
-                <BookCard
-                  key={book.id}
-                  id={book.id}
-                  title={book.title}
-                  author={book.author}
-                  coverUrl={book.coverUrl}
-                  availableCopies={book.availableCopies}
-                  totalCopies={book.totalCopies}
-                  variant="grid"
-                  showFormats={false}
-                  showRating={false}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-8">
-              No new arrivals to display. Check back soon!
-            </p>
-          )}
-        </div>
-      </section>
+
+            {isLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="aspect-[2/3] bg-muted rounded-lg mb-2" />
+                    <div className="h-4 bg-muted rounded mb-1" />
+                    <div className="h-3 bg-muted rounded w-2/3" />
+                  </div>
+                ))}
+              </div>
+            ) : newArrivals.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                {newArrivals.map((book) => (
+                  <BookCard
+                    key={book.id}
+                    id={book.id}
+                    title={book.title}
+                    author={book.author}
+                    coverUrl={book.coverUrl}
+                    availableCopies={book.availableCopies}
+                    totalCopies={book.totalCopies}
+                    variant="grid"
+                    showFormats={false}
+                    showRating={false}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">
+                No new arrivals to display. Check back soon!
+              </p>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       {/* Popular This Month */}
-      <section className="py-12 md:py-16 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-rose-100 rounded-lg">
-                <TrendingUp className="h-6 w-6 text-rose-600" />
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                Popular This Month
-              </h2>
-            </div>
-            <Link
-              href="/opac/search?sort=popularity"
-              className="flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
-            >
-              View All
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="aspect-[2/3] bg-muted rounded-lg mb-2" />
-                  <div className="h-4 bg-muted rounded mb-1" />
-                  <div className="h-3 bg-muted rounded w-2/3" />
+      {browseEnabled ? (
+        <section className="py-12 md:py-16 bg-muted/30">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-rose-100 rounded-lg">
+                  <TrendingUp className="h-6 w-6 text-rose-600" />
                 </div>
-              ))}
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+                  Popular This Month
+                </h2>
+              </div>
+              <Link
+                href="/opac/search?sort=popularity"
+                className="flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
+              >
+                View All
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
-          ) : popularItems.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-              {popularItems.map((book) => (
-                <BookCard
-                  key={book.id}
-                  id={book.id}
-                  title={book.title}
-                  author={book.author}
-                  coverUrl={book.coverUrl}
-                  availableCopies={book.availableCopies}
-                  totalCopies={book.totalCopies}
-                  variant="grid"
-                  showFormats={false}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-8">
-              Search our catalog to discover popular items!
-            </p>
-          )}
-        </div>
-      </section>
+
+            {isLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="aspect-[2/3] bg-muted rounded-lg mb-2" />
+                    <div className="h-4 bg-muted rounded mb-1" />
+                    <div className="h-3 bg-muted rounded w-2/3" />
+                  </div>
+                ))}
+              </div>
+            ) : popularItems.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                {popularItems.map((book) => (
+                  <BookCard
+                    key={book.id}
+                    id={book.id}
+                    title={book.title}
+                    author={book.author}
+                    coverUrl={book.coverUrl}
+                    availableCopies={book.availableCopies}
+                    totalCopies={book.totalCopies}
+                    variant="grid"
+                    showFormats={false}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">
+                Search our catalog to discover popular items!
+              </p>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       {/* Staff Picks */}
-      {staffPicks.length > 0 && (
+      {browseEnabled && staffPicks.length > 0 && (
         <section className="py-12 md:py-16 bg-card">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
@@ -417,18 +432,20 @@ export default function OPACHomePage() {
                            border border-purple-100"
                 >
                   <div className="flex gap-4">
-                    <div className="w-20 h-28 bg-muted rounded-lg shrink-0 overflow-hidden">
-                      {pick.coverUrl ? (
-                        <img 
-                          src={pick.coverUrl} 
-                          alt={pick.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-purple-200 flex items-center justify-center">
-                          <BookOpen className="h-8 w-8 text-purple-400" />
-                        </div>
-                      )}
+	                    <div className="w-20 h-28 bg-muted rounded-lg shrink-0 overflow-hidden">
+	                      {pick.coverUrl ? (
+	                        <Image
+	                          src={pick.coverUrl}
+	                          alt={pick.title}
+	                          width={80}
+	                          height={112}
+	                          className="w-full h-full object-cover"
+	                        />
+	                      ) : (
+	                        <div className="w-full h-full bg-purple-200 flex items-center justify-center">
+	                          <BookOpen className="h-8 w-8 text-purple-400" />
+	                        </div>
+	                      )}
                     </div>
                     <div className="flex-1">
                       <Link 

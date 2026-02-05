@@ -1,10 +1,11 @@
 "use client";
-import { logger } from "@/lib/logger";
+import { clientLogger } from "@/lib/client-logger";
 import { DEBOUNCE_DELAY_MS } from "@/lib/constants";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { useLibrary } from "@/hooks/useLibrary";
 import { usePatronSession } from "@/hooks/usePatronSession";
@@ -20,6 +21,7 @@ import {
   BookOpen,
   Heart,
   Clock,
+  Phone,
   LogOut,
   ChevronDown,
   Loader2
@@ -33,9 +35,11 @@ interface SearchResult {
   format?: string;
 }
 
+const passthroughLoader = ({ src }: { src: string }) => src;
+
 export function OPACHeader() {
   const router = useRouter();
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const { library, isLoading: libraryLoading } = useLibrary();
   const { patron, isLoggedIn, logout } = usePatronSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -83,7 +87,7 @@ export function OPACHeader() {
           setShowResults(true);
         }
       } catch (err) {
-        logger.error({ error: String(err) }, "Search error");
+        clientLogger.error("Search error:", err);
       } finally {
         setIsSearching(false);
       }
@@ -142,24 +146,36 @@ export function OPACHeader() {
 
   return (
     <header className="bg-card border-b border-border sticky top-0 z-50">
-      <div className="bg-primary-600 text-white px-4 py-2 text-sm">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            {library?.phone && (
-              <span className="hidden sm:inline">📞 {library.phone}</span>
-            )}
-            {library?.hours && (
-              <span className="hidden md:inline">🕐 {library.hours}</span>
-            )}
+      <div className="bg-primary text-primary-foreground px-4 py-2 text-sm">
+        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {library?.phone ? (
+              <a
+                href={`tel:${library.phone}`}
+                className="hidden sm:inline-flex items-center gap-2 hover:underline"
+              >
+                <Phone className="h-4 w-4" aria-hidden="true" />
+                <span>{library.phone}</span>
+              </a>
+            ) : null}
+            {library?.hours ? (
+              <span className="hidden md:inline-flex items-center gap-2">
+                <Clock className="h-4 w-4" aria-hidden="true" />
+                <span>{library.hours}</span>
+              </span>
+            ) : null}
           </div>
+
           <div className="flex items-center gap-4">
-            {library?.locations && library.locations.length > 1 && (
+            {library?.locations && library.locations.length > 1 ? (
               <Link href="/opac/locations" className="hover:underline">
                 {library.locations.length} Locations
               </Link>
-            )}
+            ) : null}
             {featureFlags.opacKids ? (
-              <Link href="/opac/kids" className="hover:underline font-medium">👶 Kids</Link>
+              <Link href="/opac/kids" className="hover:underline font-medium">
+                Kids
+              </Link>
             ) : null}
           </div>
         </div>
@@ -167,13 +183,22 @@ export function OPACHeader() {
 
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between gap-4">
-          <Link href="/opac" className="flex items-center gap-3 shrink-0">
-            {library?.logoUrl ? (
-              <img src={library.logoUrl} alt="" className="h-10 w-auto" aria-hidden="true" />
-            ) : (
-              <div className="h-10 w-10 bg-primary-600 rounded-lg flex items-center justify-center" aria-hidden="true">
-                <BookOpen className="h-6 w-6 text-white" />
-              </div>
+	          <Link href="/opac" className="flex items-center gap-3 shrink-0">
+	            {library?.logoUrl ? (
+	              <Image
+	                src={library.logoUrl}
+	                alt=""
+	                width={160}
+	                height={40}
+	                className="h-10 w-auto"
+	                unoptimized
+	                loader={passthroughLoader}
+	                aria-hidden="true"
+	              />
+	            ) : (
+	              <div className="h-10 w-10 bg-primary-600 rounded-lg flex items-center justify-center" aria-hidden="true">
+	                <BookOpen className="h-6 w-6 text-white" />
+	              </div>
             )}
             <div className="hidden sm:block">
               <h1 className="font-bold text-lg text-foreground leading-tight">
@@ -204,14 +229,21 @@ export function OPACHeader() {
 
             {showResults && searchResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl shadow-lg border border-border overflow-hidden z-50">
-                {searchResults.map((result) => (
-                  <button type="button" key={result.id} onClick={() => handleResultClick(result.id)} className="w-full flex items-center gap-3 p-3 hover:bg-muted/30 text-left border-b border-border/50 last:border-0">
-                    {result.coverUrl ? (
-                      <img src={result.coverUrl} alt="" className="w-10 h-14 object-cover rounded" />
-                    ) : (
-                      <div className="w-10 h-14 bg-muted rounded flex items-center justify-center">
-                        <BookOpen className="h-5 w-5 text-muted-foreground/70" />
-                      </div>
+	                {searchResults.map((result) => (
+	                  <button type="button" key={result.id} onClick={() => handleResultClick(result.id)} className="w-full flex items-center gap-3 p-3 hover:bg-muted/30 text-left border-b border-border/50 last:border-0">
+	                    {result.coverUrl ? (
+	                      <Image
+	                        src={result.coverUrl}
+	                        alt=""
+	                        width={40}
+	                        height={56}
+	                        className="object-cover rounded"
+	                        aria-hidden="true"
+	                      />
+	                    ) : (
+	                      <div className="w-10 h-14 bg-muted rounded flex items-center justify-center">
+	                        <BookOpen className="h-5 w-5 text-muted-foreground/70" />
+	                      </div>
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground truncate">{result.title}</p>

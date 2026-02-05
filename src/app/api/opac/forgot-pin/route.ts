@@ -4,6 +4,7 @@ import {
   successResponse,
   errorResponse,
   serverErrorResponse,
+  getRequestMeta,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
@@ -27,6 +28,7 @@ function maskEmail(email: string): string {
  */
 export async function POST(req: NextRequest) {
   let identifier: string | undefined;
+  const { ip, userAgent, requestId } = getRequestMeta(req);
   try {
     const body = await req.json();
     identifier = body.identifier;
@@ -55,8 +57,9 @@ export async function POST(req: NextRequest) {
         action: "patron.pin.reset.request",
         status: "failure",
         actor: { username },
-        ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip"),
-        userAgent: req.headers.get("user-agent"),
+        ip,
+        userAgent,
+        requestId,
         details: {
           method: method || "unknown",
           textcode: result.textcode,
@@ -87,8 +90,9 @@ export async function POST(req: NextRequest) {
       action: "patron.pin.reset.request",
       status: "success",
       actor: { username },
-      ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip"),
-      userAgent: req.headers.get("user-agent"),
+      ip,
+      userAgent,
+      requestId,
       details: {
         method: method || "email",
         maskedEmail: maskEmail(result?.email || ""),
@@ -110,8 +114,9 @@ export async function POST(req: NextRequest) {
       action: "patron.pin.reset.request",
       status: "failure",
       actor: { username: identifier || "unknown" },
-      ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip"),
-      userAgent: req.headers.get("user-agent"),
+      ip,
+      userAgent,
+      requestId,
       details: { error: String(error) },
     });
     

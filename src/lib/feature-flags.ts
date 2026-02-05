@@ -12,7 +12,14 @@ export const featureFlags = {
     // Keep disabled until we have a real provider/integration.
     ill: EXPERIMENTAL,
     opacKids: EXPERIMENTAL,
-    courseReserves: EXPERIMENTAL,
+    // OPAC/Kids world-class roadmap (see docs/OPAC_COMPETITOR_RESEARCH.md)
+    opacFacetsV2: EXPERIMENTAL,
+    opacHoldsUXV2: EXPERIMENTAL,
+    opacBrowseV2: EXPERIMENTAL,
+    opacLists: EXPERIMENTAL,
+    opacPersonalization: EXPERIMENTAL,
+    kidsEngagementV1: EXPERIMENTAL,
+    courseReserves: true,
 
     // Cataloging power tools (not yet implemented end-to-end)
     recordBuckets: EXPERIMENTAL,
@@ -24,13 +31,18 @@ export const featureFlags = {
     // Reports submodules (not yet implemented)
     reportTemplates: EXPERIMENTAL,
     myReports: EXPERIMENTAL,
-    scheduledReports: EXPERIMENTAL,
+    scheduledReports: true,
 
     // Admin submodules (not yet implemented)
     serverAdmin: EXPERIMENTAL,
-    adminWorkstations: EXPERIMENTAL,
+    adminWorkstations: true,
     userManagement: true,
-    copyTags: EXPERIMENTAL,
+    copyTags: true,
+    statCategories: true,
+
+    // Advanced admin tooling (read-only by default; enable editors later)
+    policyEditors: EXPERIMENTAL,
+    permissionsExplorer: EXPERIMENTAL,
 } as const;
 
 export type FeatureFlags = typeof featureFlags;

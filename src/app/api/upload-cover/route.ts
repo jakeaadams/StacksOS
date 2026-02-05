@@ -1,72 +1,75 @@
-import { NextRequest, NextResponse } from "next/server";
-import { logger } from "@/lib/logger";
-import { requirePermissions } from "@/lib/permissions";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import { existsSync } from "fs";
+import crypto from "node:crypto";
+import path from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { NextRequest } from "next/server";
 
+import { logAuditEvent } from "@/lib/audit";
+import { errorResponse, getRequestMeta, successResponse, serverErrorResponse } from "@/lib/api";
+import { requirePermissions } from "@/lib/permissions";
+import { imageExtForMime, parsePositiveInt } from "@/lib/upload-utils";
+
+const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "covers");
+const MAX_BYTES = 5 * 1024 * 1024;
+const ALLOWED_EXTS = new Set(["jpg", "png", "gif", "webp"]);
 
 export async function POST(request: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(request);
+
   try {
-    // Require staff authentication
-    await requirePermissions(["STAFF_LOGIN"]);
+    const { actor } = await requirePermissions(["STAFF_LOGIN"]);
 
     const formData = await request.formData();
-    const file = formData.get("file") as File;
-    const recordId = formData.get("recordId") as string;
+    const file = formData.get("file");
+    const recordIdRaw = formData.get("recordId");
 
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    if (!(file instanceof File)) {
+      return errorResponse("No file provided", 400);
     }
 
-    // Validate file type
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: "Invalid file type. Only JPG, PNG, GIF, and WEBP are allowed." },
-        { status: 400 }
-      );
+    const recordId = parsePositiveInt(recordIdRaw);
+    if (!recordId) {
+      return errorResponse("Invalid recordId", 400);
     }
 
-    // Validate file size (5MB max)
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      return NextResponse.json(
-        { error: "File too large. Maximum size is 5MB." },
-        { status: 400 }
-      );
+    const ext = imageExtForMime(file.type);
+    if (!ext || !ALLOWED_EXTS.has(ext)) {
+      return errorResponse("Invalid file type. Only JPG, PNG, GIF, and WEBP are allowed.", 400);
     }
 
-    // Generate unique filename
+    if (file.size > MAX_BYTES) {
+      return errorResponse("File too large. Maximum size is 5MB.", 400);
+    }
+
+    await mkdir(UPLOAD_DIR, { recursive: true });
+
     const timestamp = Date.now();
-    const ext = path.extname(file.name);
-    const filename = `record-${recordId}-${timestamp}${ext}`;
+    const suffix = crypto.randomUUID().slice(0, 8);
+    const filename = `record-${recordId}-${timestamp}-${suffix}.${ext}`;
+    const filepath = path.join(UPLOAD_DIR, filename);
 
-    // Ensure upload directory exists
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "covers");
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
-
-    // Write file
-    const filepath = path.join(uploadDir, filename);
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    await writeFile(filepath, buffer);
+    await writeFile(filepath, Buffer.from(bytes));
 
-    // Return the public URL
     const publicUrl = `/uploads/covers/${filename}`;
 
-    return NextResponse.json({
-      success: true,
-      url: publicUrl,
-      filename,
+    await logAuditEvent({
+      action: "catalog.cover.upload",
+      entity: "record",
+      entityId: recordId,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: {
+        filename,
+        fileSize: file.size,
+        fileType: file.type,
+      },
     });
+
+    return successResponse({ url: publicUrl, filename });
   } catch (error) {
-    logger.error({ error: String(error) }, "Upload error");
-    return NextResponse.json(
-      { error: "Failed to upload file" },
-      { status: 500 }
-    );
+    return serverErrorResponse(error, "Upload cover POST", request);
   }
 }

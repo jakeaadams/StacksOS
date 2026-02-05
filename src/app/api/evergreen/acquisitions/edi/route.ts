@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
           const acc = response?.payload?.[0];
           if (!acc || acc.ilsevent) return errorResponse("EDI account not found", 404);
           return successResponse({ account: { id: acc.id, label: acc.label || "EDI Account " + acc.id, host: acc.host || "", username: acc.username || "", account: acc.account || "", vendorCode: acc.vendor_code || "", vendorId: typeof acc.provider === "object" ? acc.provider?.id : acc.provider, lastActivity: acc.last_activity || null, inDirectory: acc.in_dir || "", outDirectory: acc.out_dir || "", owner: acc.owner || orgId, useHttp: acc.use_http === "t", provider: typeof acc.provider === "object" ? acc.provider?.id : acc.provider, path: acc.path || "" } });
-        } catch (error) { return errorResponse("Failed to retrieve EDI account", 500); }
+        } catch (_error) { return errorResponse("Failed to retrieve EDI account", 500); }
       }
       case "messages": {
         const filters: Record<string, any> = {};
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to create EDI account", 400);
           return successResponse({ account: result, accountId: result?.id || result }, "EDI account created");
-        } catch (error) { return errorResponse("Failed to create EDI account", 500); }
+        } catch (_error) { return errorResponse("Failed to create EDI account", 500); }
       }
       case "update_account": {
         const { id, label, host, username, password, account, vendorId, inDirectory, outDirectory, useHttp, path } = body;
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to update EDI account", 400);
           return successResponse({ updated: true, accountId: id }, "EDI account updated");
-        } catch (error) { return errorResponse("Failed to update EDI account", 500); }
+        } catch (_error) { return errorResponse("Failed to update EDI account", 500); }
       }
       case "delete_account": {
         const { id } = body;
@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to delete EDI account", 400);
           return successResponse({ deleted: true, accountId: id }, "EDI account deleted");
-        } catch (error) { return errorResponse("Failed to delete EDI account", 500); }
+        } catch (_error) { return errorResponse("Failed to delete EDI account", 500); }
       }
       case "send_order": {
         const { purchaseOrderId, accountId } = body;
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to send EDI order", 400);
           return successResponse({ sent: true, purchaseOrderId, accountId }, "EDI order sent");
-        } catch (error) { return errorResponse("Failed to send EDI order", 500); }
+        } catch (_error) { return errorResponse("Failed to send EDI order", 500); }
       }
       case "process_inbound": {
         const { accountId } = body;
@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to process inbound EDI", 400);
           const processedCount = typeof result === "number" ? result : (result?.processed || 0);
           return successResponse({ processed: true, accountId, count: processedCount }, "Processed " + processedCount + " inbound EDI message(s)");
-        } catch (error) { return errorResponse("Failed to process inbound EDI", 500); }
+        } catch (_error) { return errorResponse("Failed to process inbound EDI", 500); }
       }
       case "retry_message": {
         const { messageId } = body;
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to retry EDI message", 400);
           return successResponse({ retried: true, messageId }, "EDI message queued for retry");
-        } catch (error) { return errorResponse("Failed to retry EDI message", 500); }
+        } catch (_error) { return errorResponse("Failed to retry EDI message", 500); }
       }
       case "test_connection": {
         const { accountId } = body;
@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
           if (result?.ilsevent || result === false) return errorResponse(result?.textcode || "Connection test failed", 400);
           return successResponse({ success: true, accountId }, "Connection test successful");
-        } catch (error) { return errorResponse("Connection test failed", 500); }
+        } catch (_error) { return errorResponse("Connection test failed", 500); }
       }
       default: return errorResponse("Invalid action", 400);
     }

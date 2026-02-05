@@ -39,10 +39,24 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-import { RotateCcw, Printer, CreditCard, Clock, CheckCircle2, XCircle, AlertTriangle, BookOpen } from "lucide-react";
+import {
+  RotateCcw,
+  Printer,
+  CreditCard,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  BookOpen,
+  HelpCircle,
+  ThumbsUp,
+  ThumbsDown,
+} from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { escapeHtml, printHtml } from "@/lib/print";
+import { featureFlags } from "@/lib/feature-flags";
+import { fetchWithAuth } from "@/lib/client-fetch";
 
 interface CheckoutItem {
   id: string;
@@ -65,6 +79,13 @@ interface CheckoutBlockDetails {
   overrideEligible?: boolean;
   requestId?: string | null;
 }
+
+type AiPolicyExplain = {
+  explanation: string;
+  nextSteps: string[];
+  suggestedNote?: string;
+  requiresConfirmation?: boolean;
+};
 
 type CheckoutVariables = {
   action: "checkout";
@@ -133,6 +154,7 @@ function buildReceiptHtml(params: {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const canAi = featureFlags.ai;
 
   const {
     selectedPatron: patron,
@@ -160,6 +182,11 @@ export default function CheckoutPage() {
   const [overrideReason, setOverrideReason] = useState("");
   const [overrideError, setOverrideError] = useState<string | null>(null);
   const [isOverriding, setIsOverriding] = useState(false);
+  const [aiExplainLoading, setAiExplainLoading] = useState(false);
+  const [aiExplainError, setAiExplainError] = useState<string | null>(null);
+  const [aiExplainDraftId, setAiExplainDraftId] = useState<string | null>(null);
+  const [aiExplain, setAiExplain] = useState<AiPolicyExplain | null>(null);
+  const [aiExplainFeedback, setAiExplainFeedback] = useState<null | "accepted" | "rejected">(null);
 
   const patronInputRef = useRef<HTMLInputElement>(null);
   const itemInputRef = useRef<HTMLInputElement>(null);
@@ -288,6 +315,11 @@ export default function CheckoutPage() {
     setOverrideReason("");
     setOverrideError(null);
     setIsOverriding(false);
+    setAiExplainLoading(false);
+    setAiExplainError(null);
+    setAiExplainDraftId(null);
+    setAiExplain(null);
+    setAiExplainFeedback(null);
     itemInputRef.current?.focus();
   }, [itemInputRef]);
 
@@ -318,6 +350,76 @@ export default function CheckoutPage() {
       setIsOverriding(false);
     }
   }, [patron, overridePrompt, overrideReason, checkoutMutation, closeOverridePrompt]);
+
+  useEffect(() => {
+    if (!canAi) return;
+    if (!overridePrompt) return;
+
+    const details = overridePrompt.details || {};
+    let cancelled = false;
+
+    setAiExplainLoading(true);
+    setAiExplainError(null);
+    setAiExplainDraftId(null);
+    setAiExplain(null);
+    setAiExplainFeedback(null);
+
+    void (async () => {
+      try {
+        const res = await fetchWithAuth("/api/ai/policy-explain", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "checkout",
+            code: details.code || undefined,
+            desc: details.desc || undefined,
+            overrideEligible: details.overrideEligible ?? undefined,
+            overridePerm: details.overridePerm || undefined,
+            context: {
+              route: "staff.circulation.checkout",
+              itemBarcode: overridePrompt.itemBarcode,
+            },
+          }),
+        });
+        const json = await res.json().catch(() => null);
+        if (cancelled) return;
+        if (!res.ok || !json || json.ok === false) {
+          const msg = (json && (json.error || json.message)) || `AI explain failed (${res.status})`;
+          setAiExplainError(String(msg));
+          setAiExplainLoading(false);
+          return;
+        }
+        setAiExplainDraftId(json.draftId || null);
+        setAiExplain(json.response || null);
+        setAiExplainLoading(false);
+      } catch (e) {
+        if (cancelled) return;
+        setAiExplainError(e instanceof Error ? e.message : String(e));
+        setAiExplainLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canAi, overridePrompt]);
+
+  const submitAiExplainFeedback = useCallback(
+    async (decision: "accepted" | "rejected") => {
+      if (!aiExplainDraftId) return;
+      setAiExplainFeedback(decision);
+      try {
+        await fetchWithAuth(`/api/ai/drafts/${aiExplainDraftId}/decision`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision, suggestionId: "policy_explain" }),
+        });
+      } catch {
+        // Best-effort: do not block circulation on feedback.
+      }
+    },
+    [aiExplainDraftId]
+  );
 
   const enqueueCheckout = useCallback(
     (barcode: string) => {
@@ -505,6 +607,7 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
         actions={[
           { label: "New Session", onClick: handleNewSession, icon: RotateCcw, shortcut: { key: "Escape" } },
           { label: "Print Receipt", onClick: handlePrintReceipt, icon: Printer, shortcut: { key: "p", ctrl: true } },
+          { label: "Walkthrough", onClick: () => window.location.assign("/staff/training?workflow=checkout"), icon: HelpCircle, variant: "outline" },
         ]}
       >
         <div className="flex flex-wrap gap-2">
@@ -697,6 +800,71 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
                 )}
               </div>
             </div>
+
+            {canAi && (
+              <div className="rounded-xl border border-border/70 bg-background p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-medium">AI explanation (draft-only)</div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => void submitAiExplainFeedback("accepted")}
+                      disabled={!aiExplainDraftId || aiExplainFeedback !== null}
+                      title="Thumbs up"
+                    >
+                      <ThumbsUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => void submitAiExplainFeedback("rejected")}
+                      disabled={!aiExplainDraftId || aiExplainFeedback !== null}
+                      title="Thumbs down"
+                    >
+                      <ThumbsDown className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {aiExplainLoading ? (
+                  <div className="text-sm text-muted-foreground flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent" />
+                    Generating explanation…
+                  </div>
+                ) : aiExplainError ? (
+                  <div className="text-sm text-muted-foreground">AI unavailable: {aiExplainError}</div>
+                ) : aiExplain ? (
+                  <div className="space-y-2">
+                    <div className="text-sm">{aiExplain.explanation}</div>
+                    {Array.isArray(aiExplain.nextSteps) && aiExplain.nextSteps.length > 0 ? (
+                      <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
+                        {aiExplain.nextSteps.slice(0, 6).map((step, idx) => (
+                          <li key={idx}>{step}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {aiExplain.suggestedNote ? (
+                      <div className="rounded-lg border bg-muted/30 p-2 space-y-2">
+                        <div className="text-xs text-muted-foreground">
+                          <div className="font-medium text-foreground/80">Suggested override note</div>
+                          <div className="mt-1 whitespace-pre-wrap">{aiExplain.suggestedNote}</div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setOverrideReason((prev) => (prev ? prev : aiExplain.suggestedNote || ""))}
+                        >
+                          Use note
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">No AI explanation available.</div>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="override-reason">Override reason</Label>

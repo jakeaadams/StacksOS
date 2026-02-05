@@ -1,9 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePatronSession } from "@/hooks/usePatronSession";
+import { fetchWithAuth } from "@/lib/client-fetch";
+import { featureFlags } from "@/lib/feature-flags";
+import { computeBookBadgeProgress, computeKidsReadingStats, type KidsReadingLogEntry } from "@/lib/kids-engagement";
 import {
   BookOpen,
   Star,
@@ -12,7 +16,6 @@ import {
   Clock,
   CalendarDays,
   ChevronRight,
-  Heart,
   BookmarkCheck,
   AlertCircle,
   Sparkles,
@@ -30,49 +33,107 @@ interface RecentBook {
 
 export default function KidsAccountPage() {
   const router = useRouter();
-  const { patron, isLoggedIn, checkouts, holds } = usePatronSession();
+  const { patron, isLoggedIn, checkouts, holds, fetchCheckouts, fetchHolds } = usePatronSession();
   const [recentBooks, setRecentBooks] = useState<RecentBook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [readingStats, setReadingStats] = useState<{
+    booksThisMonth: number;
+    currentStreak: number;
+    totalBadges: number;
+    nextBadgeProgress: number;
+  } | null>(null);
+
+  const loadData = useCallback(() => {
+    // Transform checkouts to recent books
+    const books = checkouts
+      .filter((checkout) => typeof checkout.recordId === "number" && checkout.recordId > 0)
+      .slice(0, 4)
+      .map((checkout) => ({
+        id: checkout.recordId!,
+        title: checkout.title,
+        author: checkout.author,
+        coverUrl: checkout.coverUrl,
+        dueDate: formatMaybeDate(checkout.dueDate),
+        isOverdue: checkout.isOverdue,
+      }));
+    setRecentBooks(books);
+  }, [checkouts]);
 
   useEffect(() => {
     if (!isLoggedIn) {
       router.push("/opac/login?redirect=/opac/kids/account");
       return;
     }
-    loadData();
-  }, [isLoggedIn, checkouts]);
+    setIsLoading(true);
+    void Promise.all([fetchCheckouts(), fetchHolds()]).finally(() => setIsLoading(false));
+  }, [fetchCheckouts, fetchHolds, isLoggedIn, router]);
 
-  const loadData = () => {
-    // Transform checkouts to recent books
-    if (checkouts) {
-      const books = checkouts.slice(0, 4).map((checkout: any) => ({
-        id: checkout.recordId || checkout.id,
-        title: checkout.title,
-        author: checkout.author,
-        coverUrl: checkout.isbn
-          ? `https://covers.openlibrary.org/b/isbn/${checkout.isbn}-M.jpg`
-          : undefined,
-        dueDate: checkout.dueDate,
-        isOverdue: checkout.isOverdue,
-      }));
-      setRecentBooks(books);
-    }
-    setIsLoading(false);
-  };
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !featureFlags.kidsEngagementV1) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await fetchWithAuth("/api/opac/kids/reading-log?limit=400");
+      const data = await res.json().catch(() => ({}));
+      const raw = Array.isArray((data as any)?.entries) ? (data as any).entries : [];
+      const entries: KidsReadingLogEntry[] = raw
+        .filter((e: any) => e && typeof e.id === "number")
+        .map((e: any) => ({
+          id: e.id,
+          bibId: typeof e.bibId === "number" ? e.bibId : null,
+          title: String(e.title || "Untitled"),
+          readAt: String(e.readAt || e.read_at || ""),
+          minutesRead: typeof e.minutesRead === "number" ? e.minutesRead : 0,
+          pagesRead: typeof e.pagesRead === "number" ? e.pagesRead : null,
+        }));
+
+      const stats = computeKidsReadingStats(entries);
+      const bookBadgeCount = [1, 5, 10, 25, 50, 100].filter((t) => stats.totalBooks >= t).length;
+      const streakBadgeCount = (stats.currentStreak >= 7 ? 1 : 0) + (stats.currentStreak >= 30 ? 1 : 0);
+      const progress = computeBookBadgeProgress(stats.totalBooks);
+
+      if (!cancelled) {
+        setReadingStats({
+          booksThisMonth: stats.booksThisMonth,
+          currentStreak: stats.currentStreak,
+          totalBadges: bookBadgeCount + streakBadgeCount,
+          nextBadgeProgress: progress.progressPct,
+        });
+      }
+    })().catch(() => {
+      if (!cancelled) setReadingStats(null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
 
   if (!isLoggedIn) {
     return null; // Will redirect
   }
 
-  const overdueCount = checkouts?.filter((c: any) => c.isOverdue)?.length || 0;
-  const readyHoldsCount = holds?.filter((h: any) => h.status === "ready")?.length || 0;
+  if (isLoading) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+        <div className="flex items-center justify-center gap-3 text-muted-foreground">
+          <Sparkles className="h-6 w-6 animate-pulse" />
+          Loading your account…
+        </div>
+      </div>
+    );
+  }
 
-  // Sample reading stats - would come from StacksOS API
-  const readingStats = {
-    booksThisMonth: 3,
-    currentStreak: 7,
-    totalBadges: 5,
-    nextBadgeProgress: 75,
+  const overdueCount = checkouts.filter((c) => c.isOverdue).length;
+  const readyHoldsCount = holds.filter((h) => h.status === "ready").length;
+
+  const safeStats = readingStats || {
+    booksThisMonth: 0,
+    currentStreak: 0,
+    totalBadges: 0,
+    nextBadgeProgress: 0,
   };
 
   return (
@@ -94,21 +155,21 @@ export default function KidsAccountPage() {
           <div className="bg-card/10 rounded-2xl p-3 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Flame className="h-5 w-5 text-orange-300" />
-              <span className="text-2xl font-bold">{readingStats.currentStreak}</span>
+              <span className="text-2xl font-bold">{safeStats.currentStreak}</span>
             </div>
             <p className="text-xs text-white/80">Day Streak</p>
           </div>
           <div className="bg-card/10 rounded-2xl p-3 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <BookOpen className="h-5 w-5 text-blue-300" />
-              <span className="text-2xl font-bold">{readingStats.booksThisMonth}</span>
+              <span className="text-2xl font-bold">{safeStats.booksThisMonth}</span>
             </div>
             <p className="text-xs text-white/80">Books This Month</p>
           </div>
           <div className="bg-card/10 rounded-2xl p-3 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Trophy className="h-5 w-5 text-yellow-300" />
-              <span className="text-2xl font-bold">{readingStats.totalBadges}</span>
+              <span className="text-2xl font-bold">{safeStats.totalBadges}</span>
             </div>
             <p className="text-xs text-white/80">Badges</p>
           </div>
@@ -254,12 +315,6 @@ export default function KidsAccountPage() {
             color="text-green-500"
           />
           <MenuLink
-            href="/opac/kids/account/lists"
-            icon={Heart}
-            label="My Lists"
-            color="text-pink-500"
-          />
-          <MenuLink
             href="/opac/kids/challenges"
             icon={Star}
             label="Badges & Achievements"
@@ -279,10 +334,12 @@ function BookCard({ book }: { book: RecentBook }) {
       <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
                     shadow-sm group-hover:shadow-md transition-all">
         {book.coverUrl && !imageError ? (
-          <img
+          <Image
             src={book.coverUrl}
             alt={book.title}
-            className="w-full h-full object-cover"
+            fill
+            sizes="200px"
+            className="object-cover"
             onError={() => setImageError(true)}
           />
         ) : (
@@ -341,4 +398,11 @@ function MenuLink({
       <ChevronRight className="h-5 w-5 text-muted-foreground/70" />
     </Link>
   );
+}
+
+function formatMaybeDate(value: string): string {
+  if (!value) return "Unknown";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }

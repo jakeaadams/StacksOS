@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, recordSuccess } from "@/lib/rate-limit";
 import {
   callOpenSRF,
   successResponse,
@@ -19,10 +19,10 @@ import { isCookieSecure } from "@/lib/csrf";
  * Authenticates patron using library card barcode and PIN
  */
 export async function POST(req: NextRequest) {
-  const { ip, userAgent, requestId } = getRequestMeta(req);
+  const { ip, requestId } = getRequestMeta(req);
 
   // Rate limiting - 10 attempts per 15 minutes per IP
-  const rateLimit = checkRateLimit(ip || "unknown", {
+  const rateLimit = await checkRateLimit(ip || "unknown", {
     maxAttempts: 10,
     windowMs: 15 * 60 * 1000,
     endpoint: "patron-auth",
@@ -55,40 +55,32 @@ export async function POST(req: NextRequest) {
 
     logger.info({ route: "api.opac.login", barcode: cleanBarcode }, "OPAC login attempt");
 
-    // Step 1: Resolve the patron username from barcode (Evergreen stores auth seeds by usrname)
-    const patronLookup = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.user.fleshed.retrieve_by_barcode",
-      [null, cleanBarcode]
-    );
-
-    const patron = patronLookup?.payload?.[0];
-    if (!patron || patron.ilsevent) {
-      return errorResponse("Invalid library card number or PIN", 401);
-    }
-
-    const username = patron.usrname;
-
-    // Step 2: Get auth seed using username
-    const seedResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.init", [username]);
+    // Step 1: Get auth seed.
+    //
+    // Evergreen supports authenticating by barcode directly (no pre-auth patron lookup).
+    // This matches the built-in web proxy behavior.
+    const seedResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.init", [
+      cleanBarcode,
+    ]);
 
     const seed = seedResponse?.payload?.[0];
     if (!seed) {
-      logger.warn({ route: "api.opac.login", username }, "Failed to get auth seed");
+      logger.warn({ route: "api.opac.login", barcode: cleanBarcode }, "Failed to get auth seed");
       return errorResponse("Invalid library card number or PIN", 401);
     }
 
-    // Step 3: Hash PIN using MD5 (Evergreen compatibility)
+    // Step 2: Hash PIN using MD5 (Evergreen compatibility)
     const finalHash = hashPassword(cleanPin, String(seed));
 
-    // Step 4: Authenticate as OPAC user
+    // Step 3: Authenticate as OPAC user
     const authResponse = await callOpenSRF(
       "open-ils.auth",
       "open-ils.auth.authenticate.complete",
       [{
-        username,
+        barcode: cleanBarcode,
         password: finalHash,
         type: "opac",
+        agent: "stacksos",
       }]
     );
 
@@ -116,22 +108,26 @@ export async function POST(req: NextRequest) {
       if (user && !user.ilsevent) {
         logger.info({ route: "api.opac.login", patronId: user.id }, "OPAC login successful");
 
+        await recordSuccess(ip || "unknown", "patron-auth");
+
         return successResponse({
           success: true,
           patron: {
-            id: patron?.id || user.id,
-            firstName: patron?.first_given_name || user.first_given_name,
-            lastName: patron?.family_name || user.family_name,
-            email: patron?.email,
-            barcode: cleanBarcode,
-            homeLibrary: patron?.home_ou,
-            profileName: patron?.profile?.name,
+            id: user.id,
+            firstName: user.first_given_name,
+            lastName: user.family_name,
+            email: user.email,
+            cardNumber: cleanBarcode,
+            homeLibrary: user.home_ou,
           },
         });
       }
     }
 
-    logger.warn({ route: "api.opac.login", barcode: cleanBarcode, error: authResult?.textcode }, "OPAC login failed");
+    logger.warn(
+      { route: "api.opac.login", barcode: cleanBarcode, error: authResult?.textcode },
+      "OPAC login failed"
+    );
     return errorResponse("Invalid library card number or PIN", 401);
   } catch (error) {
     return serverErrorResponse(error, "OPAC Login POST", req);

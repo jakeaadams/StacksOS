@@ -1,5 +1,5 @@
 "use client";
-import { logger } from "@/lib/logger";
+import { clientLogger } from "@/lib/client-logger";
 import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useState, useEffect, useCallback } from "react";
@@ -46,6 +46,8 @@ import {
   LayoutGrid,
   LayoutList,
   Maximize2,
+  ShieldCheck,
+  Trash2,
 } from "lucide-react";
 
 // ============================================================================
@@ -153,8 +155,10 @@ export default function SettingsPage() {
     user?.homeLibraryId ? `/api/evergreen/workstations?org_id=${user.homeLibraryId}` : null,
     { immediate: !!user?.homeLibraryId }
   );
+  const { data: sessionData, refetch: refetchSessions } = useApi<any>("/api/security/sessions", { immediate: true });
 
   const workstations = workstationData?.workstations || [];
+  const sessions = Array.isArray(sessionData?.sessions) ? sessionData.sessions : [];
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -174,7 +178,7 @@ export default function SettingsPage() {
         }));
       }
     } catch (err) {
-      logger.error({ error: String(err) }, "Failed to load settings");
+      clientLogger.error("Failed to load settings:", err);
     }
   }, [user]);
 
@@ -244,7 +248,7 @@ export default function SettingsPage() {
       setHasChanges(false);
     } catch (err) {
       toast.error("Failed to save settings");
-      logger.error({ error: String(err) }, "Failed to save settings");
+      clientLogger.error("Failed to save settings:", err);
     } finally {
       setIsSaving(false);
     }
@@ -574,6 +578,85 @@ export default function SettingsPage() {
                 </SettingRow>
               </>
             )}
+          </SettingSection>
+
+          {/* Security Settings */}
+          <SettingSection
+            icon={ShieldCheck}
+            title="Security"
+            description="Session activity, device list, and revocation controls"
+          >
+            <div className="text-sm text-muted-foreground">
+              Idle timeout is enforced by the server (configured by `STACKSOS_IDLE_TIMEOUT_MINUTES`). If your session is revoked or expires, you will be prompted to log in again.
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">Active sessions</Label>
+                  <p className="text-xs text-muted-foreground">Devices and browsers that have used this account recently.</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => void refetchSessions()}>
+                  Refresh
+                </Button>
+              </div>
+
+              {sessions.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No session records yet.</div>
+              ) : (
+                <div className="space-y-2">
+                  {sessions.map((s: any) => (
+                    <div key={s.id} className="rounded-lg border p-3 flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs">{String(s.id).slice(0, 12)}…</span>
+                          {s.revoked_at ? (
+                            <span className="text-xs text-red-700">revoked</span>
+                          ) : (
+                            <span className="text-xs text-green-700">active</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Last seen: {s.last_seen_at ? new Date(s.last_seen_at).toLocaleString() : "—"}
+                          {s.ip ? ` • IP: ${s.ip}` : ""}
+                        </div>
+                        {s.user_agent ? (
+                          <div className="text-xs text-muted-foreground mt-1 truncate">{s.user_agent}</div>
+                        ) : null}
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!!s.revoked_at}
+                        onClick={async () => {
+                          const ok = window.confirm("Revoke this session? The device will be forced to log back in.");
+                          if (!ok) return;
+                          try {
+                            const resp = await fetchWithAuth("/api/security/sessions", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ sessionId: s.id }),
+                            });
+                            const json = await resp.json();
+                            if (!resp.ok || json.ok === false) throw new Error(json.error || "Revoke failed");
+                            toast.success("Session revoked");
+                            await refetchSessions();
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : "Revoke failed");
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Revoke
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </SettingSection>
         </div>
 

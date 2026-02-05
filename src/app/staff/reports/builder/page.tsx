@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { useState, useCallback, useEffect } from "react";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import Link from "next/link";
@@ -8,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,7 +17,6 @@ import { toast } from "sonner";
 import {
   Play,
   Save,
-  Download,
   FileSpreadsheet,
   Clock,
   Database,
@@ -26,7 +24,6 @@ import {
   AlertTriangle,
   CheckCircle,
   Loader2,
-  History,
   Trash2,
   FolderOpen,
   Code2,
@@ -141,7 +138,7 @@ export default function ReportsBuilderPage() {
     if (saved) {
       try {
         setSavedReports(JSON.parse(saved));
-      } catch (error) {
+      } catch {
         // Ignore parse _errors
       }
     }

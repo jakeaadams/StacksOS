@@ -1,4 +1,6 @@
 import { NextRequest } from "next/server";
+import fs from "fs/promises";
+import path from "path";
 import {
   callOpenSRF,
   successResponse,
@@ -7,6 +9,7 @@ import {
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { listPatronChangeEvents } from "@/lib/db/patron-change";
 
 /**
  * Activity Log API
@@ -81,6 +84,11 @@ function buildDateFilter(startDate?: string, endDate?: string, fieldName: string
 
 // Cache for user lookups
 const userCache = new Map<number, { username: string; name: string }>();
+
+// Capability cache: some Evergreen installs do not expose patron-change history
+// via pcrud. Avoid repeated calls/log spam if the method is missing.
+let patronChangeEvergreenCapability: "unknown" | "supported" | "unsupported" = "unknown";
+let patronChangeStacksosCapability: "unknown" | "supported" | "unsupported" = "unknown";
 
 async function getUserInfo(authtoken: string, userId: number): Promise<{ username: string; name: string } | null> {
   if (userCache.has(userId)) {
@@ -413,60 +421,262 @@ async function fetchPatronChangeActivities(
   startDate?: string,
   endDate?: string
 ): Promise<Activity[]> {
-  const filter: Record<string, any> = { id: { "!=" : null } };
+  const desiredWindow = Math.min(limit + offset, 200);
+  const evergreenSupported = patronChangeEvergreenCapability !== "unsupported";
 
-  if (userId) {
-    filter.id = userId;  // In history table, id is the user id
+  function auditLogPath(): string {
+    return (
+      process.env.STACKSOS_AUDIT_LOG_PATH ||
+      path.join(process.cwd(), ".logs", "audit.log")
+    );
   }
 
-  Object.assign(filter, buildDateFilter(startDate, endDate, "audit_time"));
+  async function fetchStacksosFromAuditLog(): Promise<Activity[]> {
+    const mode = process.env.STACKSOS_AUDIT_MODE || "file";
+    if (mode === "off") return [];
 
-  try {
-    const response = await callOpenSRF(
-      "open-ils.pcrud",
-      "open-ils.pcrud.search.auacth.atomic",
-      [authtoken, filter, {
-        limit,
-        offset,
-        order_by: { auacth: "audit_time DESC" }
-      }]
-    );
+    const filePath = auditLogPath();
+    const maxBytes = 1024 * 1024; // 1MB tail window
 
-    const history = response?.payload?.[0];
-    if (!Array.isArray(history)) return [];
+    const stat = await fs.stat(filePath);
+    const start = Math.max(0, stat.size - maxBytes);
+    const fh = await fs.open(filePath, "r");
+    try {
+      const buf = Buffer.alloc(stat.size - start);
+      const read = await fh.read(buf, 0, buf.length, start);
+      const text = buf.toString("utf8", 0, read.bytesRead);
+      const rawLines = text.split(/\r?\n/);
+      const lines = start > 0 ? rawLines.slice(1) : rawLines;
 
-    const results: Activity[] = [];
-    for (const record of history) {
-      const patronId = fmNumber(record, "id", 0) || record.id;
-      const userInfo = patronId ? await getUserInfo(authtoken, patronId) : null;
+      const results: Activity[] = [];
+      for (let i = lines.length - 1; i >= 0 && results.length < desiredWindow; i--) {
+        const line = lines[i];
+        if (!line || line.length < 2) continue;
+        let rec: any;
+        try {
+          rec = JSON.parse(line);
+        } catch {
+          continue;
+        }
 
-      results.push({
-        id: `patron_change-${record.audit_id || fmNumber(record, "audit_id")}-${patronId}`,
-        type: "patron_change",
-        timestamp: fmString(record, "audit_time") || record.audit_time || new Date().toISOString(),
-        actor: {
-          id: patronId || null,
-          username: userInfo?.username || null,
-          name: userInfo?.name || null,
-        },
-        target: {
-          type: "patron",
-          id: patronId || 0,
-          label: userInfo?.name || `Patron #${patronId}`,
-        },
-        details: {
-          audit_id: record.audit_id || fmNumber(record, "audit_id"),
-          changes: extractPatronChanges(record),
-        },
-        workstation: undefined,
+        if (rec?.channel !== "audit" || rec?.status !== "success" || rec?.entity !== "patron") continue;
+
+        const rawId = rec?.entityId;
+        const patronId = typeof rawId === "number" ? rawId : parseInt(String(rawId ?? ""), 10);
+        if (!Number.isFinite(patronId)) continue;
+        if (userId && patronId !== userId) continue;
+
+        const ts = typeof rec?.ts === "string" ? rec.ts : "";
+        if (startDate && ts && ts < startDate) continue;
+        if (endDate && ts && ts > endDate) continue;
+
+        const updates = Array.isArray(rec?.details?.updates) ? rec.details.updates : null;
+        const changes =
+          updates && updates.length
+            ? Object.fromEntries(
+                updates
+                  .map((k: unknown) => String(k || "").trim())
+                  .filter(Boolean)
+                  .slice(0, 32)
+                  .map((k: string) => [k, true])
+              )
+            : {};
+
+        const patronInfo = await getUserInfo(authtoken, patronId);
+
+        results.push({
+          id: `patron_change-stacksos-log-${rec?.requestId || rec?.ts || i}-${patronId}`,
+          type: "patron_change",
+          timestamp: ts || new Date().toISOString(),
+          actor: {
+            id: rec?.actor?.id ?? null,
+            username: rec?.actor?.username ?? null,
+            name: rec?.actor?.name ?? null,
+          },
+          target: {
+            type: "patron",
+            id: patronId,
+            label: patronInfo?.name || `Patron #${patronId}`,
+          },
+          details: {
+            source: "stacksos",
+            action: rec?.action,
+            changes,
+          },
+          workstation: rec?.actor?.workstation || undefined,
+        });
+      }
+
+      return results;
+    } finally {
+      await fh.close();
+    }
+  }
+
+  async function fetchStacksos(): Promise<{ activities: Activity[]; available: boolean }> {
+    try {
+      const rows = await listPatronChangeEvents({
+        limit: desiredWindow,
+        offset: 0,
+        patronId: userId,
+        startDate,
+        endDate,
       });
+
+      const results: Activity[] = [];
+      for (const row of rows) {
+        const patronId = row.patron_id;
+        const patronInfo = await getUserInfo(authtoken, patronId);
+        const actorLabel = row.actor_name || row.actor_username || null;
+
+        results.push({
+          id: `patron_change-stacksos-${row.id}`,
+          type: "patron_change",
+          timestamp: row.occurred_at ? new Date(row.occurred_at).toISOString() : new Date().toISOString(),
+          actor: {
+            id: row.actor_id ?? null,
+            username: row.actor_username ?? null,
+            name: actorLabel,
+          },
+          target: {
+            type: "patron",
+            id: patronId,
+            label: patronInfo?.name || `Patron #${patronId}`,
+          },
+          details: {
+            source: "stacksos",
+            action: row.action,
+            changes: row.changes || {},
+          },
+          workstation: row.workstation || undefined,
+        });
+      }
+
+      patronChangeStacksosCapability = "supported";
+      return { activities: results, available: true };
+    } catch (error) {
+      // DB fallback may be unavailable if the Evergreen DB user lacks CREATE privileges in `library`.
+      // Fall back to parsing the StacksOS audit log file (best-effort).
+      try {
+        const fromLog = await fetchStacksosFromAuditLog();
+        if (fromLog.length > 0 || (process.env.STACKSOS_AUDIT_MODE || "file") !== "off") {
+          patronChangeStacksosCapability = "supported";
+          return { activities: fromLog, available: true };
+        }
+      } catch (e) {
+        logger.warn({ error: String(e) }, "StacksOS audit-log patron-change fallback unavailable");
+      }
+
+      logger.warn({ error: String(error) }, "StacksOS patron-change fallback unavailable");
+      patronChangeStacksosCapability = "unsupported";
+      return { activities: [], available: false };
+    }
+  }
+
+  async function fetchEvergreen(): Promise<Activity[]> {
+    if (!evergreenSupported) return [];
+
+    const filter: Record<string, any> = { id: { "!=": null } };
+
+    if (userId) {
+      filter.id = userId; // In history table, id is the user id
     }
 
-    return results;
-  } catch (error) {
-    logger.warn({ error: String(error) }, "Failed to fetch patron change activities");
-    return [];
+    Object.assign(filter, buildDateFilter(startDate, endDate, "audit_time"));
+
+    try {
+      let response: any;
+      try {
+        response = await callOpenSRF(
+          "open-ils.pcrud",
+          "open-ils.pcrud.search.auacth.atomic",
+          [
+            authtoken,
+            filter,
+            {
+              limit: desiredWindow,
+              offset: 0,
+              order_by: { auacth: "audit_time DESC" },
+            },
+          ]
+        );
+      } catch (error) {
+        const code = typeof (error as any)?.code === "string" ? String((error as any).code) : "";
+        // Some Evergreen installs expose the non-atomic variant only.
+        if (code === "OSRF_METHOD_NOT_FOUND") {
+          response = await callOpenSRF(
+            "open-ils.pcrud",
+            "open-ils.pcrud.search.auacth",
+            [
+              authtoken,
+              filter,
+              {
+                limit: desiredWindow,
+                offset: 0,
+                order_by: { auacth: "audit_time DESC" },
+              },
+            ]
+          );
+        } else {
+          throw error;
+        }
+      }
+
+      const history = response?.payload?.[0];
+      if (!Array.isArray(history)) return [];
+
+      patronChangeEvergreenCapability = "supported";
+
+      const results: Activity[] = [];
+      for (const record of history) {
+        const patronId = fmNumber(record, "id", 0) || record.id;
+        const userInfo = patronId ? await getUserInfo(authtoken, patronId) : null;
+
+        results.push({
+          id: `patron_change-${record.audit_id || fmNumber(record, "audit_id")}-${patronId}`,
+          type: "patron_change",
+          timestamp: fmString(record, "audit_time") || record.audit_time || new Date().toISOString(),
+          // Evergreen-side payloads vary by version/install. When we don't have a reliable staff actor
+          // column, treat this as a patron-targeted audit row and surface the patron as the primary label.
+          actor: {
+            id: patronId || null,
+            username: userInfo?.username || null,
+            name: userInfo?.name || null,
+          },
+          target: {
+            type: "patron",
+            id: patronId || 0,
+            label: userInfo?.name || `Patron #${patronId}`,
+          },
+          details: {
+            source: "evergreen",
+            audit_id: record.audit_id || fmNumber(record, "audit_id"),
+            changes: extractPatronChanges(record),
+          },
+          workstation: undefined,
+        });
+      }
+
+      return [];
+    } catch (error) {
+      const code = typeof (error as any)?.code === "string" ? String((error as any).code) : "";
+      if (code === "OSRF_METHOD_NOT_FOUND") {
+        patronChangeEvergreenCapability = "unsupported";
+        return [];
+      }
+      logger.warn({ error: String(error) }, "Failed to fetch patron change activities");
+      return [];
+    }
   }
+
+  const [evergreen, stacksos] = await Promise.all([fetchEvergreen(), fetchStacksos()]);
+  const activities = [...evergreen, ...stacksos.activities].sort((a, b) => {
+    const timeA = new Date(a.timestamp).getTime();
+    const timeB = new Date(b.timestamp).getTime();
+    return timeB - timeA;
+  });
+
+  return activities.slice(offset, offset + limit);
 }
 
 // Extract meaningful changes from patron history record
@@ -519,7 +729,11 @@ export async function GET(req: NextRequest) {
     // Fetch activities based on type
     if (type === "all") {
       // Fetch from all sources in parallel with reduced limits
-      const perSourceLimit = Math.ceil(limit / 5);
+      // For offset pagination across multiple sources, we need enough rows from each
+      // source so that sorting + slicing can return the requested window.
+      // This is not perfect (new rows can shift pages), but it avoids "page 2 is empty"
+      // when offset > 0.
+      const perSourceLimit = Math.min(Math.ceil((limit + offset) / 5), 200);
 
       const [logins, circs, holds, payments, patronChanges] = await Promise.all([
         fetchLoginActivities(authtoken, perSourceLimit, 0, userId, startDate, endDate),
@@ -563,6 +777,12 @@ export async function GET(req: NextRequest) {
 
     return successResponse({
       activities,
+      capabilities: {
+        patron_change: !(
+          patronChangeEvergreenCapability === "unsupported" &&
+          patronChangeStacksosCapability === "unsupported"
+        ),
+      },
       pagination: {
         limit,
         offset,

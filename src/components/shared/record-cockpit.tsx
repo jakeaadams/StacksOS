@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { PlaceHoldDialog } from "./place-hold-dialog";
+import { UnoptimizedImage } from "./unoptimized-image";
 
 import {
   ArrowRight,
@@ -85,7 +86,7 @@ function CoverArt({ isbn, title }: { isbn?: string; title: string }) {
   return (
     <div className="w-24 h-32 relative shrink-0">
       {!loaded && <Skeleton className="absolute inset-0 rounded-md" />}
-      <img
+      <UnoptimizedImage
         src={coverUrl}
         alt={`Cover of ${title}`}
         className={`w-24 h-32 object-contain bg-muted rounded-md shadow-sm ${loaded ? "opacity-100" : "opacity-0"}`}
@@ -266,7 +267,20 @@ export function RecordCockpit({ recordId, open, onOpenChange, onPlaceHold }: Rec
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No holdings information available</p>
+                      <div className="text-sm text-muted-foreground">
+                        <p>No holdings information available.</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                          <Link
+                            href={`/staff/cataloging/holdings?bib=${record.id}`}
+                            className="text-primary hover:underline"
+                          >
+                            Open holdings
+                          </Link>
+                          <Link href="/staff/help#demo-data" className="text-primary hover:underline">
+                            Seed demo data
+                          </Link>
+                        </div>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -277,7 +291,7 @@ export function RecordCockpit({ recordId, open, onOpenChange, onPlaceHold }: Rec
                     <CardHeader className="py-3 px-4">
                       <CardTitle className="text-sm flex items-center justify-between">
                         <span>Item Details</span>
-                        <Link href={`/staff/cataloging/holdings?record=${record.id}`} className="text-xs text-primary hover:underline">
+                        <Link href={`/staff/cataloging/holdings?bib=${record.id}`} className="text-xs text-primary hover:underline">
                           View all <ArrowRight className="h-3 w-3 inline" />
                         </Link>
                       </CardTitle>
@@ -339,7 +353,7 @@ export function RecordCockpit({ recordId, open, onOpenChange, onPlaceHold }: Rec
                     </Link>
                   </Button>
                   <Button size="sm" variant="outline" asChild>
-                    <Link href={`/staff/cataloging/holdings?record=${record.id}`}>
+                    <Link href={`/staff/cataloging/holdings?bib=${record.id}`}>
                       <Package className="h-4 w-4 mr-1" />
                       Holdings
                     </Link>

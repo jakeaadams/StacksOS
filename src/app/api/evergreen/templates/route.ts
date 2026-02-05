@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import {
 
   callOpenSRF,
+  callPcrud,
+  encodeFieldmapper,
   successResponse,
   errorResponse,
   serverErrorResponse,
@@ -9,6 +11,7 @@ import {
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { query } from "@/lib/db/evergreen";
 
 
 // ============================================================================
@@ -43,6 +46,19 @@ interface HoldingsTemplate {
   classificationName: string | null;
 }
 
+function toBoolean(value: any, fallback: boolean): boolean {
+  if (value === true || value === "t" || value === 1) return true;
+  if (value === false || value === "f" || value === 0) return false;
+  return fallback;
+}
+
+function normalizeRows(payload: any): any[] {
+  if (!payload) return [];
+  if (Array.isArray(payload?.[0])) return payload[0];
+  if (Array.isArray(payload)) return payload;
+  return [];
+}
+
 // ============================================================================
 // GET - Fetch templates (copy or holdings)
 // ============================================================================
@@ -68,30 +84,25 @@ export async function GET(req: NextRequest) {
 
     if (type === "copy") {
       // Fetch copy templates from asset.copy_template
-      const response = await callOpenSRF(
-        "open-ils.pcrud",
-        "open-ils.pcrud.search.act.atomic",
-        [
-          authtoken,
-          search
-            ? { name: { "~*": search }, owning_lib: { ">=" : 1 } }
-            : { owning_lib: { ">=" : 1 } },
-          {
-            flesh: 2,
-            flesh_fields: {
-              act: ["owning_lib", "status", "location", "circ_modifier"],
-              aou: ["shortname"],
-              ccs: ["name"],
-              acpl: ["name"],
-            },
-            limit,
-            offset,
-            order_by: { act: "name" },
+      const response = await callPcrud("open-ils.pcrud.search.act", [
+        authtoken,
+        search ? { name: { "~*": search }, owning_lib: { ">=": 1 } } : { owning_lib: { ">=": 1 } },
+        {
+          flesh: 2,
+          flesh_fields: {
+            act: ["owning_lib", "status", "location", "circ_modifier"],
+            aou: ["shortname"],
+            ccs: ["name"],
+            acpl: ["name"],
           },
-        ]
-      );
+          limit,
+          offset,
+          order_by: { act: "name" },
+        },
+      ]);
 
-      const templates: CopyTemplate[] = (response?.payload?.[0] || []).map((t: Record<string, unknown>) => {
+      const templatesRows = normalizeRows(response?.payload);
+      const templates: CopyTemplate[] = templatesRows.map((t: Record<string, unknown>) => {
         const owningLibObj = t?.owning_lib as Record<string, unknown> | null;
         const statusObj = t?.status as Record<string, unknown> | null;
         const locationObj = t?.location as Record<string, unknown> | null;
@@ -121,45 +132,62 @@ export async function GET(req: NextRequest) {
           circModifier: typeof circModObj === "object" && circModObj !== null 
             ? (circModObj?.code as string ?? null) 
             : (t?.circ_modifier as string ?? null),
-          holdable: t?.holdable as boolean ?? true,
-          circulate: t?.circulate as boolean ?? true,
-          opacVisible: t?.opac_visible as boolean ?? true,
-          ref: t?.ref as boolean ?? false,
+          holdable: toBoolean(t?.holdable, true),
+          circulate: toBoolean(t?.circulate, true),
+          opacVisible: toBoolean(t?.opac_visible, true),
+          ref: toBoolean(t?.ref, false),
           price: t?.price as number ?? null,
         };
       });
 
       // Also fetch lookup data for dropdowns
-      const [statusesRes, locationsRes, circModsRes] = await Promise.all([
-        callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.ccs.atomic", [
-          authtoken,
-          { id: { ">=" : 0 } },
-          { order_by: { ccs: "name" } },
-        ]),
-        callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.acpl.atomic", [
+      const [statusesRes, locationsRes] = await Promise.all([
+        callPcrud("open-ils.pcrud.search.ccs", [authtoken, { id: { ">=": 0 } }, { order_by: { ccs: "name" } }]),
+        callPcrud("open-ils.pcrud.search.acpl", [
           authtoken,
           { deleted: "f" },
           { order_by: { acpl: "name" }, limit: 500 },
         ]),
-        callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.ccm.atomic", [
-          authtoken,
-          { id: { "!=": null } },
-          { order_by: { ccm: "code" }, limit: 200 },
-        ]),
       ]);
 
-      const statuses = (statusesRes?.payload?.[0] || []).map((s: Record<string, unknown>) => ({
+      let circModsRows: any[] = [];
+      try {
+        const circModsRes = await callPcrud("open-ils.pcrud.search.ccm", [
+          authtoken,
+          // config.circ_modifier primary key is "code" (not "id").
+          { code: { "!=": null } },
+          { order_by: { ccm: "code" }, limit: 200 },
+        ]);
+        circModsRows = normalizeRows(circModsRes?.payload);
+      } catch (error) {
+        logger.warn({ requestId, error: String(error) }, "Circ modifiers lookup failed; falling back to SQL");
+        try {
+          circModsRows = await query<any>(
+            `
+              select code, name, description
+              from config.circ_modifier
+              order by code
+              limit 200
+            `
+          );
+        } catch (inner) {
+          logger.warn({ requestId, error: String(inner) }, "Circ modifiers SQL fallback failed");
+          circModsRows = [];
+        }
+      }
+
+      const statuses = normalizeRows(statusesRes?.payload).map((s: Record<string, unknown>) => ({
         id: s?.id as number ?? 0,
         name: s?.name as string ?? "",
       }));
 
-      const locations = (locationsRes?.payload?.[0] || []).map((l: Record<string, unknown>) => ({
+      const locations = normalizeRows(locationsRes?.payload).map((l: Record<string, unknown>) => ({
         id: l?.id as number ?? 0,
         name: l?.name as string ?? "",
         owningLib: l?.owning_lib as number ?? 1,
       }));
 
-      const circModifiers = (circModsRes?.payload?.[0] || []).map((c: Record<string, unknown>) => ({
+      const circModifiers = circModsRows.map((c: Record<string, unknown>) => ({
         code: c?.code as string ?? "",
         name: c?.name as string ?? c?.code as string ?? "",
         description: c?.description as string ?? "",
@@ -279,39 +307,57 @@ export async function POST(req: NextRequest) {
       return errorResponse("Missing required fields: action, type, data", 400);
     }
 
-    const { authtoken } = await requirePermissions(["UPDATE_COPY"]);
+    const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
+    const actorId = typeof actor?.id === "number" ? actor.id : parseInt(String(actor?.id ?? ""), 10);
+    if (!Number.isFinite(actorId)) {
+      return errorResponse("Unable to resolve staff user id", 500);
+    }
 
     logger.info({ requestId, route: "api.evergreen.templates", action, type }, "Templates mutation");
 
     if (type === "copy") {
       switch (action) {
         case "create": {
+          await requirePermissions(["ADMIN_ASSET_COPY_TEMPLATE"]);
+          if (!data.owningLib || !data.name) {
+            return errorResponse("owningLib and name are required", 400);
+          }
+
+          const payload: any = encodeFieldmapper("act", {
+            owning_lib: data.owningLib,
+            creator: actorId,
+            editor: actorId,
+            name: data.name,
+            circ_lib: data.circLib ?? null,
+            status: data.status ?? null,
+            location: data.location ?? null,
+            circulate: data.circulate === false ? "f" : "t",
+            holdable: data.holdable === false ? "f" : "t",
+            opac_visible: data.opacVisible === false ? "f" : "t",
+            ref: data.ref === true ? "t" : "f",
+            circ_modifier: data.circModifier || null,
+            price: data.price ?? null,
+            loan_duration: data.loanDuration ?? 2,
+            fine_level: data.fineLevel ?? 2,
+            isnew: 1,
+            ischanged: 1,
+          });
+
           const result = await callOpenSRF(
             "open-ils.pcrud",
             "open-ils.pcrud.create.act",
-            [
-              authtoken,
-              {
-                __c: "act",
-                __p: [
-                  null, // id (auto-generated)
-                  data.name,
-                  data.owningLib,
-                  data.circulate ?? true,
-                  data.holdable ?? true,
-                  data.opacVisible ?? true,
-                  data.ref ?? false,
-                  data.circModifier || null,
-                  data.status || null,
-                  data.location || null,
-                  data.price || null,
-                ],
-              },
-            ]
+            [authtoken, payload]
           );
 
-          if (result?.payload?.[0]) {
-            return successResponse({ id: result.payload[0], message: "Template created" });
+          const created = result?.payload?.[0];
+          const id =
+            typeof created === "number"
+              ? created
+              : typeof (created as any)?.id === "number"
+                ? (created as any).id
+                : parseInt(String((created as any)?.id ?? created ?? ""), 10);
+          if (Number.isFinite(id) && id > 0) {
+            return successResponse({ id, message: "Template created" });
           }
           return errorResponse("Failed to create template", 500);
         }
@@ -320,6 +366,7 @@ export async function POST(req: NextRequest) {
           if (!data.id) {
             return errorResponse("Template ID is required for update", 400);
           }
+          await requirePermissions(["ADMIN_ASSET_COPY_TEMPLATE"]);
 
           // First retrieve the existing template
           const existing = await callOpenSRF(
@@ -332,31 +379,32 @@ export async function POST(req: NextRequest) {
             return errorResponse("Template not found", 404);
           }
 
+          const current = existing.payload[0];
+          const updateData: Record<string, any> = { ...(current as any) };
+          updateData.id = data.id;
+          if (data.name !== undefined) updateData.name = data.name;
+          if (data.owningLib !== undefined) updateData.owning_lib = data.owningLib;
+          if (data.circLib !== undefined) updateData.circ_lib = data.circLib;
+          if (data.status !== undefined) updateData.status = data.status;
+          if (data.location !== undefined) updateData.location = data.location;
+          if (data.circulate !== undefined) updateData.circulate = data.circulate ? "t" : "f";
+          if (data.holdable !== undefined) updateData.holdable = data.holdable ? "t" : "f";
+          if (data.opacVisible !== undefined) updateData.opac_visible = data.opacVisible ? "t" : "f";
+          if (data.ref !== undefined) updateData.ref = data.ref ? "t" : "f";
+          if (data.circModifier !== undefined) updateData.circ_modifier = data.circModifier || null;
+          if (data.price !== undefined) updateData.price = data.price;
+          if (data.loanDuration !== undefined) updateData.loan_duration = data.loanDuration;
+          if (data.fineLevel !== undefined) updateData.fine_level = data.fineLevel;
+          updateData.editor = actorId;
+          updateData.ischanged = 1;
+
+          const payload: any = encodeFieldmapper("act", updateData);
+
           // Update the template
           const result = await callOpenSRF(
             "open-ils.pcrud",
             "open-ils.pcrud.update.act",
-            [
-              authtoken,
-              {
-                __c: "act",
-                __p: [
-                  data.id,
-                  data.name,
-                  data.owningLib,
-                  data.circulate ?? true,
-                  data.holdable ?? true,
-                  data.opacVisible ?? true,
-                  data.ref ?? false,
-                  data.circModifier || null,
-                  data.status || null,
-                  data.location || null,
-                  data.price || null,
-                ],
-                _isnew: false,
-                _ischanged: true,
-              },
-            ]
+            [authtoken, payload]
           );
 
           if (result?.payload?.[0]) {
@@ -369,6 +417,7 @@ export async function POST(req: NextRequest) {
           if (!data.id) {
             return errorResponse("Template ID is required for delete", 400);
           }
+          await requirePermissions(["ADMIN_ASSET_COPY_TEMPLATE"]);
 
           const result = await callOpenSRF(
             "open-ils.pcrud",

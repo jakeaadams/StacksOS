@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/usePatronSession";
@@ -23,9 +23,9 @@ export default function PatronMessagesPage() {
   const [actLoad, setActLoad] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
 
-  useEffect(() => { if (!sessionLoading && !isLoggedIn) { router.push("/opac/login?redirect=/opac/account/messages"); return; } if (isLoggedIn) fetchMsgs(); }, [isLoggedIn, sessionLoading, router]);
+  const fetchMsgs = useCallback(async () => { try { setIsLoading(true); setError(null); const r = await fetch("/api/opac/messages", { credentials: "include" }); if (!r.ok) { if (r.status === 401) { router.push("/opac/login?redirect=/opac/account/messages"); return; } throw new Error("Failed"); } const d = await r.json(); setMessages(d.messages || []); } catch (e) { setError(e instanceof Error ? e.message : "Error"); } finally { setIsLoading(false); } }, [router]);
 
-  const fetchMsgs = async () => { try { setIsLoading(true); setError(null); const r = await fetch("/api/opac/messages", { credentials: "include" }); if (!r.ok) { if (r.status === 401) { router.push("/opac/login?redirect=/opac/account/messages"); return; } throw new Error("Failed"); } const d = await r.json(); setMessages(d.messages || []); } catch (e) { setError(e instanceof Error ? e.message : "Error"); } finally { setIsLoading(false); } };
+  useEffect(() => { if (!sessionLoading && !isLoggedIn) { router.push("/opac/login?redirect=/opac/account/messages"); return; } if (isLoggedIn) void fetchMsgs(); }, [fetchMsgs, isLoggedIn, sessionLoading, router]);
 
   const markRead = async (ids: number[]) => { setActLoad(true); try { const r = await fetchWithAuth("/api/opac/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "mark_read", messageIds: ids }) }); if (r.ok) { setMessages(messages.map(m => ids.includes(m.id) ? { ...m, isRead: true } : m)); setSelIds(new Set()); } } catch { setError("Failed"); } finally { setActLoad(false); } };
 

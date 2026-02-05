@@ -484,8 +484,6 @@ export function MarcDiff({
   onOpenChange,
   onConfirm,
 }: MarcDiffProps) {
-  const [oldRecord, setOldRecord] = React.useState<MarcRecord | null>(null);
-  const [newRecord, setNewRecord] = React.useState<MarcRecord | null>(null);
   const [diffs, setDiffs] = React.useState<FieldDiff[]>([]);
   const [parseError, setParseError] = React.useState<string | null>(null);
 
@@ -502,8 +500,6 @@ export function MarcDiff({
         return;
       }
 
-      setOldRecord(oldParsed);
-      setNewRecord(newParsed);
       setDiffs(diffMarcRecords(oldParsed, newParsed));
       setParseError(null);
     } catch (error) {

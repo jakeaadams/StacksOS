@@ -1,8 +1,7 @@
 import { Metadata } from "next";
 import { LibraryProvider } from "@/hooks/useLibrary";
 import { PatronSessionProvider } from "@/hooks/usePatronSession";
-import { OPACHeader } from "@/components/opac/OPACHeader";
-import { OPACFooter } from "@/components/opac/OPACFooter";
+import { OpacShell } from "@/components/opac/OpacShell";
 
 export const metadata: Metadata = {
   title: {
@@ -20,22 +19,7 @@ export default function OPACLayout({
   return (
     <LibraryProvider>
       <PatronSessionProvider>
-        <div className="min-h-screen flex flex-col bg-muted/30">
-          {/* Skip link for keyboard navigation */}
-          <a
-            href="#main-content"
-            className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 
-                     focus:z-[100] focus:bg-primary-600 focus:text-white focus:px-4 focus:py-2
-                     focus:outline-none"
-          >
-            Skip to main content
-          </a>
-          <OPACHeader />
-          <main id="main-content" className="flex-1" role="main">
-            {children}
-          </main>
-          <OPACFooter />
-        </div>
+        <OpacShell>{children}</OpacShell>
       </PatronSessionProvider>
     </LibraryProvider>
   );

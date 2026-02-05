@@ -5,14 +5,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLibrary } from "@/hooks/useLibrary";
 import { usePatronSession } from "@/hooks/usePatronSession";
+import { useAccessibilityPrefs } from "@/hooks/useAccessibilityPrefs";
 import { featureFlags } from "@/lib/feature-flags";
+import { cn } from "@/lib/utils";
+import { KidsParentGateProvider } from "@/contexts/kids-parent-gate-context";
 import {
   Search,
   Home,
   Star,
   BookOpen,
   Trophy,
-  User,
   Menu,
   X,
   Sparkles,
@@ -28,6 +30,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
   const pathname = usePathname();
   const { library } = useLibrary();
   const { patron, isLoggedIn, logout } = usePatronSession();
+  const { dyslexiaFriendly } = useAccessibilityPrefs();
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -72,7 +75,23 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-100 via-purple-50 to-pink-50">
+    <KidsParentGateProvider>
+      <div
+        className={cn(
+          "min-h-screen bg-gradient-to-b from-sky-50 via-background to-background",
+          dyslexiaFriendly ? "stacksos-dyslexia" : ""
+        )}
+      >
+      {/* Skip link for keyboard navigation */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0
+                 focus:z-[100] focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2
+                 focus:outline-none"
+      >
+        Skip to main content
+      </a>
+
       {/* Fun background decorations */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-20 left-10 w-32 h-32 bg-yellow-300/20 rounded-full blur-3xl" />
@@ -82,8 +101,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
       </div>
 
       {/* Header */}
-      <header className="relative z-10 bg-card/80 backdrop-blur-md border-b-4 border-rainbow sticky top-0"
-              style={{ borderImage: "linear-gradient(90deg, #FF6B6B, #FFE66D, #4ECDC4, #A78BFA, #FF6B6B) 1" }}>
+      <header className="relative z-10 sticky top-0 border-b border-border bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/70">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo */}
@@ -261,13 +279,12 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
       </header>
 
       {/* Main content */}
-      <main className="relative z-10">
+      <main id="main-content" className="relative z-10" role="main">
         {children}
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 bg-card/80 backdrop-blur-md border-t-4 mt-12 py-8"
-              style={{ borderImage: "linear-gradient(90deg, #FF6B6B, #FFE66D, #4ECDC4, #A78BFA, #FF6B6B) 1" }}>
+      <footer className="relative z-10 mt-12 border-t border-border bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/70 py-8">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
@@ -295,6 +312,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </KidsParentGateProvider>
   );
 }

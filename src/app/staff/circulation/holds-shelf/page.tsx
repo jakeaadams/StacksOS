@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,7 @@ interface ShelfHold {
 }
 
 export default function HoldsShelfPage() {
+  const router = useRouter();
   const { user, getOrgName } = useAuth();
   const defaultOrgId = user?.activeOrgId ?? user?.homeLibraryId ?? 1;
 
@@ -405,12 +407,25 @@ export default function HoldsShelfPage() {
             icon={Inbox}
             title="No holds on shelf"
             description="There are no captured holds waiting on the holds shelf."
-          />
-        ) : (
-          <DataTable
-            columns={columns}
-            data={shelfHolds}
-            isLoading={loading}
+            action={{
+              label: "Open pull list",
+              onClick: () => router.push("/staff/circulation/pull-list"),
+            }}
+            secondaryAction={{
+              label: "Hold policies",
+              onClick: () => router.push("/staff/admin/policies/holds"),
+            }}
+	          >
+	            <Button variant="ghost" onClick={() => router.push("/staff/help#demo-data")}>
+	              Seed demo data
+	            </Button>
+	          </EmptyState>
+	        ) : (
+	          <DataTable
+	            columns={columns}
+	            data={shelfHolds}
+	            isLoading={loading}
+            getRowClassName={getRowClassName}
           />
         )}
       </PageContent>

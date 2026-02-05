@@ -3,8 +3,8 @@
 import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { Suspense, useState, useEffect } from "react";
-import { PageContainer, PageHeader, PageContent } from "@/components/shared";
-import { useSearchParams } from "next/navigation";
+import { PageContainer, PageHeader, PageContent, EmptyState } from "@/components/shared";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ interface BibRecord {
 }
 
 function HoldingsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const bibIdParam = searchParams.get("id") || searchParams.get("bib");
 
@@ -72,11 +73,30 @@ function HoldingsContent() {
       const holdingsData = await holdingsRes.json();
 
       if (holdingsData.ok) {
-        setHoldings(holdingsData.holdings || []);
+        const rows = Array.isArray(holdingsData.copies)
+          ? holdingsData.copies
+          : Array.isArray(holdingsData.holdings)
+            ? holdingsData.holdings
+            : [];
+
+        setHoldings(
+          rows.map((h: any) => ({
+            id: h.id,
+            barcode: h.barcode || "",
+            callNumber: h.callNumber || h.call_number || h.call_number_label || "",
+            status: h.status_name || h.status || "Unknown",
+            statusId: Number(h.statusId ?? h.status_id ?? h.status ?? 0) || 0,
+            location: h.location || h.copy_location || "",
+            circLib: h.circLib || h.circ_lib_name || "",
+            createDate: h.createDate || h.create_date || "",
+            price: Number(h.price) || 0,
+            circCount: Number(h.circCount ?? h.circ_count ?? h.total_circ_count ?? 0) || 0,
+          }))
+        );
       } else {
         setError(holdingsData.error || "Failed to fetch holdings");
       }
-    } catch (e) {
+    } catch {
       setError("Failed to connect to catalog service");
     } finally {
       setLoading(false);
@@ -184,9 +204,23 @@ function HoldingsContent() {
         )}
 
         {!loading && holdings.length === 0 && bibRecord && (
-          <div className="p-8 text-center text-muted-foreground">
-            <p>No holdings found for this record</p>
-          </div>
+          <Card>
+            <CardContent className="pt-10 pb-10">
+              <EmptyState
+                icon={Package}
+                title="No holdings found"
+                description="This bibliographic record has no item holdings (copies) yet."
+                action={{
+                  label: "Evergreen setup checklist",
+                  onClick: () => router.push("/staff/help#evergreen-setup"),
+                }}
+                secondaryAction={{
+                  label: "Seed demo data",
+                  onClick: () => router.push("/staff/help#demo-data"),
+                }}
+              />
+            </CardContent>
+          </Card>
         )}
 
         {holdings.length > 0 && (

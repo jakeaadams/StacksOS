@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
 import type { ElementType } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -81,7 +82,8 @@ export default function AccountDashboard() {
     fetchHolds,
     fetchFines,
   } = usePatronSession();
-  const { library, currentLocation } = useLibrary();
+  const { currentLocation } = useLibrary();
+  const [listsCount, setListsCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isLoggedIn) {
@@ -95,6 +97,25 @@ export default function AccountDashboard() {
       fetchHolds();
       fetchFines();
     }
+  }, [fetchCheckouts, fetchFines, fetchHolds, isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !featureFlags.opacLists) return;
+    let cancelled = false;
+    void fetch("/api/opac/lists", { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const count = Array.isArray(data?.lists) ? data.lists.length : 0;
+        setListsCount(count);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setListsCount(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [isLoggedIn]);
 
   if (isLoading || !isLoggedIn) {
@@ -188,13 +209,15 @@ export default function AccountDashboard() {
             href="/opac/account/fines"
             color={totalFineBalance > 0 ? "text-amber-600" : "text-green-600"}
           />
-          <QuickStatCard
-            title="Saved Lists"
-            value={0}
-            icon={Heart}
-            href="/opac/account/lists"
-            color="text-rose-600"
-          />
+          {featureFlags.opacLists ? (
+            <QuickStatCard
+              title="Saved Lists"
+              value={listsCount === null ? "—" : listsCount}
+              icon={Heart}
+              href="/opac/account/lists"
+              color="text-rose-600"
+            />
+          ) : null}
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -221,9 +244,11 @@ export default function AccountDashboard() {
                     >
                       <div className="w-12 h-16 bg-muted rounded overflow-hidden shrink-0">
                         {checkout.coverUrl ? (
-                          <img 
-                            src={checkout.coverUrl} 
-                            alt="Decorative image" 
+                          <Image
+                            src={checkout.coverUrl}
+                            alt={`Cover of ${checkout.title}`}
+                            width={48}
+                            height={64}
                             className="w-full h-full object-cover"
                           />
                         ) : (

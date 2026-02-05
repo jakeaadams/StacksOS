@@ -11,7 +11,6 @@ import {
   PageContent,
   LoadingSpinner,
   EmptyState,
-  StatusBadge,
   DataTable,
   ErrorBoundary,
 } from "@/components/shared";
@@ -22,13 +21,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { ColumnDef } from "@tanstack/react-table";
@@ -37,15 +29,11 @@ import {
   Package,
   MapPin,
   Building,
-  Barcode,
   BookOpen,
   Edit,
   Save,
   X,
-  Clock,
-  User,
   AlertTriangle,
-  CheckCircle,
   History,
   ImageOff,
 } from "lucide-react";
@@ -190,7 +178,7 @@ export default function ItemDetailPage() {
       } else {
         setError(data.error || "Item not found");
       }
-    } catch (err) {
+    } catch {
       setError("Failed to load item");
     } finally {
       setIsLoading(false);
@@ -249,7 +237,7 @@ export default function ItemDetailPage() {
       } else {
         toast.error(data.error || "Update failed");
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to update item");
     } finally {
       setIsSaving(false);

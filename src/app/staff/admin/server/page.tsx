@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   PageContainer,
   PageHeader,
@@ -11,6 +10,7 @@ import {
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useApi } from "@/hooks";
+import { featureFlags } from "@/lib/feature-flags";
 import { Server, Database, Activity, HardDrive, RefreshCw } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 
@@ -22,7 +22,30 @@ interface ServiceStatus {
 }
 
 export default function ServerAdminPage() {
-  const { data: pingData, isLoading, refetch } = useApi<any>("/api/evergreen/ping", { immediate: true });
+  const enabled = featureFlags.serverAdmin;
+  const pingUrl = enabled ? "/api/evergreen/ping" : null;
+  const { data: pingData, isLoading, refetch } = useApi<any>(pingUrl, { immediate: enabled });
+
+  if (!enabled) {
+    return (
+      <PageContainer>
+        <PageHeader
+          title="Server Administration"
+          subtitle="Monitor Evergreen services and server health."
+          breadcrumbs={[
+            { label: "Administration", href: "/staff/admin" },
+            { label: "Server" },
+          ]}
+        />
+        <PageContent>
+          <EmptyState
+            title="Server admin is disabled"
+            description="Set NEXT_PUBLIC_STACKSOS_EXPERIMENTAL=1 to enable experimental server admin views."
+          />
+        </PageContent>
+      </PageContainer>
+    );
+  }
 
   const services: ServiceStatus[] = [
     {
@@ -92,13 +115,17 @@ export default function ServerAdminPage() {
           { label: "Administration", href: "/staff/admin" },
           { label: "Server" },
         ]}
-        actions={[
-          {
-            label: "Refresh",
-            onClick: () => refetch(),
-            icon: RefreshCw,
-          },
-        ]}
+        actions={
+          enabled
+            ? [
+                {
+                  label: "Refresh",
+                  onClick: () => refetch(),
+                  icon: RefreshCw,
+                },
+              ]
+            : undefined
+        }
       />
 
       <PageContent className="space-y-6">

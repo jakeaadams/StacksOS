@@ -17,7 +17,6 @@ import {
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -42,7 +41,6 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  ArrowRight,
   Loader2,
   Filter,
 } from "lucide-react";
@@ -455,8 +453,24 @@ export default function TransitsPage() {
                 <EmptyState
                   icon={Package}
                   title="No transits found"
-                  description="There are no transits matching the current filter"
-                />
+                  description={
+                    statusFilter === "in_transit"
+                      ? "No incoming transits right now. When an item is checked in at another branch for this location, it will appear here."
+                      : "There are no transits matching the current filter."
+                  }
+                  action={{
+                    label: "Open check-in",
+                    onClick: () => router.push("/staff/circulation/checkin"),
+                  }}
+                  secondaryAction={{
+                    label: "Evergreen setup",
+                    onClick: () => router.push("/staff/help#evergreen-setup"),
+                  }}
+                >
+                  <Button variant="ghost" size="sm" onClick={() => router.push("/staff/help#demo-data")}>
+                    Seed demo data
+                  </Button>
+                </EmptyState>
               ) : (
                 <DataTable columns={columns} data={filteredTransits} />
               )}

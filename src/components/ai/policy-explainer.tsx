@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { fetchWithAuth } from "@/lib/client-fetch";
 
 interface PolicyQuestion {
   id: string;
@@ -106,25 +107,6 @@ const QUICK_QUESTIONS = [
     ],
   },
 ];
-
-const POLICY_RESPONSES: Record<string, { answer: string; sources: string[] }> = {
-  "How many items can I check out?": {
-    answer: "Most library card holders can check out up to 50 items at a time. This includes books, DVDs, audiobooks, and magazines. Some special collections (like new releases or high-demand items) may have lower limits. Children cards may have a limit of 25 items.",
-    sources: ["Circulation Policy Section 3.1", "Card Types Policy"],
-  },
-  "How long can I keep library materials?": {
-    answer: "Loan periods vary by material type:\n\n- Books: 3 weeks\n- DVDs/Blu-rays: 1 week\n- Audiobooks: 3 weeks\n- Magazines: 2 weeks\n- New Releases: 2 weeks (no renewal)\n\nYou can renew most items up to 2 times if no one else has placed a hold.",
-    sources: ["Circulation Policy Section 2.4"],
-  },
-  "What if I return items late?": {
-    answer: "We understand life gets busy! Here is our late policy:\n\n- No daily fines for most items (we eliminated late fines in 2023)\n- Items become lost after 6 weeks overdue\n- Lost items are charged at replacement cost + $5 processing fee\n- If you return a lost item within 6 months, charges are removed\n\nWe send email reminders before items are due and when they become overdue.",
-    sources: ["Fine-Free Policy 2023", "Lost Item Policy"],
-  },
-  "How much are late fees?": {
-    answer: "Great news! Our library went fine-free in 2023. We no longer charge daily overdue fines for late returns.\n\nHowever, you may still be charged for:\n- Lost items (replacement cost + $5 processing)\n- Damaged items (repair or replacement cost)\n- Items not returned after 6 weeks (treated as lost)\n\nWe want to make the library accessible to everyone!",
-    sources: ["Fine-Free Policy 2023"],
-  },
-};
 
 function QuickQuestionButton({ question, onClick, isLoading }: { question: string; onClick: () => void; isLoading: boolean }) {
   return (
@@ -219,16 +201,49 @@ export function PolicyExplainer({ trigger, variant = "dialog", className }: Poli
     if (!q.trim()) return;
     setIsLoading(true);
     setQuestion("");
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
-    
-    const response = POLICY_RESPONSES[q] || {
-      answer: `I understand you are asking about "${q}". While I do not have specific information about this policy, I recommend:\n\n1. Check our website for detailed policies\n2. Ask a librarian at the circulation desk\n3. Call us at (555) 123-4567\n\nWe are here to help!`,
-      sources: [],
-    };
-    
-    setResponses(prev => [...prev, { id: `q-${Date.now()}`, category: "General", question: q, answer: response.answer, sources: response.sources }]);
-    setIsLoading(false);
-    setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }), 100);
+    try {
+      const res = await fetchWithAuth("/api/ai/policy-explain", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "policy_question",
+          desc: q,
+          context: {
+            question: q,
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (!data?.ok) {
+        throw new Error(data?.error || "AI response failed");
+      }
+
+      const r = data.response;
+      const answer =
+        `${r.explanation}\n\n` +
+        `Next steps:\n- ${Array.isArray(r.nextSteps) ? r.nextSteps.join("\n- ") : "Ask a librarian."}` +
+        (r.suggestedNote ? `\n\nDraft note:\n${r.suggestedNote}` : "");
+
+      setResponses((prev) => [
+        ...prev,
+        {
+          id: `q-${Date.now()}`,
+          category: "General",
+          question: q,
+          answer,
+          sources: r.sources || [],
+        },
+      ]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "AI request failed";
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+      setTimeout(
+        () => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }),
+        100
+      );
+    }
   }, []);
 
   const handleFeedback = useCallback((questionId: string, helpful: boolean) => {

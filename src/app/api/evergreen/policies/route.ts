@@ -7,8 +7,10 @@ import {
   serverErrorResponse,
   getRequestMeta,
 } from "@/lib/api";
+import { featureFlags } from "@/lib/feature-flags";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { logAuditEvent } from "@/lib/audit";
 
 
 // ============================================================================
@@ -275,13 +277,44 @@ export async function POST(req: NextRequest) {
   const { requestId } = getRequestMeta(req);
 
   try {
+    if (!featureFlags.policyEditors) {
+      return errorResponse("Policy editors are disabled", 403);
+    }
+
     const body = await req.json();
     const { action, type, data } = body;
 
     // Require admin permissions for modifications
-    const { authtoken } = await requirePermissions(["ADMIN_CIRC_MATRIX_MATCHPOINT"]);
+    const { authtoken, actor } = await requirePermissions(["ADMIN_CIRC_MATRIX_MATCHPOINT"]);
 
     logger.info({ requestId, route: "api.evergreen.policies", action, type }, "Policies update");
+
+    const requestMeta = getRequestMeta(req);
+    const auditBase = {
+      actor,
+      orgId: actor?.ws_ou ?? actor?.home_ou,
+      ip: requestMeta.ip,
+      userAgent: requestMeta.userAgent,
+      requestId: requestMeta.requestId,
+    };
+
+    const audit = async (event: { action: string; entity: string; entityId?: string | number; status: "success" | "failure"; details?: Record<string, unknown>; error?: string | null; }) => {
+      try {
+        await logAuditEvent({
+          ...auditBase,
+          ...event,
+        });
+      } catch {
+        // Audit must never break the request path.
+      }
+    };
+
+    const toTriBool = (value: unknown): "t" | "f" | null => {
+      if (value === null || value === undefined) return null;
+      if (value === "t" || value === true) return "t";
+      if (value === "f" || value === false) return "f";
+      return null;
+    };
 
     switch (type) {
       case "circ": {
@@ -299,8 +332,8 @@ export async function POST(req: NextRequest) {
               data.grp || null,
               data.circModifier || null,
               data.copyLocation || null,
-              data.isRenewal !== undefined ? (data.isRenewal ? "t" : "f") : null,
-              data.refFlag !== undefined ? (data.refFlag ? "t" : "f") : null,
+              toTriBool(data.isRenewal),
+              toTriBool(data.refFlag),
               data.usrAgeUpperBound || null,
               data.usrAgeLowerBound || null,
               data.itemAge || null,
@@ -327,12 +360,28 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await audit({
+              action: "policy.circ.create",
+              entity: "ccmm",
+              status: "failure",
+              details: { type, action, data: { ...data, orgUnit: data?.orgUnit } },
+              error: result.textcode || "Failed to create policy",
+            });
             return errorResponse(result.textcode || "Failed to create policy", 400, result);
           }
 
+          const createdId = result?.id ?? result?.__p?.[0];
+          await audit({
+            action: "policy.circ.create",
+            entity: "ccmm",
+            entityId: createdId,
+            status: "success",
+            details: { type, action, id: createdId },
+          });
+
           return successResponse({
             created: true,
-            id: result?.id ?? result?.__p?.[0],
+            id: createdId,
           });
         }
 
@@ -365,6 +414,14 @@ export async function POST(req: NextRequest) {
             return existingVal === "t" || existingVal === true ? "t" : "f";
           };
 
+          const getTriBoolValue = (newVal: any, existingField: string, idx: number) => {
+            if (newVal === null) return null;
+            if (newVal !== undefined) return newVal ? "t" : "f";
+            const existingVal = existing?.[existingField] ?? existing?.__p?.[idx];
+            if (existingVal === null || existingVal === undefined) return null;
+            return existingVal === "t" || existingVal === true ? "t" : "f";
+          };
+
           const updatePayload = {
             __c: "ccmm",
             __p: [
@@ -374,8 +431,8 @@ export async function POST(req: NextRequest) {
               getValue(data.grp, "grp", 3),
               getValue(data.circModifier, "circ_modifier", 4),
               getValue(data.copyLocation, "copy_location", 5),
-              getBoolValue(data.isRenewal, "is_renewal", 6),
-              getBoolValue(data.refFlag, "ref_flag", 7),
+              getTriBoolValue(data.isRenewal, "is_renewal", 6),
+              getTriBoolValue(data.refFlag, "ref_flag", 7),
               getValue(data.usrAgeUpperBound, "usr_age_upper_bound", 8),
               getValue(data.usrAgeLowerBound, "usr_age_lower_bound", 9),
               getValue(data.itemAge, "item_age", 10),
@@ -402,8 +459,24 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await audit({
+              action: "policy.circ.update",
+              entity: "ccmm",
+              entityId: data.id,
+              status: "failure",
+              details: { type, action, id: data.id, data },
+              error: result.textcode || "Failed to update policy",
+            });
             return errorResponse(result.textcode || "Failed to update policy", 400, result);
           }
+
+          await audit({
+            action: "policy.circ.update",
+            entity: "ccmm",
+            entityId: data.id,
+            status: "success",
+            details: { type, action, id: data.id },
+          });
 
           return successResponse({
             updated: true,
@@ -425,8 +498,24 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await audit({
+              action: "policy.circ.delete",
+              entity: "ccmm",
+              entityId: data.id,
+              status: "failure",
+              details: { type, action, id: data.id },
+              error: result.textcode || "Failed to delete policy",
+            });
             return errorResponse(result.textcode || "Failed to delete policy", 400, result);
           }
+
+          await audit({
+            action: "policy.circ.delete",
+            entity: "ccmm",
+            entityId: data.id,
+            status: "success",
+            details: { type, action, id: data.id },
+          });
 
           return successResponse({
             deleted: true,
@@ -456,7 +545,7 @@ export async function POST(req: NextRequest) {
               data.marcTypeCode || null,
               data.marcFormCode || null,
               data.marcVrFormat || null,
-              data.refFlag !== undefined ? (data.refFlag ? "t" : "f") : null,
+              toTriBool(data.refFlag),
               data.itemAge || null,
               data.holdable !== false ? "t" : "f",
               data.distanceIsFromOwning ? "t" : "f",
@@ -478,12 +567,28 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await audit({
+              action: "policy.hold.create",
+              entity: "chmm",
+              status: "failure",
+              details: { type, action, data },
+              error: result.textcode || "Failed to create hold policy",
+            });
             return errorResponse(result.textcode || "Failed to create hold policy", 400, result);
           }
 
+          const createdId = result?.id ?? result?.__p?.[0];
+          await audit({
+            action: "policy.hold.create",
+            entity: "chmm",
+            entityId: createdId,
+            status: "success",
+            details: { type, action, id: createdId },
+          });
+
           return successResponse({
             created: true,
-            id: result?.id ?? result?.__p?.[0],
+            id: createdId,
           });
         }
 
@@ -516,6 +621,14 @@ export async function POST(req: NextRequest) {
             return existingVal === "t" || existingVal === true ? "t" : "f";
           };
 
+          const getTriBoolValue = (newVal: any, existingField: string, idx: number) => {
+            if (newVal === null) return null;
+            if (newVal !== undefined) return newVal ? "t" : "f";
+            const existingVal = existing?.[existingField] ?? existing?.__p?.[idx];
+            if (existingVal === null || existingVal === undefined) return null;
+            return existingVal === "t" || existingVal === true ? "t" : "f";
+          };
+
           const updatePayload = {
             __c: "chmm",
             __p: [
@@ -533,7 +646,7 @@ export async function POST(req: NextRequest) {
               getValue(data.marcTypeCode, "marc_type", 11),
               getValue(data.marcFormCode, "marc_form", 12),
               getValue(data.marcVrFormat, "marc_vr_format", 13),
-              getBoolValue(data.refFlag, "ref_flag", 14),
+              getTriBoolValue(data.refFlag, "ref_flag", 14),
               getValue(data.itemAge, "item_age", 15),
               getBoolValue(data.holdable, "holdable", 16),
               getBoolValue(data.distanceIsFromOwning, "distance_is_from_owning", 17),
@@ -555,8 +668,24 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await audit({
+              action: "policy.hold.update",
+              entity: "chmm",
+              entityId: data.id,
+              status: "failure",
+              details: { type, action, id: data.id, data },
+              error: result.textcode || "Failed to update hold policy",
+            });
             return errorResponse(result.textcode || "Failed to update hold policy", 400, result);
           }
+
+          await audit({
+            action: "policy.hold.update",
+            entity: "chmm",
+            entityId: data.id,
+            status: "success",
+            details: { type, action, id: data.id },
+          });
 
           return successResponse({
             updated: true,
@@ -578,8 +707,24 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await audit({
+              action: "policy.hold.delete",
+              entity: "chmm",
+              entityId: data.id,
+              status: "failure",
+              details: { type, action, id: data.id },
+              error: result.textcode || "Failed to delete hold policy",
+            });
             return errorResponse(result.textcode || "Failed to delete hold policy", 400, result);
           }
+
+          await audit({
+            action: "policy.hold.delete",
+            entity: "chmm",
+            entityId: data.id,
+            status: "success",
+            details: { type, action, id: data.id },
+          });
 
           return successResponse({
             deleted: true,

@@ -3,25 +3,28 @@
  *
  * Goal: allow safe client retries on timeouts without duplicating side effects.
  *
- * Implementation (P0):
+ * Implementation:
  * - Client sends `x-idempotency-key` (stable across retries).
- * - Server stores the JSON response for that key under `.logs/idempotency/`.
+ * - Server stores the JSON response for that key:
+ *    - Redis when `STACKSOS_REDIS_URL` is set (multi-instance safe)
+ *    - Otherwise under `.logs/idempotency/` (file-backed, single-instance)
  * - If the same key is seen again:
  *    - If the first request is still in-flight, wait for it.
  *    - Otherwise, replay the stored response.
  *
  * Notes:
- * - This is process-local + file-backed. It survives restarts, but is not
- *   distributed across multiple instances. For P1 multi-instance SaaS, replace
- *   with Redis or a control-plane datastore.
+ * - The in-process `inflight` map only deduplicates within a single instance.
+ *   Redis mode adds a best-effort distributed lock to deduplicate across instances.
  */
 
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import { NextResponse } from "next/server";
 
 import { logger } from "@/lib/logger";
+import { getRedisClient, redisEnabled, redisKey } from "@/lib/redis";
+import type { RedisClientType } from "redis";
 
 export interface IdempotencyOptions {
   /** How long to keep idempotency entries (ms). Default: 6 hours. */
@@ -95,6 +98,41 @@ function toReplayResponse(entry: IdempotencyEntry, replay: boolean): NextRespons
   return res;
 }
 
+function redisEntryKey(keyHash: string): string {
+  return redisKey(`idempotency:${keyHash}`);
+}
+
+function redisLockKey(keyHash: string): string {
+  return redisKey(`idempotency:lock:${keyHash}`);
+}
+
+async function tryParseEntry(raw: string | null): Promise<IdempotencyEntry | null> {
+  if (!raw) return null;
+  try {
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== "object") return null;
+
+    const createdAt = typeof (data as any).createdAt === "string" ? (data as any).createdAt : null;
+    const status = Number((data as any).status);
+    const body = (data as any).body;
+    if (!createdAt || !Number.isFinite(status)) return null;
+
+    return { createdAt, status, body };
+  } catch {
+    return null;
+  }
+}
+
+async function releaseRedisLock(client: RedisClientType, key: string, token: string): Promise<void> {
+  // Only release if we still own the lock.
+  const lua = "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end";
+  try {
+    await client.eval(lua, { keys: [key], arguments: [token] });
+  } catch {
+    // Best-effort; idempotency correctness depends on the entry key, not the lock.
+  }
+}
+
 /**
  * Wrap a mutation handler with idempotency support.
  *
@@ -115,6 +153,32 @@ export async function withIdempotency(
 
   const ttlMs = Number.isFinite(Number(options.ttlMs)) ? Number(options.ttlMs) : DEFAULT_TTL_MS;
   const keyHash = hashKey(key);
+  const requestId = req.headers.get("x-request-id");
+
+  // Prefer Redis when configured, but fall back gracefully.
+  if (redisEnabled()) {
+    const client = await getRedisClient();
+    if (client) {
+      try {
+        return await withIdempotencyRedis(client, req, route, handler, { ttlMs }, keyHash, requestId);
+      } catch (err) {
+        logger.error({ error: String(err), route, requestId }, "Redis idempotency failed; falling back to file store");
+      }
+    }
+  }
+
+  return await withIdempotencyFile(req, route, handler, { ttlMs }, keyHash, requestId);
+}
+
+async function withIdempotencyFile(
+  req: Request,
+  route: string,
+  handler: () => Promise<Response>,
+  options: Required<Pick<IdempotencyOptions, "ttlMs">>,
+  keyHash: string,
+  requestId: string | null
+): Promise<Response> {
+  const ttlMs = options.ttlMs;
   const file = entryPath(keyHash);
 
   await ensureStoreDir();
@@ -129,7 +193,7 @@ export async function withIdempotency(
         // ignore
       }
     } else {
-      logger.info({ route, requestId: req.headers.get("x-request-id"), idempotencyKey: keyHash }, "Idempotency replay");
+      logger.info({ route, requestId, idempotencyKey: keyHash }, "Idempotency replay");
       return toReplayResponse(existing, true);
     }
   }
@@ -165,6 +229,93 @@ export async function withIdempotency(
 
     await writeEntry(file, entry);
     return entry;
+  })();
+
+  inflight.set(keyHash, work);
+
+  try {
+    const entry = await work;
+    return toReplayResponse(entry, false);
+  } finally {
+    inflight.delete(keyHash);
+  }
+}
+
+async function withIdempotencyRedis(
+  client: RedisClientType,
+  req: Request,
+  route: string,
+  handler: () => Promise<Response>,
+  options: Required<Pick<IdempotencyOptions, "ttlMs">>,
+  keyHash: string,
+  requestId: string | null
+): Promise<Response> {
+  const ttlMs = options.ttlMs;
+  const entryKey = redisEntryKey(keyHash);
+  const lockKey = redisLockKey(keyHash);
+
+  // Fast path: replay if present.
+  const existing = await tryParseEntry(await client.get(entryKey));
+  if (existing) {
+    logger.info({ route, requestId, idempotencyKey: keyHash }, "Idempotency replay");
+    return toReplayResponse(existing, true);
+  }
+
+  const inflightPromise = inflight.get(keyHash);
+  if (inflightPromise) {
+    const entry = await inflightPromise;
+    return toReplayResponse(entry, true);
+  }
+
+  const token = randomUUID();
+  const lockTtlMs = Math.min(60_000, Math.max(5_000, Math.floor(ttlMs / 10)));
+  const acquired = (await client.set(lockKey, token, { NX: true, PX: lockTtlMs })) === "OK";
+
+  if (!acquired) {
+    // Another instance is likely processing. Poll briefly for the stored entry.
+    const deadline = Date.now() + 30_000;
+    while (Date.now() < deadline) {
+      const polled = await tryParseEntry(await client.get(entryKey));
+      if (polled) return toReplayResponse(polled, true);
+      await new Promise((r) => setTimeout(r, 250));
+    }
+
+    logger.warn({ route, requestId, idempotencyKey: keyHash }, "Idempotency lock wait timed out");
+    const res = NextResponse.json(
+      { ok: false, error: "Request in progress. Retry later." },
+      { status: 409 }
+    );
+    res.headers.set("retry-after", "1");
+    return res;
+  }
+
+  const work = (async (): Promise<IdempotencyEntry> => {
+    try {
+      const response = await handler();
+      const cloned = response.clone();
+
+      let body: unknown = null;
+      try {
+        body = await cloned.json();
+      } catch {
+        try {
+          body = await cloned.text();
+        } catch {
+          body = null;
+        }
+      }
+
+      const entry: IdempotencyEntry = {
+        createdAt: new Date().toISOString(),
+        status: response.status,
+        body,
+      };
+
+      await client.set(entryKey, JSON.stringify(entry), { PX: ttlMs });
+      return entry;
+    } finally {
+      await releaseRedisLock(client, lockKey, token);
+    }
   })();
 
   inflight.set(keyHash, work);

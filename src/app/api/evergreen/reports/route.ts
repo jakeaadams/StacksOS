@@ -17,7 +17,6 @@ export async function GET(req: NextRequest) {
   try {
     const authtoken = await requireAuthToken();
     const today = new Date().toISOString().split("T")[0];
-    const todayStart = `${today}T00:00:00`;
 
     const computePickupHoldsSummary = async (pickupLib: number) => {
       const holdsResponse = await callOpenSRF(
@@ -72,19 +71,6 @@ export async function GET(req: NextRequest) {
       }
     };
 
-    const getOrgStats = async (lib: number) => {
-      try {
-        const response = await callOpenSRF(
-          "open-ils.actor",
-          "open-ils.actor.user.org_unit_opt_in.check_all",
-          [authtoken, lib]
-        );
-        return response?.payload?.[0] || null;
-      } catch {
-        return null;
-      }
-    };
-
     if (action === "dashboard" || action === "stats") {
       // Fetch all dashboard metrics in parallel
       const [
@@ -128,17 +114,23 @@ export async function GET(req: NextRequest) {
         ).then(rows => parseInt(rows[0]?.count || "0", 10)).catch(() => null),
       ]);
 
+      const dashboard = {
+        checkouts_today: checkoutsToday,
+        checkins_today: checkinsToday,
+        active_holds: holdsSummary.total,
+        holds_ready: holdsSummary.available,
+        holds_pending: holdsSummary.pending,
+        holds_in_transit: holdsSummary.in_transit,
+        overdue_items: overdueCount,
+        fines_collected_today: finesCollectedToday,
+        new_patrons_today: newPatronsToday,
+      };
+
       return successResponse({
-        stats: {
-          checkouts_today: checkoutsToday,
-          checkins_today: checkinsToday,
-          active_holds: holdsSummary.total,
-          holds_ready: holdsSummary.available,
-          holds_in_transit: holdsSummary.in_transit,
-          overdue_items: overdueCount,
-          fines_collected_today: finesCollectedToday,
-          new_patrons_today: newPatronsToday,
-        },
+        // Preferred stable key (contract-tested)
+        dashboard,
+        // Back-compat key used by older clients
+        stats: dashboard,
         date: today,
         org_id: orgId,
         message: "Dashboard KPIs powered by Evergreen database queries",
@@ -185,7 +177,7 @@ export async function GET(req: NextRequest) {
                 title: copy?.call_number?.record?.simple_record?.title || "Unknown",
                 call_number: copy?.call_number?.label,
               };
-            } catch (error) {
+            } catch {
               return null;
             }
           })

@@ -7,11 +7,27 @@ import {
   serverErrorResponse,
   getErrorMessage,
   isOpenSRFEvent,
-  parseJsonBody,
+  parseJsonBodyWithSchema,
+  getRequestMeta,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logAuditEvent } from "@/lib/audit";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const ImportSchema = z
+  .object({
+    marcxml: z.string().min(1).optional(),
+    marcXml: z.string().min(1).optional(),
+    source: z.string().min(1).optional(),
+    auto_tcn: z.boolean().optional(),
+    autoTcn: z.boolean().optional(),
+  })
+  .passthrough()
+  .refine((b) => Boolean(b.marcxml) || Boolean(b.marcXml), {
+    message: "marcxml is required",
+    path: ["marcxml"],
+  });
 
 function normalizeServices(payload: any[]) {
   if (!payload || typeof payload !== "object") return [];
@@ -131,13 +147,11 @@ export async function GET(req: NextRequest) {
  * This is a convenience endpoint that combines Z39.50 search and MARC import
  */
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null;
-  const userAgent = req.headers.get("user-agent") || null;
-  const requestId = req.headers.get("x-request-id") || null;
+  const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
-    const body = await parseJsonBody<Record<string, any>>(req);
-    if (body instanceof NextResponse) return body;
+    const body = await parseJsonBodyWithSchema(req, ImportSchema);
+    if (body instanceof NextResponse) return body as any;
 
     const { authtoken, actor } = await requirePermissions(["CREATE_MARC", "IMPORT_MARC"]);
 

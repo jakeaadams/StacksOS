@@ -70,7 +70,7 @@ test.describe("Circulation Workflows", () => {
   });
 
   test("holds page is accessible from circulation", async ({ page }) => {
-    await page.goto("/staff/circulation/holds");
+    await page.goto("/staff/circulation/holds-management");
     
     // Verify holds page loads (may have different implementations)
     await expect(page.locator("body")).toBeVisible();
@@ -92,14 +92,14 @@ test.describe("Circulation Workflows", () => {
   });
 
   test("in-house use page is accessible", async ({ page }) => {
-    await page.goto("/staff/circulation/in-house-use");
+    await page.goto("/staff/circulation/in-house");
     
     // Verify page loads
     await expect(page.locator("body")).toBeVisible();
   });
 
   test("claims returned page is accessible", async ({ page }) => {
-    await page.goto("/staff/circulation/claims-returned");
+    await page.goto("/staff/circulation/claims");
     
     // Verify page loads
     await expect(page.locator("body")).toBeVisible();

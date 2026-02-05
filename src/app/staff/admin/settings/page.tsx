@@ -14,6 +14,7 @@ import {
   MapPin,
   ArrowRight,
   Users,
+  DollarSign,
 } from "lucide-react";
 
 interface SettingsCard {
@@ -67,6 +68,20 @@ const SETTINGS_CARDS: SettingsCard[] = [
       "OPAC visibility",
       "Holdable settings",
       "Check-in alerts",
+    ],
+  },
+  {
+    title: "Fines & Fees",
+    description: "Review fine rules and maximum fine caps used by the circulation matrix.",
+    href: "/staff/admin/settings/fines",
+    icon: DollarSign,
+    iconColor: "text-rose-600",
+    bgColor: "bg-rose-500/10",
+    features: [
+      "Recurring fine rules",
+      "Maximum fine rules",
+      "Grace periods",
+      "Fine cap behavior",
     ],
   },
 ];

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession, PatronCheckout } from "@/hooks/usePatronSession";
+import { UnoptimizedImage } from "@/components/shared";
 import {
   BookOpen,
   RefreshCw,
@@ -51,7 +52,7 @@ export default function CheckoutsPage() {
       setIsLoading(true);
       fetchCheckouts().finally(() => setIsLoading(false));
     }
-  }, [isLoggedIn]);
+  }, [fetchCheckouts, isLoggedIn]);
 
   const handleRenew = async (checkoutId: number) => {
     setRenewingId(checkoutId);
@@ -226,7 +227,15 @@ function CheckoutCard({
   isRenewing: boolean;
 }) {
   const Icon = formatIcons[checkout.format] || BookOpen;
-  const canRenew = checkout.renewals < checkout.maxRenewals;
+  const canRenew =
+    checkout.renewalsRemaining === null ? true : checkout.renewalsRemaining > 0;
+  const dueDate = formatMaybeDate(checkout.dueDate);
+  const renewalsLabel =
+    typeof checkout.renewalsRemaining === "number"
+      ? checkout.renewalsRemaining === 0
+        ? "No renewals left"
+        : `${checkout.renewalsRemaining} renewal${checkout.renewalsRemaining === 1 ? "" : "s"} left`
+      : "Renewals unknown";
 
   return (
     <div className={`bg-card rounded-xl shadow-sm border p-4 flex gap-4
@@ -234,7 +243,7 @@ function CheckoutCard({
       {/* Cover */}
       <div className="w-16 h-24 bg-muted rounded-lg overflow-hidden shrink-0">
         {checkout.coverUrl ? (
-          <img 
+          <UnoptimizedImage
             src={checkout.coverUrl} 
             alt={checkout.title}
             className="w-full h-full object-cover"
@@ -257,15 +266,13 @@ function CheckoutCard({
           <span className={`flex items-center gap-1 
                          ${checkout.isOverdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
             <Calendar className="h-4 w-4" />
-            {checkout.isOverdue ? "OVERDUE - " : "Due "}
-            {checkout.dueDate}
+            {checkout.isOverdue ? "OVERDUE — " : "Due "}
+            {dueDate}
           </span>
           
           <span className="text-muted-foreground/70">•</span>
           
-          <span className="text-muted-foreground">
-            {checkout.renewals}/{checkout.maxRenewals} renewals used
-          </span>
+          <span className="text-muted-foreground">{renewalsLabel}</span>
         </div>
       </div>
 
@@ -283,9 +290,16 @@ function CheckoutCard({
           ) : (
             <RefreshCw className="h-4 w-4" />
           )}
-          {canRenew ? "Renew" : "Max renewals"}
+          {canRenew ? "Renew" : "No renewals"}
         </button>
       </div>
     </div>
   );
+}
+
+function formatMaybeDate(value: string): string {
+  if (!value) return "Unknown";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }

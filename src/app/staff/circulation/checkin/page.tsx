@@ -29,10 +29,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
-import { Package, Printer, Trash2, Bell, Truck, AlertTriangle } from "lucide-react";
+import { Package, Printer, Trash2, Bell, Truck, AlertTriangle, ThumbsDown, ThumbsUp, HelpCircle } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { escapeHtml, printHtml } from "@/lib/print";
+import { featureFlags } from "@/lib/feature-flags";
+import { fetchWithAuth } from "@/lib/client-fetch";
 
 interface CheckinItem {
   id: string;
@@ -48,6 +50,19 @@ interface CheckinItem {
   wasOverdue?: boolean;
   fineAmount?: number;
 }
+
+type CheckinBlockDetails = {
+  code?: string;
+  desc?: string;
+  requestId?: string;
+};
+
+type AiPolicyExplain = {
+  explanation: string;
+  nextSteps: string[];
+  suggestedNote?: string;
+  requiresConfirmation?: boolean;
+};
 
 function buildSlipHtml(item: CheckinItem) {
   const heading = item.status === "hold" ? "Hold Slip" : item.status === "transit" ? "Transit Slip" : "Slip";
@@ -75,6 +90,7 @@ function buildSlipHtml(item: CheckinItem) {
 }
 
 export default function CheckinPage() {
+  const canAi = featureFlags.ai;
   const [checkedInItems, setCheckedInItems] = useState<CheckinItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [printSlips, setPrintSlips] = useState(true);
@@ -83,6 +99,12 @@ export default function CheckinPage() {
   const [itemSuccess, setItemSuccess] = useState(false);
   const [attentionOnly, setAttentionOnly] = useState(false);
   const [bookdropMode, setBookdropMode] = useState(false);
+  const [lastErrorDetails, setLastErrorDetails] = useState<CheckinBlockDetails | null>(null);
+  const [aiExplainLoading, setAiExplainLoading] = useState(false);
+  const [aiExplainError, setAiExplainError] = useState<string | null>(null);
+  const [aiExplainDraftId, setAiExplainDraftId] = useState<string | null>(null);
+  const [aiExplain, setAiExplain] = useState<AiPolicyExplain | null>(null);
+  const [aiExplainFeedback, setAiExplainFeedback] = useState<null | "accepted" | "rejected">(null);
 
   const itemInputRef = useRef<HTMLInputElement>(null);
 
@@ -129,6 +151,12 @@ export default function CheckinPage() {
       setCheckedInItems((prev) => [newItem, ...prev]);
       setItemError(undefined);
       setItemSuccess(true);
+      setLastErrorDetails(null);
+      setAiExplainLoading(false);
+      setAiExplainError(null);
+      setAiExplainDraftId(null);
+      setAiExplain(null);
+      setAiExplainFeedback(null);
 
       // Printing: use an iframe (no popups). This is "best-effort"; printers vary.
       if (printSlips && (status === "hold" || status === "transit")) {
@@ -154,8 +182,23 @@ export default function CheckinPage() {
         });
         setItemError(err.message || "Permission denied");
         setItemSuccess(false);
+        setLastErrorDetails({
+          code: "PERMISSION_DENIED",
+          desc: err.message || "Permission denied",
+          requestId: (err.details as any)?.requestId ? String((err.details as any).requestId) : undefined,
+        });
         return;
       }
+
+      const rawDetails = err instanceof ApiError ? err.details : (err as any)?.details;
+      const code =
+        rawDetails && typeof rawDetails === "object" && typeof (rawDetails as any).textcode === "string"
+          ? String((rawDetails as any).textcode)
+          : undefined;
+      const desc =
+        rawDetails && typeof rawDetails === "object" && typeof (rawDetails as any).desc === "string"
+          ? String((rawDetails as any).desc)
+          : undefined;
 
       const errorItem: CheckinItem = {
         id: "item-" + Date.now(),
@@ -171,9 +214,77 @@ export default function CheckinPage() {
       setCheckedInItems((prev) => [errorItem, ...prev]);
       setItemError(err.message || "Checkin failed");
       setItemSuccess(false);
+      setLastErrorDetails({
+        code: code || undefined,
+        desc: desc || (err.message || "Checkin failed"),
+      });
       toast.error("Checkin failed", { description: err.message });
     },
   });
+
+  React.useEffect(() => {
+    if (!canAi) return;
+    if (!itemError) return;
+    if (!lastErrorDetails) return;
+
+    let cancelled = false;
+    setAiExplainLoading(true);
+    setAiExplainError(null);
+    setAiExplainDraftId(null);
+    setAiExplain(null);
+    setAiExplainFeedback(null);
+
+    void (async () => {
+      try {
+        const res = await fetchWithAuth("/api/ai/policy-explain", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "checkin",
+            code: lastErrorDetails.code || undefined,
+            desc: lastErrorDetails.desc || undefined,
+            context: { route: "staff.circulation.checkin" },
+          }),
+        });
+        const json = await res.json().catch(() => null);
+        if (cancelled) return;
+        if (!res.ok || !json || json.ok === false) {
+          const msg = (json && (json.error || json.message)) || `AI explain failed (${res.status})`;
+          setAiExplainError(String(msg));
+          setAiExplainLoading(false);
+          return;
+        }
+        setAiExplainDraftId(json.draftId || null);
+        setAiExplain(json.response || null);
+        setAiExplainLoading(false);
+      } catch (e) {
+        if (cancelled) return;
+        setAiExplainError(e instanceof Error ? e.message : String(e));
+        setAiExplainLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canAi, itemError, lastErrorDetails]);
+
+  const submitAiExplainFeedback = useCallback(
+    async (decision: "accepted" | "rejected") => {
+      if (!aiExplainDraftId) return;
+      setAiExplainFeedback(decision);
+      try {
+        await fetchWithAuth(`/api/ai/drafts/${aiExplainDraftId}/decision`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision, suggestionId: "policy_explain" }),
+        });
+      } catch {
+        // Best-effort: do not block circulation on feedback.
+      }
+    },
+    [aiExplainDraftId]
+  );
 
   const handleCheckin = useCallback(
     async (barcode: string) => {
@@ -328,6 +439,7 @@ export default function CheckinPage() {
             icon: Trash2,
             shortcut: { key: "Escape" },
           },
+          { label: "Walkthrough", onClick: () => window.location.assign("/staff/training?workflow=checkin"), icon: HelpCircle, variant: "outline" },
         ]}
       />
 
@@ -347,6 +459,57 @@ export default function CheckinPage() {
                 autoFocus
                 autoClear
               />
+              {canAi && itemError && (
+                <div className="rounded-xl border border-border/70 bg-background px-3 py-2 text-sm space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-medium">AI explanation (draft-only)</div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void submitAiExplainFeedback("accepted")}
+                        disabled={!aiExplainDraftId || aiExplainFeedback !== null}
+                        title="Thumbs up"
+                      >
+                        <span className="sr-only">Thumbs up</span>
+                        <ThumbsUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void submitAiExplainFeedback("rejected")}
+                        disabled={!aiExplainDraftId || aiExplainFeedback !== null}
+                        title="Thumbs down"
+                      >
+                        <span className="sr-only">Thumbs down</span>
+                        <ThumbsDown className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {aiExplainLoading ? (
+                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent" />
+                      Generating explanation…
+                    </div>
+                  ) : aiExplainError ? (
+                    <div className="text-sm text-muted-foreground">AI unavailable: {aiExplainError}</div>
+                  ) : aiExplain ? (
+                    <div className="space-y-2">
+                      <div className="text-sm">{aiExplain.explanation}</div>
+                      {Array.isArray(aiExplain.nextSteps) && aiExplain.nextSteps.length > 0 ? (
+                        <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
+                          {aiExplain.nextSteps.slice(0, 6).map((step, idx) => (
+                            <li key={idx}>{step}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">No AI explanation available.</div>
+                  )}
+                </div>
+              )}
               <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                 Holds and transits will generate printable slips. Press <span className="font-mono">Ctrl/⌘ + P</span> to print all queued slips.
               </div>

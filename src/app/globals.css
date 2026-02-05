@@ -29,7 +29,7 @@
     --color-primary-300: hsl(171 54% 62%);
     --color-primary-400: hsl(171 52% 48%);
     --color-primary-500: hsl(171 53% 38%);
-    --color-primary-600: hsl(171 53% 34%);
+    --color-primary-600: hsl(171 53% 33%);
     --color-primary-700: hsl(171 54% 28%);
     --color-primary-800: hsl(171 56% 22%);
     --color-primary-900: hsl(171 58% 16%);
@@ -68,22 +68,22 @@
     --card-foreground: 224 24% 14%;
     --popover: 0 0% 100%;
     --popover-foreground: 224 24% 14%;
-    --primary: 171 53% 34%;
+    --primary: 171 53% 33%;
     --primary-foreground: 0 0% 100%;
     --secondary: 34 45% 92%;
     --secondary-foreground: 224 20% 20%;
     --muted: 30 30% 94%;
-    --muted-foreground: 220 10% 45%;
+    --muted-foreground: 220 10% 44%;
     --accent: 210 35% 92%;
     --accent-foreground: 224 20% 18%;
     --destructive: 0 70% 52%;
     --destructive-foreground: 0 0% 98%;
     --border: 30 20% 88%;
     --input: 30 20% 88%;
-    --ring: 171 53% 34%;
+    --ring: 171 53% 33%;
     --radius: 0.75rem;
 
-    --brand-1: 171 55% 36%;
+    --brand-1: 171 55% 33%;
     --brand-2: 38 80% 56%;
     --brand-3: 210 60% 46%;
     --surface: 34 38% 98%;
@@ -216,6 +216,21 @@ input[type=datetime-local] {
 
 .animate-float-in {
     animation: floatIn 0.35s ease-out;
+}
+
+/* Dyslexia-friendly typography (per-device preference). */
+.stacksos-dyslexia {
+    letter-spacing: 0.012em;
+    word-spacing: 0.08em;
+    font-variant-ligatures: none;
+    line-height: 1.7;
+}
+
+.stacksos-dyslexia h1,
+.stacksos-dyslexia h2,
+.stacksos-dyslexia h3,
+.stacksos-dyslexia h4 {
+    line-height: 1.25;
 }
 
 /* App shell helpers */

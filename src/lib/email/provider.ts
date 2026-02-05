@@ -1,12 +1,13 @@
 /**
  * Email Service Provider Integration
- * Supports Resend, SendGrid, and Amazon SES
+ * Supports SMTP (recommended for pilots), Resend, and SendGrid.
+ * Amazon SES is planned but not yet implemented.
  */
 
 import { logger } from "@/lib/logger";
 import type { EmailOptions } from "./types";
 
-type EmailProvider = "resend" | "sendgrid" | "ses" | "console";
+type EmailProvider = "smtp" | "resend" | "sendgrid" | "ses" | "console";
 
 interface ProviderConfig {
   provider: EmailProvider;
@@ -15,6 +16,13 @@ interface ProviderConfig {
   fromEmail: string;
   fromName: string;
   dryRun: boolean;
+  smtp?: {
+    host: string;
+    port: number;
+    secure: boolean;
+    user?: string;
+    pass?: string;
+  };
 }
 
 function getConfig(): ProviderConfig {
@@ -25,7 +33,67 @@ function getConfig(): ProviderConfig {
   const fromName = process.env.STACKSOS_EMAIL_FROM_NAME || "Library System";
   const dryRun = process.env.STACKSOS_EMAIL_DRY_RUN === "true";
 
-  return { provider, apiKey, region, fromEmail, fromName, dryRun };
+  const smtpHost = process.env.STACKSOS_SMTP_HOST;
+  const smtpPort = Number.isFinite(Number(process.env.STACKSOS_SMTP_PORT))
+    ? Number(process.env.STACKSOS_SMTP_PORT)
+    : 587;
+  const smtpSecure = process.env.STACKSOS_SMTP_SECURE === "true";
+  const smtpUser = process.env.STACKSOS_SMTP_USER;
+  const smtpPass = process.env.STACKSOS_SMTP_PASS;
+
+  return {
+    provider,
+    apiKey,
+    region,
+    fromEmail,
+    fromName,
+    dryRun,
+    smtp: smtpHost
+      ? {
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpSecure,
+          user: smtpUser,
+          pass: smtpPass,
+        }
+      : undefined,
+  };
+}
+
+async function sendViaSmtp(options: EmailOptions, config: ProviderConfig): Promise<void> {
+  if (!config.smtp) throw new Error("SMTP config missing (STACKSOS_SMTP_HOST)");
+  const nodemailer = await import("nodemailer");
+  const transport = nodemailer.createTransport({
+    host: config.smtp.host,
+    port: config.smtp.port,
+    secure: config.smtp.secure,
+    auth:
+      config.smtp.user && config.smtp.pass
+        ? { user: config.smtp.user, pass: config.smtp.pass }
+        : undefined,
+  });
+
+  const from = options.from?.email
+    ? (options.from.name ? `${options.from.name} <${options.from.email}>` : options.from.email)
+    : (config.fromName ? `${config.fromName} <${config.fromEmail}>` : config.fromEmail);
+
+  const replyTo = options.replyTo?.email
+    ? (options.replyTo.name ? `${options.replyTo.name} <${options.replyTo.email}>` : options.replyTo.email)
+    : undefined;
+
+  const info = await transport.sendMail({
+    from,
+    to: options.to.name ? `${options.to.name} <${options.to.email}>` : options.to.email,
+    replyTo,
+    subject: options.subject,
+    html: options.html,
+    text: options.text,
+  });
+
+  logger.info(
+    { component: "email", provider: "smtp", to: options.to.email, messageId: info?.messageId },
+    "Email sent via SMTP"
+  );
 }
 
 async function sendViaResend(options: EmailOptions, apiKey: string): Promise<void> {
@@ -96,7 +164,7 @@ async function sendViaSendGrid(options: EmailOptions, apiKey: string): Promise<v
   );
 }
 
-async function sendViaSES(options: EmailOptions, apiKey: string, region: string): Promise<void> {
+async function sendViaSES(_options: EmailOptions, _apiKey: string, _region: string): Promise<void> {
   // Note: AWS SES requires AWS SDK and signature v4 signing.
   // This is a placeholder that would need the AWS SDK for Node.js
   throw new Error("Amazon SES integration requires AWS SDK - not yet implemented");
@@ -133,20 +201,21 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     return;
   }
 
-  // Ensure API key is present for real providers
-  if (!config.apiKey) {
-    throw new Error(`Email provider ${config.provider} requires STACKSOS_EMAIL_API_KEY`);
-  }
-
   try {
     switch (config.provider) {
+      case "smtp":
+        await sendViaSmtp(options, config);
+        break;
       case "resend":
+        if (!config.apiKey) throw new Error(`Email provider ${config.provider} requires STACKSOS_EMAIL_API_KEY`);
         await sendViaResend(options, config.apiKey!);
         break;
       case "sendgrid":
+        if (!config.apiKey) throw new Error(`Email provider ${config.provider} requires STACKSOS_EMAIL_API_KEY`);
         await sendViaSendGrid(options, config.apiKey!);
         break;
       case "ses":
+        if (!config.apiKey) throw new Error(`Email provider ${config.provider} requires STACKSOS_EMAIL_API_KEY`);
         await sendViaSES(options, config.apiKey!, config.region || "us-east-1");
         break;
       default:

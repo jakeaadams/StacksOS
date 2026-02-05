@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useApi, useMutation } from "./use-api";
+import { useApi } from "./use-api";
 import { fetchWithAuth } from "@/lib/client-fetch";
 
 // Widget definitions - all possible dashboard widgets
@@ -137,7 +137,6 @@ export function useDashboardSettings(): UseDashboardSettingsReturn {
     data: settingsData,
     isLoading,
     error: fetchError,
-    refetch,
   } = useApi<{ settings: Record<string, any> }>(
     `${SETTINGS_URL}?keys=${SETTINGS_KEY}`,
     { immediate: true }

@@ -7,7 +7,121 @@ import {
   unauthorizedResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { cookies } from "next/headers";
+import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
+import { upsertOpacPatronPrefs } from "@/lib/db/opac";
+
+type HoldErrorDetails = {
+  code: string;
+  nextSteps: string[];
+};
+
+function normalizeEventCode(value: unknown): string {
+  const raw = typeof value === "string" ? value : value != null ? String(value) : "";
+  const code = raw.trim().toUpperCase();
+  return code || "HOLD_ERROR";
+}
+
+function buildHoldErrorDetails(
+  event: any,
+  opts?: { action?: "place" | "cancel" | "update" }
+): { message: string; details: HoldErrorDetails } {
+  const code = normalizeEventCode(event?.textcode || event?.code);
+  const desc = typeof event?.desc === "string" ? event.desc.trim() : "";
+
+  const details: HoldErrorDetails = { code, nextSteps: [] };
+
+  const nextSteps = (steps: string[]) => {
+    details.nextSteps = steps.filter((s) => typeof s === "string" && s.trim().length > 0);
+  };
+
+  switch (code) {
+    case "PATRON_EXPIRED":
+      nextSteps([
+        "Contact the library to renew your card (or update your expiration date).",
+        "Try again after your account is renewed.",
+      ]);
+      return {
+        message: "Your library account is expired, so you can’t place holds right now.",
+        details,
+      };
+    case "PATRON_BARRED":
+    case "PATRON_BLOCKED":
+    case "PATRON_INACTIVE":
+      nextSteps([
+        "Contact the library to resolve account blocks and confirm your account status.",
+        "If you believe this is a mistake, ask staff to review your account permissions/penalties.",
+      ]);
+      return {
+        message: "Your account is currently blocked from placing holds.",
+        details,
+      };
+    case "MAX_HOLDS":
+    case "MAX_HOLDS_REACHED":
+    case "MAX_HOLDS_FOR_RECORD":
+      nextSteps([
+        "Cancel an existing hold to free up space, then try again.",
+        "If you think your limit is incorrect, contact the library.",
+      ]);
+      return {
+        message: "You’ve reached your hold limit.",
+        details,
+      };
+    case "HOLD_EXISTS":
+      nextSteps([
+        "Go to My Account → Holds to see your existing hold and its status.",
+        "If you want a different pickup location, use “Change pickup” on that hold.",
+      ]);
+      return {
+        message: "You already have a hold on this title.",
+        details,
+      };
+    case "ITEM_NOT_HOLDABLE":
+    case "COPY_NOT_HOLDABLE":
+    case "HOLD_NOT_ALLOWED":
+      nextSteps([
+        "Try another format or edition (e.g., eBook vs print).",
+        "If you think this item should be holdable, contact the library.",
+      ]);
+      return {
+        message: "This item isn’t eligible for holds.",
+        details,
+      };
+    case "NO_HOLDABLE_COPIES":
+    case "NO_HOLDABLE_COPY":
+      nextSteps([
+        "Try again later, or choose a different edition/format.",
+        "If this keeps happening, contact the library for help.",
+      ]);
+      return {
+        message: "No holdable copies are currently available for this title.",
+        details,
+      };
+    case "BAD_PARAMS":
+    case "INVALID_REQUEST":
+      nextSteps([
+        "Refresh the page and try again.",
+        "If the problem persists, contact your library’s system administrator.",
+      ]);
+      return {
+        message: "We couldn’t place that hold because the request was invalid.",
+        details,
+      };
+    default: {
+      nextSteps([
+        "Try again in a moment.",
+        "If this continues, contact the library for help.",
+      ]);
+      const fallback =
+        opts?.action === "cancel"
+          ? "We couldn’t cancel that hold."
+          : opts?.action === "update"
+            ? "We couldn’t update that hold."
+            : "We couldn’t place that hold.";
+      const message = desc || fallback;
+      return { message, details };
+    }
+  }
+}
 
 /**
  * OPAC Patron Holds
@@ -16,29 +130,13 @@ import { cookies } from "next/headers";
  */
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-
-    if (!patronToken) {
-      return unauthorizedResponse("Please log in to view holds");
-    }
-
-    const sessionResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.session.retrieve",
-      [patronToken]
-    );
-
-    const user = sessionResponse?.payload?.[0];
-    if (!user || user.ilsevent) {
-      return unauthorizedResponse("Session expired. Please log in again.");
-    }
+    const { patronToken, patronId } = await requirePatronSession();
 
     // Get holds
     const holdsResponse = await callOpenSRF(
       "open-ils.circ",
       "open-ils.circ.holds.retrieve",
-      [patronToken, user.id]
+      [patronToken, patronId]
     );
 
     const holdsData = holdsResponse?.payload?.[0];
@@ -141,6 +239,11 @@ export async function GET(req: NextRequest) {
             status = "suspended";
           }
 
+          // Skip holds that are no longer actionable in OPAC.
+          if (status === "cancelled" || status === "fulfilled") {
+            return null;
+          }
+
           // Get pickup location name
           let pickupLocationName = "Library";
           if (hold.pickup_lib) {
@@ -191,34 +294,26 @@ export async function GET(req: NextRequest) {
       readyCount: validHolds.filter((h: any) => h.status === "ready").length,
     });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return unauthorizedResponse(error.message);
+    }
     return serverErrorResponse(error, "OPAC Holds GET", req);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-
-    if (!patronToken) {
-      return unauthorizedResponse("Please log in to place holds");
-    }
-
-    const sessionResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.session.retrieve",
-      [patronToken]
-    );
-
-    const user = sessionResponse?.payload?.[0];
-    if (!user || user.ilsevent) {
-      return unauthorizedResponse("Session expired. Please log in again.");
-    }
+    const { patronToken, patronId } = await requirePatronSession();
 
     const { recordId, pickupLocation, holdType = "T" } = await req.json();
 
     if (!recordId || !pickupLocation) {
       return errorResponse("Record ID and pickup location are required", 400);
+    }
+
+    const pickupId = typeof pickupLocation === "number" ? pickupLocation : parseInt(String(pickupLocation), 10);
+    if (!Number.isFinite(pickupId) || pickupId <= 0) {
+      return errorResponse("Invalid pickup location", 400);
     }
 
     // Place the hold
@@ -228,8 +323,8 @@ export async function POST(req: NextRequest) {
       [
         patronToken,
         {
-          patronid: user.id,
-          pickup_lib: pickupLocation,
+          patronid: patronId,
+          pickup_lib: pickupId,
           hold_type: holdType,
           target: recordId,
         },
@@ -240,29 +335,33 @@ export async function POST(req: NextRequest) {
 
     if (result?.ilsevent) {
       // Hold failed
-      const errorMsg = result.desc || result.textcode || "Failed to place hold";
-      return errorResponse(errorMsg, 400);
+      const mapped = buildHoldErrorDetails(result, { action: "place" });
+      return errorResponse(mapped.message, 400, mapped.details);
     }
 
     // Success - result should be the hold ID
+    try {
+      await upsertOpacPatronPrefs(patronId, { defaultPickupLocation: pickupId });
+    } catch {
+      // Preference write must never break the request path.
+    }
+
     return successResponse({
       success: true,
       holdId: result,
       message: "Hold placed successfully",
     });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return unauthorizedResponse(error.message);
+    }
     return serverErrorResponse(error, "OPAC Holds POST", req);
   }
 }
 
 export async function DELETE(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-
-    if (!patronToken) {
-      return unauthorizedResponse("Please log in to cancel holds");
-    }
+    const { patronToken } = await requirePatronSession();
 
     const { holdId } = await req.json();
 
@@ -280,7 +379,8 @@ export async function DELETE(req: NextRequest) {
     const result = cancelResponse?.payload?.[0];
 
     if (result?.ilsevent) {
-      return errorResponse(result.desc || "Failed to cancel hold", 400);
+      const mapped = buildHoldErrorDetails(result, { action: "cancel" });
+      return errorResponse(mapped.message || "Failed to cancel hold", 400, mapped.details);
     }
 
     return successResponse({
@@ -288,20 +388,18 @@ export async function DELETE(req: NextRequest) {
       message: "Hold cancelled successfully",
     });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return unauthorizedResponse(error.message);
+    }
     return serverErrorResponse(error, "OPAC Holds DELETE", req);
   }
 }
 
 export async function PATCH(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
+    const { patronToken, patronId } = await requirePatronSession();
 
-    if (!patronToken) {
-      return unauthorizedResponse("Please log in to modify holds");
-    }
-
-    const { holdId, action, suspendUntil } = await req.json();
+    const { holdId, action, suspendUntil, pickupLocation } = await req.json();
 
     if (!holdId || !action) {
       return errorResponse("Hold ID and action are required", 400);
@@ -323,6 +421,22 @@ export async function PATCH(req: NextRequest) {
         "open-ils.circ.hold.update",
         [patronToken, { id: holdId, frozen: "f", thaw_date: null }]
       );
+    } else if (action === "change_pickup") {
+      const pickupId = typeof pickupLocation === "number" ? pickupLocation : parseInt(String(pickupLocation ?? ""), 10);
+      if (!Number.isFinite(pickupId) || pickupId <= 0) {
+        return errorResponse("pickupLocation is required", 400);
+      }
+      result = await callOpenSRF(
+        "open-ils.circ",
+        "open-ils.circ.hold.update",
+        [patronToken, { id: holdId, pickup_lib: pickupId }]
+      );
+
+      try {
+        await upsertOpacPatronPrefs(patronId, { defaultPickupLocation: pickupId });
+      } catch {
+        // Ignore preference write errors.
+      }
     } else {
       return errorResponse("Invalid action", 400);
     }
@@ -330,14 +444,23 @@ export async function PATCH(req: NextRequest) {
     const response = result?.payload?.[0];
 
     if (response?.ilsevent) {
-      return errorResponse(response.desc || "Failed to update hold", 400);
+      const mapped = buildHoldErrorDetails(response, { action: "update" });
+      return errorResponse(mapped.message || "Failed to update hold", 400, mapped.details);
     }
 
     return successResponse({
       success: true,
-      message: `Hold ${action === "suspend" ? "suspended" : "activated"} successfully`,
+      message:
+        action === "suspend"
+          ? "Hold suspended successfully"
+          : action === "activate"
+            ? "Hold activated successfully"
+            : "Hold updated successfully",
     });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return unauthorizedResponse(error.message);
+    }
     return serverErrorResponse(error, "OPAC Holds PATCH", req);
   }
 }

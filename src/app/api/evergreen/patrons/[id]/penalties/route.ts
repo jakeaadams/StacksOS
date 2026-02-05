@@ -140,7 +140,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
     const { id } = await params;
     const patronId = parseInt(id, 10);
-    const { ip, userAgent } = getRequestMeta(req);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
 
     if (!Number.isFinite(patronId)) {
       return errorResponse("Invalid patron ID", 400);
@@ -191,6 +191,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       actor,
       ip,
       userAgent,
+      requestId,
       details: { penaltyType, note, orgUnit },
     });
 
@@ -211,7 +212,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
     const { id } = await params;
     const patronId = parseInt(id, 10);
-    const { ip, userAgent } = getRequestMeta(req);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
 
     if (!Number.isFinite(patronId)) {
       return errorResponse("Invalid patron ID", 400);
@@ -247,6 +248,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       actor,
       ip,
       userAgent,
+      requestId,
       details: { penaltyId },
     });
 

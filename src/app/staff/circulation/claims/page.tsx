@@ -3,7 +3,7 @@
 import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useState, useCallback, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +71,7 @@ const RESOLUTION_OPTIONS = [
 const MAX_CLAIMS_WARNING = 3;
 
 export default function ClaimsPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [patronBarcode, setPatronBarcode] = useState(searchParams.get("patron") || "");
   const [patron, setPatron] = useState<PatronInfo | null>(null);
@@ -571,6 +572,8 @@ export default function ClaimsPage() {
             icon={FileQuestion}
             title="Enter a patron barcode"
             description="Load a patron to manage claims returned or never checked out items."
+            action={{ label: "Seed demo data", onClick: () => router.push("/staff/help#demo-data") }}
+            secondaryAction={{ label: "Search patrons", onClick: () => router.push("/staff/patrons") }}
           />
         )}
       </PageContent>

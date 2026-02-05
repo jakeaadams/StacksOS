@@ -6,24 +6,18 @@ import {
   serverErrorResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { cookies } from "next/headers";
+import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 
 // POST /api/opac/renew-all - Renew all eligible items
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-    const patronId = cookieStore.get("patron_id")?.value;
-
-    if (!patronToken || !patronId) {
-      return errorResponse("Not authenticated", 401);
-    }
+    const { patronToken, patronId } = await requirePatronSession();
 
     // First, get all current checkouts
     const checkoutsResponse = await callOpenSRF(
       "open-ils.actor",
       "open-ils.actor.user.checked_out",
-      [patronToken, parseInt(patronId)]
+      [patronToken, patronId]
     );
 
     const checkoutData = checkoutsResponse.payload?.[0] || {};
@@ -116,7 +110,7 @@ export async function POST(_req: NextRequest) {
             renewalsRemaining: result?.circ?.renewal_remaining,
           });
         }
-      } catch (error) {
+      } catch {
         results.failed.push({
           circId: circ.id,
           _error: "Renewal request failed",
@@ -146,7 +140,10 @@ export async function POST(_req: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return errorResponse(error.message, error.status);
+    }
     logger.error({ error: String(error) }, "Error renewing all items");
-    return serverErrorResponse(error, "Failed to renew items");
+    return serverErrorResponse(error, "Failed to renew items", req);
   }
 }

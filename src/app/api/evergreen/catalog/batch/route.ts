@@ -6,7 +6,6 @@ import {
   serverErrorResponse,
   isSuccessResult,
   getErrorMessage,
-  isOpenSRFEvent,
   getRequestMeta,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";

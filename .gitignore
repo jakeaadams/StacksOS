@@ -15,6 +15,10 @@
 
 # next.js
 /.next/
+/.next-ci/
+/.next.build/
+/.next.prev.*/
+/.next.failed.*/
 /out/
 
 # production
@@ -43,6 +47,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# python
+__pycache__/
+*.pyc
+
 # Logs
 .logs/
 *.log
@@ -50,6 +58,7 @@ next-env.d.ts
 # Backups
 _backups/
 *.bak
+*.bak.*
 *.backup
 *.backup2
 *.backup3
@@ -72,6 +81,7 @@ audit/ui/
 audit/REPORT.md
 audit/FEATURE_MATRIX.md
 audit/REPO_INVENTORY.md
+audit/demo_data.json
 
 # IDE
 .vscode-server/

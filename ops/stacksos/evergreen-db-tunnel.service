@@ -1,0 +1,50 @@
+[Unit]
+Description=SSH tunnel to Evergreen PostgreSQL (localhost:5433 -> evergreen:5432)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Recommended: run as a dedicated, no-shell service user.
+# Create it once:
+#   sudo useradd --system --no-create-home --shell /usr/sbin/nologin stacksos-tunnel
+User=stacksos-tunnel
+
+# Recommended key placement:
+#   sudo install -d -m 0750 -o root -g stacksos-tunnel /etc/stacksos/keys
+#   sudo install -m 0640 -o root -g stacksos-tunnel /path/to/key /etc/stacksos/keys/evergreen-db-tunnel
+#
+# On Evergreen, restrict the corresponding authorized_keys entry:
+#   permitopen="127.0.0.1:5432",no-pty,no-agent-forwarding,no-X11-forwarding
+ExecStart=/usr/bin/ssh \
+  -i /etc/stacksos/keys/evergreen-db-tunnel \
+  -o IdentitiesOnly=yes \
+  -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=60 \
+  -o ServerAliveCountMax=3 \
+  -o StrictHostKeyChecking=yes \
+  -N \
+  -L 127.0.0.1:5433:127.0.0.1:5432 \
+  evergreen
+
+Restart=always
+RestartSec=5
+
+# Sandbox the unit (defense-in-depth)
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectControlGroups=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target

@@ -5,6 +5,8 @@
 import { sendEmail } from "./provider";
 import { logger } from "@/lib/logger";
 import type { NoticeType, NoticeContext, EmailRecipient } from "./types";
+import { createDelivery, createNotificationEvent, getActiveTemplate, markDeliveryAttempt } from "@/lib/db/notifications";
+import { renderTemplateString } from "@/lib/notifications/render";
 import {
   renderHoldReadyHtml,
   renderHoldReadyText,
@@ -24,6 +26,7 @@ export { sendEmail, getEmailConfig } from "./provider";
 interface SendNoticeOptions {
   type: NoticeType;
   context: NoticeContext;
+  createdBy?: number | null;
 }
 
 function getSubject(type: NoticeType, context: NoticeContext): string {
@@ -87,7 +90,24 @@ function renderNoticeText(type: NoticeType, context: NoticeContext): string {
   }
 }
 
-export async function sendNotice(options: SendNoticeOptions): Promise<void> {
+export async function renderEmailNoticeContent(
+  type: NoticeType,
+  context: NoticeContext
+): Promise<{ subject: string; html: string; text: string }> {
+  const active = await getActiveTemplate("email", type);
+  const subject = active?.subject_template
+    ? renderTemplateString(active.subject_template, context, { html: false })
+    : getSubject(type, context);
+  const html = active?.body_template
+    ? renderTemplateString(active.body_template, context, { html: true })
+    : renderNoticeHtml(type, context);
+  const text = active?.body_text_template
+    ? renderTemplateString(active.body_text_template, context, { html: false })
+    : renderNoticeText(type, context);
+  return { subject, html, text };
+}
+
+export async function sendNotice(options: SendNoticeOptions): Promise<{ eventId: string; deliveryId: number | null }> {
   const { type, context } = options;
   const { patron, library } = context;
 
@@ -96,9 +116,19 @@ export async function sendNotice(options: SendNoticeOptions): Promise<void> {
     throw new Error(`Cannot send notice: patron ${patron.id} has no email address`);
   }
 
-  const subject = getSubject(type, context);
-  const html = renderNoticeHtml(type, context);
-  const text = renderNoticeText(type, context);
+  const eventId = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+  await createNotificationEvent({
+    id: eventId,
+    channel: "email",
+    noticeType: type,
+    patronId: patron.id,
+    recipient: patron.email,
+    createdBy: options.createdBy ?? null,
+    context,
+  });
+  const deliveryId = await createDelivery({ eventId, provider: String(process.env.STACKSOS_EMAIL_PROVIDER || "console") });
+
+  const { subject, html, text } = await renderEmailNoticeContent(type, context);
 
   const recipient: EmailRecipient = {
     email: patron.email,
@@ -120,18 +150,26 @@ export async function sendNotice(options: SendNoticeOptions): Promise<void> {
       noticeType: type,
       patronId: patron.id,
       recipient: patron.email,
+      eventId,
     },
     `Sending ${type} notice to patron ${patron.id}`
   );
 
-  await sendEmail({
-    to: recipient,
-    from,
-    replyTo,
-    subject,
-    html,
-    text,
-  });
+  try {
+    await sendEmail({
+      to: recipient,
+      from,
+      replyTo,
+      subject,
+      html,
+      text,
+    });
+    if (deliveryId) await markDeliveryAttempt({ deliveryId, status: "sent" });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (deliveryId) await markDeliveryAttempt({ deliveryId, status: "failed", error: msg });
+    throw error;
+  }
 
   logger.info(
     {
@@ -139,9 +177,12 @@ export async function sendNotice(options: SendNoticeOptions): Promise<void> {
       noticeType: type,
       patronId: patron.id,
       recipient: patron.email,
+      eventId,
     },
     `Successfully sent ${type} notice to patron ${patron.id}`
   );
+
+  return { eventId, deliveryId };
 }
 
 export async function sendBatchNotices(notices: SendNoticeOptions[]): Promise<{

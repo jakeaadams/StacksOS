@@ -11,10 +11,12 @@ import {
   getErrorMessage,
   getCopyByBarcode,
   getRequestMeta,
+  parseJsonBodyWithSchema,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 
 const ACTION_PERMS: Record<string, string[]> = {
@@ -28,6 +30,65 @@ const ACTION_PERMS: Record<string, string[]> = {
   pay_bills: ["CREATE_PAYMENT"],
   in_house_use: ["CREATE_IN_HOUSE_USE"],
 };
+
+const circulationBodySchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("checkout"),
+    patronBarcode: z.string().trim().min(1),
+    itemBarcode: z.string().trim().min(1),
+    override: z.boolean().optional(),
+    overrideReason: z.string().trim().max(256).optional(),
+  }).passthrough(),
+  z.object({
+    action: z.literal("checkin"),
+    itemBarcode: z.string().trim().min(1).optional(),
+    copyId: z.coerce.number().int().positive().optional(),
+  }).refine((b) => Boolean(b.itemBarcode) || Boolean(b.copyId), {
+    message: "itemBarcode or copyId required",
+    path: ["itemBarcode"],
+  }).passthrough(),
+  z.object({
+    action: z.literal("renew"),
+    itemBarcode: z.string().trim().min(1).optional(),
+    copyId: z.coerce.number().int().positive().optional(),
+  }).refine((b) => Boolean(b.itemBarcode) || Boolean(b.copyId), {
+    message: "itemBarcode or copyId required",
+    path: ["itemBarcode"],
+  }).passthrough(),
+  z.object({
+    action: z.literal("place_hold"),
+    patron_id: z.coerce.number().int().positive(),
+    target_id: z.union([z.coerce.number().int().positive(), z.string().trim().min(1)]),
+    pickup_lib: z.coerce.number().int().positive(),
+    hold_type: z.enum(["T", "V", "C"]).optional(),
+  }).passthrough(),
+  z.object({
+    action: z.literal("cancel_hold"),
+    hold_id: z.coerce.number().int().positive(),
+  }).passthrough(),
+  z.object({
+    action: z.literal("suspend_hold"),
+    hold_id: z.coerce.number().int().positive(),
+  }).passthrough(),
+  z.object({
+    action: z.literal("activate_hold"),
+    hold_id: z.coerce.number().int().positive(),
+  }).passthrough(),
+  z.object({
+    action: z.literal("pay_bills"),
+    patron_id: z.coerce.number().int().positive(),
+    payment_type: z.string().trim().min(1).optional(),
+    payments: z.array(z.object({
+      amount: z.union([z.number(), z.string()]),
+    }).passthrough()).min(1),
+  }).passthrough(),
+  z.object({
+    action: z.literal("in_house_use"),
+    itemBarcode: z.string().trim().min(1),
+    orgId: z.coerce.number().int().positive().optional(),
+    count: z.coerce.number().int().positive().optional(),
+  }).passthrough(),
+]);
 
 function resolvePerms(action: string, body: any) {
   if (action === "place_hold" && body?.hold_type === "C") {
@@ -68,7 +129,9 @@ export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
-    const body = await req.json();
+    const bodyParsed = await parseJsonBodyWithSchema(req, circulationBodySchema);
+    if (bodyParsed instanceof Response) return bodyParsed as any;
+    const body = bodyParsed;
     const {
       action,
       patronBarcode,
@@ -82,10 +145,6 @@ export async function POST(req: NextRequest) {
       override,
       overrideReason,
     } = body;
-
-    if (!action) {
-      return errorResponse("Action required", 400);
-    }
 
     const { authtoken, actor } = await requirePermissions(resolvePerms(action, body));
 
@@ -184,19 +243,31 @@ export async function POST(req: NextRequest) {
           return errorResponse("Item barcode required", 400);
         }
 
+        const checkinMethod = override
+          ? "open-ils.circ.checkin.override"
+          : "open-ils.circ.checkin";
+
         const checkinResponse = await callOpenSRF(
           "open-ils.circ",
-          "open-ils.circ.checkin",
-          [authtoken, { copy_barcode: itemBarcode, copy_id: copyId }]
+          checkinMethod,
+          [authtoken, { copy_barcode: itemBarcode, copy_id: copyId, override: Boolean(override) }]
         );
 
         const result = checkinResponse?.payload?.[0];
 
         if (result?.ilsevent === 0 || result?.payload) {
-          const itemInfo = await fetchItemDetailsByBarcode(itemBarcode);
+          const resolvedBarcode =
+            typeof itemBarcode === "string" && itemBarcode.trim()
+              ? itemBarcode.trim()
+              : (typeof (result as any)?.payload?.copy_barcode === "string"
+                  ? String((result as any).payload.copy_barcode)
+                  : "");
+          const itemInfo = resolvedBarcode
+            ? await fetchItemDetailsByBarcode(resolvedBarcode)
+            : { title: "Item", author: "", callNumber: "" };
           const response: any = {
             action: "checkin",
-            copyBarcode: itemBarcode,
+            copyBarcode: resolvedBarcode || null,
             status: "checked_in",
             ...itemInfo,
           };
@@ -226,13 +297,14 @@ export async function POST(req: NextRequest) {
             status: response.status,
             holdId: response.hold?.id,
             transit: response.transit?.destination,
+            override: Boolean(override),
           });
 
           return successResponse(response);
         }
 
         const message = getErrorMessage(result, "Checkin failed");
-        await audit("failure", { itemBarcode }, message);
+        await audit("failure", { itemBarcode, override: Boolean(override) }, message);
         return errorResponse(message, 400, result);
       }
 
@@ -253,6 +325,12 @@ export async function POST(req: NextRequest) {
           const circ = result.payload?.circ || result.circ;
           const circId = fmNumber(circ, "id", 10);
           const dueDate = fmString(circ, "due_date", 6);
+          const resolvedBarcode =
+            typeof itemBarcode === "string" && itemBarcode.trim()
+              ? itemBarcode.trim()
+              : (typeof (result as any)?.payload?.copy_barcode === "string"
+                  ? String((result as any).payload.copy_barcode)
+                  : "");
 
           await audit("success", {
             itemBarcode,
@@ -261,7 +339,7 @@ export async function POST(req: NextRequest) {
 
           return successResponse({
             action: "renew",
-            circulation: { id: circId, dueDate, copyBarcode: itemBarcode },
+            circulation: { id: circId, dueDate, copyBarcode: resolvedBarcode || null },
           });
         }
 
@@ -652,39 +730,97 @@ export async function GET(req: NextRequest) {
 
 // Helper: Fetch item details by barcode
 async function fetchItemDetailsByBarcode(barcode: string) {
+  const key = String(barcode || "").trim();
+  if (!key) return { title: "Item", author: "", callNumber: "" };
+
+  // Hot-path cache (perf harness + staff workflows often reuse the same barcode).
+  // This is process-local; TTL keeps data reasonably fresh.
+  const now = Date.now();
+  const cached = itemDetailsCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
   try {
     const copyResponse = await callOpenSRF(
       "open-ils.search",
       "open-ils.search.asset.copy.find_by_barcode",
-      [barcode]
+      [key]
     );
     const copy = copyResponse?.payload?.[0];
 
     if (copy?.call_number) {
-      const cnId =
-        typeof copy.call_number === "object" ? copy.call_number.id : copy.call_number;
+      const cnObj =
+        typeof copy.call_number === "object" && copy.call_number !== null ? copy.call_number : null;
+      const cnId = cnObj ? cnObj.id : copy.call_number;
+      const cnLabel = cnObj && typeof cnObj.label === "string" ? cnObj.label : "";
+      const cnRecord =
+        cnObj && (typeof cnObj.record === "number" || typeof cnObj.record === "string")
+          ? cnObj.record
+          : null;
 
-      const cnResponse = await callOpenSRF(
-        "open-ils.search",
-        "open-ils.search.asset.call_number.retrieve",
-        [cnId]
-      );
-      const cn = cnResponse?.payload?.[0];
-      const callNumber = cn?.label || "";
+      let callNumber = cnLabel;
+      let recordId: number | null = null;
 
-      if (cn?.record) {
+      if (cnRecord !== null) {
+        const n = Number.parseInt(String(cnRecord), 10);
+        recordId = Number.isFinite(n) ? n : null;
+      }
+
+      if (!callNumber || recordId === null) {
+        const cnResponse = await callOpenSRF(
+          "open-ils.search",
+          "open-ils.search.asset.call_number.retrieve",
+          [cnId]
+        );
+        const cn = cnResponse?.payload?.[0];
+        callNumber = callNumber || cn?.label || "";
+        if (recordId === null && cn?.record !== undefined && cn?.record !== null) {
+          const n = Number.parseInt(String(cn.record), 10);
+          recordId = Number.isFinite(n) ? n : null;
+        }
+      }
+
+      if (recordId !== null) {
         const bibResponse = await callOpenSRF(
           "open-ils.search",
           "open-ils.search.biblio.record.mods_slim.retrieve",
-          [cn.record]
+          [recordId]
         );
         const bib = bibResponse?.payload?.[0];
-        return { title: bib?.title || "Item", author: bib?.author || "", callNumber };
+        const value = { title: bib?.title || "Item", author: bib?.author || "", callNumber };
+        itemDetailsCache.set(key, { value, expiresAt: now + ITEM_DETAILS_TTL_MS });
+        if (itemDetailsCache.size > ITEM_DETAILS_MAX) pruneItemDetailsCache();
+        return value;
       }
-      return { title: "Item", author: "", callNumber: "" };
+
+      const value = { title: "Item", author: "", callNumber: callNumber || "" };
+      itemDetailsCache.set(key, { value, expiresAt: now + ITEM_DETAILS_TTL_MS });
+      if (itemDetailsCache.size > ITEM_DETAILS_MAX) pruneItemDetailsCache();
+      return value;
     }
   } catch {
     // Ignore errors
   }
-  return { title: "Item", author: "", callNumber: "" };
+  const value = { title: "Item", author: "", callNumber: "" };
+  itemDetailsCache.set(key, { value, expiresAt: now + ITEM_DETAILS_TTL_MS });
+  if (itemDetailsCache.size > ITEM_DETAILS_MAX) pruneItemDetailsCache();
+  return value;
+}
+
+const ITEM_DETAILS_TTL_MS = 60_000;
+const ITEM_DETAILS_MAX = 500;
+const itemDetailsCache = new Map<
+  string,
+  { value: { title: string; author: string; callNumber: string }; expiresAt: number }
+>();
+
+function pruneItemDetailsCache() {
+  const now = Date.now();
+  for (const [k, v] of itemDetailsCache.entries()) {
+    if (v.expiresAt <= now) itemDetailsCache.delete(k);
+  }
+  if (itemDetailsCache.size <= ITEM_DETAILS_MAX) return;
+  const keys = Array.from(itemDetailsCache.keys()).slice(0, itemDetailsCache.size - ITEM_DETAILS_MAX);
+  for (const k of keys) itemDetailsCache.delete(k);
 }

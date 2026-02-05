@@ -56,7 +56,7 @@ export function StatusHUD({ className }: StatusHUDProps) {
         credentials: "include", cache: "no-store" });
         const end = performance.now();
         setLatency(Math.round(end - start));
-      } catch (error) {
+      } catch {
         setLatency(null);
       }
     };

@@ -88,7 +88,7 @@ export function PatronCard({
   // Fetch existing photo on mount
   useEffect(() => {
     if (patron.id) {
-      fetchWithAuth(`/api/upload-patron-photo?patronId=${patron.id}`)
+      fetchWithAuth(`/api/patron-photos?patronId=${patron.id}`)
         .then(res => res.json())
         .then(data => {
           if (data.success && data.url) {
@@ -474,7 +474,7 @@ export function PatronSearchResult({
   // Fetch existing photo on mount
   useEffect(() => {
     if (patron.id) {
-      fetchWithAuth(`/api/upload-patron-photo?patronId=${patron.id}`)
+      fetchWithAuth(`/api/patron-photos?patronId=${patron.id}`)
         .then(res => res.json())
         .then(data => {
           if (data.success && data.url) {
@@ -508,48 +508,59 @@ export function PatronSearchResult({
   };
 
   return (
-    <button type="button"
-      onClick={onClick}
-      className={cn(
-        "w-full flex items-center gap-3 p-3 text-left rounded-lg border transition-colors",
-        "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary",
-        isSelected && "bg-primary/5 border-primary"
-      )}
-    >
-      <div className="relative group cursor-pointer" onClick={handlePhotoClick} onKeyDown={handlePhotoKeyDown} role="button" aria-label="Upload patron photo" tabIndex={0} title="Click to upload photo">
-        <Avatar className="h-10 w-10 transition-opacity group-hover:opacity-70">
-          {patronPhotoUrl && (
-            <AvatarImage
-              src={patronPhotoUrl}
-              alt={patron.displayName}
-              onError={handlePhotoError}
-            />
-          )}
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full pointer-events-none">
-          <Camera className="h-4 w-4 text-white" />
+    <>
+      <button type="button"
+        onClick={onClick}
+        className={cn(
+          "w-full flex items-center gap-3 p-3 text-left rounded-lg border transition-colors",
+          "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary",
+          isSelected && "bg-primary/5 border-primary"
+        )}
+      >
+        <div className="relative group cursor-pointer" onClick={handlePhotoClick} onKeyDown={handlePhotoKeyDown} role="button" aria-label="Upload patron photo" tabIndex={0} title="Click to upload photo">
+          <Avatar className="h-10 w-10 transition-opacity group-hover:opacity-70">
+            {patronPhotoUrl && (
+              <AvatarImage
+                src={patronPhotoUrl}
+                alt={patron.displayName}
+                onError={handlePhotoError}
+              />
+            )}
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full pointer-events-none">
+            <Camera className="h-4 w-4 text-white" />
+          </div>
         </div>
-      </div>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium truncate">{patron.displayName}</span>
-          {patron.barred && <Badge variant="destructive" className="text-[10px]">Barred</Badge>}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium truncate">{patron.displayName}</span>
+            {patron.barred && <Badge variant="destructive" className="text-[10px]">Barred</Badge>}
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>{patron.barcode}</span>
+            {patron.email && (
+              <>
+                <span>•</span>
+                <span className="truncate">{patron.email}</span>
+              </>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>{patron.barcode}</span>
-          {patron.email && (
-            <>
-              <span>•</span>
-              <span className="truncate">{patron.email}</span>
-            </>
-          )}
-        </div>
-      </div>
 
-      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-    </button>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </button>
+
+      <PatronPhotoUpload
+        open={photoUploadOpen}
+        onOpenChange={setPhotoUploadOpen}
+        patronId={patron.id}
+        patronName={patron.displayName}
+        currentPhotoUrl={patronPhotoUrl}
+        onPhotoUploaded={handlePhotoUploaded}
+      />
+    </>
   );
 }
 

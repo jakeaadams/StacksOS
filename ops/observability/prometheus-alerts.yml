@@ -1,0 +1,39 @@
+groups:
+  - name: stacksos
+    rules:
+      - alert: StacksOSApi500s
+        expr: rate(stacksos_api_error_responses_total{status="500"}[5m]) > 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "StacksOS is returning 500s"
+          description: "Investigate recent requestIds in `journalctl -u stacksos.service` and Evergreen gateway health."
+
+      - alert: StacksOSOpenSRFTimeouts
+        expr: rate(stacksos_opensrf_requests_total{outcome="timeout"}[5m]) > 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "StacksOS OpenSRF timeouts detected"
+          description: "Evergreen may be slow or the gateway may be degraded; staff workflows will feel broken."
+
+      - alert: StacksOSOpenSRFLatencyP95High
+        expr: histogram_quantile(0.95, sum(rate(stacksos_opensrf_request_duration_seconds_bucket[5m])) by (le)) > 0.75
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "StacksOS OpenSRF latency p95 is high"
+          description: "p95 OpenSRF latency is above the pilot budget; investigate Evergreen + network + DB tunnel."
+
+      - alert: StacksOSScheduledReportsFailing
+        expr: increase(stacksos_scheduled_report_runs_total{outcome="failure"}[1h]) > 0
+        for: 0m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Scheduled report failures"
+          description: "One or more scheduled reports failed in the last hour; check `/staff/reports/scheduled` run history."
+

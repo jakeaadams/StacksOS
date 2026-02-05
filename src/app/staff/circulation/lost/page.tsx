@@ -3,6 +3,7 @@
 import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -97,6 +98,7 @@ function formatDate(date?: string | null) {
 }
 
 export default function LostMissingDamagedPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("item");
   const [patronBarcode, setPatronBarcode] = useState("");
   const [itemBarcode, setItemBarcode] = useState("");
@@ -717,6 +719,8 @@ export default function LostMissingDamagedPage() {
                     title="No lost items or bills"
                     description="This patron has no lost items or outstanding lost item bills."
                     icon={Search}
+                    action={{ label: "Open patron record", onClick: () => router.push(`/staff/patrons/${patron.id}`) }}
+                    secondaryAction={{ label: "Seed demo data", onClick: () => router.push("/staff/help#demo-data") }}
                   />
                 </CardContent>
               </Card>

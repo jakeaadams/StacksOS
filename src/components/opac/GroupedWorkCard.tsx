@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { UnoptimizedImage } from "@/components/shared";
 import {
   BookOpen,
   Smartphone,
@@ -87,7 +88,7 @@ export function GroupedWorkCard({
         <Link href={`/opac/record/${work.primaryBibId}`}>
           <div className="aspect-[2/3] bg-muted/50 relative">
             {work.coverUrl && !imageError ? (
-              <img
+              <UnoptimizedImage
                 src={work.coverUrl}
                 alt={work.title}
                 className="w-full h-full object-cover"
@@ -158,7 +159,7 @@ export function GroupedWorkCard({
         >
           <div className="w-24 h-36 bg-muted/50 rounded-lg overflow-hidden">
             {work.coverUrl && !imageError ? (
-              <img
+              <UnoptimizedImage
                 src={work.coverUrl}
                 alt={work.title}
                 className="w-full h-full object-cover"

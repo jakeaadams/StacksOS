@@ -6,6 +6,8 @@
 import { NextResponse } from "next/server";
 import { AuthenticationError, getErrorMessage } from "./client";
 import { logger } from "@/lib/logger";
+import { apiErrorResponsesTotal } from "@/lib/metrics";
+import { ZodType } from "zod";
 
 // ============================================================================
 // Success Responses
@@ -86,6 +88,14 @@ function getRequestId(req?: Request): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
+function recordApiError(context: string, status: number) {
+  try {
+    apiErrorResponsesTotal.inc({ context, status: String(status) });
+  } catch {
+    // Metrics must never break production traffic.
+  }
+}
+
 /**
  * Return a 500 server error response with structured logging.
  *
@@ -95,6 +105,7 @@ export function serverErrorResponse(error: unknown, context: string, req?: Reque
   // Normalize common control-flow errors into correct HTTP statuses.
   // Many routes call serverErrorResponse() directly from catch blocks.
   if (error instanceof AuthenticationError) {
+    recordApiError(context, 401);
     return unauthorizedResponse(error.message);
   }
 
@@ -106,6 +117,7 @@ export function serverErrorResponse(error: unknown, context: string, req?: Reque
 
     logger.warn({ requestId, route: context, missing }, "Permission denied");
 
+    recordApiError(context, 403);
     return errorResponse(message, 403, { missing, requestId });
   }
 
@@ -115,6 +127,7 @@ export function serverErrorResponse(error: unknown, context: string, req?: Reque
 
   logger.error({ requestId, route: context, error: details }, "Unhandled server error");
 
+  recordApiError(context, 500);
   const message = expose ? details.message : "Internal server error";
   const responseDetails = expose ? { ...details, requestId } : { requestId };
 
@@ -162,6 +175,27 @@ export async function parseJsonBody<T = any>(request: Request): Promise<T | Next
   } catch (_error) {
     return errorResponse("Invalid JSON body", 400);
   }
+}
+
+/**
+ * Parse and validate a JSON body against a Zod schema.
+ * Returns a typed object on success, or a NextResponse error on failure.
+ */
+export async function parseJsonBodyWithSchema<T>(
+  request: Request,
+  schema: ZodType<T>
+): Promise<T | NextResponse> {
+  const body = await parseJsonBody<unknown>(request);
+  if (body instanceof NextResponse) return body;
+
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    return errorResponse("Invalid request body", 400, {
+      issues: parsed.error.issues,
+    });
+  }
+
+  return parsed.data;
 }
 
 /**

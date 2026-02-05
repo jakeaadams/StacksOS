@@ -7,7 +7,7 @@ import {
   unauthorizedResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { cookies } from "next/headers";
+import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 
 /**
  * OPAC Patron Messages
@@ -19,32 +19,14 @@ import { cookies } from "next/headers";
 
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-    const patronId = cookieStore.get("patron_id")?.value;
-
-    if (!patronToken || !patronId) {
-      return unauthorizedResponse("Please log in to view messages");
-    }
-
-    // Verify session is still valid
-    const sessionResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.session.retrieve",
-      [patronToken]
-    );
-
-    const user = sessionResponse?.payload?.[0];
-    if (!user || user.ilsevent) {
-      return unauthorizedResponse("Session expired. Please log in again.");
-    }
+    const { patronToken, patronId } = await requirePatronSession();
 
     // Retrieve patron messages using open-ils.actor
     // Evergreen stores messages in actor.usr_message table
     const messagesResponse = await callOpenSRF(
       "open-ils.actor",
       "open-ils.actor.message.retrieve",
-      [patronToken, parseInt(patronId)]
+      [patronToken, patronId]
     );
 
     const messagesData = messagesResponse?.payload?.[0];
@@ -81,19 +63,17 @@ export async function GET(req: NextRequest) {
       unreadCount,
     });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return unauthorizedResponse(error.message);
+    }
     logger.error({ error: String(error) }, "Error fetching patron messages");
-    return serverErrorResponse(error, "Failed to fetch messages");
+    return serverErrorResponse(error, "Failed to fetch messages", req);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-
-    if (!patronToken) {
-      return unauthorizedResponse("Please log in to manage messages");
-    }
+    const { patronToken } = await requirePatronSession();
 
     const { action, messageIds } = await req.json();
 
@@ -168,8 +148,11 @@ export async function POST(req: NextRequest) {
       results,
     });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return unauthorizedResponse(error.message);
+    }
     logger.error({ error: String(error) }, "Error processing message action");
-    return serverErrorResponse(error, "Failed to process message action");
+    return serverErrorResponse(error, "Failed to process message action", req);
   }
 }
 

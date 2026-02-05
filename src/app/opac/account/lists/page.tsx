@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/usePatronSession";
 import { fetchWithAuth } from "@/lib/client-fetch";
+import { featureFlags } from "@/lib/feature-flags";
 import {
   Heart,
   BookOpen,
@@ -12,7 +14,6 @@ import {
   Plus,
   Trash2,
   Edit2,
-  MoreVertical,
   ChevronLeft,
   Loader2,
   AlertCircle,
@@ -56,6 +57,7 @@ const iconMap: Record<string, React.ElementType> = {
 export default function MyListsPage() {
   const router = useRouter();
   const { isLoggedIn, isLoading: sessionLoading } = usePatronSession();
+  const enabled = featureFlags.opacLists;
   const [lists, setLists] = useState<BookList[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,17 +73,7 @@ export default function MyListsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    if (!sessionLoading && !isLoggedIn) {
-      router.push("/opac/login?redirect=/opac/account/lists");
-      return;
-    }
-    if (isLoggedIn) {
-      fetchLists();
-    }
-  }, [isLoggedIn, sessionLoading, router]);
-
-  const fetchLists = async () => {
+  const fetchLists = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -97,19 +89,25 @@ export default function MyListsPage() {
 
       const data = await response.json();
       setLists(data.lists || []);
-      
-      // Select first list by default if none selected
-      if (data.lists?.length > 0 && !selectedList) {
-        selectList(data.lists[0]);
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router]);
 
-  const selectList = async (list: BookList) => {
+  useEffect(() => {
+    if (!enabled) return;
+    if (!sessionLoading && !isLoggedIn) {
+      router.push("/opac/login?redirect=/opac/account/lists");
+      return;
+    }
+    if (isLoggedIn) {
+      void fetchLists();
+    }
+  }, [enabled, fetchLists, isLoggedIn, sessionLoading, router]);
+
+  const selectList = useCallback(async (list: BookList) => {
     setSelectedList(list);
     setItemsLoading(true);
     
@@ -128,7 +126,13 @@ export default function MyListsPage() {
     } finally {
       setItemsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (lists.length > 0 && !selectedList) {
+      void selectList(lists[0]);
+    }
+  }, [lists, selectedList, selectList]);
 
 	  const createList = async () => {
     if (!newListName.trim()) return;
@@ -269,6 +273,29 @@ export default function MyListsPage() {
         item.author?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : listItems;
+
+  if (!enabled) {
+    return (
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center px-6 py-16">
+        <div className="max-w-md w-full bg-card rounded-2xl shadow-sm border border-border p-8 text-center">
+          <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Heart className="h-8 w-8 text-primary-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-4">Lists are disabled</h1>
+          <p className="text-muted-foreground mb-6">
+            This feature is still being integrated. Check back soon.
+          </p>
+          <Link
+            href="/opac"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white
+                     rounded-lg font-medium hover:bg-primary-700 transition-colors"
+          >
+            Back to catalog
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (sessionLoading || !isLoggedIn) {
     return (
@@ -464,9 +491,11 @@ export default function MyListsPage() {
                             {/* Cover */}
                             <div className="w-16 h-24 bg-muted rounded-lg shrink-0 overflow-hidden">
                               {item.coverUrl ? (
-                                <img
+                                <Image
                                   src={item.coverUrl}
-                                  alt=""
+                                  alt={`Cover of ${item.title || "item"}`}
+                                  width={64}
+                                  height={96}
                                   className="w-full h-full object-cover"
                                 />
                               ) : (

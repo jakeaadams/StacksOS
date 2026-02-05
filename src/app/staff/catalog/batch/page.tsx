@@ -5,14 +5,15 @@ import {
   PageContainer,
   PageHeader,
   PageContent,
-  EmptyState,
   StatusBadge,
+  EmptyState,
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fetchWithAuth } from "@/lib/client-fetch";
+import { featureFlags } from "@/lib/feature-flags";
 import { Layers, Play, FileText, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,10 +36,33 @@ const BATCH_OPERATIONS: BatchOperation[] = [
 ];
 
 export default function MarcBatchEditPage() {
+  const enabled = featureFlags.marcBatchEdit;
   const [selectedOp, setSelectedOp] = useState<string>("validate");
   const [recordIds, setRecordIds] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [results, setResults] = useState<BatchResult[]>([]);
+
+  if (!enabled) {
+    return (
+      <PageContainer>
+        <PageHeader
+          title="MARC Batch Operations"
+          subtitle="Batch workflows are behind a feature flag until write operations are end-to-end."
+          breadcrumbs={[
+            { label: "Cataloging", href: "/staff/cataloging" },
+            { label: "Batch" },
+          ]}
+        />
+        <PageContent>
+          <EmptyState
+            icon={Layers}
+            title="MARC batch operations are disabled"
+            description="This route is hidden by default to avoid dead UI. Enable it once your Evergreen permissions + bulk write workflows are validated."
+          />
+        </PageContent>
+      </PageContainer>
+    );
+  }
 
   const parseRecordIds = (): number[] => {
     return recordIds
@@ -76,12 +100,12 @@ export default function MarcBatchEditPage() {
           response = await fetchWithAuth(`/api/evergreen/catalog?action=holdings&id=${id}`);
           const data = await response.json();
           success = data.ok;
-          const copyCount = data.holdings?.length || 0;
+          const copyCount = Array.isArray(data.copies) ? data.copies.length : 0;
           message = success ? `${copyCount} copies found` : (data.error || "Failed to fetch holdings");
         }
 
         batchResults.push({ recordId: String(id), success, message });
-      } catch (error) {
+      } catch {
         batchResults.push({ recordId: String(id), success: false, message: "Network error" });
       }
     }

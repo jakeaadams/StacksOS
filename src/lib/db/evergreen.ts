@@ -1,22 +1,38 @@
-import { Pool, PoolClient } from 'pg';
+import { Pool, PoolClient } from "pg";
 import { logger } from "@/lib/logger";
+import { ensureLibrarySchemaExists } from "./library-schema";
 
 let pool: Pool | null = null;
 
 export function getEvergreenPool(): Pool {
   if (!pool) {
+    const host = String(process.env.EVERGREEN_DB_HOST || "").trim() || "127.0.0.1";
+    const portRaw = String(process.env.EVERGREEN_DB_PORT || "").trim();
+    const port = Number.isFinite(Number(portRaw)) ? parseInt(portRaw, 10) : 5432;
+    const database = String(process.env.EVERGREEN_DB_NAME || "").trim() || "evergreen";
+    const user = String(process.env.EVERGREEN_DB_USER || "").trim() || "stacksos_app";
+
+    if (process.env.NODE_ENV === "production") {
+      const missing: string[] = [];
+      if (!String(process.env.EVERGREEN_DB_HOST || "").trim()) missing.push("EVERGREEN_DB_HOST");
+      if (!String(process.env.EVERGREEN_DB_USER || "").trim()) missing.push("EVERGREEN_DB_USER");
+      if (missing.length) {
+        logger.warn({ component: "db", missing }, "Evergreen DB env vars missing; using safe defaults");
+      }
+    }
+
     pool = new Pool({
-      host: process.env.EVERGREEN_DB_HOST || '192.168.1.232',
-      port: parseInt(process.env.EVERGREEN_DB_PORT || '5432'),
-      database: process.env.EVERGREEN_DB_NAME || 'evergreen',
-      user: process.env.EVERGREEN_DB_USER || 'evergreen',
+      host,
+      port,
+      database,
+      user,
       password: process.env.EVERGREEN_DB_PASSWORD,
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
     });
 
-    pool.on('error', (err) => {
+    pool.on("error", (err) => {
       logger.error({ error: String(err) }, "Unexpected error on idle Evergreen database client");
     });
   }
@@ -67,9 +83,7 @@ export async function ensureCustomTables(): Promise<void> {
   if (tablesInitialized) return;
 
   try {
-    await query(`
-      CREATE SCHEMA IF NOT EXISTS library
-    `);
+    await ensureLibrarySchemaExists();
 
     await query(`
       CREATE TABLE IF NOT EXISTS library.custom_covers (
@@ -104,9 +118,7 @@ export async function ensurePatronPhotosTable(): Promise<void> {
   if (patronPhotosTableInitialized) return;
 
   try {
-    await query(`
-      CREATE SCHEMA IF NOT EXISTS library
-    `);
+    await ensureLibrarySchemaExists();
 
     await query(`
       CREATE TABLE IF NOT EXISTS library.patron_photos (
@@ -181,4 +193,24 @@ export async function getPatronPhotoUrl(patronId: number): Promise<string | null
   );
 
   return evergreen?.photo_url || null;
+}
+
+export async function clearPatronPhotoUrl(patronId: number, _clearedBy?: number): Promise<void> {
+  await ensurePatronPhotosTable();
+
+  await query(`DELETE FROM library.patron_photos WHERE patron_id = $1`, [patronId]);
+
+  // Best-effort: also clear Evergreen core so other clients stop displaying it.
+  try {
+    await query(
+      `
+        UPDATE actor.usr
+        SET photo_url = NULL
+        WHERE id = $1
+      `,
+      [patronId]
+    );
+  } catch (error) {
+    logger.warn({ error: String(error), patronId }, "Failed to clear actor.usr.photo_url");
+  }
 }

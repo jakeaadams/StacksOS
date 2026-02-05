@@ -1,4 +1,5 @@
 import { successResponse, errorResponse } from "@/lib/api";
+import { fetchEvergreen } from "@/lib/api/evergreen-fetch";
 
 const EVERGREEN_BASE = process.env.EVERGREEN_BASE_URL;
 
@@ -8,7 +9,7 @@ export async function GET() {
   }
 
   try {
-    const res = await fetch(`${EVERGREEN_BASE}/eg2/`, {
+    const res = await fetchEvergreen(`${EVERGREEN_BASE}/eg2/`, {
       method: "HEAD",
       redirect: "manual",
     });

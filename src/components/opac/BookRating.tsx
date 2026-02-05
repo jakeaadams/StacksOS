@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Star } from "lucide-react";
 
 interface BookRatingProps {
@@ -102,16 +102,19 @@ export function useBookRatings(isbns: string[]) {
   const [ratings, setRatings] = useState<Record<string, GoogleBookData | null>>({});
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const validIsbns = isbns
+  const isbnsKey = useMemo(() => {
+    return isbns
       .filter(Boolean)
       .map((i) => i.replace(/-/g, ""))
-      .filter((i) => i.length >= 10);
+      .filter((i) => i.length >= 10)
+      .join(",");
+  }, [isbns]);
 
-    if (validIsbns.length === 0) return;
+  useEffect(() => {
+    if (!isbnsKey) return;
 
     setLoading(true);
-    fetch(`/api/google-books?isbns=${validIsbns.join(",")}`)
+    fetch(`/api/google-books?isbns=${encodeURIComponent(isbnsKey)}`)
       .then((res) => res.json())
       .then((result) => {
         if (result && typeof result === "object") {
@@ -120,7 +123,7 @@ export function useBookRatings(isbns: string[]) {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [isbns.join(",")]);
+  }, [isbnsKey]);
 
   return { ratings, loading };
 }

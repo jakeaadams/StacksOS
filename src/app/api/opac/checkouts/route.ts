@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
           let author = "";
           let recordId = null;
           let isbn = null;
+          let coverUrl: string | null = null;
 
           if (copy?.call_number) {
             const volumeResponse = await callOpenSRF(
@@ -105,6 +106,8 @@ export async function GET(req: NextRequest) {
                 title = bib.title || "Unknown Title";
                 author = bib.author || "";
                 isbn = bib.isbn;
+                const cleaned = typeof isbn === "string" ? isbn.replace(/[^0-9Xx]/g, "") : "";
+                coverUrl = cleaned ? `https://covers.openlibrary.org/b/isbn/${cleaned}-M.jpg` : null;
               }
             }
           }
@@ -119,15 +122,13 @@ export async function GET(req: NextRequest) {
             title,
             author,
             isbn,
-            barcode: copy?.barcode,
-            callNumber: copy?.call_number_label || copy?.call_number,
+            coverUrl,
+            barcode: copy?.barcode || "",
             dueDate: circ.due_date,
             checkoutDate: circ.xact_start,
-            renewals: circ.renewal_remaining,
+            renewalsRemaining: circ.renewal_remaining,
             isOverdue,
-            isLost: checkoutData?.lost?.includes(circId),
-            isClaimsReturned: checkoutData?.claims_returned?.includes(circId),
-            circLib: circ.circ_lib,
+            format: "book",
           };
         } catch (error) {
           logger.error({ error: String(error) }, "Error fetching checkout details");

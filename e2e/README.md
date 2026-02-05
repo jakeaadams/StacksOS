@@ -9,7 +9,7 @@ Comprehensive Playwright end-to-end tests for StacksOS.
 - **smoke.spec.ts** - Basic smoke tests covering:
   - Homepage loading
   - Login page rendering
-  - Authentication with jake/jake credentials
+  - Authentication with Evergreen staff credentials (via env vars)
   - Staff dashboard access
   - API health checks
   - Login validation
@@ -46,9 +46,9 @@ npx playwright test
 
 ### Run specific test file
 ```bash
-npx playwright test smoke.spec.ts
-npx playwright test circulation.spec.ts
-npx playwright test catalog.spec.ts
+npx playwright test e2e/smoke.spec.ts
+npx playwright test e2e/circulation.spec.ts
+npx playwright test e2e/catalog.spec.ts
 ```
 
 ### Run with UI mode (interactive)
@@ -63,7 +63,7 @@ npx playwright test --headed
 
 ### Run specific test by name
 ```bash
-npx playwright test -g "login with jake"
+npx playwright test -g "login"
 ```
 
 ### Debug tests
@@ -103,8 +103,10 @@ All async operations use proper await:
 
 ## Environment
 
-- Base URL: http://localhost:3000 (configurable via BASE_URL env var)
-- Test credentials: jake/jake
+- Base URL: http://localhost:3001 by default (override with `BASE_URL` or `E2E_PORT`)
+- Staff credentials (required):
+  - `E2E_STAFF_USER`
+  - `E2E_STAFF_PASS`
 - Timeout: 30s per test
 - Retries: 2 (in CI only)
 

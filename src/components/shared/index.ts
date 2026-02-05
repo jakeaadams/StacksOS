@@ -183,12 +183,16 @@ export { PatronPhotoUpload } from './patron-photo-upload';
 
 export { InlineEdit } from './inline-edit';
 
+export { UnoptimizedImage } from "./unoptimized-image";
+export type { UnoptimizedImageProps } from "./unoptimized-image";
+
 // ============================================================================
 // Session Management
 // ============================================================================
 
 export { SessionTimeoutWarning } from "./session-timeout-warning";
 export type { default as SessionTimeoutWarningProps } from "./session-timeout-warning";
+export { IdleTimeoutWarning } from "./idle-timeout-warning";
 
 // ============================================================================
 // Lazy-Loaded Components (use for better bundle splitting)

@@ -1,0 +1,8 @@
+[Unit]
+Description=StacksOS scheduled reports runner (calls /api/reports/scheduled/run-due)
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/stacksos/stacksos.env
+ExecStart=/bin/bash /home/jake/projects/stacksos/ops/stacksos/stacksos_scheduled_reports.sh
+

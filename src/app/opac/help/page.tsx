@@ -12,14 +12,11 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
   Mail,
   Phone,
   MapPin,
   Smartphone,
   Download,
-  Shield,
-  Heart,
   AlertCircle,
 } from "lucide-react";
 
@@ -129,7 +126,7 @@ const faqs: FAQItem[] = [
 const categories = [...new Set(faqs.map((f) => f.category))];
 
 export default function HelpPage() {
-  const { library, currentLocation } = useLibrary();
+  const { currentLocation } = useLibrary();
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");

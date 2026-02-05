@@ -2,8 +2,9 @@
 import { clientLogger } from "@/lib/client-logger";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
+import { featureFlags } from "@/lib/feature-flags";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { BookCard } from "@/components/opac/BookCard";
 import {
@@ -31,6 +32,22 @@ interface NewTitle {
   totalCopies: number;
 }
 
+function transformResults(records: any[]): NewTitle[] {
+  return records.map((record) => ({
+    id: record.id,
+    title: record.title || "Unknown Title",
+    author: record.author,
+    coverUrl: record.coverUrl || (record.isbn
+      ? `https://covers.openlibrary.org/b/isbn/${record.isbn}-M.jpg`
+      : undefined),
+    publicationYear: record.pubdate ? parseInt(record.pubdate, 10) : undefined,
+    format: record.format || "Book",
+    dateAdded: record.create_date || record.createDate || new Date().toISOString(),
+    availableCopies: record.availableCopies || 0,
+    totalCopies: record.totalCopies || 0,
+  }));
+}
+
 const FORMAT_FILTERS = [
   { value: "all", label: "All Formats", icon: Sparkles },
   { value: "book", label: "Books", icon: BookOpen },
@@ -48,6 +65,7 @@ const TIME_FILTERS = [
 ];
 
 export default function NewTitlesPage() {
+  const enabled = featureFlags.opacBrowseV2;
   const [titles, setTitles] = useState<NewTitle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [formatFilter, setFormatFilter] = useState("all");
@@ -56,11 +74,8 @@ export default function NewTitlesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 24;
 
-  useEffect(() => {
-    fetchNewTitles();
-  }, [formatFilter, timeFilter, page]);
-
-  const fetchNewTitles = async () => {
+  const fetchNewTitles = useCallback(async () => {
+    if (!enabled) return;
     try {
       setIsLoading(true);
       
@@ -87,30 +102,46 @@ export default function NewTitlesPage() {
       if (response.ok) {
         const data = await response.json();
         setTitles(transformResults(data.records || []));
-        setTotalPages(Math.ceil((data.total || 0) / pageSize));
+        const totalCount = Number(data.count) || (Array.isArray(data.records) ? data.records.length : 0);
+        setTotalPages(Math.max(1, Math.ceil(totalCount / pageSize)));
       }
     } catch (error) {
       clientLogger.error("Error fetching new titles:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [enabled, formatFilter, page, pageSize, timeFilter]);
 
-  const transformResults = (records: any[]): NewTitle[] => {
-    return records.map((record) => ({
-      id: record.id,
-      title: record.title || "Unknown Title",
-      author: record.author,
-      coverUrl: record.coverUrl || record.isbn 
-        ? `https://covers.openlibrary.org/b/isbn/${record.isbn}-M.jpg`
-        : undefined,
-      publicationYear: record.pubdate ? parseInt(record.pubdate) : undefined,
-      format: record.format || "Book",
-      dateAdded: record.create_date || new Date().toISOString(),
-      availableCopies: record.availableCopies || 0,
-      totalCopies: record.totalCopies || 0,
-    }));
-  };
+  useEffect(() => {
+    if (!enabled) {
+      setIsLoading(false);
+      return;
+    }
+    void fetchNewTitles();
+  }, [enabled, fetchNewTitles]);
+
+  if (!enabled) {
+    return (
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center px-6 py-16">
+        <div className="max-w-md w-full bg-card rounded-2xl shadow-sm border border-border p-8 text-center">
+          <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Sparkles className="h-8 w-8 text-primary-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-4">New titles are disabled</h1>
+          <p className="text-muted-foreground mb-6">
+            Curated browse experiences are behind an experimental feature flag.
+          </p>
+          <Link
+            href="/opac/search"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white
+                     rounded-lg font-medium hover:bg-primary-700 transition-colors"
+          >
+            Search the catalog
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted/30">

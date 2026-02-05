@@ -2,7 +2,7 @@
 import { clientLogger } from "@/lib/client-logger";
 import { fetchWithAuth } from "@/lib/client-fetch";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePatronSession } from "@/hooks/usePatronSession";
 import {
   Star,
@@ -47,7 +47,7 @@ interface ReviewsSectionProps {
 }
 
 export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
-  const { isLoggedIn, patron } = usePatronSession();
+  const { isLoggedIn } = usePatronSession();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [stats, setStats] = useState<ReviewStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,11 +64,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  useEffect(() => {
-    fetchReviews();
-  }, [bibId, sort]);
-
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/opac/reviews?bibId=${bibId}&sort=${sort}`);
@@ -82,7 +78,11 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [bibId, sort]);
+
+  useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews]);
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();

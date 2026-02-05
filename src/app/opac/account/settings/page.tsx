@@ -3,7 +3,7 @@ import { clientLogger } from "@/lib/client-logger";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/usePatronSession";
@@ -33,19 +33,9 @@ interface PatronSettings {
   defaultPickupLocation?: number;
   defaultSearchLocation?: number;
   keepHistory: boolean;
+  personalizedRecommendations?: boolean;
+  readingHistoryPersonalization?: boolean;
 }
-
-const SMS_CARRIERS = [
-  { value: "", label: "Select carrier..." },
-  { value: "att", label: "AT&T" },
-  { value: "verizon", label: "Verizon" },
-  { value: "tmobile", label: "T-Mobile" },
-  { value: "sprint", label: "Sprint" },
-  { value: "cricket", label: "Cricket" },
-  { value: "metro", label: "Metro PCS" },
-  { value: "boost", label: "Boost Mobile" },
-  { value: "virgin", label: "Virgin Mobile" },
-];
 
 export default function AccountSettingsPage() {
   const router = useRouter();
@@ -57,6 +47,8 @@ export default function AccountSettingsPage() {
     holdNotifyPhone: false,
     overdueNotifyEmail: true,
     keepHistory: false,
+    personalizedRecommendations: false,
+    readingHistoryPersonalization: false,
   });
   
   const [isLoading, setIsLoading] = useState(true);
@@ -74,6 +66,21 @@ export default function AccountSettingsPage() {
   const [pinError, setPinError] = useState<string | null>(null);
   const [pinSuccess, setPinSuccess] = useState(false);
 
+  const fetchSettings = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetchWithAuth("/api/opac/settings");
+      if (response.ok) {
+        const data = await response.json();
+        setSettings((prev) => data.settings || prev);
+      }
+    } catch (err) {
+      clientLogger.error("Error fetching settings:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!sessionLoading && !isLoggedIn) {
       router.push("/opac/login?redirect=/opac/account/settings");
@@ -81,24 +88,9 @@ export default function AccountSettingsPage() {
     }
     
     if (isLoggedIn) {
-      fetchSettings();
+      void fetchSettings();
     }
-  }, [isLoggedIn, sessionLoading]);
-
-  const fetchSettings = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetchWithAuth("/api/opac/settings");
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data.settings || settings);
-      }
-    } catch (err) {
-      clientLogger.error("Error fetching settings:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [fetchSettings, isLoggedIn, router, sessionLoading]);
 
   const handleSave = async () => {
     try {
@@ -522,6 +514,68 @@ export default function AccountSettingsPage() {
                   {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   Save Changes
                 </button>
+              </div>
+            </div>
+
+            {/* Recommendations */}
+            <div className="bg-card rounded-xl border border-border p-6">
+              <h2 className="text-lg font-semibold text-foreground mb-2">Recommendations</h2>
+              <p className="text-muted-foreground text-sm mb-4">
+                Choose how StacksOS builds book recommendations. Personalization is off by default.
+              </p>
+
+              <div className="space-y-4">
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(settings.personalizedRecommendations)}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        personalizedRecommendations: e.target.checked,
+                        readingHistoryPersonalization: e.target.checked ? settings.readingHistoryPersonalization : false,
+                      })
+                    }
+                    className="mt-1 rounded border-border text-primary-600 focus:ring-primary-500"
+                  />
+                  <div>
+                    <span className="text-foreground font-medium">Enable personalized recommendations</span>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      When enabled, recommendations may use your holds and lists. Your reading history is never used
+                      unless you explicitly enable it below.
+                    </p>
+                  </div>
+                </label>
+
+                <label className={`flex items-start gap-3 ${settings.personalizedRecommendations ? "" : "opacity-60"}`}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(settings.readingHistoryPersonalization)}
+                    onChange={(e) => setSettings({ ...settings, readingHistoryPersonalization: e.target.checked })}
+                    disabled={!settings.personalizedRecommendations}
+                    className="mt-1 rounded border-border text-primary-600 focus:ring-primary-500"
+                  />
+                  <div>
+                    <span className="text-foreground font-medium">Use my reading history for recommendations</span>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      If enabled, recommendations may use your checkout history. This requires Reading History to be
+                      enabled above.
+                    </p>
+                  </div>
+                </label>
+
+                <div className="mt-2">
+                  <button type="button"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium
+                             hover:bg-primary-700 transition-colors disabled:opacity-50 
+                             flex items-center gap-2"
+                  >
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Save Changes
+                  </button>
+                </div>
               </div>
             </div>
           </div>

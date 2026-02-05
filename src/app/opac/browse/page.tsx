@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { featureFlags } from "@/lib/feature-flags";
 import {
   BookOpen,
   Music,
@@ -97,23 +98,47 @@ const BROWSE_CATEGORIES: BrowseCategory[] = [
 ];
 
 const FORMATS = [
-  { name: "Books", icon: BookOpen, query: "format:book" },
-  { name: "eBooks", icon: Computer, query: "format:ebook" },
-  { name: "Audiobooks", icon: Music, query: "format:audiobook" },
-  { name: "DVDs & Blu-ray", icon: Film, query: "format:dvd" },
-  { name: "Music CDs", icon: Music, query: "format:music" },
-  { name: "Video Games", icon: Gamepad2, query: "format:game" },
+  { name: "Books", icon: BookOpen, format: "book" },
+  { name: "eBooks", icon: Computer, format: "ebook" },
+  { name: "Audiobooks", icon: Music, format: "audiobook" },
+  { name: "DVDs & Blu-ray", icon: Film, format: "dvd" },
+  { name: "Music CDs", icon: Music, format: "music" },
+  { name: "Video Games", icon: Gamepad2, format: "game" },
 ];
 
 const QUICK_LISTS = [
   { name: "New Arrivals", icon: Sparkles, href: "/opac/new-titles" },
   { name: "Most Popular", icon: TrendingUp, href: "/opac/search?sort=popularity" },
-  { name: "Staff Picks", icon: Heart, href: "/opac/search?list=staff-picks" },
-  { name: "Award Winners", icon: Library, href: "/opac/search?subject=award+winners" },
+  { name: "Staff Picks", icon: Heart, href: "/opac/lists" },
+  { name: "Award Winners", icon: Library, href: `/opac/search?q=${encodeURIComponent("subject: award winners")}` },
 ];
 
 export default function BrowsePage() {
+  const enabled = featureFlags.opacBrowseV2;
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+
+  if (!enabled) {
+    return (
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center px-6 py-16">
+        <div className="max-w-md w-full bg-card rounded-2xl shadow-sm border border-border p-8 text-center">
+          <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Library className="h-8 w-8 text-primary-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-4">Browse is disabled</h1>
+          <p className="text-muted-foreground mb-6">
+            Browse experiences are behind an experimental feature flag.
+          </p>
+          <Link
+            href="/opac/search"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white
+                     rounded-lg font-medium hover:bg-primary-700 transition-colors"
+          >
+            Search the catalog
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -155,7 +180,7 @@ export default function BrowsePage() {
             {FORMATS.map((format) => (
               <Link
                 key={format.name}
-                href={`/opac/search?${format.query}`}
+                href={`/opac/search?format=${encodeURIComponent(format.format)}`}
                 className="flex flex-col items-center gap-2 p-4 bg-card rounded-xl border border-border 
                          hover:border-primary-300 hover:shadow-md transition-all text-center"
               >
@@ -201,7 +226,7 @@ export default function BrowsePage() {
                         {category.subjects.map((subject) => (
                           <Link
                             key={subject}
-                            href={`/opac/search?q=subject:${encodeURIComponent(subject)}`}
+                            href={`/opac/search?q=${encodeURIComponent(`subject: ${subject}`)}`}
                             className="block px-3 py-2 text-sm text-muted-foreground hover:bg-muted/30 
                                      hover:text-primary-600 rounded-lg transition-colors"
                           >
@@ -209,7 +234,7 @@ export default function BrowsePage() {
                           </Link>
                         ))}
                         <Link
-                          href={`/opac/search?q=subject:${encodeURIComponent(category.name)}`}
+                          href={`/opac/search?q=${encodeURIComponent(`subject: ${category.name}`)}`}
                           className="block px-3 py-2 text-sm font-medium text-primary-600 
                                    hover:bg-primary-50 rounded-lg transition-colors"
                         >
@@ -232,7 +257,7 @@ export default function BrowsePage() {
               {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((letter) => (
                 <Link
                   key={letter}
-                  href={`/opac/search?q=author:${letter}*&sort=author`}
+                  href={`/opac/search?q=author:${letter}*&sort=author_asc`}
                   className="w-10 h-10 flex items-center justify-center rounded-lg border border-border
                            hover:border-primary-300 hover:bg-primary-50 hover:text-primary-600 
                            font-medium text-foreground/80 transition-colors"

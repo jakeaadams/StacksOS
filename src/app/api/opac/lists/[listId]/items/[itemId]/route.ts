@@ -15,7 +15,7 @@ export async function DELETE(
   { params }: { params: Promise<{ listId: string; itemId: string }> }
 ) {
   try {
-    const { listId, itemId } = await params;
+    const { itemId } = await params;
     const cookieStore = await cookies();
     const patronToken = cookieStore.get("patron_authtoken")?.value;
 
@@ -39,6 +39,6 @@ export async function DELETE(
     return successResponse({ success: true, message: "Item removed from list" });
   } catch (error) {
     logger.error({ error: String(error) }, "Error removing item from list");
-    return serverErrorResponse(error, "Failed to remove item from list");
+    return serverErrorResponse(error, "Failed to remove item from list", req);
   }
 }

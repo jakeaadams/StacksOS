@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-
   callOpenSRF,
   requireAuthToken,
   successResponse,
@@ -8,12 +7,45 @@ import {
   serverErrorResponse,
   getErrorMessage,
   isOpenSRFEvent,
-  parseJsonBody,
+  parseJsonBodyWithSchema,
   getRequestMeta,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { z } from "zod";
 
+const MarcImportSchema = z
+  .object({
+    marcxml: z.string().min(1).optional(),
+    marcXml: z.string().min(1).optional(),
+    source: z.string().min(1).optional(),
+    auto_tcn: z.boolean().optional(),
+    autoTcn: z.boolean().optional(),
+    override: z.boolean().optional(),
+  })
+  .passthrough()
+  .refine((b) => Boolean(b.marcxml) || Boolean(b.marcXml), {
+    message: "marcxml is required",
+    path: ["marcxml"],
+  });
+
+const MarcUpdateSchema = z
+  .object({
+    recordId: z.union([z.number().int().positive(), z.string().min(1)]).optional(),
+    record_id: z.union([z.number().int().positive(), z.string().min(1)]).optional(),
+    id: z.union([z.number().int().positive(), z.string().min(1)]).optional(),
+    marcxml: z.string().min(1).optional(),
+    marcXml: z.string().min(1).optional(),
+  })
+  .passthrough()
+  .refine((b) => Boolean(b.recordId ?? b.record_id ?? b.id), {
+    message: "recordId is required",
+    path: ["recordId"],
+  })
+  .refine((b) => Boolean(b.marcxml) || Boolean(b.marcXml), {
+    message: "marcxml is required",
+    path: ["marcxml"],
+  });
 
 export async function GET(req: NextRequest) {
   try {
@@ -54,17 +86,15 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { ip, userAgent } = getRequestMeta(req);
+  const { ip, userAgent, requestId } = getRequestMeta(req);
   try {
-    const body = await parseJsonBody<Record<string, any>>(req);
-    if (body instanceof NextResponse) return body;
+    const body = await parseJsonBodyWithSchema(req, MarcImportSchema);
+    if (body instanceof NextResponse) return body as any;
 
     const { authtoken, actor } = await requirePermissions(["CREATE_MARC"]);
 
     const marcxml = body.marcxml || body.marcXml;
-    if (!marcxml || typeof marcxml !== "string") {
-      return errorResponse("marcxml is required", 400);
-    }
+    if (!marcxml || typeof marcxml !== "string") return errorResponse("marcxml is required", 400);
 
     const source = body.source || "System Local";
     const autoTcn = body.auto_tcn !== false && body.autoTcn !== false;
@@ -90,6 +120,7 @@ export async function POST(req: NextRequest) {
         actor,
         ip,
         userAgent,
+        requestId,
         details: { source, override },
         error: message,
       });
@@ -104,6 +135,7 @@ export async function POST(req: NextRequest) {
       actor,
       ip,
       userAgent,
+      requestId,
       details: { recordId, source, override },
       error: null,
     });
@@ -121,10 +153,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const { ip, userAgent } = getRequestMeta(req);
+  const { ip, userAgent, requestId } = getRequestMeta(req);
   try {
-    const body = await parseJsonBody<Record<string, any>>(req);
-    if (body instanceof NextResponse) return body;
+    const body = await parseJsonBodyWithSchema(req, MarcUpdateSchema);
+    if (body instanceof NextResponse) return body as any;
 
     const { authtoken, actor } = await requirePermissions(["UPDATE_MARC"]);
 
@@ -153,6 +185,7 @@ export async function PUT(req: NextRequest) {
         actor,
         ip,
         userAgent,
+        requestId,
         details: { recordId: Number(recordId) },
         error: message,
       });
@@ -165,6 +198,7 @@ export async function PUT(req: NextRequest) {
       actor,
       ip,
       userAgent,
+      requestId,
       details: { recordId: Number(recordId) },
       error: null,
     });

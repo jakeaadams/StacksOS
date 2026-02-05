@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+import { getStaffCredentials } from "./helpers";
+
 const authFile = "e2e/.auth/staff.json";
 
 test.describe("Smoke Tests", () => {
@@ -43,12 +45,13 @@ test.describe("Smoke Tests", () => {
     await expect(submitButton).toContainText(/sign in/i);
   });
 
-  test("login with jake/jake credentials works and redirects to staff dashboard", async ({ page }) => {
+  test("login with staff credentials works and redirects to staff dashboard", async ({ page }) => {
+    const { username, password } = getStaffCredentials();
     await page.goto("/login");
     
     // Fill in the login form
-    await page.locator("input#username").fill("jake");
-    await page.locator("input#password").fill("jake");
+    await page.locator("input#username").fill(username);
+    await page.locator("input#password").fill(password);
     
     // Submit the form with force to bypass Next.js dev overlay
     await page.locator("button[type='submit']").click({ force: true });

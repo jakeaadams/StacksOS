@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   PageContainer,
   PageHeader,
@@ -8,7 +8,6 @@ import {
   DataTable,
   EmptyState,
   StatusBadge,
-  LoadingSpinner,
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,7 +33,7 @@ export default function MyReportsPage() {
   const [reports, setReports] = useState<SavedReport[]>([]);
   const [runningId, setRunningId] = useState<string | null>(null);
 
-  const handleRunReport = async (report: SavedReport) => {
+  const handleRunReport = useCallback(async (report: SavedReport) => {
     setRunningId(report.id);
     setReports(prev => prev.map(r =>
       r.id === report.id ? { ...r, status: "running" as const } : r
@@ -60,7 +59,7 @@ export default function MyReportsPage() {
         ));
         toast.error("Report failed", { description: data.error });
       }
-    } catch (error) {
+    } catch {
       setReports(prev => prev.map(r =>
         r.id === report.id ? { ...r, status: "failed" as const } : r
       ));
@@ -68,9 +67,9 @@ export default function MyReportsPage() {
     } finally {
       setRunningId(null);
     }
-  };
+  }, []);
 
-  const handleDownload = async (report: SavedReport) => {
+  const handleDownload = useCallback(async (report: SavedReport) => {
     if (!report.data) {
       toast.error("Run the report first");
       return;
@@ -83,10 +82,10 @@ export default function MyReportsPage() {
       
       exportToCSV(generateExportFilename(report.name), flatData);
       toast.success("Downloaded", { description: `${report.name}.csv` });
-    } catch (error) {
+    } catch {
       toast.error("Download failed");
     }
-  };
+  }, []);
 
   const columns: ColumnDef<SavedReport>[] = useMemo(() => [
     {
@@ -158,7 +157,7 @@ export default function MyReportsPage() {
         </div>
       ),
     },
-  ], [runningId]);
+  ], [handleDownload, handleRunReport, runningId]);
 
   if (!enabled) {
     return (

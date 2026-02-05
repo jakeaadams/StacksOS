@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   PageContainer,
   PageHeader,
@@ -31,6 +31,8 @@ export default function WorkstationsPage() {
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
   const [newWorkstationName, setNewWorkstationName] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
+  const registerCardRef = useRef<HTMLDivElement | null>(null);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!selectedOrgId && orgs.length > 0) {
@@ -166,11 +168,12 @@ export default function WorkstationsPage() {
             <CardTitle className="text-base">Register New Workstation</CardTitle>
             <CardDescription>Add a new circulation workstation to an organization.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4" ref={registerCardRef}>
             <div className="grid gap-4 sm:grid-cols-[1fr,200px,auto]">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Workstation Name</label>
                 <Input
+                  ref={nameInputRef}
                   value={newWorkstationName}
                   onChange={(e) => setNewWorkstationName(e.target.value)}
                   placeholder="e.g., CIRC-DESK-01"
@@ -234,13 +237,24 @@ export default function WorkstationsPage() {
               searchable={true}
               searchPlaceholder="Search workstations..."
               paginated={workstations.length > 10}
-              emptyState={
-                <EmptyState
-                  title="No workstations"
-                  description="No workstations registered for this organization."
-                />
-              }
-            />
+	              emptyState={
+	                <EmptyState
+	                  title="No workstations"
+	                  description="No workstations registered for this organization."
+	                  action={{
+	                    label: "Register workstation",
+	                    onClick: () => {
+	                      registerCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+	                      setTimeout(() => nameInputRef.current?.focus(), 150);
+	                    },
+	                  }}
+	                  secondaryAction={{
+	                    label: "Evergreen setup",
+	                    onClick: () => window.location.assign("/staff/help#evergreen-setup"),
+	                  }}
+	                />
+	              }
+	            />
           </CardContent>
         </Card>
       </PageContent>

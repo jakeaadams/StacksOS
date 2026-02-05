@@ -3,20 +3,17 @@
 import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLibrary } from "@/hooks/useLibrary";
 import {
   User,
   Mail,
-  Phone,
   MapPin,
   CreditCard,
   CheckCircle,
   AlertCircle,
   Loader2,
   ChevronRight,
-  Shield,
   BookOpen,
   Smartphone,
   Users,
@@ -59,7 +56,6 @@ const initialFormData: FormData = {
 };
 
 export default function RegisterPage() {
-  const router = useRouter();
   const { library } = useLibrary();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<FormData>(initialFormData);

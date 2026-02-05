@@ -391,7 +391,7 @@ export default function LibrarySettingsPage() {
         </Card>
 
         {/* Settings Table with Tabs */}
-        <Card className="rounded-2xl">
+        <Card className="rounded-2xl" id="setting-types">
           <CardHeader className="pb-0">
             <Tabs value={activeCategory} onValueChange={setActiveCategory}>
               <TabsList>
@@ -435,10 +435,18 @@ export default function LibrarySettingsPage() {
           </CardHeader>
           <CardContent>
             {settings.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No settings have been explicitly configured for this organization.
-                Settings will inherit from parent organizations.
-              </p>
+              <EmptyState
+                title="No explicit settings configured"
+                description="This organization is inheriting settings from its parent org units."
+                action={{
+                  label: "Browse setting types",
+                  onClick: () => document.getElementById("setting-types")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                }}
+                secondaryAction={{
+                  label: "Evergreen setup checklist",
+                  onClick: () => window.location.assign("/staff/help#evergreen-setup"),
+                }}
+              />
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {settings.slice(0, 12).map((setting) => (

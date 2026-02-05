@@ -12,7 +12,6 @@ import {
   EmptyState,
   ErrorMessage,
   SetupRequired,
-  SETUP_CONFIGS,
 } from "@/components/shared";
 
 import {
@@ -31,7 +30,7 @@ import { MapPin, RefreshCw } from "lucide-react";
 
 interface RoutingRow {
   id: number;
-  user?: number;
+  user?: any;
   subscription?: number;
   position?: number;
 }
@@ -53,15 +52,64 @@ export default function RoutingPage() {
   const routing: RoutingRow[] = data?.routing || [];
   const message = typeof data?.message === "string" ? data.message : "";
 
+  const getUserDisplay = (u: any): string => {
+    if (!u) return "—";
+    if (typeof u === "number") return String(u);
+    if (typeof u === "object") {
+      const name =
+        [u.first_given_name, u.family_name].filter(Boolean).join(" ") ||
+        u.usrname ||
+        u.username;
+      return name ? String(name) : String(u.id || "—");
+    }
+    return String(u);
+  };
+
   const columns = useMemo<ColumnDef<RoutingRow>[]>(
     () => [
       { accessorKey: "id", header: "ID" },
       { accessorKey: "subscription", header: "Subscription" },
-      { accessorKey: "user", header: "User" },
+      {
+        accessorKey: "user",
+        header: "User",
+        cell: ({ row }) => <span>{getUserDisplay(row.original.user)}</span>,
+      },
       { accessorKey: "position", header: "Position" },
     ],
     []
   );
+
+  const printSlip = () => {
+    if (routing.length === 0) return;
+    const rows = routing
+      .slice()
+      .sort((a, b) => Number(a.position || 0) - Number(b.position || 0))
+      .map((r) => `<tr><td style="padding:6px 8px;border-bottom:1px solid #ddd;">${r.position ?? ""}</td><td style="padding:6px 8px;border-bottom:1px solid #ddd;">${getUserDisplay(r.user)}</td></tr>`)
+      .join("");
+
+    const html = `
+      <html>
+        <head>
+          <title>Routing Slip</title>
+          <meta charset="utf-8" />
+        </head>
+        <body style="font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding:24px;">
+          <h2 style="margin:0 0 8px 0;">Serial Routing Slip</h2>
+          <div style="margin:0 0 16px 0; color:#555;">Stream: ${streamId || "—"}</div>
+          <table style="border-collapse:collapse; width:100%; max-width:560px;">
+            <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #333;">Pos</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #333;">User</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <script>window.print();</script>
+        </body>
+      </html>
+    `;
+    const w = window.open("", "_blank", "noopener,noreferrer");
+    if (!w) return;
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
 
   // Show SetupRequired when first loading without a stream_id
   const showSetup = !streamId && !isLoading && routing.length === 0 && !error;
@@ -124,6 +172,11 @@ export default function RoutingPage() {
         title="Routing Lists"
         subtitle="Serial routing lists from Evergreen."
         breadcrumbs={[{ label: "Serials", href: "/staff/serials" }, { label: "Routing" }]}
+        actions={
+          routing.length > 0
+            ? [{ label: "Print slip", onClick: printSlip, icon: MapPin, variant: "outline" as const }]
+            : undefined
+        }
       />
       <PageContent className="space-y-6">
         {error && (
@@ -189,6 +242,11 @@ export default function RoutingPage() {
                       ? "No routing list users were returned for this stream_id."
                       : "Provide a stream_id to load a routing list.")
                   }
+                  action={{ label: "Serials setup", onClick: () => router.push("/staff/help#serials") }}
+                  secondaryAction={{
+                    label: "Seed demo data",
+                    onClick: () => router.push("/staff/help#demo-data"),
+                  }}
                 />
               }
             />

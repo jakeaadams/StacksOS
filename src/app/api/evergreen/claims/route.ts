@@ -11,6 +11,8 @@ import {
   getCopyByBarcode,
   getPatronById,
   encodeFieldmapper,
+  fmNumber,
+  fmString,
   getRequestMeta,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
@@ -89,65 +91,101 @@ export async function GET(req: NextRequest) {
       const pid = toInt(patronId);
       if (!pid) return errorResponse("Invalid patron_id", 400);
 
-      const checkoutsResponse = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.actor.user.checked_out",
-        [authtoken, pid]
-      );
+      // Claims Returned is not reliably exposed via the "checked_out" payload across Evergreen installs.
+      // Derive a durable list by querying circulations with stop_fines=CLAIMSRETURNED for this patron.
+      // Prefer *open* circulations (checkin_time IS NULL), since the Claims Returned staff workflow
+      // is about managing currently-claimed items.
+      let claimsReturned: any[] = [];
+      try {
+        const claimsCircsResponse = await callOpenSRF(
+          "open-ils.pcrud",
+          "open-ils.pcrud.search.circ.atomic",
+          [
+            authtoken,
+            { usr: pid, stop_fines: "CLAIMSRETURNED", checkin_time: null },
+            { limit: 100, order_by: { circ: "stop_fines_time DESC" } },
+          ]
+        );
+        const claimsCircs = claimsCircsResponse?.payload?.[0];
+        claimsReturned = Array.isArray(claimsCircs) ? claimsCircs : [];
+      } catch (e) {
+        // Some Evergreen installs are picky about pcrud filtering/ordering. Fall back to a broader
+        // query and filter locally.
+        logger.warn(
+          { error: String(e), patronId: pid },
+          "Claims: stop_fines query failed; falling back to local filtering"
+        );
 
-      const checkouts = checkoutsResponse?.payload?.[0];
-      const claimsReturned = checkouts?.claims_returned || [];
+        const fallbackResponse = await callOpenSRF(
+          "open-ils.pcrud",
+          "open-ils.pcrud.search.circ.atomic",
+          [authtoken, { usr: pid, checkin_time: null }, { limit: 500, order_by: { circ: "xact_start DESC" } }]
+        );
+        const fallbackCircs = fallbackResponse?.payload?.[0];
+        const allCircs = Array.isArray(fallbackCircs) ? fallbackCircs : [];
+        claimsReturned = allCircs.filter(
+          (c: any) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED"
+        );
+      }
 
       const detailedClaims: Record<string, unknown>[] = [];
       for (const claim of claimsReturned) {
-        const circIdVal = claim.id || claim.__p?.[0];
+        const circIdVal = fmNumber(claim, "id", 10);
         if (!circIdVal) continue;
 
-        const copyId = claim.target_copy || claim.__p?.[2];
-        if (copyId) {
-          try {
-            const copyResponse = await callOpenSRF(
+        const copyId = fmNumber(claim, "target_copy", 21);
+        const claimDate = fmString(claim, "stop_fines_time", 20);
+        const dueDate = fmString(claim, "due_date", 6);
+        const checkoutDate = fmString(claim, "xact_start", 24);
+
+        if (!copyId) {
+          detailedClaims.push({ circId: circIdVal, copyId: null, claimDate, dueDate, checkoutDate });
+          continue;
+        }
+
+        try {
+          const copyResponse = await callOpenSRF(
+            "open-ils.search",
+            "open-ils.search.asset.copy.retrieve",
+            [copyId]
+          );
+          const copy = copyResponse?.payload?.[0];
+
+          let title = "Unknown";
+          const rawCallNumber = (copy as any)?.call_number;
+          if (rawCallNumber) {
+            const cnId =
+              typeof rawCallNumber === "object"
+                ? fmNumber(rawCallNumber, "id", 4) ?? (rawCallNumber as any).id
+                : rawCallNumber;
+            const cnResponse = await callOpenSRF(
               "open-ils.search",
-              "open-ils.search.asset.copy.retrieve",
-              [copyId]
+              "open-ils.search.asset.call_number.retrieve",
+              [cnId]
             );
-            const copy = copyResponse?.payload?.[0];
-
-            let title = "Unknown";
-            if (copy?.call_number) {
-              const cnId = typeof copy.call_number === "object" ? copy.call_number.id : copy.call_number;
-              const cnResponse = await callOpenSRF(
+            const cn = cnResponse?.payload?.[0];
+            const recordId = (cn as any)?.record;
+            if (recordId) {
+              const bibResponse = await callOpenSRF(
                 "open-ils.search",
-                "open-ils.search.asset.call_number.retrieve",
-                [cnId]
+                "open-ils.search.biblio.record.mods_slim.retrieve",
+                [recordId]
               );
-              const cn = cnResponse?.payload?.[0];
-              if (cn?.record) {
-                const bibResponse = await callOpenSRF(
-                  "open-ils.search",
-                  "open-ils.search.biblio.record.mods_slim.retrieve",
-                  [cn.record]
-                );
-                title = bibResponse?.payload?.[0]?.title || "Unknown";
-              }
+              title = bibResponse?.payload?.[0]?.title || "Unknown";
             }
-
-            detailedClaims.push({
-              circId: circIdVal,
-              copyId,
-              barcode: copy?.barcode,
-              title,
-              claimDate: claim.stop_fines_time || claim.__p?.[8],
-              dueDate: claim.due_date || claim.__p?.[6],
-              checkoutDate: claim.xact_start || claim.__p?.[24],
-            });
-          } catch {
-            detailedClaims.push({
-              circId: circIdVal,
-              copyId,
-              claimDate: claim.stop_fines_time || claim.__p?.[8],
-            });
           }
+
+          detailedClaims.push({
+            circId: circIdVal,
+            copyId,
+            barcode: (copy as any)?.barcode || null,
+            title,
+            claimDate,
+            dueDate,
+            checkoutDate,
+          });
+        } catch {
+          detailedClaims.push({ circId: circIdVal, copyId, claimDate, dueDate, checkoutDate });
         }
       }
 
@@ -171,8 +209,8 @@ export async function GET(req: NextRequest) {
           neverCheckedOut: [],
         },
         counts: {
-          claimsReturned: patron?.claims_returned_count || 0,
-          claimsNeverCheckedOut: patron?.claims_never_checked_out_count || 0,
+          claimsReturned: fmNumber(patron, "claims_returned_count", 16) || 0,
+          claimsNeverCheckedOut: fmNumber(patron, "claims_never_checked_out_count", 17) || 0,
         },
         relatedBills: claimBills,
         totalBillsOwed: claimBills.reduce(
@@ -197,7 +235,7 @@ export async function GET(req: NextRequest) {
         return notFoundResponse("Circulation not found");
       }
 
-      const stopFines = circ.stop_fines || circ.__p?.[7];
+      const stopFines = fmString(circ, "stop_fines", 19) || (circ as any).stop_fines || null;
       const isClaimsReturned = stopFines === "CLAIMSRETURNED";
 
       const billsResponse = await callOpenSRF(
@@ -210,11 +248,12 @@ export async function GET(req: NextRequest) {
       return successResponse({
         circulation: {
           id: cid,
-          patronId: circ.usr || circ.__p?.[1],
-          copyId: circ.target_copy || circ.__p?.[2],
-          dueDate: circ.due_date || circ.__p?.[6],
+          patronId: fmNumber(circ, "usr", 22) ?? (circ as any).usr ?? null,
+          copyId: fmNumber(circ, "target_copy", 21) ?? (circ as any).target_copy ?? null,
+          dueDate: fmString(circ, "due_date", 6) ?? (circ as any).due_date ?? null,
           stopFines,
-          stopFinesTime: circ.stop_fines_time || circ.__p?.[8],
+          stopFinesTime:
+            fmString(circ, "stop_fines_time", 20) ?? (circ as any).stop_fines_time ?? null,
           isClaimsReturned,
         },
         bills: Array.isArray(bills) ? bills : [],
@@ -236,7 +275,7 @@ export async function GET(req: NextRequest) {
 
       const circs = circResponse?.payload?.[0] || [];
       const claimsReturnedCircs = (Array.isArray(circs) ? circs : []).filter(
-        (c: any) => (c.stop_fines || c.__p?.[7]) === "CLAIMSRETURNED"
+        (c: any) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED"
       );
 
       return successResponse({
@@ -250,9 +289,9 @@ export async function GET(req: NextRequest) {
           isDamaged: copy.status === 14,
         },
         claimsReturnedHistory: claimsReturnedCircs.map((c: any) => ({
-          circId: c.id || c.__p?.[0],
-          patronId: c.usr || c.__p?.[1],
-          claimDate: c.stop_fines_time || c.__p?.[8],
+          circId: fmNumber(c, "id", 10) ?? null,
+          patronId: fmNumber(c, "usr", 22) ?? null,
+          claimDate: fmString(c, "stop_fines_time", 20) ?? null,
         })),
       });
     }
@@ -307,21 +346,102 @@ export async function POST(req: NextRequest) {
           return notFoundResponse("Circulation not found");
         }
 
-        const circPatronId = circ.usr || circ.__p?.[1];
+        const circPatronId = fmNumber(circ, "usr", 22) ?? (circ as any).usr ?? null;
+
+        // Some Evergreen installs require the copy barcode in the claims-returned payload.
+        // Prefer the request-provided copyBarcode (best for audits/QA), otherwise derive it
+        // from the circulation when possible.
+        let resolvedCopyBarcode: string | null =
+          typeof copyBarcode === "string" && copyBarcode.trim() ? copyBarcode.trim() : null;
+
+        if (!resolvedCopyBarcode) {
+          const rawCopyId =
+            fmNumber(circ, "target_copy", 21) ??
+            (circ as any).target_copy ??
+            (circ as any).targetCopy ??
+            (circ as any).copy ??
+            (circ as any).target;
+          const copyId = toInt(rawCopyId);
+          if (copyId) {
+            try {
+              const copyResponse = await callOpenSRF(
+                "open-ils.search",
+                "open-ils.search.asset.copy.retrieve",
+                [copyId]
+              );
+              const copy = copyResponse?.payload?.[0];
+              if (copy && !copy.ilsevent && typeof (copy as any).barcode === "string" && (copy as any).barcode.trim()) {
+                resolvedCopyBarcode = (copy as any).barcode.trim();
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+
+        if (!resolvedCopyBarcode) {
+          return errorResponse("copyBarcode required (unable to derive from circulation)", 400);
+        }
+
+        // Read pre-action claim count for mismatch warnings (Evergreen can be configured to increment
+        // this more than once per action via DB triggers).
+        let claimCountBefore: number | null = null;
+        if (circPatronId) {
+          try {
+            const patronBefore = await getPatronById(authtoken, circPatronId);
+            claimCountBefore = fmNumber(patronBefore, "claims_returned_count", 16) ?? null;
+          } catch {
+            // ignore
+          }
+        }
+
+        const payload: Record<string, any> = { barcode: resolvedCopyBarcode };
+        if (claimDate) payload.backdate = claimDate;
 
         const claimResponse = await callOpenSRF(
           "open-ils.circ",
           "open-ils.circ.circulation.set_claims_returned",
-          [authtoken, { circ_id: cid, backdate: claimDate || null }]
+          [authtoken, payload]
         );
-
         const result = claimResponse?.payload?.[0];
 
         if (isSuccessResult(result)) {
+          // Identify the circ that was actually affected (renewals can cause circId drift, and
+          // Evergreen's set_claims_returned targets the *open* circ by copy barcode).
+          let effectiveCircId: number | null = null;
+          let effectiveStopFines: string | null = null;
+          try {
+            const copy = await getCopyByBarcode(resolvedCopyBarcode);
+            const copyId = fmNumber(copy, "id", 4) ?? (copy as any)?.id;
+            if (copyId) {
+              const openCircResponse = await callOpenSRF(
+                "open-ils.pcrud",
+                "open-ils.pcrud.search.circ.atomic",
+                [
+                  authtoken,
+                  { checkin_time: null, target_copy: copyId },
+                  { limit: 1, order_by: { circ: "xact_start DESC" } },
+                ]
+              );
+              const rows = openCircResponse?.payload?.[0];
+              const openCirc = Array.isArray(rows) ? rows[0] : null;
+              if (openCirc) {
+                effectiveCircId = fmNumber(openCirc, "id", 10) ?? null;
+                effectiveStopFines = fmString(openCirc, "stop_fines", 19) ?? null;
+              }
+            }
+          } catch (e) {
+            logger.warn(
+              { requestId, error: String(e) },
+              "Claims: failed to resolve effective circ after claims_returned"
+            );
+          }
+
+          const billsCircId = effectiveCircId || cid;
           const billsResponse = await callOpenSRF(
             "open-ils.circ",
             "open-ils.circ.money.billing.retrieve.all",
-            [authtoken, cid]
+            [authtoken, billsCircId]
           );
           const bills = billsResponse?.payload?.[0] || [];
 
@@ -340,29 +460,53 @@ export async function POST(req: NextRequest) {
             };
           }
 
-          let newClaimCount = null;
+          let newClaimCount: number | null = null;
+          let claimCountDelta: number | null = null;
           if (circPatronId) {
             try {
+              // Evergreen's `set_claims_returned` implementation is responsible for updating
+              // patron claim counts. We only report the post-action value for UI feedback.
               const patron = await getPatronById(authtoken, circPatronId);
-              const currentCount = Number(patron?.claims_returned_count || 0);
-              const counts = await updateClaimCounts(authtoken, circPatronId, {
-                claimsReturnedCount: currentCount + 1,
-              });
-              newClaimCount = counts.claimsReturnedCount;
+              newClaimCount = fmNumber(patron, "claims_returned_count", 16) ?? 0;
+              if (typeof claimCountBefore === "number") {
+                claimCountDelta = newClaimCount - claimCountBefore;
+              }
             } catch (e) {
-              logger.warn({ requestId, error: String(e) }, "Failed to update claim count");
+              logger.warn({ requestId, error: String(e) }, "Failed to read claim count");
             }
           }
 
-          await audit("success", { circId: cid, claimDate, patronId: circPatronId, note });
+          const warnings: string[] = [];
+          if (effectiveCircId && effectiveCircId !== cid) {
+            warnings.push(`claims_returned affected circ ${effectiveCircId} (requested circ ${cid})`);
+          }
+          if (effectiveStopFines && effectiveStopFines !== "CLAIMSRETURNED") {
+            warnings.push(`effective circulation stop_fines=${effectiveStopFines} (expected CLAIMSRETURNED)`);
+          }
+          if (typeof claimCountDelta === "number" && claimCountDelta !== 1) {
+            warnings.push(`claims_returned_count changed by ${claimCountDelta} (expected 1)`);
+          }
+
+          await audit("success", {
+            circId: cid,
+            effectiveCircId,
+            claimDate,
+            patronId: circPatronId,
+            note,
+            warnings: warnings.length > 0 ? warnings : null,
+          });
 
           return successResponse(
             {
               action: "claims_returned",
               circId: cid,
+              effectiveCircId,
+              effectiveStopFines,
               fineAdjustment,
               newClaimCount,
+              claimCountDelta,
               currentBills: Array.isArray(bills) ? bills : [],
+              warning: warnings.length > 0 ? warnings.join("; ") : null,
             },
             "Item marked as Claims Returned"
           );
@@ -464,12 +608,29 @@ export async function POST(req: NextRequest) {
 
         const { resolution, voidFines } = body;
 
-        const checkinResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.checkin", [
+        const checkinPayload: Record<string, any> = { copy_barcode: copyBarcode, noop: false };
+
+        let checkinResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.checkin", [
           authtoken,
-          { copy_barcode: copyBarcode, noop: false },
+          checkinPayload,
         ]);
 
-        const result = checkinResponse?.payload?.[0];
+        let result = checkinResponse?.payload?.[0];
+
+        // Some Evergreen installs require an explicit override method for
+        // CLAIMS_RETURNED circulations.
+        const textcode = typeof result?.textcode === "string" ? result.textcode : undefined;
+        if (textcode === "CIRC_CLAIMS_RETURNED") {
+          try {
+            checkinResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.checkin.override", [
+              authtoken,
+              { ...checkinPayload, override: true },
+            ]);
+            result = checkinResponse?.payload?.[0];
+          } catch {
+            // ignore and fall through to the standard error handling below
+          }
+        }
 
         if (isSuccessResult(result) || result?.payload) {
           const response: Record<string, unknown> = {

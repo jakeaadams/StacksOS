@@ -1,9 +1,12 @@
 import { NextRequest } from "next/server";
 import {
   callOpenSRF,
+  encodeFieldmapper,
   successResponse,
   errorResponse,
   serverErrorResponse,
+  getErrorMessage,
+  isOpenSRFEvent,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 
@@ -24,23 +27,14 @@ interface Bucket {
   itemCount: number;
 }
 
-async function getStaffIdFromSession(authtoken: string): Promise<number> {
-  const sessionRes = await callOpenSRF(
-    "open-ils.auth",
-    "open-ils.auth.session.retrieve",
-    [authtoken]
-  );
-  const session = sessionRes?.payload?.[0];
-  if (!session || session.ilsevent) {
-    throw new Error("Failed to get session");
-  }
-  return session.usrname ? session.id : session;
-}
-
 export async function GET(req: NextRequest) {
   try {
-    const { authtoken } = await requirePermissions(["STAFF_LOGIN"]);
-    const staffId = await getStaffIdFromSession(authtoken);
+    const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
+    const staffIdRaw = actor?.id ?? actor?.usr ?? actor?.user_id;
+    const staffId = typeof staffIdRaw === "number" ? staffIdRaw : parseInt(String(staffIdRaw ?? ""), 10);
+    if (!Number.isFinite(staffId)) {
+      return errorResponse("Unable to resolve staff user id", 500);
+    }
     const searchParams = req.nextUrl.searchParams;
     const includeShared = searchParams.get("shared") === "true";
 
@@ -56,6 +50,10 @@ export async function GET(req: NextRequest) {
 
     if (Array.isArray(rawBuckets)) {
       for (const b of rawBuckets) {
+        if (!includeShared && Number(b.owner) !== staffId) {
+          continue;
+        }
+
         let itemCount = 0;
         try {
           const itemsRes = await callOpenSRF(
@@ -67,7 +65,7 @@ export async function GET(req: NextRequest) {
           if (fleshed && fleshed.items) {
             itemCount = fleshed.items.length;
           }
-        } catch (error) {
+        } catch {
           // Continue with 0 count
         }
 
@@ -96,8 +94,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { authtoken } = await requirePermissions(["STAFF_LOGIN"]);
-    const staffId = await getStaffIdFromSession(authtoken);
+    const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
+    const staffIdRaw = actor?.id ?? actor?.usr ?? actor?.user_id;
+    const staffId = typeof staffIdRaw === "number" ? staffIdRaw : parseInt(String(staffIdRaw ?? ""), 10);
+    if (!Number.isFinite(staffId)) {
+      return errorResponse("Unable to resolve staff user id", 500);
+    }
     const body = await req.json();
 
     const { action, name, description, bucketId, recordId, pub } = body;
@@ -113,19 +115,21 @@ export async function POST(req: NextRequest) {
         [
           authtoken,
           "biblio",
-          {
+          encodeFieldmapper("cbreb", {
             owner: staffId,
             name,
             description: description || "",
             btype: "staff_client",
             pub: pub === true ? "t" : "f",
-          },
+            isnew: 1,
+            ischanged: 1,
+          }),
         ]
       );
 
       const result = createRes?.payload?.[0];
-      if (!result || result.ilsevent) {
-        return errorResponse(result?.desc || "Failed to create bucket", 400);
+      if (!result || isOpenSRFEvent(result) || (result as any)?.ilsevent) {
+        return errorResponse(getErrorMessage(result, "Failed to create bucket"), 400, result);
       }
 
       return successResponse({
@@ -153,16 +157,18 @@ export async function POST(req: NextRequest) {
         [
           authtoken,
           "biblio",
-          {
+          encodeFieldmapper("cbrebi", {
             bucket: bucketId,
             target_biblio_record_entry: recordId,
-          },
+            isnew: 1,
+            ischanged: 1,
+          }),
         ]
       );
 
       const result = addRes?.payload?.[0];
-      if (!result || result.ilsevent) {
-        return errorResponse(result?.desc || "Failed to add record to bucket", 400);
+      if (!result || isOpenSRFEvent(result) || (result as any)?.ilsevent) {
+        return errorResponse(getErrorMessage(result, "Failed to add record to bucket"), 400, result);
       }
 
       return successResponse({ itemId: result });

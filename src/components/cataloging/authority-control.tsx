@@ -99,8 +99,6 @@ async function searchVIAF(query: string, type: string): Promise<AuthorityRecord[
   try {
     // VIAF AutoSuggest API
     // Using JSONP-style callback for CORS, but we can also use their JSON API
-    const searchType = type === "author" ? "personalNames" : type === "subject" ? "uniformTitleWorks" : "all";
-    
     const url = `https://viaf.org/viaf/AutoSuggest?query=${encodeURIComponent(query)}`;
     
     const response = await fetch(url, {
@@ -136,7 +134,7 @@ async function searchVIAF(query: string, type: string): Promise<AuthorityRecord[
 }
 
 export function AuthorityLink({
-  marcTag,
+  marcTag: _marcTag,
   currentValue,
   fieldType,
   onLink,

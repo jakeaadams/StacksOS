@@ -547,7 +547,7 @@ Principles:
 Dev (stacksos VM):
 - Start: `cd ~/projects/stacksos && pnpm dev`
 - URL: `http://<stacksos-ip>:3000/login`
-- Login: Evergreen staff user (e.g., `jake` / `jake`).
+- Login: Evergreen staff user credentials (username/password).
 - Notes:
   - Next.js shows a small dev indicator ("N") in the corner in dev mode.
   - Changes apply live; restart only if the dev server is wedged.

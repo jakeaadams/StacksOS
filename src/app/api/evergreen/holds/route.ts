@@ -186,7 +186,7 @@ export async function GET(req: NextRequest) {
         );
 
         const list = normalizeListPayload(pullResponse?.payload);
-        return successResponse({ pullList: list });
+        return successResponse({ holds: list, pullList: list });
       }
 
       case "title_holds": {

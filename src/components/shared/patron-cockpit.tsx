@@ -102,7 +102,7 @@ export function PatronCockpit({ patronId, open, onOpenChange, onCheckout }: Patr
         fetchWithAuth(`/api/evergreen/circulation?patron_id=${patronId}`),
         fetchWithAuth(`/api/evergreen/circulation?action=holds&patron_id=${patronId}`),
         fetchWithAuth(`/api/evergreen/circulation?action=bills&patron_id=${patronId}`),
-        fetchWithAuth(`/api/upload-patron-photo?patronId=${patronId}`),
+        fetchWithAuth(`/api/patron-photos?patronId=${patronId}`),
       ]);
 
       const patronData = await patronRes.json();

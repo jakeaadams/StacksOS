@@ -195,7 +195,6 @@ export default function ItemStatusPage() {
 
   useEffect(() => {
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredStatuses = useMemo(() => {
@@ -442,7 +441,19 @@ export default function ItemStatusPage() {
             ) : loading ? (
               <EmptyState title="Loading…" description="Fetching copy statuses from Evergreen." />
             ) : filteredStatuses.length === 0 ? (
-              <EmptyState title="No statuses found" description="Try adjusting your search." />
+              <EmptyState
+                title={searchQuery.trim() ? "No statuses match your search" : "No statuses returned"}
+                description={
+                  searchQuery.trim()
+                    ? "Try a different search term."
+                    : "Evergreen returned zero copy statuses. In a sandbox, seed demo data; otherwise verify Evergreen configuration and permissions."
+                }
+                action={{ label: "Retry", onClick: () => void load() }}
+                secondaryAction={{
+                  label: "Seed demo data",
+                  onClick: () => window.location.assign("/staff/help#demo-data"),
+                }}
+              />
             ) : (
               <DataTable columns={columns} data={filteredStatuses} />
             )}

@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { query } from "@/lib/db/evergreen";
 
 
 // ============================================================================
@@ -36,59 +37,64 @@ export async function GET(req: NextRequest) {
 
     switch (type) {
       case "org_settings": {
-        // Query actor.org_unit_setting for the org
-        const response = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.search.aous.atomic",
-          [
-            authtoken,
-            { org_unit: orgId },
-            { flesh: 1, flesh_fields: { aous: ["name"] }, limit, offset },
-          ]
+        // Some Evergreen installs do not expose open-ils.pcrud.search.aous.atomic.
+        // Use direct SQL for stable cross-version behavior.
+        const settingsRows = await query<any>(
+          `
+            select s.id, s.name, s.value, s.org_unit,
+                   t.label, t.description, t.datatype
+            from actor.org_unit_setting s
+            left join config.org_unit_setting_type t on t.name = s.name
+            where s.org_unit = $1
+            order by s.id desc
+            limit $2 offset $3
+          `,
+          [orgId, limit, offset]
         );
 
-        const settings = (response?.payload?.[0] || []).map((s: any) => {
-          const name = s?.name || s?.__p?.[1];
-          const value = s?.value || s?.__p?.[2];
-          const nameObj = typeof name === "object" ? name : null;
+        const settings = settingsRows.map((row: any) => {
+          const raw = row.value;
+          let value: any = raw;
+          if (typeof raw === "string") {
+            try {
+              value = JSON.parse(raw);
+            } catch {
+              value = raw;
+            }
+          }
           return {
-            id: s?.id || s?.__p?.[0],
-            name: nameObj?.name || nameObj?.__p?.[0] || name,
-            label: nameObj?.label || nameObj?.__p?.[1] || name,
-            description: nameObj?.description || nameObj?.__p?.[2] || "",
-            value: typeof value === "string" ? JSON.parse(value) : value,
-            orgUnit: s?.org_unit || s?.__p?.[3] || orgId,
-            datatype: nameObj?.datatype || nameObj?.__p?.[4] || "string",
+            id: row.id,
+            name: row.name,
+            label: row.label || row.name,
+            description: row.description || "",
+            value,
+            orgUnit: row.org_unit,
+            datatype: row.datatype || "string",
           };
         });
 
-        // Also get all available setting types
-        const typeResponse = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.search.coust.atomic",
-          [
-            authtoken,
-            search ? { name: { "~*": search } } : { name: { "!=": null } },
-            { limit: 500, order_by: { coust: "name" } },
-          ]
+        const like = `%${search}%`;
+        const typesRows = await query<any>(
+          `
+            select name, label, description, datatype, fm_class, update_perm
+            from config.org_unit_setting_type
+            where $1 = '' or name ilike $2 or coalesce(label,'') ilike $2
+            order by name
+            limit 500
+          `,
+          [search, like]
         );
 
-        const settingTypes = (typeResponse?.payload?.[0] || []).map((t: any) => ({
-          name: t?.name || t?.__p?.[0],
-          label: t?.label || t?.__p?.[1] || t?.name || t?.__p?.[0],
-          description: t?.description || t?.__p?.[2] || "",
-          datatype: t?.datatype || t?.__p?.[4] || "string",
-          fmClass: t?.fm_class || t?.__p?.[5],
-          update_perm: t?.update_perm || t?.__p?.[6],
+        const settingTypes = typesRows.map((t: any) => ({
+          name: t.name,
+          label: t.label || t.name,
+          description: t.description || "",
+          datatype: t.datatype || "string",
+          fmClass: t.fm_class || null,
+          update_perm: t.update_perm || null,
         }));
 
-        return successResponse({
-          settings,
-          settingTypes: settingTypes.filter(
-            (t: any) => !search || t.name?.toLowerCase().includes(search.toLowerCase()) || t.label?.toLowerCase().includes(search.toLowerCase())
-          ),
-          orgId,
-        });
+        return successResponse({ settings, settingTypes, orgId });
       }
 
       case "circ_policies": {

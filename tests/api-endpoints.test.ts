@@ -8,8 +8,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the external dependencies before importing routes
-vi.mock("@/lib/api/client", () => ({
-  callOpenSRF: vi.fn(),
+vi.mock("@/lib/api/evergreen-fetch", () => ({
+  fetchEvergreen: vi.fn(),
 }));
 
 vi.mock("@/lib/db/evergreen", () => ({
@@ -31,12 +31,13 @@ vi.mock("@/lib/audit", () => ({
   logAuditEvent: vi.fn(),
 }));
 
-import { callOpenSRF } from "@/lib/api/client";
+import { fetchEvergreen } from "@/lib/api/evergreen-fetch";
 import { getEvergreenPool } from "@/lib/db/evergreen";
 
 describe("API Endpoints", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.EVERGREEN_BASE_URL = "https://example.test";
   });
 
   describe("Health Check API", () => {
@@ -48,9 +49,9 @@ describe("API Endpoints", () => {
       vi.mocked(getEvergreenPool).mockReturnValue(mockPool as any);
 
       // Mock successful Evergreen response
-      vi.mocked(callOpenSRF).mockResolvedValue({
-        payload: ["some-seed"],
-      });
+      vi.mocked(fetchEvergreen).mockResolvedValue(
+        new Response(JSON.stringify({ payload: [], status: 404 }), { status: 200 })
+      );
 
       // Import and test the route handler
       const { GET } = await import("@/app/api/health/route");
@@ -76,9 +77,9 @@ describe("API Endpoints", () => {
       vi.mocked(getEvergreenPool).mockReturnValue(mockPool as any);
 
       // Mock successful Evergreen response
-      vi.mocked(callOpenSRF).mockResolvedValue({
-        payload: ["some-seed"],
-      });
+      vi.mocked(fetchEvergreen).mockResolvedValue(
+        new Response(JSON.stringify({ payload: [], status: 404 }), { status: 200 })
+      );
 
       const { GET } = await import("@/app/api/health/route");
       
@@ -103,7 +104,7 @@ describe("API Endpoints", () => {
       vi.mocked(getEvergreenPool).mockReturnValue(mockPool as any);
 
       // Mock Evergreen failure
-      vi.mocked(callOpenSRF).mockRejectedValue(new Error("Evergreen unavailable"));
+      vi.mocked(fetchEvergreen).mockRejectedValue(new Error("Evergreen unavailable"));
 
       const { GET } = await import("@/app/api/health/route");
       
@@ -124,7 +125,9 @@ describe("API Endpoints", () => {
         query: vi.fn().mockResolvedValue({ rows: [{ "?column?": 1 }] }),
       };
       vi.mocked(getEvergreenPool).mockReturnValue(mockPool as any);
-      vi.mocked(callOpenSRF).mockResolvedValue({ payload: ["seed"] });
+      vi.mocked(fetchEvergreen).mockResolvedValue(
+        new Response(JSON.stringify({ payload: [], status: 404 }), { status: 200 })
+      );
 
       const { GET } = await import("@/app/api/health/route");
       

@@ -2,7 +2,7 @@
 import { clientLogger } from "@/lib/client-logger";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   PageContainer,
@@ -22,7 +22,6 @@ import {
   BookOpen,
   User,
   Hash,
-  Loader2,
   Eye,
   Download as DownloadIcon,
   X,
@@ -85,7 +84,7 @@ export default function CatalogImportPage() {
   const [showDiff, setShowDiff] = useState(false);
 
   // Handle file selection
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
     if (selectedFiles.length === 0) return;
 
@@ -102,7 +101,7 @@ export default function CatalogImportPage() {
 
     setFiles(validFiles);
     await parseFiles(validFiles);
-  }, []);
+  };
 
   // Parse MARC files
   const parseFiles = async (filesToParse: File[]) => {
