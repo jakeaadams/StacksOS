@@ -15,6 +15,11 @@ cd /home/jake/projects/stacksos
 sudo bash ops/evergreen/evergreen_harden.sh --stacksos-ip 192.168.1.233
 ```
 
+Recommended add-ons:
+- Restrict SSH to LAN only: `--ssh-from 192.168.1.0/24`
+- Restrict SSH users: `--ssh-allow-users jake`
+- Apply pending security updates: `--apply-updates` (may require reboot)
+
 If the repo does **not** exist on evergreen (common), run the scripts from your home directory after copying them over (example assumes you copied to `~/ops/evergreen`):
 
 ```bash
@@ -56,6 +61,10 @@ sudo systemctl restart stacksos.service
 
 - Enables UFW with a default deny inbound policy.
 - Allows inbound: SSH (22/tcp) by default.
+- Adds an `sshd_config.d` hardening drop-in:
+  - `PasswordAuthentication no`
+  - `X11Forwarding no`
+  - safer defaults for auth/session limits
 - For web:
   - **Recommended for SaaS:** allow HTTPS (443/tcp) **only** from the StacksOS host (`--stacksos-ip ...`).
   - Optional/legacy: allow HTTP/HTTPS from anywhere (`--public-web`).
@@ -63,6 +72,7 @@ sudo systemctl restart stacksos.service
 - Locks down OpenSRF config readability:
   - `/openils/conf/opensrf.xml`
   - `/openils/conf/opensrf_core.xml`
+  - `/openils/conf/*.bak.*` (backup files can contain secrets)
 - Applies basic Apache info-leak hardening:
   - `ServerTokens Prod`
   - `ServerSignature Off`

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { usePatronSession, PatronHold } from "@/hooks/usePatronSession";
-import { useLibrary } from "@/hooks/useLibrary";
+import { usePatronSession, PatronHold } from "@/hooks/use-patron-session";
+import { useLibrary } from "@/hooks/use-library";
 import { UnoptimizedImage } from "@/components/shared";
 import { featureFlags } from "@/lib/feature-flags";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";

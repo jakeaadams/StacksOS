@@ -13,6 +13,8 @@ Options:
   --allow-http         If used with --stacksos-ip, also allow HTTP (80) from that IP (usually not needed).
   --public-web         Allow HTTP/HTTPS (80/443) from anywhere (use only if Evergreen must be publicly reachable).
   --ssh-from <CIDR>    Restrict SSH (22) to a CIDR (e.g. 192.168.1.0/24). Default: allow from anywhere.
+  --ssh-allow-users <csv>  Set AllowUsers (comma-separated, default: skip).
+  --apply-updates      Run apt update && apt upgrade -y (default: skip).
   -h, --help           Show this help.
 USAGE
 }
@@ -21,6 +23,8 @@ STACKSOS_IP=""
 ALLOW_HTTP=0
 PUBLIC_WEB=0
 SSH_FROM=""
+SSH_ALLOW_USERS=""
+APPLY_UPDATES=0
 
 while [[ $# -gt 0 ]]; do
   case "${1:-}" in
@@ -39,6 +43,14 @@ while [[ $# -gt 0 ]]; do
     --ssh-from)
       SSH_FROM="${2:-}"
       shift 2
+      ;;
+    --ssh-allow-users)
+      SSH_ALLOW_USERS="${2:-}"
+      shift 2
+      ;;
+    --apply-updates)
+      APPLY_UPDATES=1
+      shift
       ;;
     -h|--help)
       usage
@@ -66,6 +78,50 @@ backup_file() {
   if [[ -f "$f" ]]; then
     cp -a "$f" "${f}.bak.${stamp}"
   fi
+}
+
+ensure_sshd_hardening() {
+  local d="/etc/ssh/sshd_config.d"
+  local f="${d}/00-evergreen-hardening.conf"
+
+  mkdir -p "$d"
+  backup_file "$f"
+
+  log "Writing SSH hardening config: $f"
+  cat >"$f" <<'EOF'
+# Evergreen SSH hardening (managed by ops/evergreen/evergreen_harden.sh)
+PasswordAuthentication no
+PermitRootLogin no
+PermitEmptyPasswords no
+X11Forwarding no
+AllowAgentForwarding no
+MaxAuthTries 3
+LoginGraceTime 30
+ClientAliveInterval 300
+ClientAliveCountMax 2
+EOF
+
+  chmod 0600 "$f"
+  chown root:root "$f"
+
+  if [[ -n "$SSH_ALLOW_USERS" ]]; then
+    log "Setting AllowUsers in /etc/ssh/sshd_config"
+    backup_file /etc/ssh/sshd_config
+    if grep -qE '^[[:space:]]*AllowUsers[[:space:]]' /etc/ssh/sshd_config; then
+      sed -i -E 's/^[[:space:]]*AllowUsers[[:space:]]+.*/AllowUsers '"${SSH_ALLOW_USERS//,/ }"'/' /etc/ssh/sshd_config
+    else
+      printf "\nAllowUsers %s\n" "${SSH_ALLOW_USERS//,/ }" >>/etc/ssh/sshd_config
+    fi
+  fi
+
+  log "Validating sshd config"
+  if ! sshd -t; then
+    echo "ERROR: sshd config validation failed; refusing to reload sshd" >&2
+    exit 1
+  fi
+
+  log "Reloading sshd"
+  systemctl reload sshd 2>/dev/null || systemctl reload ssh 2>/dev/null || systemctl restart sshd || systemctl restart ssh
 }
 
 configure_ufw() {
@@ -191,15 +247,48 @@ verify() {
   log "OpenSRF config perms:"
   stat -c '%a %U:%G %n' /openils/conf/opensrf.xml /openils/conf/opensrf_core.xml 2>/dev/null || true
 
+  log "OpenSRF backup perms:"
+  stat -c '%a %U:%G %n' /openils/conf/*.bak.* 2>/dev/null | sed -n '1,200p' || true
+
+  log "sshd effective settings (selected):"
+  sshd -T 2>/dev/null | grep -E '^(passwordauthentication|permitrootlogin|permitemptypasswords|x11forwarding|allowagentforwarding|maxauthtries|logingracetime|clientaliveinterval|clientalivecountmax)\\b' || true
+
   log "Apache security.conf highlights:"
   grep -nE '^(ServerTokens|ServerSignature|TraceEnable|Header[[:space:]]+set[[:space:]]+X-Content-Type-Options)' /etc/apache2/conf-enabled/security.conf 2>/dev/null || true
+
+  if [[ -f /etc/apache2/ssl/evergreen.crt ]] && command -v openssl >/dev/null 2>&1; then
+    log "Evergreen TLS cert expiration (/etc/apache2/ssl/evergreen.crt):"
+    openssl x509 -noout -enddate -in /etc/apache2/ssl/evergreen.crt 2>/dev/null || true
+  fi
+}
+
+maybe_apply_updates() {
+  if [[ "$APPLY_UPDATES" -ne 1 ]]; then
+    return 0
+  fi
+  log "Applying security updates (apt update/upgrade)"
+  apt-get update -y
+  DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
+}
+
+lock_down_openils_backups() {
+  log "Locking down OpenSRF backup config files (/openils/conf/*.bak.*)"
+  if compgen -G "/openils/conf/*.bak.*" >/dev/null; then
+    chown opensrf:opensrf /openils/conf/*.bak.* 2>/dev/null || true
+    chmod 0640 /openils/conf/*.bak.* 2>/dev/null || true
+  else
+    log "No OpenSRF backup config files found."
+  fi
 }
 
 main() {
   require_root
+  ensure_sshd_hardening
   configure_ufw
   harden_openils_conf_perms
+  lock_down_openils_backups
   harden_apache_security_conf
+  maybe_apply_updates
   verify
   log "DONE"
 }

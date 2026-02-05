@@ -10,7 +10,7 @@ import {
   computeKidsReadingStats,
   type KidsReadingLogEntry,
 } from "@/lib/kids-engagement";
-import { usePatronSession } from "@/hooks/usePatronSession";
+import { usePatronSession } from "@/hooks/use-patron-session";
 import {
   Award,
   BookOpen,

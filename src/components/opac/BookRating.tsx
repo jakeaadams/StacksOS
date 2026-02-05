@@ -34,8 +34,9 @@ export function BookRating({
     fetch(`/api/google-books?isbn=${cleanIsbn}`)
       .then((res) => res.json())
       .then((result) => {
-        if (result && result.averageRating) {
-          setData(result);
+        const data = result?.ok ? result.data : null;
+        if (data && typeof data.averageRating === "number" && data.averageRating > 0) {
+          setData(data);
         }
       })
       .catch(() => {})
@@ -117,8 +118,9 @@ export function useBookRatings(isbns: string[]) {
     fetch(`/api/google-books?isbns=${encodeURIComponent(isbnsKey)}`)
       .then((res) => res.json())
       .then((result) => {
-        if (result && typeof result === "object") {
-          setRatings(result);
+        const results = result?.ok ? result.results : null;
+        if (results && typeof results === "object") {
+          setRatings(results);
         }
       })
       .catch(() => {})

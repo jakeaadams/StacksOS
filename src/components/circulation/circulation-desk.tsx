@@ -21,7 +21,7 @@ import {
   ConfirmDialog,
 } from "@/components/shared";
 
-import { useAudioFeedback } from "@/hooks/useAudioFeedback";
+import { useAudioFeedback } from "@/hooks/use-audio-feedback";
 import { useKeyboardShortcuts, useMutation, usePatronLookup } from "@/hooks";
 import { useAuth } from "@/contexts/auth-context";
 

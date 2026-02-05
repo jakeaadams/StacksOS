@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useKidsParentGate } from "@/contexts/kids-parent-gate-context";
-import { useAccessibilityPrefs } from "@/hooks/useAccessibilityPrefs";
+import { useAccessibilityPrefs } from "@/hooks/use-accessibility-prefs";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { NextRequest } from "next/server";
 import { successResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { getRedisClient, redisEnabled } from "@/lib/redis";
 
 export const runtime = "nodejs";
 
@@ -64,6 +65,19 @@ export async function GET(req: NextRequest) {
     const caPath = String(process.env.STACKSOS_EVERGREEN_CA_FILE || process.env.NODE_EXTRA_CA_CERTS || "").trim();
     const tlsVerificationDisabled = String(process.env.NODE_TLS_REJECT_UNAUTHORIZED || "").trim() === "0";
 
+    let redisOk: boolean | null = null;
+    if (redisEnabled()) {
+      redisOk = false;
+      const client = await getRedisClient();
+      if (client) {
+        try {
+          redisOk = (await client.ping()) === "PONG";
+        } catch {
+          redisOk = false;
+        }
+      }
+    }
+
     return successResponse({
       host: {
         kernel: os.release(),
@@ -71,6 +85,10 @@ export async function GET(req: NextRequest) {
         rebootRequired,
         rebootReason,
         rebootRequiredPkgs: rebootPkgs,
+      },
+      redis: {
+        enabled: redisEnabled(),
+        ok: redisOk,
       },
       services: {
         stacksos: {
@@ -107,4 +125,3 @@ export async function GET(req: NextRequest) {
     return serverErrorResponse(error, "OpsStatus GET", req);
   }
 }
-

@@ -7,7 +7,7 @@ import { useKidsParentGate } from "@/contexts/kids-parent-gate-context";
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { usePatronSession, type PatronCheckout } from "@/hooks/usePatronSession";
+import { usePatronSession, type PatronCheckout } from "@/hooks/use-patron-session";
 import {
   BookOpen,
   Plus,

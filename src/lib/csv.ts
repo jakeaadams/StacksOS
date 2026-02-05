@@ -7,6 +7,12 @@
 
 import { useState } from "react";
 
+export interface ExportColumn<T extends Record<string, unknown> = Record<string, unknown>> {
+  key: string;
+  label: string;
+  formatter?: (value: unknown, row: T) => string;
+}
+
 /**
  * Escapes a value for CSV format
  * Handles special characters (commas, quotes, newlines)
@@ -21,6 +27,24 @@ function escapeCSVValue(value: unknown): string {
   }
 
   return str;
+}
+
+/**
+ * Generic file download helper (browser-only).
+ */
+export function downloadFile(content: BlobPart | BlobPart[], filename: string, mimeType: string): void {
+  const blob = new Blob(Array.isArray(content) ? content : [content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.style.display = "none";
+
+  document.body.appendChild(link);
+  link.click();
+
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -80,6 +104,33 @@ export function convertToCSV<T extends Record<string, unknown>>(
 }
 
 /**
+ * Converts an array of objects to CSV using an explicit column definition
+ * (useful when you need formatting or stable ordering).
+ */
+export function toCSVWithColumns<T extends Record<string, unknown>>(
+  data: T[],
+  columns: ExportColumn<T>[],
+  options?: { includeHeaders?: boolean }
+): string {
+  if (!data || data.length === 0) return "";
+
+  const includeHeaders = options?.includeHeaders !== false;
+  const headerRow = columns.map((c) => escapeCSVValue(c.label)).join(",");
+
+  const rows = data.map((row) =>
+    columns
+      .map((col) => {
+        const value = (row as any)?.[col.key];
+        const formatted = col.formatter ? col.formatter(value, row) : String(value ?? "");
+        return escapeCSVValue(formatted);
+      })
+      .join(",")
+  );
+
+  return includeHeaders ? [headerRow, ...rows].join("\n") : rows.join("\n");
+}
+
+/**
  * Triggers a browser download of a CSV file
  *
  * @param filename - Name of the file to download (should end with .csv)
@@ -95,21 +146,7 @@ export function downloadCSV(filename: string, csvContent: string): void {
 
   // Create blob with proper MIME type and UTF-8 BOM for Excel compatibility
   const BOM = "\uFEFF";
-  const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
-
-  // Create download link and trigger click
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = csvFilename;
-  link.style.display = "none";
-
-  document.body.appendChild(link);
-  link.click();
-
-  // Cleanup
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadFile(BOM + csvContent, csvFilename, "text/csv;charset=utf-8;");
 }
 
 /**

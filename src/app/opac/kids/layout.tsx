@@ -3,9 +3,9 @@
 import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useLibrary } from "@/hooks/useLibrary";
-import { usePatronSession } from "@/hooks/usePatronSession";
-import { useAccessibilityPrefs } from "@/hooks/useAccessibilityPrefs";
+import { useLibrary } from "@/hooks/use-library";
+import { usePatronSession } from "@/hooks/use-patron-session";
+import { useAccessibilityPrefs } from "@/hooks/use-accessibility-prefs";
 import { featureFlags } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
 import { KidsParentGateProvider } from "@/contexts/kids-parent-gate-context";

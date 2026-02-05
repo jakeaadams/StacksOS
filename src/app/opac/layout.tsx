@@ -1,6 +1,6 @@
 import { Metadata } from "next";
-import { LibraryProvider } from "@/hooks/useLibrary";
-import { PatronSessionProvider } from "@/hooks/usePatronSession";
+import { LibraryProvider } from "@/hooks/use-library";
+import { PatronSessionProvider } from "@/hooks/use-patron-session";
 import { OpacShell } from "@/components/opac/OpacShell";
 
 export const metadata: Metadata = {

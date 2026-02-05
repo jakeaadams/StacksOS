@@ -3,7 +3,7 @@ import { clientLogger } from "@/lib/client-logger";
 import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useCallback, useEffect, useState } from "react";
-import { usePatronSession } from "@/hooks/usePatronSession";
+import { usePatronSession } from "@/hooks/use-patron-session";
 import {
   Star,
   ThumbsUp,

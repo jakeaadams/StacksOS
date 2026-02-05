@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { usePatronSession } from "@/hooks/usePatronSession";
+import { usePatronSession } from "@/hooks/use-patron-session";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { featureFlags } from "@/lib/feature-flags";
 import {

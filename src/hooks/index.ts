@@ -49,8 +49,8 @@ export type {
 } from "./use-dashboard-settings";
 
 // Audio Feedback
-export { useAudioFeedback } from "./useAudioFeedback";
-export type { SoundType, AudioFeedbackOptions } from "./useAudioFeedback";
+export { useAudioFeedback } from "./use-audio-feedback";
+export type { SoundType, AudioFeedbackOptions } from "./use-audio-feedback";
 
 // Auto-refresh / polling
 export { useAutoRefresh } from "./use-auto-refresh";

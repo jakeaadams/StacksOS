@@ -5,7 +5,7 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { usePatronSession } from "@/hooks/usePatronSession";
+import { usePatronSession } from "@/hooks/use-patron-session";
 import { UnoptimizedImage } from "@/components/shared";
 import {
   Search,

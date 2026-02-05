@@ -92,6 +92,47 @@ function addSecurityHeaders(request: NextRequest, response: NextResponse, nonce:
       "form-action 'self';"
   );
 
+  // Progressive CSP hardening:
+  // - Keep a permissive baseline that works today
+  // - Optionally emit a stricter policy in REPORT-ONLY mode so production can
+  //   collect violations and converge on dropping `unsafe-inline`.
+  const reportOnlyFlag = String(process.env.STACKSOS_CSP_REPORT_ONLY || "").trim().toLowerCase();
+  const enableReportOnly = ["1", "true", "yes"].includes(reportOnlyFlag);
+  if (enableReportOnly) {
+    const reportUrl = new URL("/api/security/csp-report", request.nextUrl.origin).toString();
+
+    // Reporting API (modern) + report-uri fallback (legacy).
+    response.headers.set("Reporting-Endpoints", `csp="${reportUrl}"`);
+    response.headers.set(
+      "Report-To",
+      JSON.stringify({
+        group: "csp",
+        max_age: 10886400,
+        endpoints: [{ url: reportUrl }],
+      })
+    );
+
+    const strictScriptSrc = isProd
+      ? `script-src 'self' 'nonce-${nonce}'; `
+      : `script-src 'self' 'nonce-${nonce}' 'unsafe-eval'; `;
+    const strictStyleSrc = `style-src 'self' 'nonce-${nonce}'; `;
+    const strictConnectSrc = isProd ? "connect-src 'self'; " : "connect-src 'self' ws: wss:; ";
+
+    response.headers.set(
+      "Content-Security-Policy-Report-Only",
+      "default-src 'self'; " +
+        strictScriptSrc +
+        strictStyleSrc +
+        "img-src 'self' data: blob: https:; " +
+        "font-src 'self' data:; " +
+        strictConnectSrc +
+        "frame-ancestors 'none'; " +
+        "base-uri 'self'; " +
+        "form-action 'self'; " +
+        `report-to csp; report-uri ${reportUrl};`
+    );
+  }
+
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-XSS-Protection", "1; mode=block");
   response.headers.set("X-Frame-Options", "DENY");

@@ -15,6 +15,24 @@ import { checkRateLimit, recordSuccess } from "@/lib/rate-limit";
 import { isCookieSecure } from "@/lib/csrf";
 import { getPatronPhotoUrl } from "@/lib/db/evergreen";
 
+async function setStaffAuthCookies(authtoken: string, cookieSecure: boolean): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.set("authtoken", authtoken, {
+    httpOnly: true,
+    secure: cookieSecure,
+    sameSite: "lax",
+    maxAge: 60 * 60 * 8,
+    path: "/",
+  });
+  cookieStore.set("stacksos_session_id", crypto.randomUUID(), {
+    httpOnly: true,
+    secure: cookieSecure,
+    sameSite: "lax",
+    maxAge: 60 * 60 * 8,
+    path: "/",
+  });
+}
+
 async function resolveProfileName(authtoken: string, user: any): Promise<string | null> {
   const raw = user?.profile ?? user?.profile_id ?? user?.profileId;
   const profileId = typeof raw === "number" ? raw : parseInt(String(raw ?? ""), 10);
@@ -198,20 +216,7 @@ export async function POST(req: NextRequest) {
       authResult = retryResponse?.payload?.[0];
 
       if (authResult?.ilsevent === 0 && authResult?.payload?.authtoken) {
-        const cookieStore = await cookies();
-        cookieStore.set("authtoken", authResult.payload.authtoken, {
-          httpOnly: true,
-          secure: cookieSecure,
-          sameSite: "lax",
-          maxAge: 60 * 60 * 8,
-        });
-        cookieStore.set("stacksos_session_id", crypto.randomUUID(), {
-          httpOnly: true,
-          secure: cookieSecure,
-          sameSite: "lax",
-          maxAge: 60 * 60 * 8,
-          path: "/",
-        });
+        await setStaffAuthCookies(authResult.payload.authtoken, cookieSecure);
 
         const userResponse = await callOpenSRF(
           "open-ils.auth",
@@ -234,6 +239,8 @@ export async function POST(req: NextRequest) {
           details: { workstation, needsWorkstation: true },
         });
 
+        await recordSuccess(ip || "unknown", "staff-auth");
+
         return successResponse(
           {
             authtoken: authResult.payload.authtoken,
@@ -248,20 +255,7 @@ export async function POST(req: NextRequest) {
 
     // Check for successful auth
     if (authResult?.ilsevent === 0 && authResult?.payload?.authtoken) {
-      const cookieStore = await cookies();
-      cookieStore.set("authtoken", authResult.payload.authtoken, {
-        httpOnly: true,
-        secure: cookieSecure,
-        sameSite: "lax",
-        maxAge: 60 * 60 * 8,
-      });
-      cookieStore.set("stacksos_session_id", crypto.randomUUID(), {
-        httpOnly: true,
-        secure: cookieSecure,
-        sameSite: "lax",
-        maxAge: 60 * 60 * 8,
-        path: "/",
-      });
+      await setStaffAuthCookies(authResult.payload.authtoken, cookieSecure);
 
       const userResponse = await callOpenSRF(
         "open-ils.auth",

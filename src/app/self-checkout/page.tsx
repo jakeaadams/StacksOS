@@ -167,20 +167,20 @@ export default function SelfCheckoutPage() {
 	      method: "POST",
 	      headers: { "Content-Type": "application/json" },
 	      body: JSON.stringify({
-	        patronId: patron.id,
 	        itemBarcode: barcodeInput,
         }),
       });
       
       const data = await res.json();
       
-      if (data.ok) {
+      const checkout = data?.checkout;
+      if (data.ok && checkout) {
         const newItem: CheckedOutItem = {
-          id: data.circ_id || Date.now(),
-          title: data.title || "Unknown Title",
-          author: data.author,
-          barcode: barcodeInput,
-          dueDate: data.due_date || new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+          id: checkout.circId || Date.now(),
+          title: checkout.title || "Unknown Title",
+          author: checkout.author,
+          barcode: checkout.barcode || barcodeInput,
+          dueDate: checkout.dueDate || new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toLocaleDateString(),
         };
         setCheckedOutItems((prev) => [newItem, ...prev]);
         playSound("success");
@@ -201,6 +201,9 @@ export default function SelfCheckoutPage() {
 
   // Handle logout
   const handleLogout = () => {
+    // Best-effort: terminate Evergreen session + clear httpOnly cookies.
+    void fetchWithAuth("/api/opac/auth", { method: "DELETE" }).catch(() => {});
+
     setPatron(null);
     setCheckedOutItems([]);
     setBarcodeInput("");

@@ -25,6 +25,32 @@ Optional flags:
 
 This script does **not** change passwords (run `sudo passwd <user>` interactively).
 
+## TLS reverse proxy (recommended)
+
+For production/pilots, terminate TLS in front of Next.js and set secure cookies:
+- `STACKSOS_BASE_URL=https://...`
+- `STACKSOS_COOKIE_SECURE=true`
+
+This repo includes a Caddy config:
+- `ops/stacksos/caddy/Caddyfile`
+
+Install + configure (on stacksos host):
+
+```bash
+# Install Caddy (see: https://caddyserver.com/docs/install)
+sudo cp ops/stacksos/caddy/Caddyfile /etc/caddy/Caddyfile
+
+# Optional: set the hostname/IP the cert should cover (LAN)
+# Example: STACKSOS_HOST=192.168.1.233
+sudo sh -c 'printf \"\\nSTACKSOS_HOST=stacksos.lan\\n\" >> /etc/default/caddy'
+
+sudo systemctl restart caddy
+```
+
+Notes:
+- Caddy `tls internal` uses its own CA. Clients may need to trust the CA cert for a clean lock icon.
+- After Caddy is serving HTTPS, you can stop using `stacksos-proxy.service` (socat on port 3000).
+
 ## Install (on stacksos host)
 
 Copy the units into `/etc/systemd/system/` and enable the timer:

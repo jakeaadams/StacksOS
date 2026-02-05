@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { usePatronSession } from "@/hooks/usePatronSession";
+import { usePatronSession } from "@/hooks/use-patron-session";
 import { useKidsParentGate } from "@/contexts/kids-parent-gate-context";
 import { LoadingSpinner } from "@/components/shared/loading-state";
 import {

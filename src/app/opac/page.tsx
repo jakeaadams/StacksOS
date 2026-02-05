@@ -7,8 +7,8 @@ import { featureFlags } from "@/lib/feature-flags";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useLibrary } from "@/hooks/useLibrary";
-import { usePatronSession } from "@/hooks/usePatronSession";
+import { useLibrary } from "@/hooks/use-library";
+import { usePatronSession } from "@/hooks/use-patron-session";
 import { BookCard } from "@/components/opac/BookCard";
 import { 
   Search, 

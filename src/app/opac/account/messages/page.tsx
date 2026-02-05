@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { usePatronSession } from "@/hooks/usePatronSession";
+import { usePatronSession } from "@/hooks/use-patron-session";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { Mail, MailOpen, Trash2, ChevronLeft, Loader2, AlertCircle, CheckCircle, Clock, DollarSign, User, Bell, X, RefreshCw } from "lucide-react";
 

@@ -1,0 +1,12 @@
+.next
+.next-ci
+.next.build
+.next.prev.*
+.next.failed.*
+out
+build
+coverage
+playwright-report
+test-results
+.logs
+package-lock.json

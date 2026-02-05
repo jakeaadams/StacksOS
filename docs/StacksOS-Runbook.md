@@ -66,6 +66,7 @@ npm run start -- -H 127.0.0.1 -p 3000
 Notes:
 - For pilots, bind the app to localhost and expose it via a reverse proxy (recommended) or a hardened TCP forwarder.
 - This VM uses `stacksos-proxy.service` (socat) to expose `192.168.1.233:3000` → `127.0.0.1:3000`.
+- Recommended: terminate TLS with Caddy and set secure cookies (see `ops/stacksos/caddy/Caddyfile`).
 
 ### Production via systemd (recommended for pilots)
 

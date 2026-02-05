@@ -2,7 +2,7 @@
 
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useAccessibilityPrefs } from "@/hooks/useAccessibilityPrefs";
+import { useAccessibilityPrefs } from "@/hooks/use-accessibility-prefs";
 
 export function AccessibilityControls() {
   const { dyslexiaFriendly, setDyslexiaFriendly } = useAccessibilityPrefs();

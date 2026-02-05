@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useLibrary } from "@/hooks/useLibrary";
+import { useLibrary } from "@/hooks/use-library";
 import { featureFlags } from "@/lib/feature-flags";
 import { 
   Facebook, 

@@ -195,8 +195,9 @@ export function BookCard({
 
     fetch(`/api/google-books?isbn=${cleanIsbn}`)
       .then((res) => res.json())
-      .then((data) => {
-        if (data?.averageRating) {
+      .then((result) => {
+        const data = result?.ok ? result.data : null;
+        if (data && typeof data.averageRating === "number" && data.averageRating > 0) {
           setGoogleRating({
             rating: data.averageRating,
             count: data.ratingsCount || 0,

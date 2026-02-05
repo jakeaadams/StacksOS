@@ -4,7 +4,7 @@ import { clientLogger } from "@/lib/client-logger";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { usePatronSession } from "@/hooks/usePatronSession";
+import { usePatronSession } from "@/hooks/use-patron-session";
 import { UnoptimizedImage } from "@/components/shared";
 import {
   History,

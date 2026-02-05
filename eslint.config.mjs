@@ -31,7 +31,9 @@ const eslintConfig = defineConfig([
 
   {
     rules: {
-      "@typescript-eslint/no-explicit-any": "off",
+      // Incremental: keep this as a warning so we can steadily replace `any`
+      // with real domain types without blocking shipping.
+      "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {
@@ -46,6 +48,15 @@ const eslintConfig = defineConfig([
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/incompatible-library": "off",
       "react-hooks/preserve-manual-memoization": "off",
+    },
+  },
+
+  // OpenSRF / Fieldmapper payloads are inherently dynamic today.
+  // We allow `any` in these integration-heavy modules while we add domain types.
+  {
+    files: ["src/lib/api/**", "src/app/api/**", "src/lib/db/**"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 ]);

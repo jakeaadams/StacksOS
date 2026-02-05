@@ -7,8 +7,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import { useLibrary } from "@/hooks/useLibrary";
-import { usePatronSession } from "@/hooks/usePatronSession";
+import { useLibrary } from "@/hooks/use-library";
+import { usePatronSession } from "@/hooks/use-patron-session";
 import { useDebounce } from "@/hooks/use-debounce";
 import { featureFlags } from "@/lib/feature-flags";
 import {

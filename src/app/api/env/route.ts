@@ -1,34 +1,53 @@
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { getRequestMeta, successResponse, serverErrorResponse } from "@/lib/api";
+import { requirePermissions } from "@/lib/permissions";
 
-export async function GET() {
-  const label = String(process.env.STACKSOS_ENV_LABEL || "").trim();
-  const tone = String(process.env.STACKSOS_ENV_TONE || "").trim().toLowerCase();
-  const patronBarcodeMode = String(process.env.STACKSOS_PATRON_BARCODE_MODE || "generate")
-    .trim()
-    .toLowerCase();
-  const patronBarcodePrefix = String(process.env.STACKSOS_PATRON_BARCODE_PREFIX || "29").trim() || "29";
-  const idleTimeoutMinutesRaw = process.env.STACKSOS_IDLE_TIMEOUT_MINUTES;
-  const idleTimeoutMinutes = Number.isFinite(Number(idleTimeoutMinutesRaw))
-    ? Math.min(8 * 60, Math.max(1, Number(idleTimeoutMinutesRaw)))
-    : null;
-  const rbacMode = String(process.env.STACKSOS_RBAC_MODE || "warn").trim().toLowerCase();
-  const scheduledReportsRunnerConfigured = Boolean(String(process.env.STACKSOS_SCHEDULED_REPORTS_SECRET || "").trim());
-  const publicBaseUrlConfigured = Boolean(String(process.env.STACKSOS_PUBLIC_BASE_URL || "").trim());
+export async function GET(req: NextRequest) {
+  try {
+    await requirePermissions(["STAFF_LOGIN"]);
 
-  return NextResponse.json({
-    ok: true,
-    env: {
-      label: label || null,
-      tone: tone || null,
-      patronBarcodeMode: patronBarcodeMode || "generate",
-      patronBarcodePrefix,
-      idleTimeoutMinutes,
-      ipAllowlistEnabled: Boolean(String(process.env.STACKSOS_IP_ALLOWLIST || "").trim()),
-      rbacMode,
-      scheduledReports: {
-        runnerConfigured: scheduledReportsRunnerConfigured,
-        publicBaseUrlConfigured,
+    const label = String(process.env.STACKSOS_ENV_LABEL || "").trim();
+    const tone = String(process.env.STACKSOS_ENV_TONE || "").trim().toLowerCase();
+    const patronBarcodeMode = String(process.env.STACKSOS_PATRON_BARCODE_MODE || "generate")
+      .trim()
+      .toLowerCase();
+    const patronBarcodePrefix = String(process.env.STACKSOS_PATRON_BARCODE_PREFIX || "29").trim() || "29";
+    const idleTimeoutMinutesRaw = process.env.STACKSOS_IDLE_TIMEOUT_MINUTES;
+    const idleTimeoutMinutes = Number.isFinite(Number(idleTimeoutMinutesRaw))
+      ? Math.min(8 * 60, Math.max(1, Number(idleTimeoutMinutesRaw)))
+      : null;
+    const rbacMode = String(process.env.STACKSOS_RBAC_MODE || "warn").trim().toLowerCase();
+    const scheduledReportsRunnerConfigured = Boolean(String(process.env.STACKSOS_SCHEDULED_REPORTS_SECRET || "").trim());
+    const publicBaseUrlConfigured = Boolean(String(process.env.STACKSOS_PUBLIC_BASE_URL || "").trim());
+
+    const baseUrl = String(process.env.STACKSOS_BASE_URL || "").trim() || null;
+    const cookieSecureRaw = String(process.env.STACKSOS_COOKIE_SECURE || "").trim().toLowerCase();
+    const cookieSecureExplicit = cookieSecureRaw === "true" ? true : cookieSecureRaw === "false" ? false : null;
+
+    const meta = getRequestMeta(req);
+
+    return successResponse({
+      env: {
+        label: label || null,
+        tone: tone || null,
+        patronBarcodeMode: patronBarcodeMode || "generate",
+        patronBarcodePrefix,
+        idleTimeoutMinutes,
+        ipAllowlistEnabled: Boolean(String(process.env.STACKSOS_IP_ALLOWLIST || "").trim()),
+        rbacMode,
+        baseUrl,
+        cookieSecureExplicit,
+        requestMeta: {
+          ip: meta.ip,
+          requestId: meta.requestId,
+        },
+        scheduledReports: {
+          runnerConfigured: scheduledReportsRunnerConfigured,
+          publicBaseUrlConfigured,
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    return serverErrorResponse(error, "Env GET", req);
+  }
 }

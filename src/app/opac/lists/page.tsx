@@ -5,7 +5,7 @@ import Link from "next/link";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { clientLogger } from "@/lib/client-logger";
 import { featureFlags } from "@/lib/feature-flags";
-import { usePatronSession } from "@/hooks/usePatronSession";
+import { usePatronSession } from "@/hooks/use-patron-session";
 import { BookCard } from "@/components/opac/BookCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

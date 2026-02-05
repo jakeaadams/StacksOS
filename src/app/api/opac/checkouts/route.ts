@@ -6,7 +6,7 @@ import {
   unauthorizedResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { cookies } from "next/headers";
+import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 
 /**
  * OPAC Patron Checkouts
@@ -14,30 +14,13 @@ import { cookies } from "next/headers";
  */
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-
-    if (!patronToken) {
-      return unauthorizedResponse("Please log in to view checkouts");
-    }
-
-    // Get patron ID from session
-    const sessionResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.session.retrieve",
-      [patronToken]
-    );
-
-    const user = sessionResponse?.payload?.[0];
-    if (!user || user.ilsevent) {
-      return unauthorizedResponse("Session expired. Please log in again.");
-    }
+    const { patronToken, patronId } = await requirePatronSession();
 
     // Get checked out items
     const checkoutsResponse = await callOpenSRF(
       "open-ils.actor",
       "open-ils.actor.user.checked_out",
-      [patronToken, user.id]
+      [patronToken, patronId]
     );
 
     const checkoutData = checkoutsResponse?.payload?.[0];
@@ -145,6 +128,9 @@ export async function GET(req: NextRequest) {
       overdueCount: checkoutData?.overdue?.length || 0,
     });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      return unauthorizedResponse(error.message);
+    }
     return serverErrorResponse(error, "OPAC Checkouts GET", req);
   }
 }

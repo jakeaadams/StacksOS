@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useLibrary } from "@/hooks/useLibrary";
+import { useLibrary } from "@/hooks/use-library";
 import {
   Search,
   User,

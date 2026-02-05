@@ -3,6 +3,7 @@ import {
   callOpenSRF,
   callPcrud,
   requireAuthToken,
+  getRequestMeta,
   successResponse,
   errorResponse,
   serverErrorResponse,
@@ -153,9 +154,7 @@ export async function GET(req: NextRequest) {
 
 // POST - Process offline transactions
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null;
-  const userAgent = req.headers.get("user-agent") || null;
-  const requestId = req.headers.get("x-request-id") || null;
+  const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
     const transaction = await req.json();

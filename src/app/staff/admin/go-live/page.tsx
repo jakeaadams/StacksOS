@@ -11,6 +11,7 @@ export default function GoLiveChecklistPage() {
   const [env, setEnv] = useState<any>(null);
   const [ops, setOps] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isHttps, setIsHttps] = useState<boolean | null>(null);
 
   const load = async () => {
     try {
@@ -41,6 +42,10 @@ export default function GoLiveChecklistPage() {
     void load();
   }, []);
 
+  useEffect(() => {
+    setIsHttps(window.location.protocol === "https:");
+  }, []);
+
   const evergreenOk = status?.evergreen?.ok === true;
   const rbacStrict = String(env?.rbacMode || "").toLowerCase() === "strict";
   const idleConfigured = typeof env?.idleTimeoutMinutes === "number";
@@ -51,6 +56,16 @@ export default function GoLiveChecklistPage() {
   const dbTunnelHardened = dbTunnelActive && Boolean(dbTunnelUser) && dbTunnelUser !== "jake";
   const tlsBypass = ops?.tls?.tlsVerificationDisabled === true;
   const caConfigured = ops?.tls?.caBundleConfigured === true;
+  const redisEnabled = ops?.redis?.enabled === true;
+  const redisOk = ops?.redis?.ok === true;
+
+  const baseUrl = typeof env?.baseUrl === "string" ? env.baseUrl : null;
+  const baseUrlHttps = typeof baseUrl === "string" ? baseUrl.startsWith("https://") : false;
+  const cookieSecureExplicit = env?.cookieSecureExplicit;
+  const cookieSecureOk =
+    cookieSecureExplicit === true ? true :
+    cookieSecureExplicit === false ? false :
+    isHttps === true;
 
   const Row = ({ label, ok, details }: { label: string; ok: boolean; details?: string }) => (
     <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
@@ -84,6 +99,40 @@ export default function GoLiveChecklistPage() {
             <Row label="Evergreen reachable" ok={evergreenOk} details={`HTTP ${status?.evergreen?.status ?? "—"}`} />
             <Row label="RBAC strict mode enabled" ok={rbacStrict} details={`STACKSOS_RBAC_MODE=${env?.rbacMode ?? "—"}`} />
             <Row label="Idle timeout configured" ok={idleConfigured} details={idleConfigured ? `${env.idleTimeoutMinutes} minutes` : "Set STACKSOS_IDLE_TIMEOUT_MINUTES"} />
+            <Row
+              label="StacksOS is served over HTTPS"
+              ok={isHttps === true}
+              details={isHttps === true ? window.location.origin : "Terminate TLS (recommended: Caddy) and use https://"}
+            />
+            <Row
+              label="Base URL configured for HTTPS"
+              ok={baseUrlHttps}
+              details={baseUrl ? `STACKSOS_BASE_URL=${baseUrl}` : "Set STACKSOS_BASE_URL=https://..."}
+            />
+            <Row
+              label="Secure cookies enabled"
+              ok={cookieSecureOk}
+              details={
+                cookieSecureExplicit === false
+                  ? "STACKSOS_COOKIE_SECURE=false is unsafe on LAN. Set it to true after enabling HTTPS."
+                  : cookieSecureExplicit === true
+                    ? "STACKSOS_COOKIE_SECURE=true"
+                    : isHttps === true
+                      ? "STACKSOS_COOKIE_SECURE not set (auto: HTTPS detected)"
+                      : "STACKSOS_COOKIE_SECURE not set (auto: currently HTTP)"
+              }
+            />
+            <Row
+              label="Redis configured (multi-instance ready)"
+              ok={redisEnabled && redisOk}
+              details={
+                redisEnabled
+                  ? redisOk
+                    ? "STACKSOS_REDIS_URL configured and reachable"
+                    : "STACKSOS_REDIS_URL configured but Redis is not reachable"
+                  : "Optional for single instance; set STACKSOS_REDIS_URL for shared rate limiting + idempotency"
+              }
+            />
             <Row
               label="Host reboot required"
               ok={!rebootRequired}

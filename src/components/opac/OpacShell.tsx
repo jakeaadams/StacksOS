@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { OPACFooter } from "@/components/opac/OPACFooter";
 import { OPACHeader } from "@/components/opac/OPACHeader";
 import { Toaster } from "@/components/ui/sonner";
-import { useAccessibilityPrefs } from "@/hooks/useAccessibilityPrefs";
+import { useAccessibilityPrefs } from "@/hooks/use-accessibility-prefs";
 import { cn } from "@/lib/utils";
 
 export function OpacShell({ children }: { children: React.ReactNode }) {

@@ -1,5 +1,9 @@
+import { NextRequest } from "next/server";
+
+import { errorResponse, getRequestMeta, successResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { getRedisClient, redisEnabled, redisKey } from "@/lib/redis";
 
 /**
  * Google Books API Integration
@@ -27,6 +31,9 @@ export interface GoogleBooksSearchItem {
   infoLink: string | null;
 }
 
+const GLOBAL_BACKOFF_KEY = "__stacksos_googleBooksBackoffUntilMs";
+const REDIS_BACKOFF_KEY = redisKey("googlebooks:backoffUntilMs");
+
 function normalizeGoogleImageUrl(url: unknown): string | null {
   if (typeof url !== "string" || !url.trim()) return null;
   return url.replace(/^http:/, "https:");
@@ -37,35 +44,117 @@ function upgradeGoogleImageZoom(url: string | null): string | null {
   return url.replace(/([?&]zoom=)(\d+)/, (_match, prefix: string) => `${prefix}2`);
 }
 
-async function fetchGoogleBook(isbn: string): Promise<GoogleBookData | null> {
+function getLocalBackoffUntilMs(): number {
+  const g = globalThis as any;
+  const raw = g[GLOBAL_BACKOFF_KEY];
+  const n = typeof raw === "number" ? raw : parseInt(String(raw ?? ""), 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function setLocalBackoffUntilMs(untilMs: number): void {
+  (globalThis as any)[GLOBAL_BACKOFF_KEY] = untilMs;
+}
+
+async function getBackoffUntilMs(): Promise<number> {
+  if (!redisEnabled()) return getLocalBackoffUntilMs();
+  const client = await getRedisClient();
+  if (!client) return getLocalBackoffUntilMs();
+
   try {
+    const raw = await client.get(REDIS_BACKOFF_KEY);
+    const n = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return getLocalBackoffUntilMs();
+  }
+}
+
+async function setBackoffUntilMs(untilMs: number): Promise<void> {
+  setLocalBackoffUntilMs(untilMs);
+
+  if (!redisEnabled()) return;
+  const client = await getRedisClient();
+  if (!client) return;
+
+  const ttlMs = Math.max(1_000, untilMs - Date.now());
+  try {
+    await client.set(REDIS_BACKOFF_KEY, String(untilMs), { PX: ttlMs });
+  } catch {
+    // Best-effort; local backoff still applies for this instance.
+  }
+}
+
+function parseRetryAfterSeconds(res: Response): number {
+  const retryAfterHeader = String(res.headers.get("retry-after") || "").trim();
+  const fromHeader = retryAfterHeader && /^\d+$/.test(retryAfterHeader) ? parseInt(retryAfterHeader, 10) : NaN;
+  if (Number.isFinite(fromHeader) && fromHeader > 0) return fromHeader;
+  return 60;
+}
+
+async function fetchGoogleBook(isbn: string): Promise<{
+  data: GoogleBookData | null;
+  rateLimited: boolean;
+  retryAfterSeconds: number | null;
+}> {
+  try {
+    const now = Date.now();
+    const backoffUntil = await getBackoffUntilMs();
+    if (now < backoffUntil) {
+      return {
+        data: null,
+        rateLimited: true,
+        retryAfterSeconds: Math.max(1, Math.ceil((backoffUntil - now) / 1000)),
+      };
+    }
+
     const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`;
     const res = await fetch(url, { 
       next: { revalidate: 86400 } // Cache for 24 hours
     });
     
-    if (!res.ok) return null;
+    if (res.status === 429) {
+      const retryAfterSeconds = parseRetryAfterSeconds(res);
+      await setBackoffUntilMs(Date.now() + Math.max(10, retryAfterSeconds) * 1000);
+      return { data: null, rateLimited: true, retryAfterSeconds };
+    }
+
+    if (!res.ok) {
+      logger.warn(
+        { status: res.status, statusText: res.statusText, isbn },
+        "Google Books lookup failed"
+      );
+      return { data: null, rateLimited: false, retryAfterSeconds: null };
+    }
     
     const data = await res.json();
     
     if (!data.items || data.items.length === 0) {
-      return null;
+      return { data: null, rateLimited: false, retryAfterSeconds: null };
     }
     
     const book = data.items[0];
     const volumeInfo = book.volumeInfo || {};
-    
+
+    const imageLinks = volumeInfo?.imageLinks || {};
+    const thumbnail =
+      normalizeGoogleImageUrl(imageLinks.thumbnail) ||
+      normalizeGoogleImageUrl(imageLinks.smallThumbnail);
+
     return {
-      isbn,
-      averageRating: volumeInfo.averageRating ?? null,
-      ratingsCount: volumeInfo.ratingsCount ?? null,
-      thumbnail: volumeInfo.imageLinks?.thumbnail ?? null,
-      description: volumeInfo.description ?? null,
-      previewLink: volumeInfo.previewLink ?? null,
+      data: {
+        isbn,
+        averageRating: volumeInfo.averageRating ?? null,
+        ratingsCount: volumeInfo.ratingsCount ?? null,
+        thumbnail,
+        description: volumeInfo.description ?? null,
+        previewLink: volumeInfo.previewLink ?? null,
+      },
+      rateLimited: false,
+      retryAfterSeconds: null,
     };
   } catch (error) {
     logger.error({ error: String(error), isbn }, "Error fetching Google Books data");
-    return null;
+    return { data: null, rateLimited: false, retryAfterSeconds: null };
   }
 }
 
@@ -80,12 +169,13 @@ async function searchGoogleBooks(query: string, maxResults: number, startIndex: 
   const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=${safeMaxResults}&startIndex=${safeStartIndex}`;
 
   const now = Date.now();
-  if (now < rateLimitUntilMs) {
+  const backoffUntilMs = await getBackoffUntilMs();
+  if (now < backoffUntilMs) {
     return {
       totalItems: 0,
       items: [],
       rateLimited: true,
-      retryAfterSeconds: Math.max(1, Math.ceil((rateLimitUntilMs - now) / 1000)),
+      retryAfterSeconds: Math.max(1, Math.ceil((backoffUntilMs - now) / 1000)),
     };
   }
 
@@ -94,9 +184,8 @@ async function searchGoogleBooks(query: string, maxResults: number, startIndex: 
   });
 
   if (res.status === 429) {
-    const retryAfterHeader = String(res.headers.get("retry-after") || "").trim();
-    const retryAfterSeconds = retryAfterHeader && /^\d+$/.test(retryAfterHeader) ? parseInt(retryAfterHeader, 10) : 60;
-    rateLimitUntilMs = Date.now() + Math.max(10, retryAfterSeconds) * 1000;
+    const retryAfterSeconds = parseRetryAfterSeconds(res);
+    await setBackoffUntilMs(Date.now() + Math.max(10, retryAfterSeconds) * 1000);
     return { totalItems: 0, items: [], rateLimited: true, retryAfterSeconds };
   }
 
@@ -137,19 +226,31 @@ async function searchGoogleBooks(query: string, maxResults: number, startIndex: 
   return { totalItems, items };
 }
 
-let rateLimitUntilMs = 0;
-
 // GET /api/google-books?isbn=9780123456789
 // GET /api/google-books?isbns=9780123456789,9780987654321 (batch)
 // GET /api/google-books?q=intitle:...&maxResults=8&startIndex=0 (search)
 export async function GET(request: NextRequest) {
+  const { ip } = getRequestMeta(request);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 300,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "google-books",
+  });
+
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   const { searchParams } = new URL(request.url);
   
   // Single ISBN
   const isbn = searchParams.get("isbn");
   if (isbn) {
-    const data = await fetchGoogleBook(isbn.replace(/-/g, ""));
-    return NextResponse.json(data);
+    const cleaned = isbn.replace(/-/g, "");
+    const { data, rateLimited, retryAfterSeconds } = await fetchGoogleBook(cleaned);
+    return successResponse({ data, rateLimited, retryAfterSeconds });
   }
   
   // Batch ISBNs (comma-separated)
@@ -162,16 +263,23 @@ export async function GET(request: NextRequest) {
     
     // Fetch in parallel with small delay between requests
     const results: Record<string, GoogleBookData | null> = {};
+    let rateLimited = false;
+    let retryAfterSeconds: number | null = null;
     
     await Promise.all(
       limitedList.map(async (isbnItem, index) => {
         // Stagger requests slightly to avoid rate limiting
         await new Promise((resolve) => setTimeout(resolve, index * 100));
-        results[isbnItem] = await fetchGoogleBook(isbnItem);
+        const out = await fetchGoogleBook(isbnItem);
+        results[isbnItem] = out.data;
+        if (out.rateLimited) {
+          rateLimited = true;
+          retryAfterSeconds = out.retryAfterSeconds;
+        }
       })
     );
     
-    return NextResponse.json(results);
+    return successResponse({ results, rateLimited, retryAfterSeconds });
   }
 
   const q = searchParams.get("q");
@@ -181,18 +289,12 @@ export async function GET(request: NextRequest) {
       const startIndex = parseInt(searchParams.get("startIndex") || "0", 10);
 
       const result = await searchGoogleBooks(q, maxResults, startIndex);
-      return NextResponse.json({ ok: true, query: q, ...result });
+      return successResponse({ query: q, ...result });
     } catch (error) {
       logger.warn({ error: String(error), query: q }, "Google Books search failed");
-      return NextResponse.json(
-        { ok: false, error: "Failed to search Google Books" },
-        { status: 502 }
-      );
+      return errorResponse("Failed to search Google Books", 502);
     }
   }
   
-  return NextResponse.json(
-    { error: "Missing isbn or isbns parameter" },
-    { status: 400 }
-  );
+  return errorResponse("Missing isbn, isbns, or q parameter", 400);
 }

@@ -3,8 +3,8 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { usePatronSession } from "@/hooks/usePatronSession";
-import { useLibrary } from "@/hooks/useLibrary";
+import { usePatronSession } from "@/hooks/use-patron-session";
+import { useLibrary } from "@/hooks/use-library";
 import {
   BookOpen,
   CreditCard,

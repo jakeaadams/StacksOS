@@ -4,7 +4,7 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useState } from "react";
 import Link from "next/link";
-import { useLibrary } from "@/hooks/useLibrary";
+import { useLibrary } from "@/hooks/use-library";
 import {
   User,
   Mail,

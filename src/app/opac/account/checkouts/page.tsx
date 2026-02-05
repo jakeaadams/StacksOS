@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { usePatronSession, PatronCheckout } from "@/hooks/usePatronSession";
+import { usePatronSession, PatronCheckout } from "@/hooks/use-patron-session";
 import { UnoptimizedImage } from "@/components/shared";
 import {
   BookOpen,

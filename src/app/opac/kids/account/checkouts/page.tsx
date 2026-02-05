@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { featureFlags } from "@/lib/feature-flags";
-import { usePatronSession, type PatronCheckout } from "@/hooks/usePatronSession";
+import { usePatronSession, type PatronCheckout } from "@/hooks/use-patron-session";
 import { useKidsParentGate } from "@/contexts/kids-parent-gate-context";
 import { UnoptimizedImage } from "@/components/shared";
 import {

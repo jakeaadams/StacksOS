@@ -5,8 +5,8 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useLibrary } from "@/hooks/useLibrary";
-import { usePatronSession } from "@/hooks/usePatronSession";
+import { useLibrary } from "@/hooks/use-library";
+import { usePatronSession } from "@/hooks/use-patron-session";
 import { BookCard } from "@/components/opac/BookCard";
 import { AddToListDialog } from "@/components/opac/AddToListDialog";
 import { featureFlags } from "@/lib/feature-flags";
@@ -155,8 +155,9 @@ export default function RecordDetailPage() {
 	    if (cleanIsbn.length < 10) return;
 	    fetch(`/api/google-books?isbn=${cleanIsbn}`)
       .then((res) => res.json())
-      .then((data) => {
-        if (data?.averageRating) {
+      .then((result) => {
+        const data = result?.ok ? result.data : null;
+        if (data && typeof data.averageRating === "number" && data.averageRating > 0) {
           setGoogleRating({ rating: data.averageRating, count: data.ratingsCount || 0 });
         }
       })

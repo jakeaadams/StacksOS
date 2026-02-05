@@ -7,6 +7,7 @@ import {
 
 import { cookies } from "next/headers";
 import { getOpacPatronPrefs } from "@/lib/db/opac";
+import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 
 /**
  * OPAC Session Check
@@ -16,28 +17,13 @@ import { getOpacPatronPrefs } from "@/lib/db/opac";
  */
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const patronToken = cookieStore.get("patron_authtoken")?.value;
-
-    if (!patronToken) {
-      return successResponse({ authenticated: false, patron: null });
-    }
-
-    // Verify session is still valid
-    const sessionResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.session.retrieve",
-      [patronToken]
-    );
-
-    const user = sessionResponse?.payload?.[0];
-
-    if (user && !user.ilsevent) {
+    const { patronToken, patronId } = await requirePatronSession();
+    if (patronToken && patronId) {
       // Get patron details with card info
       const patronResponse = await callOpenSRF(
         "open-ils.actor",
         "open-ils.actor.user.fleshed.retrieve",
-        [patronToken, user.id, ["card", "cards", "home_ou", "profile"]]
+        [patronToken, patronId, ["card", "cards", "home_ou", "profile"]]
       );
 
       const patron = patronResponse?.payload?.[0];
@@ -47,14 +33,14 @@ export async function GET(req: NextRequest) {
         const checkoutsResponse = await callOpenSRF(
           "open-ils.actor",
           "open-ils.actor.user.checked_out.count",
-          [patronToken, user.id]
+          [patronToken, patronId]
         );
 
         // Get holds count
         const holdsResponse = await callOpenSRF(
           "open-ils.circ",
           "open-ils.circ.holds.retrieve",
-          [patronToken, user.id]
+          [patronToken, patronId]
         );
 
         const holds = Array.isArray(holdsResponse?.payload?.[0]) 
@@ -65,11 +51,11 @@ export async function GET(req: NextRequest) {
         const finesResponse = await callOpenSRF(
           "open-ils.actor",
           "open-ils.actor.user.fines.summary",
-          [patronToken, user.id]
+          [patronToken, patronId]
         );
 
         const finesSummary = finesResponse?.payload?.[0];
-        const prefs = await getOpacPatronPrefs(Number(user.id));
+        const prefs = await getOpacPatronPrefs(patronId);
 
         return successResponse({
           authenticated: true,
@@ -95,9 +81,15 @@ export async function GET(req: NextRequest) {
     }
 
     // Session invalid, clear cookie
+    const cookieStore = await cookies();
     cookieStore.delete("patron_authtoken");
     return successResponse({ authenticated: false, patron: null });
   } catch (error) {
+    if (error instanceof PatronAuthError) {
+      const cookieStore = await cookies();
+      cookieStore.delete("patron_authtoken");
+      return successResponse({ authenticated: false, patron: null });
+    }
     return serverErrorResponse(error, "OPAC Session GET", req);
   }
 }
