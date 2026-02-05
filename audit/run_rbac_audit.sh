@@ -41,6 +41,17 @@ file_has_require_permissions() {
   grep -q "requirePermissions" "$f"
 }
 
+normalize_path() {
+  local p="$1"
+  if command -v realpath >/dev/null 2>&1; then
+    realpath -m "$p"
+    return 0
+  fi
+
+  # Fallback for environments without GNU `realpath` (e.g., some macOS setups).
+  python3 -c 'import os,sys; print(os.path.abspath(os.path.normpath(sys.argv[1])))' "$p"
+}
+
 extract_relative_imports() {
   local f="$1"
   # Keep it simple: handle common `import ... from "./x"` and `export ... from "./x"` forms.
@@ -54,9 +65,8 @@ resolve_import_candidates() {
   local base_dir="$1"
   local spec="$2"
 
-  # `realpath -m` works even if the path doesn't exist, letting us normalize `../`.
   local abs
-  abs="$(realpath -m "$base_dir/$spec")"
+  abs="$(normalize_path "$base_dir/$spec")"
 
   local candidates=(
     "$abs"
