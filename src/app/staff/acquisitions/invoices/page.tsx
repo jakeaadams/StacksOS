@@ -52,12 +52,12 @@ interface FundDebitRow {
 
 export default function InvoicesPage() {
   const { data, isLoading } = useApi<any>(
-    "/api/evergreen/acquisitions?action=invoices",
+    "/api/evergreen/acquisitions/invoices",
     { immediate: true }
   );
-  const { data: vendorsData } = useApi<any>("/api/evergreen/acquisitions?action=vendors", { immediate: true });
-  const { data: methodsData } = useApi<any>("/api/evergreen/acquisitions?action=invoice_methods", { immediate: true });
-  const { data: fundsData } = useApi<any>("/api/evergreen/acquisitions?action=funds", { immediate: true });
+  const { data: vendorsData } = useApi<any>("/api/evergreen/acquisitions/vendors", { immediate: true });
+  const { data: methodsData } = useApi<any>("/api/evergreen/acquisitions/invoice-methods", { immediate: true });
+  const { data: fundsData } = useApi<any>("/api/evergreen/acquisitions/funds", { immediate: true });
 
   const invoices: InvoiceRow[] = data?.invoices || [];
   const vendors = Array.isArray(vendorsData?.vendors) ? vendorsData.vendors : [];
@@ -93,7 +93,7 @@ export default function InvoicesPage() {
     setDetailsOpen(true);
     setDetailsLoading(true);
     try {
-      const res = await fetchWithAuth(`/api/evergreen/acquisitions?action=invoice&id=${id}`);
+      const res = await fetchWithAuth(`/api/evergreen/acquisitions/invoices?id=${id}`);
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "Failed to load invoice");
       setInvoiceDetails(json);
@@ -169,11 +169,10 @@ export default function InvoicesPage() {
     if (!invIdent.trim()) return toast.error("Invoice identifier required");
     setCreating(true);
     try {
-      const res = await fetchWithAuth("/api/evergreen/acquisitions", {
+      const res = await fetchWithAuth("/api/evergreen/acquisitions/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "create_invoice",
           providerId: parseInt(providerId, 10),
           recvMethod,
           invIdent: invIdent.trim(),
@@ -217,11 +216,10 @@ export default function InvoicesPage() {
         }
       }
 
-      const res = await fetchWithAuth("/api/evergreen/acquisitions", {
+      const res = await fetchWithAuth("/api/evergreen/acquisitions/invoices/entries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "add_invoice_entry",
           invoiceId: selectedInvoiceId,
           purchaseOrderId: poId,
           invItemCount: count,
@@ -271,10 +269,10 @@ export default function InvoicesPage() {
 
     setSplitEditorSaving(true);
     try {
-      const res = await fetchWithAuth("/api/evergreen/acquisitions", {
+      const res = await fetchWithAuth("/api/evergreen/acquisitions/invoices/entries/splits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "set_invoice_entry_splits", invoiceEntryId: splitEditorEntryId, splits }),
+        body: JSON.stringify({ invoiceEntryId: splitEditorEntryId, splits }),
       });
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "Save failed");
@@ -294,10 +292,10 @@ export default function InvoicesPage() {
     if (!ok) return;
     setClosing(true);
     try {
-      const res = await fetchWithAuth("/api/evergreen/acquisitions", {
+      const res = await fetchWithAuth("/api/evergreen/acquisitions/invoices/close", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "close_invoice", invoiceId: selectedInvoiceId }),
+        body: JSON.stringify({ invoiceId: selectedInvoiceId }),
       });
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "Close failed");

@@ -46,7 +46,7 @@ export default function EDIPage() {
         fetchWithAuth("/api/evergreen/acquisitions/edi?action=accounts"),
         fetchWithAuth("/api/evergreen/acquisitions/edi?action=messages&limit=200"),
         fetchWithAuth("/api/evergreen/acquisitions/edi?action=message_types"),
-        fetchWithAuth("/api/evergreen/acquisitions?action=vendors"),
+        fetchWithAuth("/api/evergreen/acquisitions/vendors"),
       ]);
       const [accountsJson, messagesJson, typesJson, vendorsJson] = await Promise.all([accountsRes.json(), messagesRes.json(), typesRes.json(), vendorsRes.json()]);
       if (accountsJson.ok) setAccounts(accountsJson.accounts || []);

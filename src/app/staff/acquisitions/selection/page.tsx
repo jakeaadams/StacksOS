@@ -23,7 +23,7 @@ interface FundRow {
 }
 
 export default function SelectionPage() {
-  const { data, isLoading } = useApi<any>("/api/evergreen/acquisitions?action=funds", { immediate: true });
+  const { data, isLoading } = useApi<any>("/api/evergreen/acquisitions/funds", { immediate: true });
   const funds: FundRow[] = data?.funds || [];
 
   const columns = useMemo<ColumnDef<FundRow>[]>(

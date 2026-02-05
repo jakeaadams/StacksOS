@@ -98,7 +98,7 @@ export default function ReceivingPage() {
   const router = useRouter();
 
   const { data, isLoading } = useApi<any>(
-    "/api/evergreen/acquisitions?action=orders",
+    "/api/evergreen/acquisitions/purchase-orders",
     { immediate: true }
   );
 
@@ -144,7 +144,7 @@ export default function ReceivingPage() {
     setExpandedLineItems(new Set());
 
     try {
-      const res = await fetchWithAuth(`/api/evergreen/acquisitions?action=po&id=${po.id}`);
+      const res = await fetchWithAuth(`/api/evergreen/acquisitions/purchase-orders?id=${po.id}`);
       const json = await res.json();
       if (!res.ok || json.ok === false) {
         throw new Error(json.error || "Failed to load purchase order");
@@ -185,7 +185,7 @@ export default function ReceivingPage() {
     
     try {
       if (receiveAction === 'receive_all') {
-        const res = await fetchWithAuth("/api/evergreen/acquisitions", {
+        const res = await fetchWithAuth("/api/evergreen/acquisitions/receiving", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
@@ -207,7 +207,7 @@ export default function ReceivingPage() {
         // Receive each selected detail
         const detailIds = Array.from(selectedDetails);
         for (const detailId of detailIds) {
-          const res = await fetchWithAuth("/api/evergreen/acquisitions", {
+          const res = await fetchWithAuth("/api/evergreen/acquisitions/receiving", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ 
@@ -229,7 +229,7 @@ export default function ReceivingPage() {
         
         const detailIds = Array.from(selectedDetails);
         for (const detailId of detailIds) {
-          const res = await fetchWithAuth("/api/evergreen/acquisitions", {
+          const res = await fetchWithAuth("/api/evergreen/acquisitions/receiving", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ 
@@ -262,7 +262,7 @@ export default function ReceivingPage() {
   const loadClaimTypes = useCallback(async () => {
     setClaimTypesError(null);
     try {
-      const res = await fetchWithAuth("/api/evergreen/acquisitions?action=claim_types");
+      const res = await fetchWithAuth("/api/evergreen/acquisitions/receiving/claim-types");
       const json = await res.json().catch(() => null);
       if (!res.ok || json?.ok === false) {
         throw new Error(json?.error || "Failed to load claim types");
@@ -293,7 +293,7 @@ export default function ReceivingPage() {
         return;
       }
 
-      const res = await fetchWithAuth("/api/evergreen/acquisitions", {
+      const res = await fetchWithAuth("/api/evergreen/acquisitions/receiving", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -326,7 +326,7 @@ export default function ReceivingPage() {
   const loadCancelReasons = useCallback(async () => {
     setCancelReasonsError(null);
     try {
-      const res = await fetchWithAuth("/api/evergreen/acquisitions?action=cancel_reasons");
+      const res = await fetchWithAuth("/api/evergreen/acquisitions/receiving/cancel-reasons");
       const json = await res.json().catch(() => null);
       if (!res.ok || json?.ok === false) {
         throw new Error(json?.error || "Failed to load cancellation reasons");
@@ -358,7 +358,7 @@ export default function ReceivingPage() {
         return;
       }
 
-      const res = await fetchWithAuth("/api/evergreen/acquisitions", {
+      const res = await fetchWithAuth("/api/evergreen/acquisitions/receiving", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -403,7 +403,7 @@ export default function ReceivingPage() {
           ? parseFloat(damagedBillAmount)
           : undefined;
 
-      const res = await fetchWithAuth("/api/evergreen/acquisitions", {
+      const res = await fetchWithAuth("/api/evergreen/acquisitions/receiving", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

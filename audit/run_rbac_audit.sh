@@ -36,6 +36,64 @@ is_skipped() {
   return 1
 }
 
+file_has_require_permissions() {
+  local f="$1"
+  grep -q "requirePermissions" "$f"
+}
+
+extract_relative_imports() {
+  local f="$1"
+  # Keep it simple: handle common `import ... from "./x"` and `export ... from "./x"` forms.
+  # If a mutation route delegates to a handler module, we accept the RBAC check living there.
+  grep -E "from ['\"]\\.(\\.|/)?" "$f" \
+    | sed -E "s/.*from ['\"]([^'\"]+)['\"].*/\\1/" \
+    | sort -u
+}
+
+resolve_import_candidates() {
+  local base_dir="$1"
+  local spec="$2"
+
+  # `realpath -m` works even if the path doesn't exist, letting us normalize `../`.
+  local abs
+  abs="$(realpath -m "$base_dir/$spec")"
+
+  local candidates=(
+    "$abs"
+    "$abs.ts"
+    "$abs.tsx"
+    "$abs/route.ts"
+    "$abs/index.ts"
+    "$abs/index.tsx"
+  )
+
+  for cand in "${candidates[@]}"; do
+    if [[ -f "$cand" ]]; then
+      echo "$cand"
+    fi
+  done
+}
+
+delegates_to_require_permissions() {
+  local f="$1"
+  local base_dir
+  base_dir="$(dirname "$f")"
+
+  while IFS= read -r spec; do
+    if [[ -z "$spec" ]]; then
+      continue
+    fi
+
+    while IFS= read -r cand; do
+      if file_has_require_permissions "$cand"; then
+        return 0
+      fi
+    done < <(resolve_import_candidates "$base_dir" "$spec")
+  done < <(extract_relative_imports "$f")
+
+  return 1
+}
+
 while IFS= read -r f; do
   if grep -qE "export async function (POST|PUT|PATCH|DELETE)\b" "$f"; then
     if is_skipped "$f"; then
@@ -43,7 +101,11 @@ while IFS= read -r f; do
       continue
     fi
 
-    if ! grep -q "requirePermissions" "$f"; then
+    if file_has_require_permissions "$f"; then
+      continue
+    fi
+
+    if ! delegates_to_require_permissions "$f"; then
       echo "ERROR: mutation route missing requirePermissions(): $f" >&2
       FAIL=1
       continue

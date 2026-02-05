@@ -38,11 +38,11 @@ interface Vendor {
 
 export default function PurchaseOrdersPage() {
   const { data, isLoading, error, refetch } = useApi<any>(
-    "/api/evergreen/acquisitions?action=orders",
+    "/api/evergreen/acquisitions/purchase-orders",
     { immediate: true }
   );
   const { data: vendorData } = useApi<any>(
-    "/api/evergreen/acquisitions?action=vendors",
+    "/api/evergreen/acquisitions/vendors",
     { immediate: true }
   );
 
@@ -93,11 +93,10 @@ export default function PurchaseOrdersPage() {
     }
     setIsCreating(true);
     try {
-      const res = await fetchWithAuth("/api/evergreen/acquisitions", {
+      const res = await fetchWithAuth("/api/evergreen/acquisitions/purchase-orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "create_po",
           provider: parseInt(vendorId, 10),
           name: poName || undefined,
         }),

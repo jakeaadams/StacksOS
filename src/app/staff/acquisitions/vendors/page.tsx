@@ -45,7 +45,7 @@ export default function VendorsPage() {
     setSetupMessage(null);
 
     try {
-      const response = await fetchWithAuth("/api/evergreen/acquisitions?action=vendors");
+      const response = await fetchWithAuth("/api/evergreen/acquisitions/vendors");
       const data = await response.json();
 
       if (data.ok) {

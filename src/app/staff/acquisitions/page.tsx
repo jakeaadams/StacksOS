@@ -100,9 +100,9 @@ export default function AcquisitionsPage() {
 
     try {
       const [ordersRes, fundsRes, vendorsRes] = await Promise.all([
-        fetchWithAuth("/api/evergreen/acquisitions?action=orders"),
-        fetchWithAuth("/api/evergreen/acquisitions?action=funds"),
-        fetchWithAuth("/api/evergreen/acquisitions?action=vendors"),
+        fetchWithAuth("/api/evergreen/acquisitions/purchase-orders"),
+        fetchWithAuth("/api/evergreen/acquisitions/funds"),
+        fetchWithAuth("/api/evergreen/acquisitions/vendors"),
       ]);
 
       const ordersJson = await ordersRes.json();
