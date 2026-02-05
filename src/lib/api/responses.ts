@@ -41,7 +41,10 @@ export function okResponse(message: string) {
 export function errorResponse(error: string, status: number = 400, details?: any) {
   const body: any = { ok: false, error };
   if (details !== undefined) body.details = details;
-  return NextResponse.json(body, { status });
+  const headers = (details && typeof details === "object" && (details as any).retryAfter)
+    ? { "retry-after": String((details as any).retryAfter) }
+    : undefined;
+  return NextResponse.json(body, { status, headers });
 }
 
 /**
