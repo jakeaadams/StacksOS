@@ -69,6 +69,30 @@ Artifacts:
 - Default RBAC mode now resolves to `strict` in production unless explicitly overridden (`src/lib/permissions.ts`).
 - Evergreen DB client defaults are now safe/local (`127.0.0.1`, `stacksos_app`) instead of targeting a LAN IP/user (`src/lib/db/evergreen.ts`).
 
+5) CI gate (GitHub Actions)
+- Added `.github/workflows/ci.yml` to run:
+  - `npm audit`
+  - `npm run lint`
+  - `npm run test:run`
+  - `NEXT_DIST_DIR=.next.build npm run build`
+  - `bash audit/run_ui_audit.sh`
+  - `bash audit/run_rbac_audit.sh`
+
+6) Patron photo endpoint consolidation
+- Canonical endpoint is now `GET/POST/DELETE /api/patron-photos`.
+- `/api/upload-patron-photo` is kept as a deprecated compatibility shim (adds `Deprecation`/`Sunset` headers and forwards to canonical).
+- Shared implementation lives in `src/lib/patron-photos-api.ts` and persists photo URLs via `savePatronPhotoUrl()` (Evergreen + custom table).
+
+7) CSP hardening (nonce path, safe baseline preserved)
+- Middleware now generates a per-request nonce and includes it in `script-src` and `style-src`.
+- `unsafe-inline` remains for now (baseline compatibility), but the nonce makes it feasible to remove later once remaining inline sources are nonced/hashed.
+
+8) Multi-instance readiness (shared stores)
+- Added Redis support (when `STACKSOS_REDIS_URL` is set):
+  - Rate limiting is backed by Redis (shared across instances).
+  - Idempotency storage is backed by Redis + a best-effort distributed lock.
+- Fallback behavior: if Redis is not configured or unavailable, both features degrade gracefully to the previous local/file-backed implementations.
+
 ---
 
 ## Server audit (StacksOS host)
