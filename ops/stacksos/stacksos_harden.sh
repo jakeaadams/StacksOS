@@ -145,6 +145,11 @@ EOF
 
 ensure_sudoers_safety() {
   log "Checking sudoers.d for insecure permissions / NOPASSWD grants"
+  local search_cmd="grep"
+  if command -v rg >/dev/null 2>&1; then
+    search_cmd="rg"
+  fi
+
   if [[ -d /etc/sudoers.d ]]; then
     local any=0
     while IFS= read -r -d '' f; do
@@ -155,7 +160,7 @@ ensure_sudoers_safety() {
         log "WARN: fixing sudoers perms: $f ($mode -> 0440)"
         chmod 0440 "$f" || true
       fi
-      if rg -n "NOPASSWD" "$f" >/dev/null 2>&1; then
+      if "$search_cmd" -n "NOPASSWD" "$f" >/dev/null 2>&1; then
         log "WARN: NOPASSWD found in $f (review manually; not auto-editing)"
       fi
     done < <(find /etc/sudoers.d -maxdepth 1 -type f -print0 2>/dev/null || true)
@@ -171,7 +176,7 @@ ensure_sudoers_safety() {
 
 disable_unneeded_services() {
   for svc in ModemManager fwupd; do
-    if systemctl list-unit-files --type=service 2>/dev/null | rg -q "^${svc}\\.service"; then
+    if systemctl list-unit-files --type=service 2>/dev/null | grep -qE "^${svc}\\.service"; then
       log "Disabling service: $svc"
       systemctl disable --now "${svc}.service" || true
     fi
@@ -214,7 +219,7 @@ verify() {
   fi
 
   log "sshd effective settings (selected):"
-  sshd -T 2>/dev/null | rg -n '^(passwordauthentication|permitrootlogin|permitemptypasswords|x11forwarding|allowagentforwarding|maxauthtries|logingracetime|clientaliveinterval|clientalivecountmax)\\b' || true
+  sshd -T 2>/dev/null | grep -nE '^(passwordauthentication|permitrootlogin|permitemptypasswords|x11forwarding|allowagentforwarding|maxauthtries|logingracetime|clientaliveinterval|clientalivecountmax)\\b' || true
 
   log "sysctl (selected):"
   sysctl -n net.ipv4.conf.all.send_redirects net.ipv4.conf.default.send_redirects 2>/dev/null || true
@@ -234,4 +239,3 @@ main() {
 }
 
 main "$@"
-
