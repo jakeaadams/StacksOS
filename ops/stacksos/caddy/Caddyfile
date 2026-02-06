@@ -7,6 +7,12 @@
 }
 
 {$STACKSOS_HOST:stacksos.lan} {
+	# Avoid binding on tailscale0 so Tailscale Serve can use :443 on the
+	# node's 100.x address / ts.net hostname.
+	#
+	# On the StacksOS host, set STACKSOS_BIND=192.168.1.233 (or your LAN IP).
+	bind {$STACKSOS_BIND:0.0.0.0}
+
 	tls internal
 
 	encode zstd gzip

@@ -57,6 +57,8 @@ sudo systemctl restart caddy
 
 Notes:
 - Caddy `tls internal` uses its own CA. Clients may need to trust the CA cert for a clean lock icon.
+- If you also use Tailscale Serve (trusted HTTPS on `*.ts.net`), set `STACKSOS_BIND=<LAN_IP>` so Caddy does not bind on
+  `tailscale0` and conflict with Tailscale's listener.
 - After Caddy is serving HTTPS, you should disable `stacksos-proxy.service` (socat on port 3000):
 
 ```bash
@@ -77,6 +79,20 @@ On the StacksOS host, export the Root CA for distribution:
 ```bash
 sudo bash ops/stacksos/caddy/export-internal-ca.sh
 ```
+
+## Remote access (no port forwarding): Tailscale (recommended)
+
+If you want to reach StacksOS off-LAN without port forwarding and without browser TLS warnings, use Tailscale:
+
+```bash
+# On the StacksOS host:
+sudo tailscale up
+sudo tailscale serve --bg --yes 3000
+sudo tailscale serve status
+```
+
+This will give you an URL like `https://stacksos.<tailnet>.ts.net/` that works anywhere, but only for devices on your
+tailnet.
 
 ## Install (on stacksos host)
 
