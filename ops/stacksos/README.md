@@ -64,6 +64,19 @@ sudo systemctl disable --now stacksos-proxy.service
 sudo systemctl reset-failed stacksos-proxy.service
 ```
 
+### Trusting the internal CA (removing browser warnings)
+
+For LAN pilots, the fastest way to remove browser TLS warnings is to trust Caddy's internal Root CA on each client.
+
+Docs:
+- `docs/TLS_INTERNAL_CA.md`
+
+On the StacksOS host, export the Root CA for distribution:
+
+```bash
+sudo bash ops/stacksos/caddy/export-internal-ca.sh
+```
+
 ## Install (on stacksos host)
 
 Copy the units into `/etc/systemd/system/` and enable the timer:

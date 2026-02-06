@@ -72,6 +72,8 @@ Notes:
 - This VM is configured with Caddy (`caddy.service`) to terminate TLS and expose:
   - `https://192.168.1.233` → `http://127.0.0.1:3000`
 - `stacksos-proxy.service` (socat on port 3000) is deprecated and is disabled in this environment.
+- If you use `tls internal`, client machines must trust Caddy's internal Root CA to remove browser warnings.
+  Docs: `docs/TLS_INTERNAL_CA.md`
 
 ### Production via systemd (recommended for pilots)
 
@@ -203,6 +205,8 @@ Environment controls:
 - `STACKSOS_REDIS_URL=redis://...` (enables shared rate limiting + idempotency in multi-instance deployments)
 - `STACKSOS_REDIS_PREFIX=stacksos` (namespaces Redis keys by environment/tenant)
 - `STACKSOS_METRICS_SECRET=<long-random-value>` (protects `/api/metrics` in production)
+- `STACKSOS_CSP_REPORT_ONLY=true` (emit a strict CSP in Report-Only mode for tuning)
+- `STACKSOS_CSP_STRICT_SCRIPTS=true` (enforce nonce-based CSP for scripts; removes `unsafe-inline` from `script-src` in production)
 - `STACKSOS_PATRON_BARCODE_MODE=generate|require` (default: `generate`)
 - `STACKSOS_PATRON_BARCODE_PREFIX=29` (used when mode is `generate`)
 

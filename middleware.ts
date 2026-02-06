@@ -74,8 +74,11 @@ function addSecurityHeaders(request: NextRequest, response: NextResponse, nonce:
   // - Dev uses eval for HMR; production should not.
   // - We include a per-request nonce now so we can progressively eliminate
   //   `unsafe-inline` as we remove inline scripts/styles.
+  const strictScriptsFlag = String(process.env.STACKSOS_CSP_STRICT_SCRIPTS || "").trim().toLowerCase();
+  const strictScripts = ["1", "true", "yes"].includes(strictScriptsFlag);
+
   const scriptSrc = isProd
-    ? `script-src 'self' 'nonce-${nonce}' 'unsafe-inline'; `
+    ? `script-src 'self' 'nonce-${nonce}'${strictScripts ? "" : " 'unsafe-inline'"}; `
     : `script-src 'self' 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval'; `;
   const styleSrc = `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'; `;
   const connectSrc = isProd ? "connect-src 'self'; " : "connect-src 'self' ws: wss:; ";
@@ -189,6 +192,10 @@ export function middleware(req: NextRequest) {
 
   const cspNonce = generateCspNonce();
   requestHeaders.set("x-csp-nonce", cspNonce);
+  // Next.js can automatically attach `nonce="..."` to its inline <script> tags
+  // if it sees a nonce in the *request* CSP headers. We set a minimal internal
+  // CSP header here so `getScriptNonceFromHeader()` can extract it.
+  requestHeaders.set("content-security-policy", `script-src 'self' 'nonce-${cspNonce}'`);
 
   const pathname = req.nextUrl.pathname;
   const isProtected =
