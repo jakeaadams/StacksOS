@@ -99,7 +99,14 @@ function addSecurityHeaders(request: NextRequest, response: NextResponse, nonce:
   const reportOnlyFlag = String(process.env.STACKSOS_CSP_REPORT_ONLY || "").trim().toLowerCase();
   const enableReportOnly = ["1", "true", "yes"].includes(reportOnlyFlag);
   if (enableReportOnly) {
-    const reportUrl = new URL("/api/security/csp-report", request.nextUrl.origin).toString();
+    // nextUrl.origin can be misleading behind reverse proxies (it may reflect the
+    // internal origin like https://localhost:3000). Prefer forwarded headers.
+    const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+    const host = forwardedHost || request.headers.get("host") || request.nextUrl.host;
+    const proto = forwardedProto || request.nextUrl.protocol.replace(/:$/, "");
+    const origin = host ? `${proto}://${host}` : request.nextUrl.origin;
+    const reportUrl = new URL("/api/security/csp-report", origin).toString();
 
     // Reporting API (modern) + report-uri fallback (legacy).
     response.headers.set("Reporting-Endpoints", `csp="${reportUrl}"`);

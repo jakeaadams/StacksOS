@@ -15,6 +15,11 @@
   @static path /_next/static/*
   header @static Cache-Control "public, max-age=31536000, immutable"
 
-  reverse_proxy 127.0.0.1:3000
+  # Preserve the original request host/scheme so Next.js can generate correct
+  # absolute URLs (e.g., CSP report endpoints) behind the proxy.
+  reverse_proxy 127.0.0.1:3000 {
+    header_up Host {host}
+    header_up X-Forwarded-Host {host}
+    header_up X-Forwarded-Proto {scheme}
+  }
 }
-
