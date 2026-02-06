@@ -1,6 +1,6 @@
 # Server Security Audit (StacksOS + Evergreen)
 
-Last refreshed: 2026-02-05 (UTC)
+Last refreshed: 2026-02-06 (UTC)
 
 Hosts:
 - `stacksos` (`192.168.1.233`) — StacksOS app host
@@ -14,10 +14,17 @@ explicitly.
 ### What is verified (from this environment)
 
 - Evergreen SSH is **publickey-only** (password auth not offered).
-- Evergreen is running kernel `6.8.0-94-generic` and does **not** show `/var/run/reboot-required`.
-- StacksOS is running kernel `6.8.0-94-generic` and does **not** show `/var/run/reboot-required`.
-- **Security updates are pending** on both hosts (kernel meta packages indicate `6.8.0-100.*` is available).
+- Evergreen is running kernel `6.8.0-100-generic` and does **not** show `/var/run/reboot-required`.
+- StacksOS is running kernel `6.8.0-94-generic` and **does** show `/var/run/reboot-required` (kernel updates installed; reboot pending).
 - StacksOS SSH is **publickey-only** (password auth not offered).
+- Effective `sshd -T` settings are verified on both hosts:
+  - `PermitRootLogin no`
+  - `PasswordAuthentication no`
+  - `X11Forwarding no`
+  - `AllowUsers jake`
+- Firewall rules are verified:
+  - StacksOS: inbound `22/tcp`, `80/tcp`, `443/tcp` allowed only from `192.168.1.0/24`
+  - Evergreen: inbound `22/tcp` allowed only from `192.168.1.0/24`; `443/tcp` allowed only from `192.168.1.233`
 - Evergreen sudoers filesystem permissions are correct (`/etc/sudoers` is `0440`) and `/etc/sudoers.d/` contains only the
   stock `README` (no drop-ins).
 - StacksOS sudoers filesystem permissions are correct (`/etc/sudoers` is `0440`) and `/etc/sudoers.d/` contains only the
@@ -29,17 +36,15 @@ explicitly.
 
 ### What is not verified here
 
-- Effective `sshd -T` settings for Evergreen/StacksOS (requires sudo because hardening drop-ins are `0600 root:root`).
+- Post-reboot verification on StacksOS (pending reboot to pick up kernel `6.8.0-100-generic`).
 
 ## Evidence (selected)
 
 ### evergreen
 
 - OS: Ubuntu 24.04.3 LTS
-- Kernel: `6.8.0-94-generic`
+- Kernel: `6.8.0-100-generic`
 - `/var/run/reboot-required`: not present
-- Pending updates (user-visible without sudo):
-  - `linux-generic`, `linux-image-generic`, `linux-headers-generic` → `6.8.0-100.100`
 - SSH auth methods offered (client-side probe): **publickey only**
   - `ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password evergreen` → `Permission denied (publickey)`
 - `/etc/ssh/sshd_config.d/` contains:
@@ -48,6 +53,9 @@ explicitly.
 - Sudoers perms:
   - `/etc/sudoers` is `0440 root:root`
   - `/etc/sudoers.d/` contains only `README` (no active drop-ins)
+- UFW rules (sudo-verified):
+  - `22/tcp` allowed only from `192.168.1.0/24`
+  - `443/tcp` allowed only from `192.168.1.233`
 - Listening ports (selected; from `ss -lnt`):
   - `*:443` and `*:80` are listening (Apache)
   - Redis (`6379`), PostgreSQL (`5432`), memcached (`11211`), epmd (`4369`), ejabberd (`5222/5223`) are **not** on `0.0.0.0`
@@ -59,10 +67,12 @@ explicitly.
   - `ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password stacksos` → `Permission denied (publickey)`
 - OS: Ubuntu 24.04.3 LTS
 - Kernel: `6.8.0-94-generic`
-- `/var/run/reboot-required`: not present
-- Pending updates (user-visible without sudo):
-  - Kernel meta packages indicate `6.8.0-100.*` is available
-  - Security updates pending for `glib2.0` and `python3.12` packages (noble-security)
+- `/var/run/reboot-required`: present (kernel meta packages updated to `6.8.0-100.*`; reboot required)
+- UFW rules (sudo-verified):
+  - `22/tcp` allowed only from `192.168.1.0/24`
+  - `80/tcp` and `443/tcp` allowed only from `192.168.1.0/24`
+- Reverse proxy:
+  - Caddy serves `:80`/`:443` and forwards to `127.0.0.1:3000` (Next.js)
 - Reboot evidence:
   - `last -x` shows the kernel-pickup reboot occurred at `2026-02-04 18:13 UTC`:
     - `reboot system boot 6.8.0-94-generic Wed Feb 4 18:13 still running`
@@ -74,6 +84,5 @@ explicitly.
 
 ## Next steps (recommended)
 
-1. If you want this doc to assert effective `sshd -T` values (X11 forwarding, AllowUsers, etc.), re-run the probes with
-   sudo and capture:
-   - `sudo sshd -T | egrep '^(passwordauthentication|kbdinteractiveauthentication|permitrootlogin|x11forwarding|allowagentforwarding|allowtcpforwarding|usedns|allowusers)\\b'`
+1. Reboot StacksOS to pick up the installed kernel/security updates:
+   - `sudo reboot`

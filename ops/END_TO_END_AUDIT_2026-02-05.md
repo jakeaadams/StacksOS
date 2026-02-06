@@ -188,3 +188,48 @@ Blocked (needs sudo):
 3) Evergreen user shells:
 - Only if operationally safe, consider `usermod -s /usr/sbin/nologin opensrf` and `usermod -s /usr/sbin/nologin postgres`
   (verify Evergreen/OpenSRF maintenance scripts first).
+
+---
+
+## Addendum (2026-02-06 UTC): Post-audit ops changes applied
+
+This addendum records the operational changes applied after the `2026-02-05` repo + host audit.
+
+### StacksOS host (`192.168.1.233`)
+
+- HTTPS reverse proxy (Caddy) installed and enabled:
+  - Caddy listens on `:80`/`:443` and forwards to Next.js on `127.0.0.1:3000`.
+  - `stacksos-proxy.service` (port 3000 LAN forwarder) is disabled.
+- Cookies are secure in production:
+  - `STACKSOS_COOKIE_SECURE=true`
+  - `STACKSOS_BASE_URL=https://192.168.1.233`
+- Redis installed and enabled on loopback (`127.0.0.1:6379`), and StacksOS configured to use it:
+  - `STACKSOS_REDIS_URL=redis://127.0.0.1:6379`
+  - Rate limiting + idempotency are now multi-instance safe.
+- CSP reporting behind reverse proxy fixed:
+  - CSP report URLs are derived from `X-Forwarded-Proto` / `X-Forwarded-Host`.
+  - `STACKSOS_CSP_REPORT_ONLY=true` is set while tuning.
+- Firewall rules (UFW):
+  - `22/tcp`, `80/tcp`, `443/tcp` allowed only from `192.168.1.0/24`.
+  - Port `3000/tcp` is not exposed to the LAN.
+- Kernel updates installed (`linux-*` meta packages → `6.8.0-100.*`) and **reboot is required** to pick them up.
+- Temporary privilege bootstrap was removed:
+  - The temporary `NOPASSWD` sudoers drop-in was deleted.
+  - The temporary `host-admin` LXD container was deleted.
+
+### Evergreen host (`192.168.1.232`)
+
+- Kernel updates installed and host rebooted onto `6.8.0-100-generic`.
+- SSH hardening confirmed effective (`sshd -T`):
+  - `PasswordAuthentication no`
+  - `X11Forwarding no`
+  - `PermitRootLogin no`
+  - `AllowUsers jake`
+- Locked down old OpenSRF config backups:
+  - `/openils/conf/*.bak.*` set to `0640 opensrf:opensrf` (to match live config posture).
+- Firewall rules (UFW):
+  - `443/tcp` allowed only from `192.168.1.233` (StacksOS host)
+  - `22/tcp` allowed only from `192.168.1.0/24`
+- Temporary privilege bootstrap was removed:
+  - The temporary `NOPASSWD` sudoers drop-in was deleted.
+  - The temporary `host-admin` LXD container was deleted.

@@ -545,26 +545,32 @@ Principles:
 - Differences are limited to: hot reload, debug logging, and cookie Secure defaults.
 
 Dev (stacksos VM):
-- Start: `cd ~/projects/stacksos && pnpm dev`
-- URL: `http://<stacksos-ip>:3000/login`
+- Start: `cd ~/projects/stacksos && npm run dev -- -H 0.0.0.0 -p 3000`
+- URL:
+  - From the LAN (recommended): `https://<stacksos-ip>/login` (via Caddy)
+  - From the StacksOS host: `http://127.0.0.1:3000/login`
 - Login: Evergreen staff user credentials (username/password).
 - Notes:
   - Next.js shows a small dev indicator ("N") in the corner in dev mode.
   - Changes apply live; restart only if the dev server is wedged.
 
-Production (LAN HTTP, no TLS):
-- Start: `cd ~/projects/stacksos && pnpm build`
-- Then: `STACKSOS_COOKIE_SECURE=0 pnpm start`
+Legacy production (LAN HTTP, no TLS) (not recommended):
+- Start: `cd ~/projects/stacksos && npm run build`
+- Then: `STACKSOS_COOKIE_SECURE=false npm run start -- -H 0.0.0.0 -p 3000`
 - URL: `http://<stacksos-ip>:3000/login`
 - Login: same Evergreen staff user.
 - Notes:
-  - In production mode, the session cookie defaults to `Secure`.
+  - In production mode, session cookies default to `Secure` when `STACKSOS_COOKIE_SECURE=true` (recommended).
   - On plain HTTP, browsers drop `Secure` cookies.
-  - `STACKSOS_COOKIE_SECURE=0` forces non-secure cookies for LAN-only HTTP.
+  - Only use this mode for short-lived LAN-only experiments. Prefer HTTPS reverse proxy.
 
 Production (recommended: behind HTTPS reverse proxy):
 - Put Nginx/Caddy in front of StacksOS and terminate TLS.
-- Start: `pnpm build && pnpm start` (no cookie override).
+- Start: `npm run build && npm run start -- -H 127.0.0.1 -p 3000` (no cookie override).
+- Set:
+  - `STACKSOS_BASE_URL=https://...`
+  - `STACKSOS_COOKIE_SECURE=true`
+  - (Optional) `STACKSOS_CSP_REPORT_ONLY=true` while tuning CSP
 
 Configuration:
 - StacksOS points at Evergreen via `EVERGREEN_BASE_URL` in `.env.local`.

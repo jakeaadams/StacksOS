@@ -1,6 +1,6 @@
 # StacksOS Runbook (Dev + Pilot Ops)
 
-Last updated: 2026-02-05
+Last updated: 2026-02-06
 
 StacksOS is a Next.js staff client that calls Evergreen (OpenSRF) as the system-of-record.
 
@@ -11,11 +11,15 @@ StacksOS is a Next.js staff client that calls Evergreen (OpenSRF) as the system-
 
 ## URLs
 
-- StacksOS login: `http://<stacksos-ip>:3000/login`
-- StacksOS staff shell: `http://<stacksos-ip>:3000/staff`
+- StacksOS login (recommended): `https://<stacksos-ip>/login`
+- StacksOS staff shell: `https://<stacksos-ip>/staff`
 - Evergreen staff client (reference): `https://<evergreen-ip>/eg/staff/`
 
 Login credentials are Evergreen staff credentials (StacksOS does not maintain its own user DB).
+
+Notes:
+- On the StacksOS host, Next.js listens on `http://127.0.0.1:3000` and is not exposed to the LAN.
+- LAN access is served by Caddy on `:443` (TLS) and `:80` (redirect).
 
 ---
 
@@ -65,15 +69,17 @@ npm run start -- -H 127.0.0.1 -p 3000
 
 Notes:
 - For pilots, bind the app to localhost and expose it via a reverse proxy (recommended) or a hardened TCP forwarder.
-- This VM uses `stacksos-proxy.service` (socat) to expose `192.168.1.233:3000` → `127.0.0.1:3000`.
-- Recommended: terminate TLS with Caddy and set secure cookies (see `ops/stacksos/caddy/Caddyfile`).
+- This VM is configured with Caddy (`caddy.service`) to terminate TLS and expose:
+  - `https://192.168.1.233` → `http://127.0.0.1:3000`
+- `stacksos-proxy.service` (socat on port 3000) is deprecated and is disabled in this environment.
 
 ### Production via systemd (recommended for pilots)
 
 This VM is already configured with `stacksos.service`.
 It expects:
 - `evergreen-db-tunnel.service` (localhost DB tunnel) and
-- `stacksos-proxy.service` (LAN forwarder), if you want LAN access on port 3000.
+- `caddy.service` (HTTPS reverse proxy), if you want LAN access.
+- `redis-server.service` (optional; when `STACKSOS_REDIS_URL` is set, rate limiting + idempotency are shared across instances).
 
 Deploy + restart (recommended):
 

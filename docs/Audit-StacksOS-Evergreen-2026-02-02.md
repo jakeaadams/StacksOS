@@ -1,8 +1,10 @@
 # Audit: StacksOS + Evergreen (fresh eyes) — 2026-02-02
 
-This is a “fresh eyes” audit of the **current** sandbox/pilot setup:
+This is a “fresh eyes” audit of the sandbox/pilot setup (initial pass `2026-02-02`; updated notes `2026-02-06`):
 
-- **StacksOS host:** `stacksos` (serving `http://192.168.1.233:3000`)
+- **StacksOS host:** `stacksos`
+  - LAN URL: `https://192.168.1.233` (Caddy; `tls internal`)
+  - Next.js binds to: `http://127.0.0.1:3000` (not exposed to LAN)
 - **Evergreen host:** `evergreen` (Evergreen/OpenSRF/Postgres)
 
 Goal: verify this environment is *credible* (no fake/demo data in staff workflows), *secure enough for a pilot*, and has a clear path to *real SaaS readiness*.
@@ -37,7 +39,7 @@ Goal: verify this environment is *credible* (no fake/demo data in staff workflow
 ### Network exposure (as observed on `stacksos`)
 - UFW is enabled with inbound restricted:
   - `22/tcp` allowed (SSH)
-  - `3000/tcp` allowed **only** from `192.168.1.0/24` (LAN)
+  - `80/tcp` and `443/tcp` allowed **only** from `192.168.1.0/24` (LAN)
 - Evergreen DB is accessed via an SSH tunnel on `127.0.0.1:5433` (not exposed publicly).
 
 ### TLS verification
@@ -53,18 +55,13 @@ Goal: verify this environment is *credible* (no fake/demo data in staff workflow
 ## 3) Evergreen host (what we can confirm + what still needs hardening)
 
 ### Confirmed (non-sudo checks)
-- Evergreen internal service ports are **listening** on all interfaces (e.g. `5222/5223`, `4369`, `33905`).
-  - This is acceptable **only if** the firewall blocks them (recommended: Evergreen HTTPS `443` reachable only from `stacksos`).
+- Evergreen internal service ports are **not** exposed on `0.0.0.0` (Redis/Postgres/ejabberd/etc are loopback-only bindings).
+- Evergreen HTTPS `443` is reachable only from the StacksOS host (UFW restricted; SaaS posture).
 - `/openils/conf/opensrf.xml` and `/openils/conf/opensrf_core.xml` permissions are **640** (`opensrf:opensrf`), not world-readable.
 
 ### Still recommended (requires `sudo` on `evergreen`)
 These are the remaining “pilot-hardening” actions I recommend:
-- **Confirm UFW rules** (must deny internal ports):
-  - `sudo ufw status verbose`
-  - Expected (SaaS posture): `443/tcp` allowed only from the StacksOS host IP; no public `80/443`.
-- **Bind internal services to localhost/private interface** (defense-in-depth even if UFW is correct):
-  - ejabberd should not listen on `0.0.0.0` unless intentionally exposed.
-  - epmd/Erlang distribution ports should not be publicly reachable.
+- **Confirm UFW rules** (must deny internal ports): `sudo ufw status verbose`
 - **Verify backups timer + restore drill**:
   - Confirm `evergreen-backup.timer` is enabled and that you can restore a dump into a scratch DB.
 
@@ -96,7 +93,7 @@ The big SaaS gates still outstanding:
 
 ## 5) Next concrete actions (recommended order)
 
-1. Evergreen: confirm firewall + bind internal ports tighter (sudo-required).
-2. StacksOS: remove/hide any remaining incomplete modules from the sidebar (feature-flag) so nothing looks “fake”.
-3. Implement P0 “Admin Hub” pages that translate Evergreen configuration into StacksOS UX (statuses, locations, permissions, policies).
-4. Start P2-9 AI implementation behind `featureFlags.ai` (no hardcoded demo answers).
+1. Evergreen: verify backups timer + run a restore drill into a scratch DB.
+2. StacksOS: reboot to pick up the installed kernel/security updates (after scheduling a maintenance window).
+3. Optional: replace `tls internal` with a trusted cert (or distribute the internal CA to clients) for a clean lock icon.
+4. Continue Phase 0–3 SaaS readiness work in `docs/StacksOS-Implementation-Plan.md` / `docs/StacksOS-Execution-Backlog.md`.

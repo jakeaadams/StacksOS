@@ -37,19 +37,32 @@ This repo includes a Caddy config:
 Install + configure (on stacksos host):
 
 ```bash
-# Install Caddy (see: https://caddyserver.com/docs/install)
+# Install Caddy (example: Ubuntu package)
+# sudo apt-get update && sudo apt-get install -y caddy
 sudo cp ops/stacksos/caddy/Caddyfile /etc/caddy/Caddyfile
 
 # Optional: set the hostname/IP the cert should cover (LAN)
 # Example: STACKSOS_HOST=192.168.1.233
-sudo sh -c 'printf \"\\nSTACKSOS_HOST=stacksos.lan\\n\" >> /etc/default/caddy'
+# Note: the packaged `caddy.service` does not reliably read `/etc/default/caddy`,
+# so use a systemd drop-in for the environment variable.
+sudo mkdir -p /etc/systemd/system/caddy.service.d
+sudo tee /etc/systemd/system/caddy.service.d/10-stacksos.conf >/dev/null <<'EOF'
+[Service]
+Environment=STACKSOS_HOST=stacksos.lan
+EOF
+sudo systemctl daemon-reload
 
 sudo systemctl restart caddy
 ```
 
 Notes:
 - Caddy `tls internal` uses its own CA. Clients may need to trust the CA cert for a clean lock icon.
-- After Caddy is serving HTTPS, you can stop using `stacksos-proxy.service` (socat on port 3000).
+- After Caddy is serving HTTPS, you should disable `stacksos-proxy.service` (socat on port 3000):
+
+```bash
+sudo systemctl disable --now stacksos-proxy.service
+sudo systemctl reset-failed stacksos-proxy.service
+```
 
 ## Install (on stacksos host)
 
