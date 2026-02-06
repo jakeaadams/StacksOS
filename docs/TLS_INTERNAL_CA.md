@@ -27,11 +27,19 @@ It also prints a SHA-256 fingerprint. You'll use that fingerprint to verify the 
 
 ### 2) Copy the cert to your client machine
 
-From the client machine:
+Pick one:
 
 ```bash
+# Option A: SCP (recommended)
 scp jake@192.168.1.233:/etc/caddy/pki/caddy-internal-root.crt .
 ```
+
+Or download it from the StacksOS host:
+
+- `https://192.168.1.233/caddy-internal-root.crt`
+
+Note: you may have to click through the browser TLS warning once to download the cert (because you haven't trusted it
+yet).
 
 ### 3) Verify the fingerprint (recommended)
 
@@ -92,4 +100,3 @@ For LAN-only pilots without DNS/public reachability, Option 1 is the practical p
 - Caddy's internal CA is stored under `/var/lib/caddy`. If you wipe that directory, the CA will rotate and clients must
   trust the new CA again.
 - The Root CA private key is sensitive and remains protected (`/var/lib/caddy/.../root.key` is mode `0600`).
-

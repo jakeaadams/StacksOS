@@ -1,25 +1,33 @@
 {
-  # StacksOS reverse proxy (Caddy)
-  # - Terminates TLS (uses an internal CA by default)
-  # - Enables gzip/zstd
-  #
-  # Set STACKSOS_HOST to a hostname or LAN IP (example: 192.168.1.233).
+	# StacksOS reverse proxy (Caddy)
+	# - Terminates TLS (uses an internal CA by default)
+	# - Enables gzip/zstd
+	#
+	# Set STACKSOS_HOST to a hostname or LAN IP (example: 192.168.1.233).
 }
 
 {$STACKSOS_HOST:stacksos.lan} {
-  tls internal
+	tls internal
 
-  encode zstd gzip
+	encode zstd gzip
 
-  # Cache immutable Next.js static chunks aggressively.
-  @static path /_next/static/*
-  header @static Cache-Control "public, max-age=31536000, immutable"
+	# Convenience: allow clients to download the public Root CA cert for trust
+	# store installation (removes browser warnings once trusted).
+	@ca path /caddy-internal-root.crt
+	handle @ca {
+		header Content-Disposition "attachment; filename=caddy-internal-root.crt"
+		header Cache-Control "no-store"
+		root * /etc/caddy/pki
+		file_server
+	}
 
-  # Preserve the original request host/scheme so Next.js can generate correct
-  # absolute URLs (e.g., CSP report endpoints) behind the proxy.
-  reverse_proxy 127.0.0.1:3000 {
-    header_up Host {host}
-    header_up X-Forwarded-Host {host}
-    header_up X-Forwarded-Proto {scheme}
-  }
+	# Cache immutable Next.js static chunks aggressively.
+	@static path /_next/static/*
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	# Preserve the original request host/scheme so Next.js can generate correct
+	# absolute URLs (e.g., CSP report endpoints) behind the proxy.
+	reverse_proxy 127.0.0.1:3000 {
+		header_up Host {host}
+	}
 }

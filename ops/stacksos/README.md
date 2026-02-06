@@ -70,6 +70,7 @@ For LAN pilots, the fastest way to remove browser TLS warnings is to trust Caddy
 
 Docs:
 - `docs/TLS_INTERNAL_CA.md`
+  - Tip: once exported, it can be downloaded at `https://<STACKSOS_HOST>/caddy-internal-root.crt`.
 
 On the StacksOS host, export the Root CA for distribution:
 
