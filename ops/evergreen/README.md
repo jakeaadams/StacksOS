@@ -100,3 +100,45 @@ This repo includes a root-run backup script and systemd timer units:
 - `ops/evergreen/evergreen-backup.timer`
 
 Install instructions are in `ops/evergreen/FOLLOW_UP.md`.
+
+## Remote Access (no port forwarding): Tailscale Serve (recommended)
+
+If you want to reach Evergreen off-LAN without opening your router, and without browser TLS warnings, use Tailscale
+Serve. This publishes a tailnet-only HTTPS URL (`https://evergreen.<tailnet>.ts.net/`) with a publicly trusted
+certificate.
+
+High-level steps (on the Evergreen host):
+
+1. Install + login:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y tailscale
+sudo tailscale up
+```
+
+2. Avoid port conflicts:
+
+- Tailscale Serve uses `:443` on the node's Tailscale IP.
+- Ensure Apache is not bound to `0.0.0.0:443` (which includes the `tailscale0` interface).
+- A safe pattern is to listen on LAN + localhost only:
+  - `Listen 127.0.0.1:443`
+  - `Listen <LAN_IP>:443` (example: `192.168.1.232:443`)
+
+3. Allow inbound HTTPS on the `tailscale0` interface (UFW):
+
+```bash
+sudo ufw allow in on tailscale0 to any port 443 proto tcp
+```
+
+4. Enable Serve (proxy to Apache):
+
+```bash
+sudo tailscale serve --bg --yes https+insecure://127.0.0.1:443
+sudo tailscale serve status
+```
+
+Notes:
+- `https+insecure://` is used because Apache's existing cert may be self-signed; the public-facing cert is provided by
+  Tailscale Serve.
+- This does not make Evergreen publicly reachable. It's accessible only from devices logged into your tailnet.
