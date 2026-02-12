@@ -4,12 +4,11 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  PageContainer,
-  PageHeader,
-  PageContent,
   DataTable,
   EmptyState,
-  StatsSkeleton,
+  PageContainer,
+  PageContent,
+  PageHeader,
   StatusBadge,
   UniversalSearch,
 } from "@/components/shared";
@@ -20,23 +19,15 @@ import { useApi } from "@/hooks";
 import { useAuth } from "@/contexts/auth-context";
 import {
   ArrowLeftRight,
-  Package,
-  Users,
-  BookOpen,
-  Bookmark,
   BarChart3,
+  BookOpen,
   Calendar,
+  Clock3,
   FileText,
+  Package,
   UserPlus,
-  AlertCircle,
+  Users,
 } from "lucide-react";
-
-interface TopItemRow {
-  id: string | number;
-  title: string;
-  author?: string;
-  count: number;
-}
 
 interface OverdueRow {
   id: string | number;
@@ -46,126 +37,88 @@ interface OverdueRow {
   title?: string;
 }
 
-function safeNumber(value: any): number {
-  const num = typeof value === "number" ? value : parseFloat(String(value));
-  return Number.isFinite(num) ? num : 0;
+interface OverdueApiRow {
+  id?: string | number;
+  circ_id?: string | number;
+  due_date?: string;
+  dueDate?: string;
+  usr?: string | number;
+  patron_id?: string | number;
+  user_id?: string | number;
+  target_copy?: string | number;
+  copy_id?: string | number;
+  copy?: string | number;
+  title?: string;
+  item_title?: string;
+  record_title?: string;
 }
 
-function metricNumber(value: any): number | null {
+function metricNumber(value: unknown): number | null {
   if (value === null || value === undefined) return null;
-  const num = typeof value === "number" ? value : parseFloat(String(value));
+  const num = typeof value === "number" ? value : Number.parseFloat(String(value));
   return Number.isFinite(num) ? num : null;
 }
 
-function formatMetric(value: any): string {
+function safeNumber(value: unknown): number {
+  return metricNumber(value) ?? 0;
+}
+
+function formatMetric(value: unknown): string {
   const num = metricNumber(value);
   return num === null ? "—" : num.toLocaleString();
 }
 
-// ============================================================================
-// Widget Components
-// ============================================================================
-
-function UniversalSearchWidget() {
+function DeskSearchWidget() {
   return (
-    <div className="mb-8 flex flex-col items-center">
-      <h2 className="text-lg font-medium text-muted-foreground mb-3">
-        What are you looking for?
-      </h2>
-      <UniversalSearch className="w-full" autoFocus={false} />
-      <p className="text-xs text-muted-foreground mt-2">
-        Search by patron name, barcode, phone, email • Item barcode • Title, author, ISBN
-      </p>
-    </div>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Universal Search</CardTitle>
+        <CardDescription>
+          Barcode, patron, title, author, ISBN, phone, and email in one search.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <UniversalSearch className="w-full" autoFocus={false} />
+        <p className="text-xs text-muted-foreground">
+          Use this first for desk workflows, then jump directly into checkout, checkin, or record
+          views.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
-function StatCardsWidget({ stats, isLoading }: { stats: any; isLoading: boolean }) {
-  const statCards = [
-    {
-      title: "Checkouts Today",
-      value: formatMetric(stats?.checkouts_today),
-      icon: ArrowLeftRight,
-      tone: "text-emerald-600",
-      bg: "bg-emerald-50",
-    },
-    {
-      title: "Checkins Today",
-      value: formatMetric(stats?.checkins_today),
-      icon: Package,
-      tone: "text-blue-600",
-      bg: "bg-blue-50",
-    },
-    {
-      title: "Active Holds",
-      value: formatMetric(stats?.active_holds),
-      icon: Bookmark,
-      tone: "text-orange-600",
-      bg: "bg-orange-50",
-    },
-    {
-      title: "Overdue Items",
-      value: formatMetric(stats?.overdue_items),
-      icon: AlertCircle,
-      tone: "text-red-600",
-      bg: "bg-red-50",
-    },
-  ];
-
-  if (isLoading) {
-    return <StatsSkeleton />;
-  }
-
-  return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {statCards.map((stat) => (
-        <Card key={stat.title} className="relative overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {stat.title}
-            </CardTitle>
-            <div className={`rounded-lg p-2 ${stat.bg}`}>
-              <stat.icon className={`h-4 w-4 ${stat.tone}`} />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold">{stat.value}</div>
-            <div className="text-xs text-muted-foreground mt-1">Updated just now</div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-function QuickActionsWidget() {
+function DeskActionsWidget() {
   const quickActions = [
-    { title: "Check Out", href: "/staff/circulation/checkout", icon: ArrowLeftRight },
-    { title: "Check In", href: "/staff/circulation/checkin", icon: Package },
-    { title: "Patron Search", href: "/staff/patrons", icon: Users },
-    { title: "Register Patron", href: "/staff/patrons/register", icon: UserPlus },
-    { title: "Catalog Search", href: "/staff/catalog", icon: BookOpen },
-    { title: "Create Record", href: "/staff/catalog/create", icon: FileText },
+    { title: "Check Out", href: "/staff/circulation/checkout", icon: ArrowLeftRight, hint: "F1" },
+    { title: "Check In", href: "/staff/circulation/checkin", icon: Package, hint: "F2" },
+    { title: "Patron Search", href: "/staff/patrons", icon: Users, hint: "F3" },
+    { title: "Register Patron", href: "/staff/patrons/register", icon: UserPlus, hint: "F4" },
+    { title: "Catalog Search", href: "/staff/catalog", icon: BookOpen, hint: "F5" },
+    { title: "Create Record", href: "/staff/catalog/create", icon: FileText, hint: "" },
   ];
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Quick Actions</CardTitle>
-        <CardDescription>Fast routes for daily workflows</CardDescription>
+        <CardTitle className="text-base">Desk Actions</CardTitle>
+        <CardDescription>Open the workflows staff use continuously during a shift.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           {quickActions.map((action) => (
             <Button
               key={action.title}
               asChild
               variant="outline"
-              className="w-full h-auto py-4 flex flex-col gap-2"
+              className="h-auto justify-start px-3 py-3"
             >
-              <Link href={action.href}>
-                <action.icon className="h-6 w-6" />
-                <span className="text-sm font-medium">{action.title}</span>
+              <Link href={action.href} className="flex w-full items-center gap-3">
+                <action.icon className="h-4 w-4" />
+                <span className="flex-1 text-left text-sm font-medium">{action.title}</span>
+                {action.hint ? (
+                  <span className="text-[10px] text-muted-foreground font-mono">{action.hint}</span>
+                ) : null}
               </Link>
             </Button>
           ))}
@@ -175,64 +128,181 @@ function QuickActionsWidget() {
   );
 }
 
-function TopItemsWidget({
-  topItems,
-  isLoading,
-  message,
-}: {
-  topItems: TopItemRow[];
-  isLoading: boolean;
-  message?: string;
-}) {
-  const topColumns = useMemo<ColumnDef<TopItemRow>[]>(
-    () => [
-      {
-        accessorKey: "title",
-        header: "Title",
-        cell: ({ row }) => (
-          <div>
-            <div className="font-medium">{row.original.title}</div>
-            {row.original.author && (
-              <div className="text-xs text-muted-foreground">{row.original.author}</div>
-            )}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "count",
-        header: "Circs",
-        cell: ({ row }) => <span className="font-medium">{row.original.count}</span>,
-      },
-    ],
-    []
-  );
+function OperationalSnapshotWidget({ stats }: { stats: Record<string, unknown> | undefined }) {
+  const rows = [
+    {
+      label: "Checkouts Today",
+      value: formatMetric(stats?.checkouts_today),
+      href: "/staff/circulation/checkout",
+    },
+    {
+      label: "Checkins Today",
+      value: formatMetric(stats?.checkins_today),
+      href: "/staff/circulation/checkin",
+    },
+    {
+      label: "Active Holds",
+      value: formatMetric(stats?.active_holds),
+      href: "/staff/circulation/holds-management",
+    },
+    {
+      label: "Overdue Items",
+      value: formatMetric(stats?.overdue_items),
+      href: "/staff/reports",
+    },
+    {
+      label: "Open Bill Total",
+      value: `$${safeNumber(stats?.open_bill_total).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      href: "/staff/circulation/bills",
+    },
+  ];
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Top Circulated Items</CardTitle>
-        <CardDescription>Based on Evergreen circulation stats</CardDescription>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Operational Snapshot</CardTitle>
+        <CardDescription>Live queue and circulation context from Evergreen.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <DataTable
-          columns={topColumns}
-          data={topItems}
-          isLoading={isLoading}
-          searchable={false}
-          paginated={false}
-          emptyState={
-            <EmptyState
-              title="No circulation stats"
-              description={message || "No data returned from Evergreen yet."}
-            />
-          }
-        />
+      <CardContent className="space-y-1">
+        {rows.map((row) => (
+          <Link
+            key={row.label}
+            href={row.href}
+            className="block rounded-md border px-3 py-2 hover:bg-muted/40"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm text-muted-foreground">{row.label}</span>
+              <span className="text-sm font-semibold">{row.value}</span>
+            </div>
+          </Link>
+        ))}
       </CardContent>
     </Card>
   );
 }
 
-function OverdueItemsWidget({
+function AlertsWidget({ stats }: { stats: Record<string, unknown> | undefined }) {
+  const alerts = useMemo(() => {
+    const holds = metricNumber(stats?.active_holds);
+    const overdue = metricNumber(stats?.overdue_items);
+
+    const items = [] as {
+      title: string;
+      description: string;
+      tone: "warning" | "error" | "info";
+      href: string;
+    }[];
+
+    if (holds != null && holds > 0) {
+      items.push({
+        title: `${holds} active holds`,
+        description: "Review captured and pending holds",
+        tone: "warning",
+        href: "/staff/circulation/holds-management",
+      });
+    }
+
+    if (overdue === null) {
+      items.push({
+        title: "Overdue metrics unavailable",
+        description: "Reporting setup needed for overdue pipeline",
+        tone: "info",
+        href: "/staff/reports",
+      });
+    } else if (overdue > 0) {
+      items.push({
+        title: `${overdue} overdue items`,
+        description: "Items needing immediate follow-up",
+        tone: "error",
+        href: "/staff/reports",
+      });
+    }
+
+    if (items.length === 0) {
+      items.push({
+        title: "No urgent queue alerts",
+        description: "Hold and overdue queues are currently stable",
+        tone: "info",
+        href: "/staff/reports",
+      });
+    }
+
+    return items;
+  }, [stats]);
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Alerts</CardTitle>
+        <CardDescription>Focus these first when starting a shift.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {alerts.map((alert) => (
+          <Link
+            key={alert.title}
+            href={alert.href}
+            className="block rounded-md border p-3 hover:bg-muted/40"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium">{alert.title}</p>
+                <p className="text-xs text-muted-foreground">{alert.description}</p>
+              </div>
+              <StatusBadge
+                label={
+                  alert.tone === "error" ? "Urgent" : alert.tone === "warning" ? "Attention" : "Ok"
+                }
+                status={
+                  alert.tone === "error"
+                    ? "error"
+                    : alert.tone === "warning"
+                      ? "warning"
+                      : "success"
+                }
+              />
+            </div>
+          </Link>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ShiftChecklistWidget() {
+  const checklist = [
+    { title: "Process pull list", href: "/staff/circulation/pull-list" },
+    { title: "Clear holds shelf exceptions", href: "/staff/circulation/holds-shelf" },
+    { title: "Review overdue follow-up list", href: "/staff/reports" },
+    { title: "Run checkin backlog", href: "/staff/circulation/checkin" },
+  ];
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Shift Checklist</CardTitle>
+        <CardDescription>
+          Common operational tasks for opening and mid-shift routines.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {checklist.map((item) => (
+          <Link
+            key={item.title}
+            href={item.href}
+            className="block rounded-md border px-3 py-2 hover:bg-muted/40"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm">{item.title}</span>
+              <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+          </Link>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OverdueQueueWidget({
   overdueRows,
   isLoading,
   message,
@@ -241,7 +311,7 @@ function OverdueItemsWidget({
   isLoading: boolean;
   message?: string;
 }) {
-  const overdueColumns = useMemo<ColumnDef<OverdueRow>[]>(
+  const columns = useMemo<ColumnDef<OverdueRow>[]>(
     () => [
       {
         accessorKey: "title",
@@ -251,9 +321,7 @@ function OverdueItemsWidget({
       {
         accessorKey: "copyId",
         header: "Copy",
-        cell: ({ row }) => (
-          <span className="font-mono text-xs">{row.original.copyId ?? "—"}</span>
-        ),
+        cell: ({ row }) => <span className="font-mono text-xs">{row.original.copyId ?? "—"}</span>,
       },
       {
         accessorKey: "patronId",
@@ -275,12 +343,12 @@ function OverdueItemsWidget({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Oldest Overdue Items</CardTitle>
-        <CardDescription>Items with the longest overdue duration</CardDescription>
+        <CardTitle className="text-base">Overdue Queue</CardTitle>
+        <CardDescription>Oldest items needing follow-up right now.</CardDescription>
       </CardHeader>
       <CardContent>
         <DataTable
-          columns={overdueColumns}
+          columns={columns}
           data={overdueRows}
           isLoading={isLoading}
           searchable={false}
@@ -288,7 +356,7 @@ function OverdueItemsWidget({
           emptyState={
             <EmptyState
               title="No overdue items"
-              description={message || "Nothing overdue at this branch."}
+              description={message || "No overdue records returned for this branch."}
             />
           }
         />
@@ -297,156 +365,42 @@ function OverdueItemsWidget({
   );
 }
 
-function AlertsWidget({ stats }: { stats: any }) {
-  const alerts = useMemo(() => {
-    const holds = metricNumber(stats?.active_holds);
-    const overdue = metricNumber(stats?.overdue_items);
-
-    const items = [] as {
-      title: string;
-      description: string;
-      tone: "warning" | "error" | "info";
-      href: string;
-    }[];
-
-    if (holds != null && holds > 0) {
-      items.push({
-        title: `${holds} active holds`,
-        description: "Review holds ready for pickup",
-        tone: "warning",
-        href: "/staff/circulation/holds-management",
-      });
-    }
-
-    if (overdue === null) {
-      items.push({
-        title: "Overdue metrics unavailable",
-        description: "Configure reporting to enable overdue dashboards",
-        tone: "info",
-        href: "/staff/reports",
-      });
-    } else if (overdue > 0) {
-      items.push({
-        title: `${overdue} overdue items`,
-        description: "See items needing follow-up",
-        tone: "error",
-        href: "/staff/reports",
-      });
-    }
-
-    if (items.length === 0) {
-      items.push({
-        title: "All clear",
-        description: "No urgent holds or overdue items",
-        tone: "info",
-        href: "/staff/reports",
-      });
-    }
-
-    return items;
-  }, [stats]);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Alerts</CardTitle>
-        <CardDescription>Operational follow-ups</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {alerts.map((alert) => (
-          <Link key={alert.title} href={alert.href} className="block">
-            <div className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/40">
-              <div>
-                <p className="text-sm font-medium">{alert.title}</p>
-                <p className="text-xs text-muted-foreground">{alert.description}</p>
-              </div>
-              <StatusBadge
-                label={
-                  alert.tone === "error"
-                    ? "Urgent"
-                    : alert.tone === "warning"
-                      ? "Attention"
-                      : "Ok"
-                }
-                status={
-                  alert.tone === "error"
-                    ? "error"
-                    : alert.tone === "warning"
-                      ? "warning"
-                      : "success"
-                }
-              />
-            </div>
-          </Link>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ============================================================================
-// Main Dashboard
-// ============================================================================
-
 export default function StaffDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const orgId = user?.homeLibraryId || 1;
 
-  // Data fetching
-  const { data: dashboardData, isLoading: dashboardLoading } = useApi<any>(
+  const { data: dashboardData } = useApi<Record<string, unknown>>(
     orgId ? `/api/evergreen/reports?action=dashboard&org=${orgId}` : null,
     { immediate: !!orgId }
   );
 
-  const { data: topItemsData, isLoading: topItemsLoading } = useApi<any>(
-    orgId ? `/api/evergreen/reports?action=top_items&org=${orgId}&limit=10` : null,
+  const { data: overdueData, isLoading: overdueLoading } = useApi<Record<string, unknown>>(
+    orgId ? `/api/evergreen/reports?action=overdue&org=${orgId}&limit=12` : null,
     { immediate: !!orgId }
   );
 
-  const { data: overdueData, isLoading: overdueLoading } = useApi<any>(
-    orgId ? `/api/evergreen/reports?action=overdue&org=${orgId}&limit=10` : null,
-    { immediate: !!orgId }
-  );
-
-  const stats = dashboardData?.stats;
-
-  const topItems: TopItemRow[] = useMemo(() => {
-    const items = topItemsData?.top_items || [];
-    return items.map((item: any, idx: number) => {
-      if (Array.isArray(item)) {
-        return {
-          id: item[0] ?? idx,
-          title: item[1] ?? `Record ${item[0] ?? idx}`,
-          author: item[2] ?? "",
-          count: safeNumber(item[3] ?? item[2] ?? item[1] ?? 0),
-        };
-      }
-      return {
-        id: item.id ?? item.record_id ?? item.record ?? idx,
-        title: item.title || item.record_title || item.tcn || `Record ${item.id ?? idx}`,
-        author: item.author || item.record_author || "",
-        count: safeNumber(item.count ?? item.circ_count ?? item.circs ?? item.usage ?? 0),
-      };
-    });
-  }, [topItemsData]);
+  const stats = (dashboardData?.stats as Record<string, unknown> | undefined) || undefined;
 
   const overdueRows: OverdueRow[] = useMemo(() => {
-    const overdue = overdueData?.overdue || [];
-    return overdue.map((circ: any, idx: number) => ({
-      id: circ.id ?? circ.circ_id ?? idx,
-      dueDate: circ.due_date ?? circ.dueDate,
-      patronId: circ.usr ?? circ.patron_id ?? circ.user_id,
-      copyId: circ.target_copy ?? circ.copy_id ?? circ.copy,
-      title: circ.title ?? circ.item_title ?? circ.record_title ?? "",
-    }));
+    const overdue = Array.isArray(overdueData?.overdue) ? overdueData.overdue : [];
+    return overdue.map((entry, idx: number) => {
+      const circ = (entry as OverdueApiRow) || {};
+      return {
+        id: circ.id ?? circ.circ_id ?? idx,
+        dueDate: circ.due_date ?? circ.dueDate,
+        patronId: circ.usr ?? circ.patron_id ?? circ.user_id,
+        copyId: circ.target_copy ?? circ.copy_id ?? circ.copy,
+        title: circ.title ?? circ.item_title ?? circ.record_title ?? "",
+      };
+    });
   }, [overdueData]);
 
   return (
     <PageContainer>
       <PageHeader
-        title="Staff Dashboard"
-        subtitle="Live operational metrics for your branch."
+        title="Staff Workbench"
+        subtitle="Operational workspace for circulation, patrons, and cataloging."
         breadcrumbs={[{ label: "Dashboard" }]}
         actions={[
           {
@@ -467,37 +421,33 @@ export default function StaffDashboard() {
                 day: "numeric",
               })}
             </div>
-            {dashboardData?.message && (
+            {typeof dashboardData?.message === "string" && (
               <div className="text-xs text-muted-foreground">{dashboardData.message}</div>
             )}
           </div>
         </div>
       </PageHeader>
 
-      <PageContent>
-        <UniversalSearchWidget />
-        <StatCardsWidget stats={stats} isLoading={dashboardLoading} />
+      <PageContent className="space-y-6">
+        <DeskSearchWidget />
 
-        <div className="mt-6">
-          <QuickActionsWidget />
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <DeskActionsWidget />
+            <ShiftChecklistWidget />
+          </div>
+
+          <div className="space-y-6">
+            <AlertsWidget stats={stats} />
+            <OperationalSnapshotWidget stats={stats} />
+          </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2 mt-6">
-          <TopItemsWidget
-            topItems={topItems}
-            isLoading={topItemsLoading}
-            message={topItemsData?.message}
-          />
-          <OverdueItemsWidget
-            overdueRows={overdueRows}
-            isLoading={overdueLoading}
-            message={overdueData?.message}
-          />
-        </div>
-
-        <div className="mt-6">
-          <AlertsWidget stats={stats} />
-        </div>
+        <OverdueQueueWidget
+          overdueRows={overdueRows}
+          isLoading={overdueLoading}
+          message={typeof overdueData?.message === "string" ? overdueData.message : undefined}
+        />
       </PageContent>
     </PageContainer>
   );

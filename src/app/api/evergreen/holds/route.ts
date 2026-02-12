@@ -1,18 +1,15 @@
 import { NextRequest } from "next/server";
 import {
-
-    callOpenSRF,
-    successResponse,
-    errorResponse,
-    serverErrorResponse,
-    getErrorMessage,
-    isSuccessResult,
+  callOpenSRF,
+  successResponse,
+  errorResponse,
+  serverErrorResponse,
+  getErrorMessage,
+  isSuccessResult,
   getRequestMeta,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
-
-
 
 export async function GET(req: NextRequest) {
   try {
@@ -86,13 +83,14 @@ export async function GET(req: NextRequest) {
       }
 
       if (patronId) {
-        const holdsResponse = await callOpenSRF(
-          "open-ils.circ",
-          "open-ils.circ.holds.retrieve",
-          [authtoken, patronId]
-        );
+        const holdsResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.holds.retrieve", [
+          authtoken,
+          patronId,
+        ]);
         const holds = holdsResponse?.payload?.[0];
-        return successResponse({ holds: Array.isArray(holds) ? holds.map((h: any) => mapHold(h)) : [] });
+        return successResponse({
+          holds: Array.isArray(holds) ? holds.map((h: any) => mapHold(h)) : [],
+        });
       }
 
       if (orgId) {
@@ -114,11 +112,10 @@ export async function GET(req: NextRequest) {
           return errorResponse("patron_id required", 400);
         }
 
-        const holdsResponse = await callOpenSRF(
-          "open-ils.circ",
-          "open-ils.circ.holds.retrieve",
-          [authtoken, patronId]
-        );
+        const holdsResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.holds.retrieve", [
+          authtoken,
+          patronId,
+        ]);
         const holds = holdsResponse?.payload?.[0];
 
         if (!Array.isArray(holds) || holds.length === 0) {
@@ -214,17 +211,35 @@ export async function GET(req: NextRequest) {
         }
 
         if (holdIds.length === 0) {
-          return successResponse({ holds: [] });
+          return successResponse({ holds: [], holdCount: 0, limit, offset });
+        }
+
+        const boundedOffset = Math.max(0, offset);
+        const boundedLimit = Math.max(1, limit);
+        const pagedHoldIds = holdIds.slice(boundedOffset, boundedOffset + boundedLimit);
+
+        if (pagedHoldIds.length === 0) {
+          return successResponse({
+            holds: [],
+            holdCount: holdIds.length,
+            limit,
+            offset: boundedOffset,
+          });
         }
 
         const detailsResponse = await callOpenSRF(
           "open-ils.circ",
           "open-ils.circ.hold.details.batch.retrieve",
-          [authtoken, holdIds.slice(0, limit), {}]
+          [authtoken, pagedHoldIds, {}]
         );
 
         const list = normalizeListPayload(detailsResponse?.payload);
-        return successResponse({ holds: list.map((h: any) => mapHold(h)) });
+        return successResponse({
+          holds: list.map((h: any) => mapHold(h)),
+          holdCount: holdIds.length,
+          limit: boundedLimit,
+          offset: boundedOffset,
+        });
       }
 
       case "check_possible": {
@@ -233,11 +248,10 @@ export async function GET(req: NextRequest) {
         }
 
         const orgUnit = orgId ?? defaultOrgId;
-        const res = await callOpenSRF(
-          "open-ils.circ",
-          "open-ils.circ.hold.has_copy_at",
-          [authtoken, { hold_type: "T", hold_target: titleId, org_unit: orgUnit }]
-        );
+        const res = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.has_copy_at", [
+          authtoken,
+          { hold_type: "T", hold_target: titleId, org_unit: orgUnit },
+        ]);
 
         const result = res?.payload?.[0] || {};
         const possible = Boolean((result as any)?.copy);
@@ -267,186 +281,197 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-    const { ip, userAgent, requestId } = getRequestMeta(req);
+  const { ip, userAgent, requestId } = getRequestMeta(req);
 
-    try {
-        const body = await req.json();
-        const { action } = body;
+  try {
+    const body = await req.json();
+    const { action } = body;
 
-        if (!action) {
-            return errorResponse("Action required", 400);
-        }
-
-        const { authtoken, actor } = await requirePermissions(["CREATE_HOLD"]);
-
-        const audit = async (status: "success" | "failure", details?: Record<string, any>, error?: string) => {
-            await logAuditEvent({
-                action: `holds.${action}`,
-                status,
-                actor,
-                ip,
-                userAgent,
-                requestId,
-                details,
-                error: error || null,
-            });
-        };
-
-        // Create hold
-        if (action === "create" || action === "place_hold") {
-            const { patronId, holdType, target, targetId, pickupLib } = body;
-
-            const resolvedTarget = target ?? targetId;
-
-            if (!patronId || !holdType || !resolvedTarget || !pickupLib) {
-                return errorResponse("patronId, holdType, targetId, and pickupLib required", 400);
-            }
-
-            const response = await callOpenSRF(
-                "open-ils.circ",
-                "open-ils.circ.holds.test_and_create.batch",
-                [
-                    authtoken,
-                    {
-                        patronid: parseInt(patronId),
-                        hold_type: holdType,
-                        pickup_lib: parseInt(pickupLib),
-                    },
-                    [parseInt(resolvedTarget)],
-                ]
-            );
-
-            const result = response?.payload?.[0];
-
-            const createdHoldId =
-                typeof result === "number"
-                    ? result
-                    : (result && typeof result === "object" && typeof (result as any).result === "number")
-                      ? (result as any).result
-                      : null;
-
-            if (createdHoldId && !(result as any)?.ilsevent) {
-                await audit("success", { patronId, holdType, target: resolvedTarget, pickupLib, holdId: createdHoldId });
-                return successResponse({ hold: result, holdId: createdHoldId });
-            }
-
-            const message = getErrorMessage(result, "Failed to create hold");
-            await audit("failure", { patronId, holdType, target, pickupLib }, message);
-            return errorResponse(message, 400, result);
-        }
-
-        // Cancel hold
-        if (action === "cancel" || action === "cancel_hold") {
-            const { holdId, cause, reason, note } = body;
-
-            if (!holdId) {
-                return errorResponse("holdId required", 400);
-            }
-
-            const response = await callOpenSRF(
-                "open-ils.circ",
-                "open-ils.circ.hold.cancel",
-                [authtoken, parseInt(holdId), (cause || reason || 5), note || null]
-            );
-
-            const result = response?.payload?.[0];
-            const holdIdNum = parseInt(holdId);
-
-            if (isSuccessResult(result) || result === holdIdNum) {
-                await audit("success", { holdId, cause: cause || reason || 5, note: note || null });
-                return successResponse({ success: true });
-            }
-
-            const message = getErrorMessage(result, "Failed to cancel hold");
-            await audit("failure", { holdId }, message);
-            return errorResponse(message, 400, result);
-        }
-
-        // Freeze hold
-        if (action === "freeze") {
-            const { holdId, thawDate } = body;
-
-            if (!holdId) {
-                return errorResponse("holdId required", 400);
-            }
-
-            const response = await callOpenSRF(
-                "open-ils.circ",
-                "open-ils.circ.hold.update",
-                [authtoken, { id: parseInt(holdId), frozen: true, thaw_date: thawDate || null }]
-            );
-
-            const result = response?.payload?.[0];
-
-            if (result && !result.ilsevent) {
-                await audit("success", { holdId, thawDate });
-                return successResponse({ success: true });
-            }
-
-            const message = getErrorMessage(result, "Failed to freeze hold");
-            await audit("failure", { holdId }, message);
-            return errorResponse(message, 400, result);
-        }
-
-        // Thaw (unfreeze) hold
-        if (action === "thaw") {
-            const { holdId } = body;
-
-            if (!holdId) {
-                return errorResponse("holdId required", 400);
-            }
-
-            const response = await callOpenSRF(
-                "open-ils.circ",
-                "open-ils.circ.hold.update",
-                [authtoken, { id: parseInt(holdId), frozen: false, thaw_date: null }]
-            );
-
-            const result = response?.payload?.[0];
-
-            if (result && !result.ilsevent) {
-                await audit("success", { holdId });
-                return successResponse({ success: true });
-            }
-
-            const message = getErrorMessage(result, "Failed to thaw hold");
-            await audit("failure", { holdId }, message);
-            return errorResponse(message, 400, result);
-        }
-
-        // Update pickup library
-        if (action === "update_pickup_lib") {
-            const { holdId, pickupLib } = body;
-
-            if (!holdId || !pickupLib) {
-                return errorResponse("holdId and pickupLib required", 400);
-            }
-
-            const response = await callOpenSRF(
-                "open-ils.circ",
-                "open-ils.circ.hold.update",
-                [authtoken, { id: parseInt(holdId), pickup_lib: parseInt(pickupLib) }]
-            );
-
-            const result = response?.payload?.[0];
-
-            if (result && !result.ilsevent) {
-                await audit("success", { holdId, pickupLib });
-                return successResponse({ success: true });
-            }
-
-            const message = getErrorMessage(result, "Failed to update pickup library");
-            await audit("failure", { holdId, pickupLib }, message);
-            return errorResponse(message, 400, result);
-        }
-
-        return errorResponse("Invalid action. Use: create/place_hold, cancel/cancel_hold, freeze, thaw, update_pickup_lib", 400);
-    } catch (error) {
-        return serverErrorResponse(error, "Holds POST", req);
+    if (!action) {
+      return errorResponse("Action required", 400);
     }
+
+    const { authtoken, actor } = await requirePermissions(["CREATE_HOLD"]);
+
+    const audit = async (
+      status: "success" | "failure",
+      details?: Record<string, any>,
+      error?: string
+    ) => {
+      await logAuditEvent({
+        action: `holds.${action}`,
+        status,
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        details,
+        error: error || null,
+      });
+    };
+
+    // Create hold
+    if (action === "create" || action === "place_hold") {
+      const { patronId, holdType, target, targetId, pickupLib } = body;
+
+      const resolvedTarget = target ?? targetId;
+
+      if (!patronId || !holdType || !resolvedTarget || !pickupLib) {
+        return errorResponse("patronId, holdType, targetId, and pickupLib required", 400);
+      }
+
+      const response = await callOpenSRF(
+        "open-ils.circ",
+        "open-ils.circ.holds.test_and_create.batch",
+        [
+          authtoken,
+          {
+            patronid: parseInt(patronId),
+            hold_type: holdType,
+            pickup_lib: parseInt(pickupLib),
+          },
+          [parseInt(resolvedTarget)],
+        ]
+      );
+
+      const result = response?.payload?.[0];
+
+      const createdHoldId =
+        typeof result === "number"
+          ? result
+          : result && typeof result === "object" && typeof (result as any).result === "number"
+            ? (result as any).result
+            : null;
+
+      if (createdHoldId && !(result as any)?.ilsevent) {
+        await audit("success", {
+          patronId,
+          holdType,
+          target: resolvedTarget,
+          pickupLib,
+          holdId: createdHoldId,
+        });
+        return successResponse({ hold: result, holdId: createdHoldId });
+      }
+
+      const message = getErrorMessage(result, "Failed to create hold");
+      await audit("failure", { patronId, holdType, target, pickupLib }, message);
+      return errorResponse(message, 400, result);
+    }
+
+    // Cancel hold
+    if (action === "cancel" || action === "cancel_hold") {
+      const { holdId, cause, reason, note } = body;
+
+      if (!holdId) {
+        return errorResponse("holdId required", 400);
+      }
+
+      const response = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.cancel", [
+        authtoken,
+        parseInt(holdId),
+        cause || reason || 5,
+        note || null,
+      ]);
+
+      const result = response?.payload?.[0];
+      const holdIdNum = parseInt(holdId);
+
+      if (isSuccessResult(result) || result === holdIdNum) {
+        await audit("success", { holdId, cause: cause || reason || 5, note: note || null });
+        return successResponse({ success: true });
+      }
+
+      const message = getErrorMessage(result, "Failed to cancel hold");
+      await audit("failure", { holdId }, message);
+      return errorResponse(message, 400, result);
+    }
+
+    // Freeze hold
+    if (action === "freeze") {
+      const { holdId, thawDate } = body;
+
+      if (!holdId) {
+        return errorResponse("holdId required", 400);
+      }
+
+      const response = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.update", [
+        authtoken,
+        { id: parseInt(holdId), frozen: true, thaw_date: thawDate || null },
+      ]);
+
+      const result = response?.payload?.[0];
+
+      if (result && !result.ilsevent) {
+        await audit("success", { holdId, thawDate });
+        return successResponse({ success: true });
+      }
+
+      const message = getErrorMessage(result, "Failed to freeze hold");
+      await audit("failure", { holdId }, message);
+      return errorResponse(message, 400, result);
+    }
+
+    // Thaw (unfreeze) hold
+    if (action === "thaw") {
+      const { holdId } = body;
+
+      if (!holdId) {
+        return errorResponse("holdId required", 400);
+      }
+
+      const response = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.update", [
+        authtoken,
+        { id: parseInt(holdId), frozen: false, thaw_date: null },
+      ]);
+
+      const result = response?.payload?.[0];
+
+      if (result && !result.ilsevent) {
+        await audit("success", { holdId });
+        return successResponse({ success: true });
+      }
+
+      const message = getErrorMessage(result, "Failed to thaw hold");
+      await audit("failure", { holdId }, message);
+      return errorResponse(message, 400, result);
+    }
+
+    // Update pickup library
+    if (action === "update_pickup_lib") {
+      const { holdId, pickupLib } = body;
+
+      if (!holdId || !pickupLib) {
+        return errorResponse("holdId and pickupLib required", 400);
+      }
+
+      const response = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.update", [
+        authtoken,
+        { id: parseInt(holdId), pickup_lib: parseInt(pickupLib) },
+      ]);
+
+      const result = response?.payload?.[0];
+
+      if (result && !result.ilsevent) {
+        await audit("success", { holdId, pickupLib });
+        return successResponse({ success: true });
+      }
+
+      const message = getErrorMessage(result, "Failed to update pickup library");
+      await audit("failure", { holdId, pickupLib }, message);
+      return errorResponse(message, 400, result);
+    }
+
+    return errorResponse(
+      "Invalid action. Use: create/place_hold, cancel/cancel_hold, freeze, thaw, update_pickup_lib",
+      400
+    );
+  } catch (error) {
+    return serverErrorResponse(error, "Holds POST", req);
+  }
 }
 
 export async function PUT(req: NextRequest) {
-    // Alias PUT to POST for RESTful compatibility
-    return POST(req);
+  // Alias PUT to POST for RESTful compatibility
+  return POST(req);
 }

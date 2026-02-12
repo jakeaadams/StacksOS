@@ -14,10 +14,31 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-import { Save, Check, AlertTriangle, Plus, Trash2, HelpCircle, Loader2, Columns2, X, Sparkles, ThumbsDown, ThumbsUp, ClipboardList, Users } from "lucide-react";
+import {
+  Save,
+  Check,
+  AlertTriangle,
+  Plus,
+  Trash2,
+  HelpCircle,
+  Loader2,
+  Columns2,
+  X,
+  Sparkles,
+  ThumbsDown,
+  ThumbsUp,
+  ClipboardList,
+  Users,
+} from "lucide-react";
 import { featureFlags } from "@/lib/feature-flags";
-
 
 interface MarcField {
   tag: string;
@@ -52,6 +73,11 @@ type RecordTask = {
   body: string | null;
   status: "open" | "done" | "canceled";
   createdAt: string;
+};
+
+type FixedFieldOption = {
+  value: string;
+  label: string;
 };
 
 const marcFieldDescriptions: Record<string, string> = {
@@ -93,7 +119,12 @@ const defaultMarcRecord: MarcRecord = {
   fields: [
     { tag: "001", ind1: " ", ind2: " ", subfields: [{ code: "", value: "" }] },
     { tag: "003", ind1: " ", ind2: " ", subfields: [{ code: "", value: "StacksOS" }] },
-    { tag: "008", ind1: " ", ind2: " ", subfields: [{ code: "", value: "240120s2024    xxu           000 0 eng d" }] },
+    {
+      tag: "008",
+      ind1: " ",
+      ind2: " ",
+      subfields: [{ code: "", value: "240120s2024    xxu           000 0 eng d" }],
+    },
     { tag: "020", ind1: " ", ind2: " ", subfields: [{ code: "a", value: "" }] },
     { tag: "100", ind1: "1", ind2: " ", subfields: [{ code: "a", value: "" }] },
     {
@@ -119,6 +150,107 @@ const defaultMarcRecord: MarcRecord = {
     { tag: "650", ind1: " ", ind2: "0", subfields: [{ code: "a", value: "" }] },
   ],
 };
+
+const leaderRecordStatusOptions: FixedFieldOption[] = [
+  { value: "n", label: "New (n)" },
+  { value: "c", label: "Corrected/Revised (c)" },
+  { value: "a", label: "Encoding level increase (a)" },
+  { value: "d", label: "Deleted (d)" },
+  { value: "p", label: "Prepublication level increase (p)" },
+];
+
+const leaderTypeOptions: FixedFieldOption[] = [
+  { value: "a", label: "Language material (a)" },
+  { value: "c", label: "Notated music (c)" },
+  { value: "g", label: "Projected medium (g)" },
+  { value: "i", label: "Nonmusical sound recording (i)" },
+  { value: "j", label: "Musical sound recording (j)" },
+  { value: "k", label: "Graphic (k)" },
+  { value: "m", label: "Computer file (m)" },
+];
+
+const leaderBibLevelOptions: FixedFieldOption[] = [
+  { value: "m", label: "Monograph/item (m)" },
+  { value: "s", label: "Serial (s)" },
+  { value: "a", label: "Monographic component part (a)" },
+  { value: "c", label: "Collection (c)" },
+  { value: "i", label: "Integrating resource (i)" },
+];
+
+const leaderEncodingOptions: FixedFieldOption[] = [
+  { value: " ", label: "Full level (blank)" },
+  { value: "1", label: "Full, material not examined (1)" },
+  { value: "3", label: "Abbreviated level (3)" },
+  { value: "4", label: "Core level (4)" },
+  { value: "5", label: "Partial level (5)" },
+  { value: "7", label: "Minimal level (7)" },
+  { value: "8", label: "Prepublication level (8)" },
+];
+
+const leaderCatalogingFormOptions: FixedFieldOption[] = [
+  { value: " ", label: "Non-ISBD (blank)" },
+  { value: "a", label: "AACR2 (a)" },
+  { value: "i", label: "ISBD punctuation included (i)" },
+  { value: "n", label: "Non-ISBD punctuation omitted (n)" },
+];
+
+const fixed008DateTypeOptions: FixedFieldOption[] = [
+  { value: "s", label: "Single known/probable date (s)" },
+  { value: "m", label: "Multiple dates (m)" },
+  { value: "r", label: "Reprint/reissue and original date (r)" },
+  { value: "t", label: "Publication date + copyright date (t)" },
+  { value: "c", label: "Continuing resource currently published (c)" },
+  { value: "d", label: "Continuing resource ceased (d)" },
+  { value: "n", label: "Dates unknown (n)" },
+  { value: "q", label: "Questionable date (q)" },
+];
+
+const fixed008AudienceOptions: FixedFieldOption[] = [
+  { value: " ", label: "Unknown/unspecified (blank)" },
+  { value: "a", label: "Preschool (a)" },
+  { value: "b", label: "Primary (b)" },
+  { value: "c", label: "Pre-adolescent (c)" },
+  { value: "d", label: "Adolescent (d)" },
+  { value: "e", label: "Adult (e)" },
+  { value: "g", label: "General (g)" },
+  { value: "j", label: "Juvenile (j)" },
+];
+
+const fixed008FormOptions: FixedFieldOption[] = [
+  { value: " ", label: "None of the following (blank)" },
+  { value: "a", label: "Microfilm (a)" },
+  { value: "b", label: "Microfiche (b)" },
+  { value: "d", label: "Large print (d)" },
+  { value: "f", label: "Braille (f)" },
+  { value: "o", label: "Online (o)" },
+  { value: "q", label: "Direct electronic (q)" },
+  { value: "s", label: "Electronic (s)" },
+];
+
+const fixed008CatalogingSourceOptions: FixedFieldOption[] = [
+  { value: " ", label: "National bibliographic agency (blank)" },
+  { value: "c", label: "Cooperative cataloging program (c)" },
+  { value: "d", label: "Other (d)" },
+  { value: "u", label: "Unknown (u)" },
+];
+
+const fixed008LanguageOptions: FixedFieldOption[] = [
+  { value: "eng", label: "English (eng)" },
+  { value: "spa", label: "Spanish (spa)" },
+  { value: "fre", label: "French (fre)" },
+  { value: "ger", label: "German (ger)" },
+  { value: "ita", label: "Italian (ita)" },
+  { value: "por", label: "Portuguese (por)" },
+  { value: "chi", label: "Chinese (chi)" },
+  { value: "jpn", label: "Japanese (jpn)" },
+  { value: "kor", label: "Korean (kor)" },
+  { value: "ara", label: "Arabic (ara)" },
+  { value: "rus", label: "Russian (rus)" },
+];
+
+function controlTagSort(a: string, b: string) {
+  return Number.parseInt(a || "0", 10) - Number.parseInt(b || "0", 10);
+}
 
 function escapeXml(value: string) {
   return value
@@ -240,7 +372,11 @@ function recordToLines(record: MarcRecord): string[] {
     const ind2 = String(field.ind2 || " ").slice(0, 1);
     const subs = (field.subfields || [])
       .filter((sf) => String(sf.code || "").trim())
-      .map((sf) => `$${String(sf.code || "").trim().slice(0, 1)} ${String(sf.value || "").trim()}`.trim())
+      .map((sf) =>
+        `$${String(sf.code || "")
+          .trim()
+          .slice(0, 1)} ${String(sf.value || "").trim()}`.trim()
+      )
       .join(" ");
 
     lines.push(`${tag} ${ind1}${ind2} ${subs}`.trim());
@@ -275,7 +411,9 @@ function MarcEditorContent() {
   const [comparePanelOpen, setComparePanelOpen] = useState(false);
   const [compareDraft, setCompareDraft] = useState("");
   const [compareRecord, setCompareRecord] = useState<MarcRecord | null>(null);
-  const [compareBibInfo, setCompareBibInfo] = useState<{ title: string; author: string } | null>(null);
+  const [compareBibInfo, setCompareBibInfo] = useState<{ title: string; author: string } | null>(
+    null
+  );
   const [compareLoading, setCompareLoading] = useState(false);
   const [compareError, setCompareError] = useState<string | null>(null);
   const [diffOnly, setDiffOnly] = useState(false);
@@ -299,7 +437,10 @@ function MarcEditorContent() {
   const [presence, setPresence] = useState<RecordPresence[]>([]);
 
   const baseLines = useMemo(() => recordToLines(record), [record]);
-  const compareLines = useMemo(() => (compareRecord ? recordToLines(compareRecord) : []), [compareRecord]);
+  const compareLines = useMemo(
+    () => (compareRecord ? recordToLines(compareRecord) : []),
+    [compareRecord]
+  );
   const diff = useMemo(() => {
     const baseCounts = toCounts(baseLines);
     const compareCounts = toCounts(compareLines);
@@ -325,9 +466,21 @@ function MarcEditorContent() {
           return { line, kind: "same" as const, baseCount, compareCount, delta: 0 };
         }
         if (compareCount > baseCount) {
-          return { line, kind: "added" as const, baseCount, compareCount, delta: compareCount - baseCount };
+          return {
+            line,
+            kind: "added" as const,
+            baseCount,
+            compareCount,
+            delta: compareCount - baseCount,
+          };
         }
-        return { line, kind: "removed" as const, baseCount, compareCount, delta: baseCount - compareCount };
+        return {
+          line,
+          kind: "removed" as const,
+          baseCount,
+          compareCount,
+          delta: baseCount - compareCount,
+        };
       });
 
     const added = rows.filter((r) => r.kind === "added").reduce((sum, r) => sum + r.delta, 0);
@@ -353,14 +506,22 @@ function MarcEditorContent() {
     const suggestedValue = String(s?.suggestedValue || "").trim();
     if (!suggestedValue) return base;
 
-    const next: MarcRecord = { ...base, fields: base.fields.map((f) => ({ ...f, subfields: [...f.subfields] })) };
+    const next: MarcRecord = {
+      ...base,
+      fields: base.fields.map((f) => ({ ...f, subfields: [...f.subfields] })),
+    };
 
     const addFieldSorted = (field: MarcField) => {
       next.fields = [...next.fields, field].sort((a, b) => a.tag.localeCompare(b.tag));
     };
 
     if (s.type === "subject") {
-      addFieldSorted({ tag: "650", ind1: " ", ind2: "0", subfields: [{ code: "a", value: suggestedValue }] });
+      addFieldSorted({
+        tag: "650",
+        ind1: " ",
+        ind2: "0",
+        subfields: [{ code: "a", value: suggestedValue }],
+      });
     } else if (s.type === "summary") {
       const idx = next.fields.findIndex((f) => f.tag === "520");
       if (idx >= 0) {
@@ -369,7 +530,12 @@ function MarcEditorContent() {
         if (sfIdx >= 0) f.subfields[sfIdx] = { code: "a", value: suggestedValue };
         else f.subfields.push({ code: "a", value: suggestedValue });
       } else {
-        addFieldSorted({ tag: "520", ind1: " ", ind2: " ", subfields: [{ code: "a", value: suggestedValue }] });
+        addFieldSorted({
+          tag: "520",
+          ind1: " ",
+          ind2: " ",
+          subfields: [{ code: "a", value: suggestedValue }],
+        });
       }
     } else if (s.type === "series") {
       const idx = next.fields.findIndex((f) => f.tag === "490");
@@ -379,7 +545,12 @@ function MarcEditorContent() {
         if (sfIdx >= 0) f.subfields[sfIdx] = { code: "a", value: suggestedValue };
         else f.subfields.push({ code: "a", value: suggestedValue });
       } else {
-        addFieldSorted({ tag: "490", ind1: "1", ind2: " ", subfields: [{ code: "a", value: suggestedValue }] });
+        addFieldSorted({
+          tag: "490",
+          ind1: "1",
+          ind2: " ",
+          subfields: [{ code: "a", value: suggestedValue }],
+        });
       }
     }
 
@@ -393,7 +564,11 @@ function MarcEditorContent() {
     setHasChanges(true);
   };
 
-  const decideSuggestion = async (decision: "accepted" | "rejected", suggestionId: string, reason?: string) => {
+  const decideSuggestion = async (
+    decision: "accepted" | "rejected",
+    suggestionId: string,
+    reason?: string
+  ) => {
     if (!aiDraftId) return;
     try {
       await fetchWithAuth(`/api/ai/drafts/${aiDraftId}/decision`, {
@@ -422,7 +597,14 @@ function MarcEditorContent() {
       const res = await fetchWithAuth("/api/ai/cataloging-suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recordId: recordIdNum, title, author, isbn, marcXml, allowExternalLookups: false }),
+        body: JSON.stringify({
+          recordId: recordIdNum,
+          title,
+          author,
+          isbn,
+          marcXml,
+          allowExternalLookups: false,
+        }),
       });
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "AI request failed");
@@ -457,18 +639,21 @@ function MarcEditorContent() {
     }
   }, [recordIdNum]);
 
-  const heartbeatPresence = useCallback(async (activity: "viewing" | "editing") => {
-    if (!recordIdNum) return;
-    try {
-      await fetchWithAuth("/api/collaboration/presence", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recordType: "bib", recordId: recordIdNum, activity }),
-      });
-    } catch {
-      // Best-effort.
-    }
-  }, [recordIdNum]);
+  const heartbeatPresence = useCallback(
+    async (activity: "viewing" | "editing") => {
+      if (!recordIdNum) return;
+      try {
+        await fetchWithAuth("/api/collaboration/presence", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recordType: "bib", recordId: recordIdNum, activity }),
+        });
+      } catch {
+        // Best-effort.
+      }
+    },
+    [recordIdNum]
+  );
 
   const loadTasks = async () => {
     if (!recordIdNum) return;
@@ -599,7 +784,9 @@ function MarcEditorContent() {
     setCompareBibInfo(null);
 
     try {
-      const response = await fetchWithAuth(`/api/evergreen/catalog?action=record&id=${encodeURIComponent(id)}`);
+      const response = await fetchWithAuth(
+        `/api/evergreen/catalog?action=record&id=${encodeURIComponent(id)}`
+      );
       const data = await response.json();
 
       if (!data.ok || !data.record) {
@@ -652,7 +839,81 @@ function MarcEditorContent() {
     updateCompareInUrl(null);
   };
 
-  const canLoadCompare = Boolean(recordId) && /^\d+$/.test(compareDraft.trim()) && compareDraft.trim() !== recordId;
+  const canLoadCompare =
+    Boolean(recordId) && /^\d+$/.test(compareDraft.trim()) && compareDraft.trim() !== recordId;
+
+  const getControlFieldValue = useCallback(
+    (tag: string) => {
+      const field = record.fields.find((f) => f.tag === tag);
+      return field?.subfields?.[0]?.value || "";
+    },
+    [record.fields]
+  );
+
+  const updateControlField = useCallback(
+    (tag: string, value: string) => {
+      const nextFields = [...record.fields];
+      const index = nextFields.findIndex((f) => f.tag === tag);
+      if (index >= 0) {
+        nextFields[index] = {
+          ...nextFields[index],
+          tag,
+          ind1: " ",
+          ind2: " ",
+          subfields: [{ code: "", value }],
+        };
+      } else {
+        nextFields.push({
+          tag,
+          ind1: " ",
+          ind2: " ",
+          subfields: [{ code: "", value }],
+        });
+      }
+
+      nextFields.sort((a, b) => controlTagSort(a.tag, b.tag));
+      setRecord({ ...record, fields: nextFields });
+      setHasChanges(true);
+    },
+    [record, setRecord]
+  );
+
+  const currentLeader = String(record.leader || "")
+    .padEnd(24, " ")
+    .slice(0, 24);
+  const field008 = String(getControlFieldValue("008") || "")
+    .padEnd(40, " ")
+    .slice(0, 40);
+
+  const updateLeaderPos = (position: number, value: string) => {
+    const next = currentLeader.split("");
+    next[position] = (value || " ").slice(0, 1);
+    setRecord({ ...record, leader: next.join("") });
+    setHasChanges(true);
+  };
+
+  const update008Pos = (position: number, value: string) => {
+    const next = field008.split("");
+    next[position] = (value || " ").slice(0, 1);
+    updateControlField("008", next.join(""));
+  };
+
+  const update008Range = (start: number, endExclusive: number, value: string) => {
+    const next = field008.split("");
+    const width = endExclusive - start;
+    const normalized = String(value || "")
+      .slice(0, width)
+      .padEnd(width, " ");
+    for (let i = 0; i < width; i += 1) {
+      next[start + i] = normalized[i];
+    }
+    updateControlField("008", next.join(""));
+  };
+
+  const getLeaderPos = (position: number) => currentLeader.charAt(position) || " ";
+  const get008Pos = (position: number) => field008.charAt(position) || " ";
+  const get008Range = (start: number, endExclusive: number) =>
+    field008.slice(start, endExclusive).trimEnd();
 
   const updateField = (index: number, updates: Partial<MarcField>) => {
     const newFields = [...record.fields];
@@ -661,7 +922,12 @@ function MarcEditorContent() {
     setHasChanges(true);
   };
 
-  const updateSubfield = (fieldIndex: number, subfieldIndex: number, code: string, value: string) => {
+  const updateSubfield = (
+    fieldIndex: number,
+    subfieldIndex: number,
+    code: string,
+    value: string
+  ) => {
     const newFields = [...record.fields];
     const newSubfields = [...newFields[fieldIndex].subfields];
     newSubfields[subfieldIndex] = { code, value };
@@ -678,7 +944,12 @@ function MarcEditorContent() {
   };
 
   const addField = (tag: string = "") => {
-    const newField: MarcField = { tag, ind1: " ", ind2: " ", subfields: [{ code: "a", value: "" }] };
+    const newField: MarcField = {
+      tag,
+      ind1: " ",
+      ind2: " ",
+      subfields: [{ code: "a", value: "" }],
+    };
     setRecord({
       ...record,
       fields: [...record.fields, newField].sort((a, b) => a.tag.localeCompare(b.tag)),
@@ -695,10 +966,35 @@ function MarcEditorContent() {
 
   const validateRecord = () => {
     const errors: string[] = [];
-    const has245 = record.fields.some((f) =>
-      f.tag === "245" && f.subfields.some((s) => s.code === "a" && s.value.trim())
+    const has245 = record.fields.some(
+      (f) => f.tag === "245" && f.subfields.some((s) => s.code === "a" && s.value.trim())
     );
     if (!has245) errors.push("Field 245 (Title) is required");
+
+    const normalizedLeader = String(record.leader || "");
+    if (normalizedLeader.length !== 24) {
+      errors.push(`Leader must be 24 characters (currently ${normalizedLeader.length})`);
+    }
+
+    const fixed008 = getControlFieldValue("008");
+    if (fixed008 && fixed008.length !== 40) {
+      errors.push(`Field 008 must be 40 characters when present (currently ${fixed008.length})`);
+    }
+
+    for (const field of record.fields) {
+      if (!/^\d{3}$/.test(String(field.tag || ""))) {
+        errors.push(`Field tag "${field.tag || "blank"}" must be a 3-digit numeric tag`);
+        continue;
+      }
+
+      const tagNum = Number.parseInt(field.tag, 10);
+      if (tagNum >= 10) {
+        if (String(field.ind1 || "").length !== 1 || String(field.ind2 || "").length !== 1) {
+          errors.push(`Field ${field.tag} indicators must be exactly 1 character each`);
+        }
+      }
+    }
+
     setValidationErrors(errors);
     return errors.length === 0;
   };
@@ -742,8 +1038,8 @@ function MarcEditorContent() {
         router.push(`/staff/cataloging/marc-editor?id=${newId}`);
       }
       setHasChanges(false);
-    } catch (err: any) {
-      const message = err?.message || "Save failed";
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Save failed";
       toast.error(message);
       setError(message);
     } finally {
@@ -778,11 +1074,13 @@ function MarcEditorContent() {
               Save Record
             </Button>
             <Button size="sm" variant="outline" onClick={validateRecord}>
-              <Check className="h-4 w-4 mr-1" />Validate
+              <Check className="h-4 w-4 mr-1" />
+              Validate
             </Button>
             <div className="border-l h-6 mx-2" />
             <Button size="sm" variant="outline" onClick={() => addField()}>
-              <Plus className="h-4 w-4 mr-1" />Add Field
+              <Plus className="h-4 w-4 mr-1" />
+              Add Field
             </Button>
             <div className="flex-1" />
             {presence.length > 0 && (
@@ -794,7 +1092,9 @@ function MarcEditorContent() {
                     .slice(0, 2)
                     .join(", ");
                   const extra = presence.length > 2 ? ` +${presence.length - 2}` : "";
-                  const verb = presence.some((p) => p.activity === "editing") ? "editing" : "viewing";
+                  const verb = presence.some((p) => p.activity === "editing")
+                    ? "editing"
+                    : "viewing";
                   return `${names}${extra} ${verb}`;
                 })()}
               </Badge>
@@ -809,7 +1109,9 @@ function MarcEditorContent() {
                   return;
                 }
                 setComparePanelOpen(true);
-                setCompareDraft(compareIdParam && /^\d+$/.test(compareIdParam) ? compareIdParam : "");
+                setCompareDraft(
+                  compareIdParam && /^\d+$/.test(compareIdParam) ? compareIdParam : ""
+                );
               }}
               title="Split-screen compare"
               disabled={!recordId}
@@ -918,7 +1220,9 @@ function MarcEditorContent() {
                         <div>
                           <div>Editing Record #{recordId}</div>
                           {bibInfo && (
-                            <div className="text-sm font-normal text-muted-foreground">{bibInfo.title}</div>
+                            <div className="text-sm font-normal text-muted-foreground">
+                              {bibInfo.title}
+                            </div>
                           )}
                         </div>
                       ) : (
@@ -930,20 +1234,300 @@ function MarcEditorContent() {
                 </CardHeader>
 
                 <CardContent className="space-y-4">
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Leader (LDR)</span>
-                      <Badge variant="outline">24 chars</Badge>
+                  <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Fixed Fields</span>
+                      <Badge variant="outline">Leader + 008</Badge>
                     </div>
-                    <Input
-                      value={record.leader}
-                      onChange={(e) => {
-                        setRecord({ ...record, leader: e.target.value });
-                        setHasChanges(true);
-                      }}
-                      className="font-mono text-sm"
-                      maxLength={24}
-                    />
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Leader (LDR)
+                        </span>
+                        <Badge variant="outline">24 chars</Badge>
+                      </div>
+                      <Input
+                        value={currentLeader}
+                        onChange={(e) => {
+                          const next = e.target.value.slice(0, 24).padEnd(24, " ");
+                          setRecord({ ...record, leader: next });
+                          setHasChanges(true);
+                        }}
+                        className="font-mono text-sm"
+                        maxLength={24}
+                      />
+
+                      <div className="grid gap-2 md:grid-cols-2">
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">05 Record Status</div>
+                          <Select
+                            value={getLeaderPos(5) || " "}
+                            onValueChange={(value) => updateLeaderPos(5, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {leaderRecordStatusOptions.map((option) => (
+                                <SelectItem key={`ldr-05-${option.value}`} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">06 Type of Record</div>
+                          <Select
+                            value={getLeaderPos(6) || "a"}
+                            onValueChange={(value) => updateLeaderPos(6, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {leaderTypeOptions.map((option) => (
+                                <SelectItem key={`ldr-06-${option.value}`} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">
+                            07 Bibliographic Level
+                          </div>
+                          <Select
+                            value={getLeaderPos(7) || "m"}
+                            onValueChange={(value) => updateLeaderPos(7, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {leaderBibLevelOptions.map((option) => (
+                                <SelectItem key={`ldr-07-${option.value}`} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">17 Encoding Level</div>
+                          <Select
+                            value={getLeaderPos(17) || " "}
+                            onValueChange={(value) => updateLeaderPos(17, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {leaderEncodingOptions.map((option) => (
+                                <SelectItem key={`ldr-17-${option.value}`} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                          <div className="text-xs text-muted-foreground">
+                            18 Descriptive Cataloging Form
+                          </div>
+                          <Select
+                            value={getLeaderPos(18) || " "}
+                            onValueChange={(value) => updateLeaderPos(18, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {leaderCatalogingFormOptions.map((option) => (
+                                <SelectItem key={`ldr-18-${option.value}`} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 border-t pt-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          008 Fixed-Length Data
+                        </span>
+                        <Badge variant="outline">40 chars</Badge>
+                      </div>
+                      <Input
+                        value={field008}
+                        onChange={(e) => {
+                          updateControlField("008", e.target.value.slice(0, 40).padEnd(40, " "));
+                        }}
+                        className="font-mono text-sm"
+                        maxLength={40}
+                      />
+
+                      <div className="grid gap-2 md:grid-cols-2">
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">
+                            00-05 Date Entered (YYMMDD)
+                          </div>
+                          <Input
+                            value={get008Range(0, 6)}
+                            onChange={(e) =>
+                              update008Range(0, 6, e.target.value.replace(/[^0-9]/g, ""))
+                            }
+                            className="font-mono text-sm"
+                            maxLength={6}
+                            placeholder="YYMMDD"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">06 Date Type</div>
+                          <Select
+                            value={get008Pos(6) || "s"}
+                            onValueChange={(value) => update008Pos(6, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {fixed008DateTypeOptions.map((option) => (
+                                <SelectItem key={`008-06-${option.value}`} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">07-10 Date 1</div>
+                          <Input
+                            value={get008Range(7, 11)}
+                            onChange={(e) =>
+                              update008Range(7, 11, e.target.value.replace(/[^0-9]/g, ""))
+                            }
+                            className="font-mono text-sm"
+                            maxLength={4}
+                            placeholder="YYYY"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">11-14 Date 2</div>
+                          <Input
+                            value={get008Range(11, 15)}
+                            onChange={(e) =>
+                              update008Range(11, 15, e.target.value.replace(/[^0-9]/g, ""))
+                            }
+                            className="font-mono text-sm"
+                            maxLength={4}
+                            placeholder="YYYY"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">15-17 Place</div>
+                          <Input
+                            value={get008Range(15, 18)}
+                            onChange={(e) =>
+                              update008Range(
+                                15,
+                                18,
+                                e.target.value.toLowerCase().replace(/[^a-z#]/g, "")
+                              )
+                            }
+                            className="font-mono text-sm"
+                            maxLength={3}
+                            placeholder="xxu"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">22 Target Audience</div>
+                          <Select
+                            value={get008Pos(22) || " "}
+                            onValueChange={(value) => update008Pos(22, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {fixed008AudienceOptions.map((option) => (
+                                <SelectItem
+                                  key={`008-22-${option.value || "blank"}`}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">23 Form of Item</div>
+                          <Select
+                            value={get008Pos(23) || " "}
+                            onValueChange={(value) => update008Pos(23, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {fixed008FormOptions.map((option) => (
+                                <SelectItem
+                                  key={`008-23-${option.value || "blank"}`}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">35-37 Language</div>
+                          <Select
+                            value={get008Range(35, 38) || "eng"}
+                            onValueChange={(value) => update008Range(35, 38, value.toLowerCase())}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {fixed008LanguageOptions.map((option) => (
+                                <SelectItem key={`008-lang-${option.value}`} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">39 Cataloging Source</div>
+                          <Select
+                            value={get008Pos(39) || "d"}
+                            onValueChange={(value) => update008Pos(39, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {fixed008CatalogingSourceOptions.map((option) => (
+                                <SelectItem
+                                  key={`008-39-${option.value || "blank"}`}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -962,14 +1546,18 @@ function MarcEditorContent() {
                             <>
                               <Input
                                 value={field.ind1}
-                                onChange={(e) => updateField(fieldIndex, { ind1: e.target.value || " " })}
+                                onChange={(e) =>
+                                  updateField(fieldIndex, { ind1: e.target.value || " " })
+                                }
                                 className="w-10 font-mono text-sm text-center"
                                 maxLength={1}
                                 placeholder="_"
                               />
                               <Input
                                 value={field.ind2}
-                                onChange={(e) => updateField(fieldIndex, { ind2: e.target.value || " " })}
+                                onChange={(e) =>
+                                  updateField(fieldIndex, { ind2: e.target.value || " " })
+                                }
                                 className="w-10 font-mono text-sm text-center"
                                 maxLength={1}
                                 placeholder="_"
@@ -1008,7 +1596,12 @@ function MarcEditorContent() {
                                 <Input
                                   value={subfield.code}
                                   onChange={(e) =>
-                                    updateSubfield(fieldIndex, subfieldIndex, e.target.value, subfield.value)
+                                    updateSubfield(
+                                      fieldIndex,
+                                      subfieldIndex,
+                                      e.target.value,
+                                      subfield.value
+                                    )
                                   }
                                   className="w-10 font-mono text-sm"
                                   maxLength={1}
@@ -1017,7 +1610,12 @@ function MarcEditorContent() {
                                 <Input
                                   value={subfield.value}
                                   onChange={(e) =>
-                                    updateSubfield(fieldIndex, subfieldIndex, subfield.code, e.target.value)
+                                    updateSubfield(
+                                      fieldIndex,
+                                      subfieldIndex,
+                                      subfield.code,
+                                      e.target.value
+                                    )
                                   }
                                   className="flex-1 font-mono text-sm"
                                   placeholder="Subfield value"
@@ -1030,7 +1628,8 @@ function MarcEditorContent() {
                               onClick={() => addSubfield(fieldIndex)}
                               className="text-xs"
                             >
-                              <Plus className="h-3 w-3 mr-1" />Add Subfield
+                              <Plus className="h-3 w-3 mr-1" />
+                              Add Subfield
                             </Button>
                           </div>
                         )}
@@ -1040,7 +1639,19 @@ function MarcEditorContent() {
 
                   <div className="flex flex-wrap gap-2 pt-4 border-t">
                     <span className="text-sm text-muted-foreground mr-2">Quick Add:</span>
-                    {["020", "050", "082", "100", "245", "264", "300", "500", "650", "700", "856"].map((tag) => (
+                    {[
+                      "020",
+                      "050",
+                      "082",
+                      "100",
+                      "245",
+                      "264",
+                      "300",
+                      "500",
+                      "650",
+                      "700",
+                      "856",
+                    ].map((tag) => (
                       <Button key={tag} size="sm" variant="outline" onClick={() => addField(tag)}>
                         {tag}
                       </Button>
@@ -1073,8 +1684,8 @@ function MarcEditorContent() {
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div className="text-sm text-muted-foreground">
-                          Draft-only suggestions. Nothing is applied until you accept a suggestion, and nothing is saved
-                          until you click Save Record.
+                          Draft-only suggestions. Nothing is applied until you accept a suggestion,
+                          and nothing is saved until you click Save Record.
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -1082,7 +1693,9 @@ function MarcEditorContent() {
                             {aiLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                             Generate suggestions
                           </Button>
-                          {aiDraftId ? <Badge variant="outline">Draft {aiDraftId.slice(0, 8)}</Badge> : null}
+                          {aiDraftId ? (
+                            <Badge variant="outline">Draft {aiDraftId.slice(0, 8)}</Badge>
+                          ) : null}
                         </div>
 
                         {aiError && (
@@ -1113,7 +1726,10 @@ function MarcEditorContent() {
                                   if (a > b) return { line, kind: "added" as const };
                                   return { line, kind: "removed" as const };
                                 })
-                                .filter(Boolean) as Array<{ line: string; kind: "added" | "removed" }>;
+                                .filter(Boolean) as Array<{
+                                line: string;
+                                kind: "added" | "removed";
+                              }>;
 
                               const added = rows.filter((r) => r.kind === "added");
                               const removed = rows.filter((r) => r.kind === "removed");
@@ -1125,7 +1741,10 @@ function MarcEditorContent() {
                             const canReject = !decision || decision !== "rejected";
 
                             return (
-                              <div key={s.id} className="rounded-lg border bg-background p-3 space-y-2">
+                              <div
+                                key={s.id}
+                                className="rounded-lg border bg-background p-3 space-y-2"
+                              >
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -1134,7 +1753,13 @@ function MarcEditorContent() {
                                         {Math.round((Number(s.confidence || 0) || 0) * 100)}%
                                       </Badge>
                                       {decision ? (
-                                        <Badge className={decision === "accepted" ? "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10" : "bg-rose-500/10 text-rose-700 hover:bg-rose-500/10"}>
+                                        <Badge
+                                          className={
+                                            decision === "accepted"
+                                              ? "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10"
+                                              : "bg-rose-500/10 text-rose-700 hover:bg-rose-500/10"
+                                          }
+                                        >
                                           {decision}
                                         </Badge>
                                       ) : null}
@@ -1190,9 +1815,14 @@ function MarcEditorContent() {
                                     size="sm"
                                     variant="ghost"
                                     onClick={() =>
-                                      setAiExpandedDiffs((prev) => ({ ...prev, [s.id]: !Boolean(prev[s.id]) }))
+                                      setAiExpandedDiffs((prev) => ({
+                                        ...prev,
+                                        [s.id]: !Boolean(prev[s.id]),
+                                      }))
                                     }
-                                    disabled={previewDiff.added.length + previewDiff.removed.length === 0}
+                                    disabled={
+                                      previewDiff.added.length + previewDiff.removed.length === 0
+                                    }
                                   >
                                     {showDiff ? "Hide diff" : "Show diff"}
                                   </Button>
@@ -1202,14 +1832,24 @@ function MarcEditorContent() {
                                   <div className="rounded-lg border bg-background max-h-[260px] overflow-auto">
                                     <div className="p-2 font-mono text-xs space-y-1">
                                       {previewDiff.removed.map((r) => (
-                                        <div key={`r-${r.line}`} className="rounded-md px-2 py-1 bg-rose-50 text-rose-900">
-                                          <span className="inline-block w-4 text-center mr-1">-</span>
+                                        <div
+                                          key={`r-${r.line}`}
+                                          className="rounded-md px-2 py-1 bg-rose-50 text-rose-900"
+                                        >
+                                          <span className="inline-block w-4 text-center mr-1">
+                                            -
+                                          </span>
                                           <span className="break-words">{r.line}</span>
                                         </div>
                                       ))}
                                       {previewDiff.added.map((r) => (
-                                        <div key={`a-${r.line}`} className="rounded-md px-2 py-1 bg-emerald-50 text-emerald-900">
-                                          <span className="inline-block w-4 text-center mr-1">+</span>
+                                        <div
+                                          key={`a-${r.line}`}
+                                          className="rounded-md px-2 py-1 bg-emerald-50 text-emerald-900"
+                                        >
+                                          <span className="inline-block w-4 text-center mr-1">
+                                            +
+                                          </span>
                                           <span className="break-words">{r.line}</span>
                                         </div>
                                       ))}
@@ -1246,7 +1886,9 @@ function MarcEditorContent() {
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {!recordIdNum ? (
-                          <div className="text-sm text-muted-foreground">Save the record first to attach tasks.</div>
+                          <div className="text-sm text-muted-foreground">
+                            Save the record first to attach tasks.
+                          </div>
                         ) : (
                           <>
                             <div className="space-y-2">
@@ -1260,13 +1902,19 @@ function MarcEditorContent() {
                                 onChange={(e) => setNewTaskBody(e.target.value)}
                                 placeholder="Optional note"
                               />
-                              <Button size="sm" onClick={() => void createTask()} disabled={!newTaskTitle.trim()}>
+                              <Button
+                                size="sm"
+                                onClick={() => void createTask()}
+                                disabled={!newTaskTitle.trim()}
+                              >
                                 Add task
                               </Button>
                             </div>
 
                             {tasksError ? (
-                              <div className="text-sm text-muted-foreground">Failed to load tasks: {tasksError}</div>
+                              <div className="text-sm text-muted-foreground">
+                                Failed to load tasks: {tasksError}
+                              </div>
                             ) : null}
 
                             {tasksLoading ? (
@@ -1279,13 +1927,18 @@ function MarcEditorContent() {
                                   <div className="text-sm text-muted-foreground">No tasks yet.</div>
                                 ) : (
                                   tasks.map((t) => (
-                                    <div key={t.id} className="rounded-lg border bg-background p-3 space-y-2">
+                                    <div
+                                      key={t.id}
+                                      className="rounded-lg border bg-background p-3 space-y-2"
+                                    >
                                       <div className="flex items-center justify-between gap-2">
                                         <div className="text-sm font-medium">{t.title}</div>
                                         <Badge variant="outline">{t.status}</Badge>
                                       </div>
                                       {t.body ? (
-                                        <div className="text-xs text-muted-foreground whitespace-pre-wrap">{t.body}</div>
+                                        <div className="text-xs text-muted-foreground whitespace-pre-wrap">
+                                          {t.body}
+                                        </div>
                                       ) : null}
                                       <div className="flex items-center gap-2">
                                         <Button
@@ -1382,7 +2035,12 @@ function MarcEditorContent() {
                           <div className="text-xs text-muted-foreground">
                             Tip: add `?compare=123` to deep-link this view.
                           </div>
-                          <Button size="sm" variant="outline" onClick={clearCompare} disabled={compareLoading}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={clearCompare}
+                            disabled={compareLoading}
+                          >
                             Clear
                           </Button>
                         </div>
@@ -1395,8 +2053,12 @@ function MarcEditorContent() {
 
                         {compareBibInfo && (
                           <div className="rounded-lg border bg-muted/30 px-3 py-2">
-                            <div className="text-sm font-medium truncate">{compareBibInfo.title || "Untitled"}</div>
-                            <div className="text-xs text-muted-foreground truncate">{compareBibInfo.author || "—"}</div>
+                            <div className="text-sm font-medium truncate">
+                              {compareBibInfo.title || "Untitled"}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {compareBibInfo.author || "—"}
+                            </div>
                           </div>
                         )}
 
@@ -1404,7 +2066,9 @@ function MarcEditorContent() {
                           <div className="space-y-2">
                             <div className="flex items-center gap-2 flex-wrap">
                               <Badge variant="outline">Base #{recordId}</Badge>
-                              <Badge variant="outline">Compare #{compareDraft.trim() || compareIdParam}</Badge>
+                              <Badge variant="outline">
+                                Compare #{compareDraft.trim() || compareIdParam}
+                              </Badge>
                               <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10">
                                 +{diff.added}
                               </Badge>
@@ -1430,11 +2094,17 @@ function MarcEditorContent() {
                                       }
                                     >
                                       <span className="inline-block w-4 text-center mr-1">
-                                        {r.kind === "added" ? "+" : r.kind === "removed" ? "-" : "·"}
+                                        {r.kind === "added"
+                                          ? "+"
+                                          : r.kind === "removed"
+                                            ? "-"
+                                            : "·"}
                                       </span>
                                       <span className="break-words">{r.line}</span>
                                       {r.delta > 1 ? (
-                                        <span className="ml-2 text-[10px] text-muted-foreground">×{r.delta}</span>
+                                        <span className="ml-2 text-[10px] text-muted-foreground">
+                                          ×{r.delta}
+                                        </span>
                                       ) : null}
                                     </div>
                                   ))}
@@ -1453,14 +2123,17 @@ function MarcEditorContent() {
                   {showHelp && (
                     <div className="border rounded-lg p-4 bg-muted/30">
                       <h3 className="font-medium mb-3 flex items-center gap-2">
-                        <HelpCircle className="h-4 w-4" />MARC Help
+                        <HelpCircle className="h-4 w-4" />
+                        MARC Help
                       </h3>
                       <div className="space-y-2 text-sm">
                         {Object.entries(marcFieldDescriptions)
                           .slice(0, 12)
                           .map(([tag, desc]) => (
                             <div key={tag} className="flex gap-2">
-                              <Badge variant="outline" className="shrink-0">{tag}</Badge>
+                              <Badge variant="outline" className="shrink-0">
+                                {tag}
+                              </Badge>
                               <span className="text-muted-foreground text-xs">{desc}</span>
                             </div>
                           ))}
