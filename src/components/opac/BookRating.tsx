@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Star } from "lucide-react";
+import { clientLogger } from "@/lib/client-logger";
 
 interface BookRatingProps {
   isbn?: string | null;
@@ -39,7 +40,9 @@ export function BookRating({
           setData(data);
         }
       })
-      .catch(() => {})
+      .catch((error) => {
+        clientLogger.warn("BookRating single lookup failed", error);
+      })
       .finally(() => setLoading(false));
   }, [isbn]);
 
@@ -123,7 +126,9 @@ export function useBookRatings(isbns: string[]) {
           setRatings(results);
         }
       })
-      .catch(() => {})
+      .catch((error) => {
+        clientLogger.warn("BookRating batch lookup failed", error);
+      })
       .finally(() => setLoading(false));
   }, [isbnsKey]);
 

@@ -238,10 +238,10 @@ export default function HelpPage() {
                   </Link>
                 </li>
                 <li>
-                  <a href="#" className="text-primary-600 hover:underline flex items-center gap-2">
+                  <Link href="/opac/mobile" className="text-primary-600 hover:underline flex items-center gap-2">
                     <Download className="h-4 w-4" />
-                    Download Our App
-                  </a>
+                    Mobile Access
+                  </Link>
                 </li>
               </ul>
             </div>

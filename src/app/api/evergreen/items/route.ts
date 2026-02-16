@@ -13,6 +13,7 @@ import {
   parseJsonBodyWithSchema,
   getRequestMeta,
 } from "@/lib/api";
+import { query } from "@/lib/db/evergreen";
 import { requirePermissions } from "@/lib/permissions";
 import { logAuditEvent } from "@/lib/audit";
 import { z } from "zod";
@@ -256,6 +257,105 @@ export async function GET(req: NextRequest) {
             ? parseFloat(String(depositRaw))
             : undefined;
 
+    const circModifierRaw = (copy as any).circ_modifier;
+    const circModifierCode =
+      typeof circModifierRaw === "object" && circModifierRaw
+        ? String((circModifierRaw as any).code || "").trim() || null
+        : typeof circModifierRaw === "string"
+          ? circModifierRaw.trim() || null
+          : null;
+
+    const loanDurationRaw = (copy as any).loan_duration;
+    const loanDurationParsed =
+      typeof loanDurationRaw === "number"
+        ? loanDurationRaw
+        : parseInt(String(loanDurationRaw ?? ""), 10);
+    const loanDuration = Number.isFinite(loanDurationParsed) ? loanDurationParsed : null;
+
+    const fineLevelRaw = (copy as any).fine_level;
+    const fineLevelParsed =
+      typeof fineLevelRaw === "number" ? fineLevelRaw : parseInt(String(fineLevelRaw ?? ""), 10);
+    const fineLevel = Number.isFinite(fineLevelParsed) ? fineLevelParsed : null;
+
+    const floatingRaw = (copy as any).floating;
+    const floatingGroupId =
+      typeof floatingRaw === "object" && floatingRaw
+        ? getId(floatingRaw)
+        : typeof floatingRaw === "number"
+          ? floatingRaw
+          : parseInt(String(floatingRaw ?? ""), 10);
+
+    let circModifierName: string | null = null;
+    let floatingGroupName: string | null = null;
+    let statCatEntries: Array<{
+      mapId: number;
+      statCatId: number;
+      statCatName: string;
+      entryId: number;
+      entryValue: string;
+    }> = [];
+
+    try {
+      const lookupRows = await query<{
+        circ_modifier_name: string | null;
+        floating_group_name: string | null;
+      }>(
+        `
+          select
+            ccm.name as circ_modifier_name,
+            cfg.name as floating_group_name
+          from asset.copy acp
+          left join config.circ_modifier ccm on ccm.code = acp.circ_modifier
+          left join config.floating_group cfg on cfg.id = acp.floating
+          where acp.id = $1
+          limit 1
+        `,
+        [copy.id]
+      );
+
+      if (lookupRows.length > 0) {
+        circModifierName = lookupRows[0].circ_modifier_name ?? null;
+        floatingGroupName = lookupRows[0].floating_group_name ?? null;
+      }
+    } catch {
+      // Best-effort enrichment only.
+    }
+
+    try {
+      const statRows = await query<{
+        map_id: number;
+        stat_cat_id: number;
+        stat_cat_name: string;
+        entry_id: number;
+        entry_value: string;
+      }>(
+        `
+          select
+            m.id as map_id,
+            e.stat_cat as stat_cat_id,
+            c.name as stat_cat_name,
+            e.id as entry_id,
+            e.value as entry_value
+          from asset.stat_cat_entry_copy_map m
+          join asset.stat_cat_entry e on e.id = m.stat_cat_entry
+          join asset.stat_cat c on c.id = e.stat_cat
+          where m.owning_copy = $1
+          order by c.name asc, e.value asc
+        `,
+        [copy.id]
+      );
+
+      statCatEntries = statRows.map((row) => ({
+        mapId: Number(row.map_id) || 0,
+        statCatId: Number(row.stat_cat_id) || 0,
+        statCatName: String(row.stat_cat_name || "").trim(),
+        entryId: Number(row.entry_id) || 0,
+        entryValue: String(row.entry_value || "").trim(),
+      }));
+    } catch {
+      // Best-effort enrichment only.
+    }
+
     const item = {
       id: copy.id,
       barcode: copy.barcode,
@@ -281,6 +381,16 @@ export async function GET(req: NextRequest) {
       circulate: circulateRaw !== false,
       refItem: refRaw === true,
       opacVisible: opacVisibleRaw !== false,
+      circModifier: circModifierCode || undefined,
+      circModifierName: circModifierName || undefined,
+      loanDuration: loanDuration ?? undefined,
+      fineLevel: fineLevel ?? undefined,
+      floatingGroupId:
+        typeof floatingGroupId === "number" && Number.isFinite(floatingGroupId)
+          ? floatingGroupId
+          : undefined,
+      floatingGroupName: floatingGroupName || undefined,
+      statCatEntries,
       title: bib?.title || "",
       author: bib?.author || "",
       isbn: bib?.isbn || "",

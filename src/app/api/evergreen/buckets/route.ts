@@ -174,6 +174,80 @@ export async function POST(req: NextRequest) {
       return successResponse({ itemId: result });
     }
 
+    if (action === "update") {
+      const parsedBucketId = Number.parseInt(String(bucketId ?? ""), 10);
+      if (!Number.isFinite(parsedBucketId) || parsedBucketId <= 0) {
+        return errorResponse("Valid bucketId is required", 400);
+      }
+
+      const existingResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.cbreb", [
+        authtoken,
+        parsedBucketId,
+      ]);
+      const existing = existingResponse?.payload?.[0];
+      if (!existing || isOpenSRFEvent(existing) || (existing as any)?.ilsevent) {
+        return errorResponse(getErrorMessage(existing, "Bucket not found"), 404, existing);
+      }
+
+      const ownerRaw = (existing as any)?.owner;
+      const ownerId = typeof ownerRaw === "number" ? ownerRaw : parseInt(String(ownerRaw ?? ""), 10);
+      if (Number.isFinite(ownerId) && ownerId !== staffId) {
+        return errorResponse("You can only edit buckets you own", 403);
+      }
+
+      const nextName =
+        name !== undefined
+          ? String(name || "").trim()
+          : String((existing as any)?.name || "").trim();
+      if (!nextName) {
+        return errorResponse("Bucket name is required", 400);
+      }
+
+      const updatePayload: any = encodeFieldmapper("cbreb", {
+        ...(existing as any),
+        id: parsedBucketId,
+        name: nextName,
+        description:
+          description !== undefined
+            ? String(description || "").trim()
+            : String((existing as any)?.description || "").trim(),
+        pub:
+          pub !== undefined
+            ? pub === true
+              ? "t"
+              : "f"
+            : (existing as any)?.pub === "t" || (existing as any)?.pub === true
+              ? "t"
+              : "f",
+        owner: Number.isFinite(ownerId) ? ownerId : staffId,
+        ischanged: 1,
+      });
+
+      const updateRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.update.cbreb", [
+        authtoken,
+        updatePayload,
+      ]);
+      const updateResult = updateRes?.payload?.[0];
+      if (!updateResult || isOpenSRFEvent(updateResult) || (updateResult as any)?.ilsevent) {
+        return errorResponse(getErrorMessage(updateResult, "Failed to update bucket"), 400, updateResult);
+      }
+
+      return successResponse({
+        bucket: {
+          id: parsedBucketId,
+          name: nextName,
+          description:
+            description !== undefined
+              ? String(description || "").trim()
+              : String((existing as any)?.description || "").trim(),
+          owner: Number.isFinite(ownerId) ? ownerId : staffId,
+          btype: String((existing as any)?.btype || "staff_client"),
+          pub: pub !== undefined ? pub === true : (existing as any)?.pub === "t" || (existing as any)?.pub === true,
+          createTime: String((existing as any)?.create_time || new Date().toISOString()),
+        },
+      });
+    }
+
     if (action === "remove_record") {
       if (!bucketId || !recordId) {
         return errorResponse("Bucket ID and record ID are required", 400);

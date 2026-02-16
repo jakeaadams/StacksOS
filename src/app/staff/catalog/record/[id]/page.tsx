@@ -975,6 +975,22 @@ export default function CatalogRecordPage() {
                       {holdQueueCount}
                     </span>
                   </div>
+                  {(record.createDate || record.editDate) && (
+                    <div className="rounded-lg border bg-background px-3 py-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Record Created
+                        </span>
+                        <span className="text-xs font-medium">{formatDateTime(record.createDate)}</span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between gap-3">
+                        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Last Edited
+                        </span>
+                        <span className="text-xs font-medium">{formatDateTime(record.editDate)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <Separator />

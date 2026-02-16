@@ -177,8 +177,25 @@ export function TableRowActions({
 }
 
 // Preset action builders for common patterns
+function actionOrNull(args: {
+  id: string;
+  label: string;
+  icon?: React.ElementType;
+  onClick?: (() => void) | null;
+  variant?: "default" | "destructive" | "warning";
+}): RowAction | null {
+  if (!args.onClick) return null;
+  return {
+    id: args.id,
+    label: args.label,
+    icon: args.icon,
+    variant: args.variant,
+    onClick: args.onClick,
+  };
+}
+
 export const createPatronActions = (
-  patronId: number | string,
+  _patronId: number | string,
   handlers: {
     onView?: () => void;
     onEdit?: () => void;
@@ -189,19 +206,31 @@ export const createPatronActions = (
     onPrint?: () => void;
     onBlock?: () => void;
   }
-): RowAction[] => [
-  { id: "view", label: "View Profile", icon: Eye, onClick: handlers.onView || (() => {}) },
-  { id: "edit", label: "Edit Patron", icon: Edit, onClick: handlers.onEdit || (() => {}) },
-  { id: "checkout", label: "Check Out Items", icon: ExternalLink, onClick: handlers.onCheckout || (() => {}) },
-  { id: "hold", label: "Place Hold", icon: Bookmark, onClick: handlers.onPlaceHold || (() => {}) },
-  { id: "bills", label: "View Bills", icon: CreditCard, onClick: handlers.onViewBills || (() => {}) },
-  { id: "email", label: "Send Email", icon: Mail, onClick: handlers.onEmail || (() => {}) },
-  { id: "print", label: "Print Card", icon: Printer, onClick: handlers.onPrint || (() => {}) },
-  { id: "block", label: "Block Patron", icon: Ban, variant: "destructive", onClick: handlers.onBlock || (() => {}) },
-];
+): RowAction[] =>
+  [
+    actionOrNull({ id: "view", label: "View Profile", icon: Eye, onClick: handlers.onView }),
+    actionOrNull({ id: "edit", label: "Edit Patron", icon: Edit, onClick: handlers.onEdit }),
+    actionOrNull({
+      id: "checkout",
+      label: "Check Out Items",
+      icon: ExternalLink,
+      onClick: handlers.onCheckout,
+    }),
+    actionOrNull({ id: "hold", label: "Place Hold", icon: Bookmark, onClick: handlers.onPlaceHold }),
+    actionOrNull({ id: "bills", label: "View Bills", icon: CreditCard, onClick: handlers.onViewBills }),
+    actionOrNull({ id: "email", label: "Send Email", icon: Mail, onClick: handlers.onEmail }),
+    actionOrNull({ id: "print", label: "Print Card", icon: Printer, onClick: handlers.onPrint }),
+    actionOrNull({
+      id: "block",
+      label: "Block Patron",
+      icon: Ban,
+      variant: "destructive",
+      onClick: handlers.onBlock,
+    }),
+  ].filter((action): action is RowAction => Boolean(action));
 
 export const createItemActions = (
-  itemId: number | string,
+  _itemId: number | string,
   handlers: {
     onView?: () => void;
     onEdit?: () => void;
@@ -212,19 +241,38 @@ export const createItemActions = (
     onMarkDamaged?: () => void;
     onDelete?: () => void;
   }
-): RowAction[] => [
-  { id: "view", label: "View Item", icon: Eye, onClick: handlers.onView || (() => {}) },
-  { id: "edit", label: "Edit Item", icon: Edit, onClick: handlers.onEdit || (() => {}) },
-  { id: "checkin", label: "Check In", icon: CheckCircle2, onClick: handlers.onCheckin || (() => {}) },
-  { id: "renew", label: "Renew", icon: RefreshCw, onClick: handlers.onRenew || (() => {}) },
-  { id: "hold", label: "Place Hold", icon: Bookmark, onClick: handlers.onPlaceHold || (() => {}) },
-  { id: "lost", label: "Mark Lost", icon: AlertTriangle, variant: "warning", onClick: handlers.onMarkLost || (() => {}) },
-  { id: "damaged", label: "Mark Damaged", icon: AlertTriangle, variant: "warning", onClick: handlers.onMarkDamaged || (() => {}) },
-  { id: "delete", label: "Delete Item", icon: Trash2, variant: "destructive", onClick: handlers.onDelete || (() => {}) },
-];
+): RowAction[] =>
+  [
+    actionOrNull({ id: "view", label: "View Item", icon: Eye, onClick: handlers.onView }),
+    actionOrNull({ id: "edit", label: "Edit Item", icon: Edit, onClick: handlers.onEdit }),
+    actionOrNull({ id: "checkin", label: "Check In", icon: CheckCircle2, onClick: handlers.onCheckin }),
+    actionOrNull({ id: "renew", label: "Renew", icon: RefreshCw, onClick: handlers.onRenew }),
+    actionOrNull({ id: "hold", label: "Place Hold", icon: Bookmark, onClick: handlers.onPlaceHold }),
+    actionOrNull({
+      id: "lost",
+      label: "Mark Lost",
+      icon: AlertTriangle,
+      variant: "warning",
+      onClick: handlers.onMarkLost,
+    }),
+    actionOrNull({
+      id: "damaged",
+      label: "Mark Damaged",
+      icon: AlertTriangle,
+      variant: "warning",
+      onClick: handlers.onMarkDamaged,
+    }),
+    actionOrNull({
+      id: "delete",
+      label: "Delete Item",
+      icon: Trash2,
+      variant: "destructive",
+      onClick: handlers.onDelete,
+    }),
+  ].filter((action): action is RowAction => Boolean(action));
 
 export const createHoldActions = (
-  holdId: number | string,
+  _holdId: number | string,
   handlers: {
     onView?: () => void;
     onModify?: () => void;
@@ -232,11 +280,22 @@ export const createHoldActions = (
     onActivate?: () => void;
     onCancel?: () => void;
   }
-): RowAction[] => [
-  { id: "view", label: "View Details", icon: Eye, onClick: handlers.onView || (() => {}) },
-  { id: "modify", label: "Modify Hold", icon: Edit, onClick: handlers.onModify || (() => {}) },
-  { id: "suspend", label: "Suspend Hold", icon: Ban, onClick: handlers.onSuspend || (() => {}) },
-  { id: "activate", label: "Activate Hold", icon: CheckCircle2, onClick: handlers.onActivate || (() => {}) },
-  { id: "cancel", label: "Cancel Hold", icon: Trash2, variant: "destructive", onClick: handlers.onCancel || (() => {}) },
-];
-
+): RowAction[] =>
+  [
+    actionOrNull({ id: "view", label: "View Details", icon: Eye, onClick: handlers.onView }),
+    actionOrNull({ id: "modify", label: "Modify Hold", icon: Edit, onClick: handlers.onModify }),
+    actionOrNull({ id: "suspend", label: "Suspend Hold", icon: Ban, onClick: handlers.onSuspend }),
+    actionOrNull({
+      id: "activate",
+      label: "Activate Hold",
+      icon: CheckCircle2,
+      onClick: handlers.onActivate,
+    }),
+    actionOrNull({
+      id: "cancel",
+      label: "Cancel Hold",
+      icon: Trash2,
+      variant: "destructive",
+      onClick: handlers.onCancel,
+    }),
+  ].filter((action): action is RowAction => Boolean(action));

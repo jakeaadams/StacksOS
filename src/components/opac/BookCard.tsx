@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { WhyThisResultDialog, type ExplainFilter } from "@/components/opac/WhyThisResultDialog";
+import { clientLogger } from "@/lib/client-logger";
 import { 
   Book, 
   Headphones, 
@@ -204,7 +205,9 @@ export function BookCard({
           });
         }
       })
-      .catch(() => {});
+      .catch((error) => {
+        clientLogger.warn("BookCard rating lookup failed", error);
+      });
   }, [isbn, propRating, fetchGoogleRating, showRating]);
 
   // Use prop rating if provided, otherwise Google rating

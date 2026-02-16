@@ -153,7 +153,7 @@ export default function RecordDetailPage() {
 	    if (!record?.isbn || record?.rating) return;
 	    const cleanIsbn = record.isbn.replace(/-/g, "");
 	    if (cleanIsbn.length < 10) return;
-	    fetch(`/api/google-books?isbn=${cleanIsbn}`)
+    fetch(`/api/google-books?isbn=${cleanIsbn}`)
       .then((res) => res.json())
       .then((result) => {
         const data = result?.ok ? result.data : null;
@@ -161,7 +161,9 @@ export default function RecordDetailPage() {
           setGoogleRating({ rating: data.averageRating, count: data.ratingsCount || 0 });
         }
       })
-	      .catch(() => {});
+      .catch((error) => {
+        clientLogger.warn("OPAC record rating lookup failed", error);
+      });
 	  }, [record?.isbn, record?.rating]);
 
 	  const fetchRecordDetail = useCallback(async () => {

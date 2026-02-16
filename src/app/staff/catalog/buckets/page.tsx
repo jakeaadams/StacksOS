@@ -42,7 +42,13 @@ export default function RecordBucketsPage() {
   const [newBucketName, setNewBucketName] = useState("");
   const [newBucketDescription, setNewBucketDescription] = useState("");
   const [newBucketShared, setNewBucketShared] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingBucket, setEditingBucket] = useState<Bucket | null>(null);
+  const [editBucketName, setEditBucketName] = useState("");
+  const [editBucketDescription, setEditBucketDescription] = useState("");
+  const [editBucketShared, setEditBucketShared] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   const fetchBuckets = useCallback(async () => {
     setIsLoading(true);
@@ -130,6 +136,63 @@ export default function RecordBucketsPage() {
     }
   };
 
+  const handleOpenEdit = (bucket: Bucket) => {
+    setEditingBucket(bucket);
+    setEditBucketName(bucket.name);
+    setEditBucketDescription(bucket.description || "");
+    setEditBucketShared(bucket.pub);
+    setShowEditDialog(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingBucket) return;
+    if (!editBucketName.trim()) {
+      toast.error("Please enter a bucket name");
+      return;
+    }
+
+    setUpdatingId(editingBucket.id);
+    try {
+      const response = await fetchWithAuth("/api/evergreen/buckets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update",
+          bucketId: editingBucket.id,
+          name: editBucketName.trim(),
+          description: editBucketDescription.trim(),
+          pub: editBucketShared,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.ok && data.bucket) {
+        setBuckets((prev) =>
+          prev.map((bucket) =>
+            bucket.id === editingBucket.id
+              ? {
+                  ...bucket,
+                  name: data.bucket.name,
+                  description: data.bucket.description || "",
+                  pub: data.bucket.pub === true,
+                }
+              : bucket
+          )
+        );
+        toast.success("Bucket updated");
+        setShowEditDialog(false);
+        setEditingBucket(null);
+      } else {
+        toast.error(data.error || "Failed to update bucket");
+      }
+    } catch (err) {
+      clientLogger.error("Error updating bucket:", err);
+      toast.error("Failed to update bucket");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const columns: ColumnDef<Bucket>[] = useMemo(() => [
     {
       accessorKey: "name",
@@ -174,7 +237,14 @@ export default function RecordBucketsPage() {
       header: "Actions",
       cell: ({ row }) => (
         <div className="flex gap-1">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Edit bucket">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            title="Edit bucket"
+            onClick={() => handleOpenEdit(row.original)}
+            disabled={updatingId === row.original.id || deletingId === row.original.id}
+          >
             <Edit2 className="h-4 w-4" />
             <span className="sr-only">Edit bucket</span>
           </Button>
@@ -196,7 +266,7 @@ export default function RecordBucketsPage() {
         </div>
       ),
     },
-  ], [deletingId]);
+  ], [deletingId, updatingId]);
 
   const pageActions = useMemo(() => [
     {
@@ -330,6 +400,82 @@ export default function RecordBucketsPage() {
                 </>
               ) : (
                 "Create Bucket"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Bucket Dialog */}
+      <Dialog
+        open={showEditDialog}
+        onOpenChange={(open) => {
+          setShowEditDialog(open);
+          if (!open) {
+            setEditingBucket(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Bucket</DialogTitle>
+            <DialogDescription>
+              Update bucket details and sharing settings.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Bucket Name</Label>
+              <Input
+                id="edit-name"
+                value={editBucketName}
+                onChange={(e) => setEditBucketName(e.target.value)}
+                placeholder="e.g., Summer Reading List"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description (optional)</Label>
+              <Textarea
+                id="edit-description"
+                value={editBucketDescription}
+                onChange={(e) => setEditBucketDescription(e.target.value)}
+                placeholder="What is this bucket for?"
+                rows={2}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="edit-shared">Share with others</Label>
+                <p className="text-xs text-muted-foreground">Allow other staff to view this bucket</p>
+              </div>
+              <Switch
+                id="edit-shared"
+                checked={editBucketShared}
+                onCheckedChange={setEditBucketShared}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEditDialog(false);
+                setEditingBucket(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              disabled={updatingId !== null || !editingBucket}
+            >
+              {updatingId !== null ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
               )}
             </Button>
           </DialogFooter>

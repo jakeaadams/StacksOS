@@ -129,7 +129,9 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
                 });
               }
             })
-            .catch(() => {})
+            .catch((error) => {
+              clientLogger.warn("UniversalSearch patron lookup failed", error);
+            })
         );
       }
       
@@ -156,7 +158,9 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
                 });
               }
             })
-            .catch(() => {})
+            .catch((error) => {
+              clientLogger.warn("UniversalSearch catalog lookup failed", error);
+            })
         );
       }
       
@@ -177,7 +181,9 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
                 });
               }
             })
-            .catch(() => {})
+            .catch((error) => {
+              clientLogger.warn("UniversalSearch item lookup failed", error);
+            })
         );
       }
       

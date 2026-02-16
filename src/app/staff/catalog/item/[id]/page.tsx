@@ -22,6 +22,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { ColumnDef } from "@tanstack/react-table";
 import {
@@ -68,6 +75,19 @@ interface ItemDetail {
   alertMessage?: string;
   notes?: string;
   historyError?: string;
+  circModifier?: string;
+  circModifierName?: string;
+  loanDuration?: number;
+  fineLevel?: number;
+  floatingGroupId?: number;
+  floatingGroupName?: string;
+  statCatEntries?: Array<{
+    mapId: number;
+    statCatId: number;
+    statCatName: string;
+    entryId: number;
+    entryValue: string;
+  }>;
 }
 
 interface CircHistory {
@@ -79,6 +99,28 @@ interface CircHistory {
   dueDate?: string;
   checkinDate?: string | null;
   renewCount?: number;
+}
+
+interface CircModifierOption {
+  code: string;
+  name: string;
+  description?: string;
+}
+
+interface FloatingGroupOption {
+  id: number;
+  name: string;
+}
+
+interface StatEntryOption {
+  id: number;
+  value: string;
+}
+
+interface CopyStatCategoryOption {
+  id: number;
+  name: string;
+  entries: StatEntryOption[];
 }
 
 function formatDate(value?: string | null) {
@@ -117,6 +159,32 @@ function getStatusColor(statusId: number) {
   }
 }
 
+function loanDurationLabel(value?: number | null) {
+  switch (value) {
+    case 1:
+      return "Short";
+    case 2:
+      return "Normal";
+    case 3:
+      return "Extended";
+    default:
+      return "—";
+  }
+}
+
+function fineLevelLabel(value?: number | null) {
+  switch (value) {
+    case 1:
+      return "Low";
+    case 2:
+      return "Normal";
+    case 3:
+      return "High";
+    default:
+      return "—";
+  }
+}
+
 export default function ItemDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -131,6 +199,11 @@ export default function ItemDetailPage() {
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   const [customCoverUrl, setCustomCoverUrl] = useState<string | undefined>(undefined);
   const [coverPreviewError, setCoverPreviewError] = useState(false);
+  const [metadataLoading, setMetadataLoading] = useState(false);
+
+  const [circModifiers, setCircModifiers] = useState<CircModifierOption[]>([]);
+  const [floatingGroups, setFloatingGroups] = useState<FloatingGroupOption[]>([]);
+  const [copyStatCategories, setCopyStatCategories] = useState<CopyStatCategoryOption[]>([]);
 
   // Editable fields
   const [editBarcode, setEditBarcode] = useState("");
@@ -139,6 +212,11 @@ export default function ItemDetailPage() {
   const [editCirculate, setEditCirculate] = useState(true);
   const [editOpacVisible, setEditOpacVisible] = useState(true);
   const [editAlertMessage, setEditAlertMessage] = useState("");
+  const [editCircModifier, setEditCircModifier] = useState<string>("");
+  const [editLoanDuration, setEditLoanDuration] = useState<string>("2");
+  const [editFineLevel, setEditFineLevel] = useState<string>("2");
+  const [editFloatingGroupId, setEditFloatingGroupId] = useState<string>("none");
+  const [editStatEntries, setEditStatEntries] = useState<Record<number, number>>({});
 
   const loadItem = useCallback(async () => {
     setIsLoading(true);
@@ -157,6 +235,23 @@ export default function ItemDetailPage() {
         setEditCirculate(data.item.circulate);
         setEditOpacVisible(data.item.opacVisible !== false);
         setEditAlertMessage(data.item.alertMessage || "");
+        setEditCircModifier(data.item.circModifier || "");
+        setEditLoanDuration(String(data.item.loanDuration || 2));
+        setEditFineLevel(String(data.item.fineLevel || 2));
+        setEditFloatingGroupId(
+          data.item.floatingGroupId && Number.isFinite(data.item.floatingGroupId)
+            ? String(data.item.floatingGroupId)
+            : "none"
+        );
+        const initialStatMap: Record<number, number> = {};
+        if (Array.isArray(data.item.statCatEntries)) {
+          for (const row of data.item.statCatEntries) {
+            if (typeof row?.statCatId === "number" && typeof row?.entryId === "number") {
+              initialStatMap[row.statCatId] = row.entryId;
+            }
+          }
+        }
+        setEditStatEntries(initialStatMap);
 
         if (data.item.recordId) {
           try {
@@ -188,6 +283,101 @@ export default function ItemDetailPage() {
   useEffect(() => {
     loadItem();
   }, [loadItem]);
+
+  const loadMetadata = useCallback(async () => {
+    setMetadataLoading(true);
+    try {
+      const [modsRes, groupsRes, catsRes] = await Promise.all([
+        fetchWithAuth("/api/evergreen/circ-modifiers"),
+        fetchWithAuth("/api/evergreen/floating-groups"),
+        fetchWithAuth("/api/evergreen/stat-categories"),
+      ]);
+
+      const [modsJson, groupsJson, catsJson] = await Promise.all([
+        modsRes.json().catch(() => ({})),
+        groupsRes.json().catch(() => ({})),
+        catsRes.json().catch(() => ({})),
+      ]);
+
+      const modifiers = Array.isArray(modsJson?.modifiers)
+        ? (modsJson.modifiers as any[])
+            .map((row) => ({
+              code: String(row?.code || "").trim(),
+              name: String(row?.name || row?.code || "").trim(),
+              description:
+                String(row?.description || "").trim() || undefined,
+            }))
+            .filter((row) => row.code.length > 0)
+        : [];
+
+      const groups = Array.isArray(groupsJson?.groups)
+        ? (groupsJson.groups as any[])
+            .map((row) => ({
+              id: Number.parseInt(String(row?.id ?? ""), 10),
+              name: String(row?.name || "").trim(),
+            }))
+            .filter((row) => Number.isFinite(row.id) && row.id > 0 && row.name.length > 0)
+        : [];
+
+      const copyCatsRaw = Array.isArray(catsJson?.copyCategories)
+        ? (catsJson.copyCategories as any[])
+        : [];
+
+      const entryRequests = copyCatsRaw
+        .map((cat: any) => {
+          const id = Number.parseInt(String(cat?.id ?? ""), 10);
+          if (!Number.isFinite(id) || id <= 0) return null;
+          return fetchWithAuth(
+            `/api/evergreen/stat-categories/entries?kind=copy&statCatId=${id}`
+          )
+            .then((r) => r.json())
+            .then((json) => ({ id, json }))
+            .catch(() => ({ id, json: null }));
+        })
+        .filter(Boolean) as Promise<{ id: number; json: any }>[];
+
+      const entryResponses = await Promise.all(entryRequests);
+      const entryMap = new Map<number, StatEntryOption[]>();
+
+      for (const result of entryResponses) {
+        const entries = Array.isArray(result?.json?.entries)
+          ? (result.json.entries as any[])
+              .map((entry) => ({
+                id: Number.parseInt(String(entry?.id ?? ""), 10),
+                value: String(entry?.value || "").trim(),
+              }))
+              .filter((entry) => Number.isFinite(entry.id) && entry.id > 0 && entry.value.length > 0)
+          : [];
+        entryMap.set(result.id, entries);
+      }
+
+      const categories: CopyStatCategoryOption[] = copyCatsRaw
+        .map((cat: any) => {
+          const id = Number.parseInt(String(cat?.id ?? ""), 10);
+          const name = String(cat?.name || "").trim();
+          if (!Number.isFinite(id) || id <= 0 || !name) return null;
+          return {
+            id,
+            name,
+            entries: entryMap.get(id) || [],
+          };
+        })
+        .filter((cat): cat is CopyStatCategoryOption => Boolean(cat));
+
+      setCircModifiers(modifiers);
+      setFloatingGroups(groups);
+      setCopyStatCategories(categories);
+    } catch (err) {
+      clientLogger.warn("Failed loading item metadata options", err);
+      toast.error("Could not load all item metadata options");
+    } finally {
+      setMetadataLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMetadata();
+  }, [loadMetadata]);
 
   useEffect(() => {
     setCoverPreviewError(false);
@@ -227,6 +417,13 @@ export default function ItemDetailPage() {
           circulate: editCirculate,
           opac_visible: editOpacVisible,
           alert_message: editAlertMessage || null,
+          circ_modifier: editCircModifier || null,
+          loan_duration: Number.parseInt(editLoanDuration, 10) || 2,
+          fine_level: Number.parseInt(editFineLevel, 10) || 2,
+          floating: editFloatingGroupId === "none" ? null : Number.parseInt(editFloatingGroupId, 10),
+          stat_cat_entry_ids: Object.values(editStatEntries).filter((value) =>
+            Number.isFinite(value)
+          ),
         }),
       });
       const data = await res.json();
@@ -312,6 +509,18 @@ export default function ItemDetailPage() {
         </PageContent>
       </PageContainer>
     );
+  }
+
+  const currentStatEntriesByCategory = new Map<number, string>();
+  for (const row of item.statCatEntries || []) {
+    if (
+      typeof row?.statCatId === "number" &&
+      row.statCatId > 0 &&
+      typeof row?.entryValue === "string" &&
+      row.entryValue.trim()
+    ) {
+      currentStatEntriesByCategory.set(row.statCatId, row.entryValue.trim());
+    }
   }
 
   return (
@@ -426,6 +635,108 @@ export default function ItemDetailPage() {
                       placeholder="Optional alert for staff"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label>Circ Modifier</Label>
+                    <Select value={editCircModifier || "none"} onValueChange={(value) => setEditCircModifier(value === "none" ? "" : value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select circ modifier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {circModifiers.map((modifier) => (
+                          <SelectItem key={modifier.code} value={modifier.code}>
+                            {modifier.name} ({modifier.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Loan Duration</Label>
+                      <Select value={editLoanDuration} onValueChange={setEditLoanDuration}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">Short</SelectItem>
+                          <SelectItem value="2">Normal</SelectItem>
+                          <SelectItem value="3">Extended</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fine Level</Label>
+                      <Select value={editFineLevel} onValueChange={setEditFineLevel}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">Low</SelectItem>
+                          <SelectItem value="2">Normal</SelectItem>
+                          <SelectItem value="3">High</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Floating Group</Label>
+                    <Select value={editFloatingGroupId} onValueChange={setEditFloatingGroupId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="No floating group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {floatingGroups.map((group) => (
+                          <SelectItem key={group.id} value={String(group.id)}>
+                            {group.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {copyStatCategories.length > 0 && (
+                    <div className="space-y-3 rounded-lg border p-3">
+                      <div className="text-sm font-medium">Copy Stat Categories</div>
+                      {copyStatCategories.map((cat) => (
+                        <div key={cat.id} className="space-y-2">
+                          <Label>{cat.name}</Label>
+                          <Select
+                            value={editStatEntries[cat.id] ? String(editStatEntries[cat.id]) : "none"}
+                            onValueChange={(value) => {
+                              setEditStatEntries((prev) => {
+                                const next = { ...prev };
+                                if (value === "none") {
+                                  delete next[cat.id];
+                                } else {
+                                  const parsed = Number.parseInt(value, 10);
+                                  if (Number.isFinite(parsed) && parsed > 0) {
+                                    next[cat.id] = parsed;
+                                  }
+                                }
+                                return next;
+                              });
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="No assignment" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              {cat.entries.map((entry) => (
+                                <SelectItem key={entry.id} value={String(entry.id)}>
+                                  {entry.value}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {metadataLoading && (
+                    <p className="text-xs text-muted-foreground">Loading metadata options…</p>
+                  )}
                   <Separator />
                   <div className="flex items-center justify-between">
                     <Label>Holdable</Label>
@@ -459,7 +770,41 @@ export default function ItemDetailPage() {
                       <p className="text-muted-foreground">Copy Number</p>
                       <p className="font-medium">{item.copyNumber}</p>
                     </div>
+                    <div>
+                      <p className="text-muted-foreground">Circ Modifier</p>
+                      <p className="font-medium">
+                        {item.circModifierName || item.circModifier || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Loan Duration</p>
+                      <p className="font-medium">{loanDurationLabel(item.loanDuration)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Fine Level</p>
+                      <p className="font-medium">{fineLevelLabel(item.fineLevel)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Floating Group</p>
+                      <p className="font-medium">{item.floatingGroupName || "—"}</p>
+                    </div>
                   </div>
+                  {copyStatCategories.length > 0 && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Copy Stat Categories</p>
+                        {copyStatCategories.map((cat) => (
+                          <div key={cat.id} className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">{cat.name}</span>
+                            <span className="font-medium">
+                              {currentStatEntriesByCategory.get(cat.id) || "—"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                   <Separator />
                   <div className="flex flex-wrap gap-2">
                     <Badge variant={item.holdable ? "default" : "secondary"}>

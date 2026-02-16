@@ -526,9 +526,9 @@ export default function RegisterPage() {
                   />
                   <span className="text-sm text-foreground/80">
                     I agree to the{" "}
-                    <a href="#" className="text-primary-600 hover:underline">
+                    <Link href="/opac/terms" className="text-primary-600 hover:underline">
                       Library Card Terms of Use
-                    </a>{" "}
+                    </Link>{" "}
                     and understand that I am responsible for all items checked out on my card. *
                   </span>
                 </label>

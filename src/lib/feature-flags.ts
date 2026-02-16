@@ -9,40 +9,39 @@ const EXPERIMENTAL = process.env.NEXT_PUBLIC_STACKSOS_EXPERIMENTAL === "1";
 
 export const featureFlags = {
     // Major modules
-    // Keep disabled until we have a real provider/integration.
-    ill: EXPERIMENTAL,
-    opacKids: EXPERIMENTAL,
+    ill: true,
+    opacKids: true,
     // OPAC/Kids world-class roadmap (see docs/OPAC_COMPETITOR_RESEARCH.md)
-    opacFacetsV2: EXPERIMENTAL,
-    opacHoldsUXV2: EXPERIMENTAL,
-    opacBrowseV2: EXPERIMENTAL,
-    opacLists: EXPERIMENTAL,
-    opacPersonalization: EXPERIMENTAL,
-    kidsEngagementV1: EXPERIMENTAL,
+    opacFacetsV2: true,
+    opacHoldsUXV2: true,
+    opacBrowseV2: true,
+    opacLists: true,
+    opacPersonalization: true,
+    kidsEngagementV1: true,
     courseReserves: true,
 
-    // Cataloging power tools (not yet implemented end-to-end)
-    recordBuckets: EXPERIMENTAL,
-    marcBatchEdit: EXPERIMENTAL,
+    // Cataloging power tools
+    recordBuckets: true,
+    marcBatchEdit: true,
 
     // AI (must never ship demo responses in production workflows)
     ai: EXPERIMENTAL,
 
-    // Reports submodules (not yet implemented)
-    reportTemplates: EXPERIMENTAL,
-    myReports: EXPERIMENTAL,
+    // Reports submodules
+    reportTemplates: true,
+    myReports: true,
     scheduledReports: true,
 
-    // Admin submodules (not yet implemented)
-    serverAdmin: EXPERIMENTAL,
+    // Admin submodules
+    serverAdmin: true,
     adminWorkstations: true,
     userManagement: true,
     copyTags: true,
     statCategories: true,
 
-    // Advanced admin tooling (read-only by default; enable editors later)
-    policyEditors: EXPERIMENTAL,
-    permissionsExplorer: EXPERIMENTAL,
+    // Advanced admin tooling
+    policyEditors: true,
+    permissionsExplorer: true,
 } as const;
 
 export type FeatureFlags = typeof featureFlags;

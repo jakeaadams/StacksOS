@@ -4,8 +4,6 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  DataTable,
-  EmptyState,
   PageContainer,
   PageContent,
   PageHeader,
@@ -14,7 +12,6 @@ import {
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ColumnDef } from "@tanstack/react-table";
 import { useApi } from "@/hooks";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -28,30 +25,6 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-
-interface OverdueRow {
-  id: string | number;
-  dueDate?: string;
-  patronId?: string | number;
-  copyId?: string | number;
-  title?: string;
-}
-
-interface OverdueApiRow {
-  id?: string | number;
-  circ_id?: string | number;
-  due_date?: string;
-  dueDate?: string;
-  usr?: string | number;
-  patron_id?: string | number;
-  user_id?: string | number;
-  target_copy?: string | number;
-  copy_id?: string | number;
-  copy?: string | number;
-  title?: string;
-  item_title?: string;
-  record_title?: string;
-}
 
 function metricNumber(value: unknown): number | null {
   if (value === null || value === undefined) return null;
@@ -302,69 +275,6 @@ function ShiftChecklistWidget() {
   );
 }
 
-function OverdueQueueWidget({
-  overdueRows,
-  isLoading,
-  message,
-}: {
-  overdueRows: OverdueRow[];
-  isLoading: boolean;
-  message?: string;
-}) {
-  const columns = useMemo<ColumnDef<OverdueRow>[]>(
-    () => [
-      {
-        accessorKey: "title",
-        header: "Title",
-        cell: ({ row }) => row.original.title || "—",
-      },
-      {
-        accessorKey: "copyId",
-        header: "Copy",
-        cell: ({ row }) => <span className="font-mono text-xs">{row.original.copyId ?? "—"}</span>,
-      },
-      {
-        accessorKey: "patronId",
-        header: "Patron",
-        cell: ({ row }) => (
-          <span className="font-mono text-xs">{row.original.patronId ?? "—"}</span>
-        ),
-      },
-      {
-        accessorKey: "dueDate",
-        header: "Due Date",
-        cell: ({ row }) =>
-          row.original.dueDate ? new Date(row.original.dueDate).toLocaleDateString() : "—",
-      },
-    ],
-    []
-  );
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Overdue Queue</CardTitle>
-        <CardDescription>Oldest items needing follow-up right now.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <DataTable
-          columns={columns}
-          data={overdueRows}
-          isLoading={isLoading}
-          searchable={false}
-          paginated={false}
-          emptyState={
-            <EmptyState
-              title="No overdue items"
-              description={message || "No overdue records returned for this branch."}
-            />
-          }
-        />
-      </CardContent>
-    </Card>
-  );
-}
-
 export default function StaffDashboard() {
   const router = useRouter();
   const { user } = useAuth();
@@ -375,26 +285,7 @@ export default function StaffDashboard() {
     { immediate: !!orgId }
   );
 
-  const { data: overdueData, isLoading: overdueLoading } = useApi<Record<string, unknown>>(
-    orgId ? `/api/evergreen/reports?action=overdue&org=${orgId}&limit=12` : null,
-    { immediate: !!orgId }
-  );
-
   const stats = (dashboardData?.stats as Record<string, unknown> | undefined) || undefined;
-
-  const overdueRows: OverdueRow[] = useMemo(() => {
-    const overdue = Array.isArray(overdueData?.overdue) ? overdueData.overdue : [];
-    return overdue.map((entry, idx: number) => {
-      const circ = (entry as OverdueApiRow) || {};
-      return {
-        id: circ.id ?? circ.circ_id ?? idx,
-        dueDate: circ.due_date ?? circ.dueDate,
-        patronId: circ.usr ?? circ.patron_id ?? circ.user_id,
-        copyId: circ.target_copy ?? circ.copy_id ?? circ.copy,
-        title: circ.title ?? circ.item_title ?? circ.record_title ?? "",
-      };
-    });
-  }, [overdueData]);
 
   return (
     <PageContainer>
@@ -443,11 +334,6 @@ export default function StaffDashboard() {
           </div>
         </div>
 
-        <OverdueQueueWidget
-          overdueRows={overdueRows}
-          isLoading={overdueLoading}
-          message={typeof overdueData?.message === "string" ? overdueData.message : undefined}
-        />
       </PageContent>
     </PageContainer>
   );

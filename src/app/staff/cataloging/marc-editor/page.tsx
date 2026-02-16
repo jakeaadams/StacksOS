@@ -114,6 +114,67 @@ const marcFieldDescriptions: Record<string, string> = {
   "856": "Electronic Location",
 };
 
+const marcTagSuggestions = Object.entries(marcFieldDescriptions)
+  .sort((a, b) => Number.parseInt(a[0], 10) - Number.parseInt(b[0], 10))
+  .map(([tag, label]) => ({ tag, label }));
+
+type IndicatorRule = {
+  ind1: string[];
+  ind2: string[];
+};
+
+const indicatorRules: Record<string, IndicatorRule> = {
+  "020": { ind1: [" "], ind2: [" "] },
+  "022": { ind1: [" "], ind2: [" "] },
+  "040": { ind1: [" "], ind2: [" "] },
+  "041": { ind1: ["0", "1", " "], ind2: [" "] },
+  "050": { ind1: ["0", "1", "2", "3", "4", " "], ind2: ["0", "4", " "] },
+  "082": { ind1: ["0", "1", "7", " "], ind2: ["0", "4", " "] },
+  "100": { ind1: ["0", "1", "3"], ind2: [" "] },
+  "110": { ind1: ["0", "1", "2"], ind2: [" "] },
+  "111": { ind1: ["0", "1", "2"], ind2: [" "] },
+  "130": { ind1: ["0", "1", "2", "3", "9"], ind2: [" "] },
+  "245": { ind1: ["0", "1"], ind2: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] },
+  "246": { ind1: ["0", "1", "2", "3"], ind2: ["0", "1", "2", "3", "4", "5", "6", "7", "8"] },
+  "250": { ind1: [" "], ind2: [" "] },
+  "264": { ind1: [" ", "2", "3"], ind2: ["0", "1", "2", "3", "4"] },
+  "300": { ind1: [" "], ind2: [" "] },
+  "336": { ind1: [" "], ind2: [" "] },
+  "337": { ind1: [" "], ind2: [" "] },
+  "338": { ind1: [" "], ind2: [" "] },
+  "490": { ind1: ["0", "1"], ind2: [" "] },
+  "500": { ind1: [" "], ind2: [" "] },
+  "504": { ind1: [" "], ind2: [" "] },
+  "505": { ind1: ["0", "1", "2", "8"], ind2: [" "] },
+  "520": { ind1: [" ", "0", "1", "2", "3", "4", "8"], ind2: [" "] },
+  "600": { ind1: ["0", "1", "3"], ind2: ["0", "1", "2", "3", "4", "5", "6", "7"] },
+  "610": { ind1: ["0", "1", "2"], ind2: ["0", "1", "2", "3", "4", "5", "6", "7"] },
+  "611": { ind1: ["0", "1", "2"], ind2: ["0", "1", "2", "3", "4", "5", "6", "7"] },
+  "630": {
+    ind1: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+    ind2: ["0", "1", "2", "3", "4", "5", "6", "7"],
+  },
+  "650": { ind1: [" ", "0", "1", "2", "3"], ind2: ["0", "1", "2", "3", "4", "5", "6", "7"] },
+  "651": { ind1: [" ", "0", "1", "2", "3"], ind2: ["0", "1", "2", "3", "4", "5", "6", "7"] },
+  "655": {
+    ind1: [" ", "0", "1", "2", "3", "4", "5", "6", "7"],
+    ind2: ["0", "1", "2", "3", "4", "5", "6", "7"],
+  },
+  "700": { ind1: ["0", "1", "3"], ind2: [" "] },
+  "710": { ind1: ["0", "1", "2"], ind2: [" "] },
+  "711": { ind1: ["0", "1", "2"], ind2: [" "] },
+  "730": { ind1: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"], ind2: [" "] },
+  "740": { ind1: ["0", "1", "2", "3"], ind2: [" "] },
+  "800": { ind1: ["0", "1", "3"], ind2: [" "] },
+  "810": { ind1: ["0", "1", "2"], ind2: [" "] },
+  "830": { ind1: [" ", "0", "1"], ind2: [" "] },
+  "856": { ind1: [" ", "0", "1", "2", "3", "4", "7", "8"], ind2: [" ", "0", "1", "2", "8"] },
+};
+
+function indicatorLabel(value: string): string {
+  return value === " " ? "blank" : value;
+}
+
 const defaultMarcRecord: MarcRecord = {
   leader: "00000nam a22000007i 4500",
   fields: [
@@ -992,6 +1053,26 @@ function MarcEditorContent() {
         if (String(field.ind1 || "").length !== 1 || String(field.ind2 || "").length !== 1) {
           errors.push(`Field ${field.tag} indicators must be exactly 1 character each`);
         }
+
+        const rule = indicatorRules[field.tag];
+        if (rule) {
+          const ind1 = String(field.ind1 || " ").slice(0, 1) || " ";
+          const ind2 = String(field.ind2 || " ").slice(0, 1) || " ";
+          if (!rule.ind1.includes(ind1)) {
+            errors.push(
+              `Field ${field.tag} ind1 "${indicatorLabel(ind1)}" is invalid (allowed: ${rule.ind1
+                .map(indicatorLabel)
+                .join(", ")})`
+            );
+          }
+          if (!rule.ind2.includes(ind2)) {
+            errors.push(
+              `Field ${field.tag} ind2 "${indicatorLabel(ind2)}" is invalid (allowed: ${rule.ind2
+                .map(indicatorLabel)
+                .join(", ")})`
+            );
+          }
+        }
       }
     }
 
@@ -1540,6 +1621,7 @@ function MarcEditorContent() {
                             className="w-16 font-mono text-sm font-bold"
                             maxLength={3}
                             placeholder="Tag"
+                            list="marc-tag-suggestions"
                           />
 
                           {Number.parseInt(field.tag) >= 10 && (
@@ -1580,6 +1662,16 @@ function MarcEditorContent() {
                             <span className="sr-only">Delete field</span>
                           </Button>
                         </div>
+                        {(() => {
+                          const rule = indicatorRules[field.tag];
+                          if (!rule || Number.parseInt(field.tag, 10) < 10) return null;
+                          return (
+                            <div className="mb-2 text-[11px] text-muted-foreground">
+                              Allowed indicators: ind1 [{rule.ind1.map(indicatorLabel).join(", ")}], ind2 [{" "}
+                              {rule.ind2.map(indicatorLabel).join(", ")}]
+                            </div>
+                          );
+                        })()}
 
                         {Number.parseInt(field.tag) < 10 ? (
                           <Input
@@ -2152,6 +2244,13 @@ function MarcEditorContent() {
             <span>MARC21 Bibliographic</span>
           </div>
         </div>
+        <datalist id="marc-tag-suggestions">
+          {marcTagSuggestions.map((entry) => (
+            <option key={`tag-${entry.tag}`} value={entry.tag}>
+              {entry.label}
+            </option>
+          ))}
+        </datalist>
       </PageContent>
     </PageContainer>
   );

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { fetchWithAuth } from "@/lib/client-fetch";
+import { clientLogger } from "@/lib/client-logger";
 import { toast } from "sonner";
 import {
   BookOpen,
@@ -202,7 +203,9 @@ export default function SelfCheckoutPage() {
   // Handle logout
   const handleLogout = () => {
     // Best-effort: terminate Evergreen session + clear httpOnly cookies.
-    void fetchWithAuth("/api/opac/auth", { method: "DELETE" }).catch(() => {});
+    void fetchWithAuth("/api/opac/auth", { method: "DELETE" }).catch((error) => {
+      clientLogger.warn("Self-checkout logout request failed", error);
+    });
 
     setPatron(null);
     setCheckedOutItems([]);
