@@ -51,14 +51,6 @@ const eslintConfig = defineConfig([
     },
   },
 
-  // OpenSRF / Fieldmapper payloads are inherently dynamic today.
-  // We allow `any` in these integration-heavy modules while we add domain types.
-  {
-    files: ["src/lib/api/**", "src/app/api/**", "src/lib/db/**"],
-    rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-    },
-  },
 ]);
 
 export default eslintConfig;
