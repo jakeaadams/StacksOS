@@ -11,6 +11,7 @@ import {
   LoadingInline,
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,10 +28,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ColumnDef } from "@tanstack/react-table";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { featureFlags } from "@/lib/feature-flags";
-import { Plus, RefreshCw, Send } from "lucide-react";
+import { AlertTriangle, Link2, Plus, RefreshCw, Send } from "lucide-react";
 import { toast } from "sonner";
 
 type IllStatus = "new" | "requested" | "in_transit" | "received" | "completed" | "canceled";
+type IllSyncStatus = "manual" | "pending" | "synced" | "failed";
+type IllProvider = "manual" | "illiad" | "tipasa" | "reshare" | "custom-webhook";
 
 type IllRequest = {
   id: number;
@@ -45,8 +48,36 @@ type IllRequest = {
   source?: string | null;
   needed_by?: string | null;
   notes?: string | null;
+  provider?: string | null;
+  provider_request_id?: string | null;
+  sync_status: IllSyncStatus;
+  sync_error?: string | null;
+  sync_attempts?: number;
+  last_synced_at?: string | null;
   requested_at: string;
   updated_at: string;
+};
+
+type IllProviderInfo = {
+  provider: IllProvider;
+  syncMode: "manual" | "monitor" | "enabled";
+  configured: boolean;
+  activeSync: boolean;
+  endpointConfigured: boolean;
+  authConfigured: boolean;
+  reason: string;
+  requiredConfig: string[];
+};
+
+type IllProviderResponse = {
+  provider: IllProviderInfo;
+  syncCounts: {
+    manual: number;
+    pending: number;
+    synced: number;
+    failed: number;
+    total: number;
+  };
 };
 
 function statusBadge(status: IllStatus): { label: string; tone: "success" | "warning" | "error" | "pending" } {
@@ -74,10 +105,33 @@ function formatDate(value?: string | null): string {
   return parsed.toLocaleDateString();
 }
 
+function syncBadge(syncStatus: IllSyncStatus): { label: string; tone: "success" | "warning" | "error" | "muted" } {
+  switch (syncStatus) {
+    case "synced":
+      return { label: "Synced", tone: "success" };
+    case "failed":
+      return { label: "Failed", tone: "error" };
+    case "pending":
+      return { label: "Queued", tone: "warning" };
+    case "manual":
+    default:
+      return { label: "Manual", tone: "muted" };
+  }
+}
+
 export default function ILLPage() {
   const enabled = featureFlags.ill;
   const [requests, setRequests] = useState<IllRequest[]>([]);
+  const [providerInfo, setProviderInfo] = useState<IllProviderInfo | null>(null);
+  const [syncCounts, setSyncCounts] = useState<IllProviderResponse["syncCounts"]>({
+    manual: 0,
+    pending: 0,
+    synced: 0,
+    failed: 0,
+    total: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
+  const [providerLoading, setProviderLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -110,10 +164,28 @@ export default function ILLPage() {
     }
   }, []);
 
+  const loadProviderStatus = useCallback(async () => {
+    setProviderLoading(true);
+    try {
+      const response = await fetchWithAuth("/api/ill/provider");
+      const data = await response.json();
+      if (response.ok && data.ok && data.provider && data.syncCounts) {
+        setProviderInfo(data.provider as IllProviderInfo);
+        setSyncCounts(data.syncCounts as IllProviderResponse["syncCounts"]);
+      } else {
+        toast.error(data.error || "Failed to load ILL provider status");
+      }
+    } catch {
+      toast.error("Failed to load ILL provider status");
+    } finally {
+      setProviderLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!enabled) return;
-    void loadRequests();
-  }, [enabled, loadRequests]);
+    void Promise.all([loadRequests(), loadProviderStatus()]);
+  }, [enabled, loadProviderStatus, loadRequests]);
 
   const updateStatus = useCallback(
     async (id: number, status: IllStatus) => {
@@ -171,7 +243,16 @@ export default function ILLPage() {
 
       const data = await response.json();
       if (response.ok && data.ok) {
-        toast.success("ILL request created");
+        const syncStatus = data?.sync?.status as IllSyncStatus | undefined;
+        if (syncStatus === "synced") {
+          toast.success("ILL request created and synced to provider");
+        } else if (syncStatus === "failed") {
+          toast.warning("ILL request created, but provider sync failed");
+        } else if (syncStatus === "pending") {
+          toast.success("ILL request created and queued for provider sync");
+        } else {
+          toast.success("ILL request created");
+        }
         setShowCreateDialog(false);
         setPatronBarcode("");
         setPatronName("");
@@ -183,7 +264,7 @@ export default function ILLPage() {
         setNotes("");
         setRequestType("borrow");
         setPriority("normal");
-        await loadRequests();
+        await Promise.all([loadRequests(), loadProviderStatus()]);
       } else {
         toast.error(data.error || "Failed to create ILL request");
       }
@@ -204,6 +285,7 @@ export default function ILLPage() {
     requestType,
     source,
     title,
+    loadProviderStatus,
   ]);
 
   const stats = useMemo(() => {
@@ -214,6 +296,60 @@ export default function ILLPage() {
       canceled: requests.filter((request) => request.status === "canceled").length,
     };
   }, [requests]);
+
+  const providerBanner = useMemo(() => {
+    if (providerLoading) {
+      return {
+        variant: "default" as const,
+        icon: Link2,
+        title: "Loading provider status",
+        description: "Checking ILL integration and queue health.",
+      };
+    }
+
+    if (!providerInfo) {
+      return {
+        variant: "destructive" as const,
+        icon: AlertTriangle,
+        title: "Provider status unavailable",
+        description: "Unable to load integration status. ILL requests still work in manual mode.",
+      };
+    }
+
+    if (providerInfo.provider === "manual" || providerInfo.syncMode === "manual") {
+      return {
+        variant: "default" as const,
+        icon: Send,
+        title: "Manual ILL mode",
+        description: `No provider credentials required. ${syncCounts.total} request(s) are tracked locally for staff processing.`,
+      };
+    }
+
+    if (providerInfo.activeSync) {
+      return {
+        variant: "success" as const,
+        icon: Link2,
+        title: `Provider connected: ${providerInfo.provider}`,
+        description: `${syncCounts.pending} queued, ${syncCounts.failed} failed, ${syncCounts.synced} synced.`,
+      };
+    }
+
+    if (providerInfo.syncMode === "monitor") {
+      return {
+        variant: "warning" as const,
+        icon: AlertTriangle,
+        title: `Monitor mode: ${providerInfo.provider}`,
+        description: `${providerInfo.reason} Requests are queued for manual submission.`,
+      };
+    }
+
+    return {
+      variant: "destructive" as const,
+      icon: AlertTriangle,
+      title: `Provider misconfigured: ${providerInfo.provider}`,
+      description: providerInfo.reason,
+    };
+  }, [providerInfo, providerLoading, syncCounts.failed, syncCounts.pending, syncCounts.synced, syncCounts.total]);
 
   const columns: ColumnDef<IllRequest>[] = useMemo(
     () => [
@@ -258,6 +394,24 @@ export default function ILLPage() {
         cell: ({ row }) => <span className="capitalize">{row.original.priority}</span>,
       },
       {
+        accessorKey: "sync_status",
+        header: "Sync",
+        cell: ({ row }) => {
+          const badge = syncBadge(row.original.sync_status);
+          return (
+            <div className="space-y-1">
+              <StatusBadge label={badge.label} status={badge.tone} />
+              {row.original.provider_request_id ? (
+                <div className="text-[11px] text-muted-foreground">Ref: {row.original.provider_request_id}</div>
+              ) : null}
+              {row.original.sync_error ? (
+                <div className="max-w-[260px] truncate text-[11px] text-destructive">{row.original.sync_error}</div>
+              ) : null}
+            </div>
+          );
+        },
+      },
+      {
         accessorKey: "needed_by",
         header: "Need By",
         cell: ({ row }) => formatDate(row.original.needed_by),
@@ -288,6 +442,8 @@ export default function ILLPage() {
     ],
     [updateStatus, updatingId]
   );
+
+  const ProviderBannerIcon = providerBanner.icon;
 
   if (!enabled) {
     return (
@@ -322,9 +478,9 @@ export default function ILLPage() {
           {
             label: "Refresh",
             icon: RefreshCw,
-            onClick: () => void loadRequests(),
+            onClick: () => void Promise.all([loadRequests(), loadProviderStatus()]),
             variant: "outline",
-            loading: isLoading,
+            loading: isLoading || providerLoading,
           },
           {
             label: "New Request",
@@ -335,6 +491,19 @@ export default function ILLPage() {
       />
 
       <PageContent className="space-y-6">
+        <Alert variant={providerBanner.variant}>
+          <ProviderBannerIcon className="h-4 w-4" />
+          <AlertTitle>{providerBanner.title}</AlertTitle>
+          <AlertDescription>
+            <p>{providerBanner.description}</p>
+            {providerInfo?.requiredConfig?.length ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Missing config: {providerInfo.requiredConfig.join(", ")}
+              </p>
+            ) : null}
+          </AlertDescription>
+        </Alert>
+
         <div className="grid gap-4 sm:grid-cols-4">
           <Card>
             <CardContent className="p-4">

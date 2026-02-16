@@ -85,7 +85,7 @@ const faqs: FAQItem[] = [
   {
     category: "Holds & Requests",
     question: "Can I request items from other libraries?",
-    answer: "Yes! We participate in interlibrary loan (ILL). If we dont own an item, search our catalog and click \"Request from Another Library.\" ILL requests typically take 1-2 weeks to arrive.",
+    answer: "Yes! We participate in interlibrary loan (ILL). If we dont own an item, contact us or visit any branch and staff can submit an ILL request for you. ILL requests typically take 1-2 weeks to arrive.",
   },
 
   // Digital Resources

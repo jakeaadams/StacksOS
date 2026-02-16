@@ -176,11 +176,12 @@ export default function HelpPage() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>
-              StacksOS will expose ILL workflows once an integration is implemented. For now, ILL is hidden by
-              default (no dead UI).
+              StacksOS supports ILL request tracking in manual mode (no provider credentials required). Create requests,
+              update statuses, and keep a clear queue for staff follow-up.
             </p>
-            <p className="text-xs text-muted-foreground">
-              If you enable experimental features, the ILL page is informational only.
+            <p>
+              Provider sync is optional and can be enabled later. The ILL page shows current integration status and any
+              queued/failed sync items.
             </p>
           </CardContent>
         </Card>

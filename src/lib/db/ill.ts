@@ -10,6 +10,7 @@ export type IllRequestStatus =
   | "completed"
   | "canceled";
 export type IllPriority = "low" | "normal" | "high";
+export type IllSyncStatus = "manual" | "pending" | "synced" | "failed";
 
 export interface IllRequestRow {
   id: number;
@@ -25,6 +26,12 @@ export interface IllRequestRow {
   source: string | null;
   needed_by: string | null;
   notes: string | null;
+  provider: string | null;
+  provider_request_id: string | null;
+  sync_status: IllSyncStatus;
+  sync_error: string | null;
+  sync_attempts: number;
+  last_synced_at: Date | null;
   requested_at: Date;
   updated_at: Date;
   created_by: number | null;
@@ -54,6 +61,12 @@ export async function ensureIllTables(): Promise<void> {
         source TEXT,
         needed_by DATE,
         notes TEXT,
+        provider TEXT,
+        provider_request_id TEXT,
+        sync_status TEXT NOT NULL DEFAULT 'manual' CHECK (sync_status IN ('manual', 'pending', 'synced', 'failed')),
+        sync_error TEXT,
+        sync_attempts INTEGER NOT NULL DEFAULT 0,
+        last_synced_at TIMESTAMP,
         requested_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
         created_by INTEGER,
@@ -69,6 +82,21 @@ export async function ensureIllTables(): Promise<void> {
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_ill_requests_patron_barcode
       ON library.ill_requests(patron_barcode)
+    `);
+
+    // Backfill columns for older databases.
+    await client.query(`ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS provider TEXT`);
+    await client.query(`ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS provider_request_id TEXT`);
+    await client.query(`ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS sync_status TEXT`);
+    await client.query(`ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS sync_error TEXT`);
+    await client.query(`ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS sync_attempts INTEGER`);
+    await client.query(`ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP`);
+    await client.query(`UPDATE library.ill_requests SET sync_status = 'manual' WHERE sync_status IS NULL`);
+    await client.query(`UPDATE library.ill_requests SET sync_attempts = 0 WHERE sync_attempts IS NULL`);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_ill_requests_sync_status
+      ON library.ill_requests(sync_status, updated_at DESC, id DESC)
     `);
   });
 
@@ -98,6 +126,12 @@ export async function listIllRequests(args?: {
         source,
         needed_by,
         notes,
+        provider,
+        provider_request_id,
+        sync_status,
+        sync_error,
+        sync_attempts,
+        last_synced_at,
         requested_at,
         updated_at,
         created_by,
@@ -125,6 +159,12 @@ export async function createIllRequest(args: {
   source?: string | null;
   neededBy?: string | null;
   notes?: string | null;
+  provider?: string | null;
+  providerRequestId?: string | null;
+  syncStatus?: IllSyncStatus;
+  syncError?: string | null;
+  syncAttempts?: number;
+  lastSyncedAt?: string | null;
   createdBy?: number | null;
 }): Promise<{ id: number }> {
   await ensureIllTables();
@@ -144,10 +184,16 @@ export async function createIllRequest(args: {
         source,
         needed_by,
         notes,
+        provider,
+        provider_request_id,
+        sync_status,
+        sync_error,
+        sync_attempts,
+        last_synced_at,
         created_by,
         updated_by
       ) VALUES (
-        $1, 'new', $2, $3, $4, $5, $6, $7, $8, $9, $10::date, $11, $12, $12
+        $1, 'new', $2, $3, $4, $5, $6, $7, $8, $9, $10::date, $11, $12, $13, $14, $15, $16, $17::timestamp, $18, $18
       )
       RETURNING id
     `,
@@ -163,6 +209,12 @@ export async function createIllRequest(args: {
       args.source ?? null,
       args.neededBy ?? null,
       args.notes ?? null,
+      args.provider ?? null,
+      args.providerRequestId ?? null,
+      args.syncStatus ?? "manual",
+      args.syncError ?? null,
+      args.syncAttempts ?? 0,
+      args.lastSyncedAt ?? null,
       args.createdBy ?? null,
     ]
   );
@@ -210,4 +262,75 @@ export async function updateIllRequest(
   );
 
   return Boolean(result?.id);
+}
+
+export async function updateIllRequestSync(
+  id: number,
+  args: {
+    syncStatus: IllSyncStatus;
+    provider?: string | null;
+    providerRequestId?: string | null;
+    syncError?: string | null;
+    incrementAttempts?: boolean;
+    markSyncedAt?: boolean;
+    updatedBy?: number | null;
+  }
+): Promise<boolean> {
+  await ensureIllTables();
+
+  const result = await querySingle<{ id: number }>(
+    `
+      UPDATE library.ill_requests
+      SET
+        sync_status = $2::text,
+        provider = COALESCE($3::text, provider),
+        provider_request_id = COALESCE($4::text, provider_request_id),
+        sync_error = $5::text,
+        sync_attempts = COALESCE(sync_attempts, 0) + CASE WHEN $6 THEN 1 ELSE 0 END,
+        last_synced_at = CASE WHEN $7 THEN NOW() ELSE last_synced_at END,
+        updated_by = COALESCE($8::integer, updated_by),
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING id
+    `,
+    [
+      id,
+      args.syncStatus,
+      args.provider ?? null,
+      args.providerRequestId ?? null,
+      args.syncError ?? null,
+      Boolean(args.incrementAttempts),
+      Boolean(args.markSyncedAt),
+      args.updatedBy ?? null,
+    ]
+  );
+
+  return Boolean(result?.id);
+}
+
+export async function getIllSyncCounts(): Promise<Record<IllSyncStatus, number>> {
+  await ensureIllTables();
+
+  const rows = await query<{ sync_status: string; count: number }>(
+    `
+      SELECT sync_status, COUNT(*)::int AS count
+      FROM library.ill_requests
+      GROUP BY sync_status
+    `
+  );
+
+  const counts: Record<IllSyncStatus, number> = {
+    manual: 0,
+    pending: 0,
+    synced: 0,
+    failed: 0,
+  };
+
+  for (const row of rows) {
+    if (row.sync_status === "manual" || row.sync_status === "pending" || row.sync_status === "synced" || row.sync_status === "failed") {
+      counts[row.sync_status] = Number(row.count) || 0;
+    }
+  }
+
+  return counts;
 }

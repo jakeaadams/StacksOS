@@ -11,10 +11,13 @@ import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import {
   createIllRequest,
+  updateIllRequestSync,
   listIllRequests,
   updateIllRequest,
   type IllRequestStatus,
+  type IllSyncStatus,
 } from "@/lib/db/ill";
+import { getIllProviderStatus, syncIllRequestToProvider, type IllProviderSyncResult } from "@/lib/ill/provider";
 
 const CreateIllRequestSchema = z
   .object({
@@ -99,6 +102,23 @@ export async function POST(req: NextRequest) {
     if (body instanceof Response) return body as any;
 
     const createdBy = actorIdFrom(actor);
+    const providerStatus = getIllProviderStatus();
+    const initialSyncStatus: IllSyncStatus =
+      providerStatus.provider === "manual" || providerStatus.syncMode === "manual"
+        ? "manual"
+        : providerStatus.syncMode === "monitor"
+          ? "pending"
+          : providerStatus.configured
+            ? "pending"
+            : "failed";
+
+    const initialSyncError =
+      initialSyncStatus === "failed"
+        ? providerStatus.reason
+        : providerStatus.syncMode === "monitor"
+          ? "Monitor mode is enabled; request is queued for manual provider submission."
+          : null;
+
     const created = await createIllRequest({
       requestType: body.requestType,
       priority: body.priority,
@@ -111,8 +131,46 @@ export async function POST(req: NextRequest) {
       source: body.source,
       neededBy: body.neededBy,
       notes: body.notes,
+      provider: providerStatus.provider === "manual" ? null : providerStatus.provider,
+      syncStatus: initialSyncStatus,
+      syncError: initialSyncError,
       createdBy,
     });
+
+    let sync: IllProviderSyncResult = {
+      attempted: false,
+      syncStatus: initialSyncStatus,
+      provider: providerStatus.provider === "manual" ? null : providerStatus.provider,
+      providerRequestId: null,
+      syncError: initialSyncError,
+    };
+
+    if (providerStatus.activeSync) {
+      sync = await syncIllRequestToProvider({
+        requestId: created.id,
+        requestType: body.requestType,
+        priority: body.priority ?? "normal",
+        patronId: body.patronId ?? null,
+        patronBarcode: body.patronBarcode,
+        patronName: body.patronName ?? null,
+        title: body.title,
+        author: body.author ?? null,
+        isbn: body.isbn ?? null,
+        source: body.source ?? null,
+        neededBy: body.neededBy ?? null,
+        notes: body.notes ?? null,
+      });
+
+      await updateIllRequestSync(created.id, {
+        syncStatus: sync.syncStatus,
+        provider: sync.provider,
+        providerRequestId: sync.providerRequestId,
+        syncError: sync.syncError,
+        incrementAttempts: sync.attempted,
+        markSyncedAt: sync.syncStatus === "synced",
+        updatedBy: createdBy,
+      });
+    }
 
     await logAuditEvent({
       action: "ill.request.create",
@@ -127,10 +185,21 @@ export async function POST(req: NextRequest) {
         requestType: body.requestType,
         priority: body.priority || "normal",
         patronBarcode: body.patronBarcode,
+        provider: sync.provider,
+        syncStatus: sync.syncStatus,
       },
     });
 
-    return successResponse({ created: true, id: created.id });
+    return successResponse({
+      created: true,
+      id: created.id,
+      sync: {
+        status: sync.syncStatus,
+        provider: sync.provider,
+        providerRequestId: sync.providerRequestId,
+        error: sync.syncError,
+      },
+    });
   } catch (error) {
     return serverErrorResponse(error, "ILL requests POST", req);
   }
