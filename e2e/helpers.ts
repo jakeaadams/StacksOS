@@ -1,10 +1,14 @@
 import { Page } from "@playwright/test";
 
+export function hasStaffCredentials(): boolean {
+  return Boolean(process.env.E2E_STAFF_USER && process.env.E2E_STAFF_PASS);
+}
+
 export function getStaffCredentials(): { username: string; password: string } {
   const username = process.env.E2E_STAFF_USER;
   const password = process.env.E2E_STAFF_PASS;
 
-  if (!username || !password) {
+  if (!hasStaffCredentials() || !username || !password) {
     throw new Error("Missing E2E_STAFF_USER/E2E_STAFF_PASS for staff-authenticated E2E tests.");
   }
 

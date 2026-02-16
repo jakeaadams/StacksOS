@@ -39,6 +39,14 @@ Comprehensive Playwright end-to-end tests for StacksOS.
 
 ## Running Tests
 
+### Run smoke tests (fast confidence check)
+```bash
+npm run test:e2e:smoke
+```
+
+- `e2e/smoke-public.spec.ts` always runs (no credentials required).
+- `e2e/smoke-auth.spec.ts` runs only when `E2E_STAFF_USER` and `E2E_STAFF_PASS` are set; otherwise those tests are skipped.
+
 ### Run all tests
 ```bash
 npx playwright test

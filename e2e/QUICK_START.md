@@ -6,10 +6,14 @@ Playwright E2E tests have been successfully configured for StacksOS.
 
 ## Quick Test Commands
 
-### Run Stable Tests (Recommended for Quick Verification)
+### Run Stable Smoke Tests (Recommended)
 ```bash
-npx playwright test e2e/smoke.spec.ts -g 'homepage|OPAC|staff login page|empty login'
+npm run test:e2e:smoke
 ```
+
+This runs:
+- `e2e/smoke-public.spec.ts` (always)
+- `e2e/smoke-auth.spec.ts` (auto-skips unless `E2E_STAFF_USER` and `E2E_STAFF_PASS` are set)
 
 ### Run All Smoke Tests
 ```bash
