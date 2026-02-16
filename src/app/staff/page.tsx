@@ -12,18 +12,22 @@ import {
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useApi } from "@/hooks";
+import { useApi, useDashboardSettings } from "@/hooks";
 import { useAuth } from "@/contexts/auth-context";
 import {
   ArrowLeftRight,
   BarChart3,
   BookOpen,
   Calendar,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   FileText,
   Package,
+  Settings2,
   UserPlus,
   Users,
+  RotateCcw,
 } from "lucide-react";
 
 function metricNumber(value: unknown): number | null {
@@ -275,10 +279,97 @@ function ShiftChecklistWidget() {
   );
 }
 
+function DashboardCustomizationPanel({
+  allWidgets,
+  isSaving,
+  onToggle,
+  onMove,
+  onReset,
+}: {
+  allWidgets: Array<{ id: string; label: string; description: string; enabled: boolean; order: number }>;
+  isSaving: boolean;
+  onToggle: (id: string) => void;
+  onMove: (id: string, direction: "up" | "down") => void;
+  onReset: () => void;
+}) {
+  const sorted = [...allWidgets].sort((a, b) => a.order - b.order);
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Customize Dashboard</CardTitle>
+        <CardDescription>Turn widgets on/off and reorder them for your workflow.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {sorted.map((widget, index) => (
+          <div
+            key={widget.id}
+            className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+          >
+            <div>
+              <p className="text-sm font-medium">{widget.label}</p>
+              <p className="text-xs text-muted-foreground">{widget.description}</p>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => onMove(widget.id, "up")}
+                disabled={index === 0 || isSaving}
+                aria-label={`Move ${widget.label} up`}
+              >
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => onMove(widget.id, "down")}
+                disabled={index === sorted.length - 1 || isSaving}
+                aria-label={`Move ${widget.label} down`}
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant={widget.enabled ? "default" : "outline"}
+                size="sm"
+                onClick={() => onToggle(widget.id)}
+                disabled={isSaving}
+              >
+                {widget.enabled ? "Enabled" : "Disabled"}
+              </Button>
+            </div>
+          </div>
+        ))}
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" size="sm" onClick={onReset} disabled={isSaving}>
+            <RotateCcw className="mr-2 h-3.5 w-3.5" />
+            Reset Defaults
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function StaffDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const orgId = user?.homeLibraryId || 1;
+  const {
+    enabledWidgets,
+    allWidgets,
+    isSaving,
+    toggleWidget,
+    reorderWidgets,
+    resetToDefaults,
+    isEditing,
+    setIsEditing,
+  } = useDashboardSettings();
 
   const { data: dashboardData } = useApi<Record<string, unknown>>(
     orgId ? `/api/evergreen/reports?action=dashboard&org=${orgId}` : null,
@@ -286,6 +377,53 @@ export default function StaffDashboard() {
   );
 
   const stats = (dashboardData?.stats as Record<string, unknown> | undefined) || undefined;
+  const enabledIds = useMemo(
+    () => new Set(enabledWidgets.map((widget) => widget.id)),
+    [enabledWidgets]
+  );
+  const orderedWidgetIds = useMemo(
+    () => enabledWidgets.map((widget) => widget.id),
+    [enabledWidgets]
+  );
+
+  const topWidgetIds = orderedWidgetIds.filter((id) => id === "universal-search");
+  const mainWidgetIds = orderedWidgetIds.filter(
+    (id) => id === "desk-actions" || id === "shift-checklist"
+  );
+  const sideWidgetIds = orderedWidgetIds.filter(
+    (id) => id === "alerts" || id === "operational-snapshot"
+  );
+
+  const moveWidget = (widgetId: string, direction: "up" | "down") => {
+    const ordered = [...allWidgets]
+      .sort((a, b) => a.order - b.order)
+      .map((widget) => widget.id);
+    const index = ordered.indexOf(widgetId);
+    if (index < 0) return;
+
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= ordered.length) return;
+
+    const next = [...ordered];
+    const [moved] = next.splice(index, 1);
+    next.splice(targetIndex, 0, moved);
+    reorderWidgets(next);
+  };
+
+  const renderMainWidget = (id: string) => {
+    if (id === "desk-actions") return <DeskActionsWidget key={id} />;
+    if (id === "shift-checklist") return <ShiftChecklistWidget key={id} />;
+    return null;
+  };
+
+  const renderSideWidget = (id: string) => {
+    if (id === "alerts") return <AlertsWidget key={id} stats={stats} />;
+    if (id === "operational-snapshot") return <OperationalSnapshotWidget key={id} stats={stats} />;
+    return null;
+  };
+
+  const hasBodyWidgets = mainWidgetIds.length > 0 || sideWidgetIds.length > 0;
+  const showDateDisplay = enabledIds.has("date-display");
 
   return (
     <PageContainer>
@@ -299,19 +437,27 @@ export default function StaffDashboard() {
             onClick: () => router.push("/staff/reports"),
             icon: BarChart3,
           },
+          {
+            label: isEditing ? "Done" : "Customize",
+            onClick: () => setIsEditing(!isEditing),
+            icon: Settings2,
+            variant: isEditing ? "default" : "outline",
+          },
         ]}
       >
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              {new Date().toLocaleDateString(undefined, {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </div>
+            {showDateDisplay && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                {new Date().toLocaleDateString(undefined, {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </div>
+            )}
             {typeof dashboardData?.message === "string" && (
               <div className="text-xs text-muted-foreground">{dashboardData.message}</div>
             )}
@@ -320,20 +466,40 @@ export default function StaffDashboard() {
       </PageHeader>
 
       <PageContent className="space-y-6">
-        <DeskSearchWidget />
+        {isEditing && (
+          <DashboardCustomizationPanel
+            allWidgets={allWidgets}
+            isSaving={isSaving}
+            onToggle={toggleWidget}
+            onMove={moveWidget}
+            onReset={resetToDefaults}
+          />
+        )}
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
-            <DeskActionsWidget />
-            <ShiftChecklistWidget />
+        {topWidgetIds.map((id) => (id === "universal-search" ? <DeskSearchWidget key={id} /> : null))}
+
+        {hasBodyWidgets ? (
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="space-y-6 lg:col-span-2">{mainWidgetIds.map((id) => renderMainWidget(id))}</div>
+
+            <div className="space-y-6">{sideWidgetIds.map((id) => renderSideWidget(id))}</div>
           </div>
-
-          <div className="space-y-6">
-            <AlertsWidget stats={stats} />
-            <OperationalSnapshotWidget stats={stats} />
-          </div>
-        </div>
-
+        ) : topWidgetIds.length === 0 ? (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">No Dashboard Widgets Enabled</CardTitle>
+              <CardDescription>
+                Use Customize to enable widgets for your desk workflow.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" onClick={resetToDefaults} disabled={isSaving}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reset to Defaults
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
       </PageContent>
     </PageContainer>
   );

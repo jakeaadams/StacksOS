@@ -263,6 +263,7 @@ function NavSection({ section, collapsed }: { section: NavSection; collapsed: bo
                 <TooltipTrigger asChild>
                   <Link
                     href={item.href}
+                    aria-label={item.title}
                     className={cn(
                       "flex items-center justify-center h-10 w-10 mx-auto rounded-xl transition-all mb-1 relative",
                       isActive
@@ -309,12 +310,13 @@ function NavSection({ section, collapsed }: { section: NavSection; collapsed: bo
           {section.items.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all",
-                  isActive
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-label={item.title}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all",
+                    isActive
                     ? "bg-[hsl(var(--brand-1))]/10 text-foreground shadow-sm border border-[hsl(var(--brand-1))]/15"
                     : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                 )}
@@ -338,7 +340,9 @@ function NavSection({ section, collapsed }: { section: NavSection; collapsed: bo
                   </Badge>
                 )}
                 {item.shortcut && !isActive && (
-                  <span className="text-[10px] text-muted-foreground/70 font-mono">{item.shortcut}</span>
+                  <span aria-hidden="true" className="text-[10px] text-muted-foreground/70 font-mono">
+                    {item.shortcut}
+                  </span>
                 )}
               </Link>
             );

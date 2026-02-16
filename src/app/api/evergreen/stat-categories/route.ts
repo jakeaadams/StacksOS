@@ -217,18 +217,15 @@ export async function GET(req: NextRequest) {
       }));
     };
 
-    // Preferred: pcrud (works without direct DB credentials). Fallback: direct SQL.
+    // Prefer direct SQL to avoid high-latency or brittle flesh queries over OpenSRF.
     let copyCategories: any[] = [];
     try {
+      copyCategories = await sqlCopyCategories();
+    } catch {
       const copyCatsRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.asc.atomic", [
         authtoken,
         { id: { ">=": 1 } },
-        {
-          limit: 1000,
-          order_by: { asc: "name" },
-          flesh: 1,
-          flesh_fields: { asc: ["owner"], aou: ["shortname", "name"] },
-        },
+        { limit: 1000 },
       ]);
       const copyEntriesRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.asce.atomic", [
         authtoken,
@@ -247,40 +244,32 @@ export async function GET(req: NextRequest) {
       const copyCatsRaw = Array.isArray(copyCatsRes?.payload?.[0]) ? (copyCatsRes.payload[0] as any[]) : [];
       copyCategories = copyCatsRaw
         .map((row: any) => {
-          const ownerObj = row?.owner && typeof row.owner === "object" ? row.owner : null;
-          const ownerId = ownerObj ? toNumber(ownerObj.id) : toNumber(row?.owner);
           const id = toNumber(row?.id);
           if (id === null) return null;
-
           return {
             id,
             name: toString(row?.name).trim(),
-            ownerId,
-            ownerName: ownerObj ? toString(ownerObj.shortname || ownerObj.name || "").trim() : null,
+            ownerId: toNumber(row?.owner),
+            ownerName: null,
             opacVisible: fmBoolean(row, "opac_visible") ?? false,
             required: fmBoolean(row, "required") ?? false,
             checkoutArchive: fmBoolean(row, "checkout_archive") ?? false,
             entryCount: copyEntryCounts.get(id) || 0,
           };
         })
-        .filter(Boolean);
-    } catch {
-      copyCategories = await sqlCopyCategories();
+        .filter(Boolean)
+        .sort((a: any, b: any) => String(a.name).localeCompare(String(b.name)));
     }
 
     let patronCategories: any[] = [];
     try {
+      patronCategories = await sqlPatronCategories();
+    } catch {
       const patronCatsRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.actsc.atomic", [
         authtoken,
         { id: { ">=": 1 } },
-        {
-          limit: 1000,
-          order_by: { actsc: "name" },
-          flesh: 1,
-          flesh_fields: { actsc: ["owner"], aou: ["shortname", "name"] },
-        },
+        { limit: 1000 },
       ]);
-
       const patronEntriesRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.actsce.atomic", [
         authtoken,
         { id: { ">=": 1 } },
@@ -301,16 +290,13 @@ export async function GET(req: NextRequest) {
       const patronCatsRaw = Array.isArray(patronCatsRes?.payload?.[0]) ? (patronCatsRes.payload[0] as any[]) : [];
       patronCategories = patronCatsRaw
         .map((row: any) => {
-          const ownerObj = row?.owner && typeof row.owner === "object" ? row.owner : null;
-          const ownerId = ownerObj ? toNumber(ownerObj.id) : toNumber(row?.owner);
           const id = toNumber(row?.id);
           if (id === null) return null;
-
           return {
             id,
             name: toString(row?.name).trim(),
-            ownerId,
-            ownerName: ownerObj ? toString(ownerObj.shortname || ownerObj.name || "").trim() : null,
+            ownerId: toNumber(row?.owner),
+            ownerName: null,
             opacVisible: fmBoolean(row, "opac_visible") ?? false,
             required: fmBoolean(row, "required") ?? false,
             checkoutArchive: fmBoolean(row, "checkout_archive") ?? false,
@@ -319,9 +305,8 @@ export async function GET(req: NextRequest) {
             entryCount: patronEntryCounts.get(id) || 0,
           };
         })
-        .filter(Boolean);
-    } catch {
-      patronCategories = await sqlPatronCategories();
+        .filter(Boolean)
+        .sort((a: any, b: any) => String(a.name).localeCompare(String(b.name)));
     }
 
     return successResponse({

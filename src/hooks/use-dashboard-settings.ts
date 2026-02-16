@@ -32,36 +32,20 @@ export const AVAILABLE_WIDGETS: WidgetConfig[] = [
     defaultOrder: 0,
   },
   {
-    id: "stat-cards",
-    label: "Today's Stats",
-    description: "Checkouts, checkins, holds, and overdue counts",
-    icon: "BarChart3",
+    id: "desk-actions",
+    label: "Desk Actions",
+    description: "Fast links to common desk workflows",
+    icon: "Zap",
     defaultEnabled: true,
     defaultOrder: 1,
   },
   {
-    id: "quick-actions",
-    label: "Quick Actions",
-    description: "Fast links to common workflows",
-    icon: "Zap",
+    id: "shift-checklist",
+    label: "Shift Checklist",
+    description: "Operational opening and mid-shift tasks",
+    icon: "ClipboardList",
     defaultEnabled: true,
     defaultOrder: 2,
-  },
-  {
-    id: "top-items",
-    label: "Top Circulated Items",
-    description: "Most popular items by circulation count",
-    icon: "TrendingUp",
-    defaultEnabled: true,
-    defaultOrder: 3,
-  },
-  {
-    id: "overdue-items",
-    label: "Overdue Items",
-    description: "Items with longest overdue duration",
-    icon: "AlertCircle",
-    defaultEnabled: true,
-    defaultOrder: 4,
   },
   {
     id: "alerts",
@@ -69,7 +53,15 @@ export const AVAILABLE_WIDGETS: WidgetConfig[] = [
     description: "Operational follow-ups and notifications",
     icon: "Bell",
     defaultEnabled: true,
-    defaultOrder: 5,
+    defaultOrder: 3,
+  },
+  {
+    id: "operational-snapshot",
+    label: "Operational Snapshot",
+    description: "Live circulation and queue context from Evergreen",
+    icon: "BarChart3",
+    defaultEnabled: true,
+    defaultOrder: 4,
   },
   {
     id: "date-display",
@@ -100,6 +92,13 @@ const DEFAULT_LAYOUT: DashboardLayout = {
     order: w.defaultOrder,
   })),
   version: 1,
+};
+
+const LEGACY_WIDGET_MAP: Record<string, string> = {
+  "quick-actions": "desk-actions",
+  "stat-cards": "operational-snapshot",
+  "top-items": "shift-checklist",
+  "overdue-items": "shift-checklist",
 };
 
 const SETTINGS_KEY = "stacksos.dashboard.widgets";
@@ -154,11 +153,26 @@ export function useDashboardSettings(): UseDashboardSettingsReturn {
 
   // Merge saved layout with defaults (handles new widgets added in updates)
   function mergeWithDefaults(saved: DashboardLayout): DashboardLayout {
-    const savedMap = new Map(saved.widgets.map((w) => [w.id, w]));
+    const preferredOrder = new Map<string, WidgetPreference>();
+    for (const pref of saved.widgets) {
+      const normalizedId = LEGACY_WIDGET_MAP[pref.id] || pref.id;
+      const existing = preferredOrder.get(normalizedId);
+      if (!existing) {
+        preferredOrder.set(normalizedId, { ...pref, id: normalizedId });
+        continue;
+      }
+      // Merge legacy duplicates conservatively.
+      preferredOrder.set(normalizedId, {
+        id: normalizedId,
+        enabled: existing.enabled || pref.enabled,
+        order: Math.min(existing.order, pref.order),
+      });
+    }
+
     const merged: WidgetPreference[] = [];
 
     // Start with saved widgets in their order
-    for (const pref of saved.widgets) {
+    for (const pref of preferredOrder.values()) {
       if (AVAILABLE_WIDGETS.some((w) => w.id === pref.id)) {
         merged.push(pref);
       }
@@ -166,7 +180,7 @@ export function useDashboardSettings(): UseDashboardSettingsReturn {
 
     // Add any new widgets not in saved
     for (const widget of AVAILABLE_WIDGETS) {
-      if (!savedMap.has(widget.id)) {
+      if (!preferredOrder.has(widget.id)) {
         merged.push({
           id: widget.id,
           enabled: widget.defaultEnabled,
