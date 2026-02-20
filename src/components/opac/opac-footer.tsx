@@ -132,6 +132,13 @@ export function OPACFooter() {
                 ) : null}
               </li>
               <li>
+                {featureFlags.opacTeens ? (
+                  <Link href="/opac/teens" className="text-sm hover:text-white transition-colors">
+                    Teens Catalog
+                  </Link>
+                ) : null}
+              </li>
+              <li>
                 <Link
                   href="/opac/search?format=ebook"
                   className="text-sm hover:text-white transition-colors"
@@ -139,6 +146,20 @@ export function OPACFooter() {
                   eBooks & Audiobooks
                 </Link>
               </li>
+              {featureFlags.opacEvents ? (
+                <li>
+                  <Link href="/opac/events" className="text-sm hover:text-white transition-colors">
+                    Events & Programs
+                  </Link>
+                </li>
+              ) : null}
+              {featureFlags.opacDigitalLibrary ? (
+                <li>
+                  <Link href="/opac/digital" className="text-sm hover:text-white transition-colors">
+                    Digital Library
+                  </Link>
+                </li>
+              ) : null}
             </ul>
           </div>
 

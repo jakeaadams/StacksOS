@@ -11,6 +11,7 @@ import { useLibrary } from "@/hooks/use-library";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { useDebounce } from "@/hooks/use-debounce";
 import { featureFlags } from "@/lib/feature-flags";
+import { LanguageSwitcher } from "@/components/opac/language-switcher";
 import {
   Moon,
   Sun,
@@ -163,6 +164,21 @@ export function OPACHeader() {
                 Kids
               </Link>
             ) : null}
+            {featureFlags.opacTeens ? (
+              <Link href="/opac/teens" className="hover:underline font-medium">
+                Teens
+              </Link>
+            ) : null}
+            {featureFlags.opacEvents ? (
+              <Link href="/opac/events" className="hover:underline font-medium">
+                Events
+              </Link>
+            ) : null}
+            {featureFlags.opacDigitalLibrary ? (
+              <Link href="/opac/digital" className="hover:underline font-medium">
+                Digital Library
+              </Link>
+            ) : null}
           </div>
         </div>
       </div>
@@ -273,6 +289,8 @@ export function OPACHeader() {
           </div>
 
           <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+
             <button
               type="button"
               onClick={toggleTheme}
@@ -438,13 +456,40 @@ export function OPACHeader() {
             >
               Browse Catalog
             </Link>
+            {featureFlags.opacEvents ? (
+              <Link
+                href="/opac/events"
+                className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Events
+              </Link>
+            ) : null}
+            {featureFlags.opacDigitalLibrary ? (
+              <Link
+                href="/opac/digital"
+                className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Digital Library
+              </Link>
+            ) : null}
             {featureFlags.opacKids ? (
               <Link
                 href="/opac/kids"
                 className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                👶 Kids Catalog
+                Kids Catalog
+              </Link>
+            ) : null}
+            {featureFlags.opacTeens ? (
+              <Link
+                href="/opac/teens"
+                className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Teens Catalog
               </Link>
             ) : null}
             <button

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRef } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/contexts/auth-context";
@@ -115,7 +116,9 @@ export function PlaceHoldDialog({
     setError(null);
 
     try {
-      const res = await fetch(`/api/evergreen/patrons?barcode=${encodeURIComponent(trimmed)}`, { credentials: "include" });
+      const res = await fetch(`/api/evergreen/patrons?barcode=${encodeURIComponent(trimmed)}`, {
+        credentials: "include",
+      });
       const data = await res.json();
       if (!res.ok || data.ok === false) {
         throw new Error(data.error || "Patron not found");
@@ -155,15 +158,15 @@ export function PlaceHoldDialog({
     }
 
     setIsPlacing(true);
-	    setError(null);
+    setError(null);
 
-	    try {
-	      const res = await fetchWithAuth("/api/evergreen/holds", {
-	        method: "POST",
-	        headers: { "Content-Type": "application/json" },
-	        body: JSON.stringify({
-	          action: "place_hold",
-	          patronId: patron.id,
+    try {
+      const res = await fetchWithAuth("/api/evergreen/holds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "place_hold",
+          patronId: patron.id,
           targetId: record.id,
           holdType: "T",
           pickupLib: pickup,
@@ -176,10 +179,13 @@ export function PlaceHoldDialog({
       }
 
       const holdIdRaw = data.holdId || data.hold_id || data?.result?.holdId;
-      const holdId = typeof holdIdRaw === "number" ? holdIdRaw : parseInt(String(holdIdRaw || ""), 10);
+      const holdId =
+        typeof holdIdRaw === "number" ? holdIdRaw : parseInt(String(holdIdRaw || ""), 10);
 
       toast.success("Hold placed", {
-        description: Number.isFinite(holdId) ? `Hold #${holdId}` : record.title || `Record ${record.id}`,
+        description: Number.isFinite(holdId)
+          ? `Hold #${holdId}`
+          : record.title || `Record ${record.id}`,
       });
 
       if (Number.isFinite(holdId)) {
@@ -209,7 +215,9 @@ export function PlaceHoldDialog({
             {record?.title ? (
               <span>
                 Title: <span className="font-medium">{record.title}</span>
-                {record.author ? <span className="text-muted-foreground"> (by {record.author})</span> : null}
+                {record.author ? (
+                  <span className="text-muted-foreground"> (by {record.author})</span>
+                ) : null}
               </span>
             ) : (
               <span>Select a record first.</span>
@@ -218,7 +226,7 @@ export function PlaceHoldDialog({
         </DialogHeader>
 
         {error && (
-          <div>
+          <div aria-live="assertive" role="alert">
             <ErrorMessage message={error} onRetry={() => setError(null)} />
           </div>
         )}
@@ -253,7 +261,8 @@ export function PlaceHoldDialog({
                 profileGroup: patron.profile?.name || "Patron",
                 active: patron.active !== false,
                 barred: patron.barred === true,
-                hasAlerts: Array.isArray(patron.standing_penalties) && patron.standing_penalties.length > 0,
+                hasAlerts:
+                  Array.isArray(patron.standing_penalties) && patron.standing_penalties.length > 0,
                 alertCount: patron.standing_penalties?.length || 0,
                 balanceOwed: 0,
                 checkoutsCount: 0,

@@ -10,6 +10,8 @@ import Link from "next/link";
 import { useLibrary } from "@/hooks/use-library";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { BookCard } from "@/components/opac/book-card";
+import { RecommendedForYou } from "@/components/opac/recommended-for-you";
+import { SearchAutocomplete } from "@/components/opac/search-autocomplete";
 import {
   Search,
   BookOpen,
@@ -22,7 +24,12 @@ import {
   Headphones,
   MonitorPlay,
   MapPin,
+  CalendarDays,
+  Users,
 } from "lucide-react";
+
+import type { LibraryEvent } from "@/lib/events-data";
+import { toast } from "sonner";
 
 interface FeaturedBook {
   id: number;
@@ -68,11 +75,11 @@ export default function OPACHomePage() {
   const { library, currentLocation } = useLibrary();
   const { patron, isLoggedIn, holds } = usePatronSession();
   const browseEnabled = featureFlags.opacBrowseV2;
-  const [searchQuery, setSearchQuery] = useState("");
   const [newArrivals, setNewArrivals] = useState<FeaturedBook[]>([]);
   const [popularItems, setPopularItems] = useState<FeaturedBook[]>([]);
   const [staffPicks, setStaffPicks] = useState<StaffPick[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [featuredEvents, setFeaturedEvents] = useState<LibraryEvent[]>([]);
 
   const fetchFeaturedContent = useCallback(async () => {
     if (!browseEnabled) {
@@ -112,6 +119,19 @@ export default function OPACHomePage() {
       } catch {
         // Staff picks are optional - don't fail if unavailable
       }
+
+      // Fetch featured events for the home page
+      if (featureFlags.opacEvents) {
+        try {
+          const eventsResponse = await fetch("/api/opac/events?featured=true&limit=4");
+          if (eventsResponse.ok) {
+            const eventsData = await eventsResponse.json();
+            setFeaturedEvents(eventsData.events || []);
+          }
+        } catch {
+          // Events are optional - don't fail if unavailable
+        }
+      }
     } catch (err) {
       clientLogger.error("Error fetching featured content:", err);
     } finally {
@@ -122,13 +142,6 @@ export default function OPACHomePage() {
   useEffect(() => {
     void fetchFeaturedContent();
   }, [fetchFeaturedContent]);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      window.location.href = `/opac/search?q=${encodeURIComponent(searchQuery)}`;
-    }
-  };
 
   const QuickSearchChip = ({ label, href }: { label: string; href: string }) => (
     <Link
@@ -186,29 +199,8 @@ export default function OPACHomePage() {
             Search our collection of books, eBooks, audiobooks, movies, and more
           </p>
 
-          {/* Search form */}
-          <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by title, author, subject, or keyword..."
-                className="w-full pl-6 pr-14 py-4 md:py-5 text-lg rounded-full border-0 
-                         text-foreground placeholder:text-muted-foreground shadow-xl
-                         focus:outline-none focus:ring-4 focus:ring-white/30"
-              />
-              <button
-                type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-3 md:p-4 bg-primary-600 
-                         text-white rounded-full hover:bg-primary-700 transition-colors
-                         shadow-lg"
-                aria-label="Search"
-              >
-                <Search className="h-5 w-5 md:h-6 md:w-6" />
-              </button>
-            </div>
-          </form>
+          {/* Search form with autocomplete and scope selector */}
+          <SearchAutocomplete variant="hero" showScopeSelector />
 
           {/* Quick search suggestions */}
           <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -297,6 +289,92 @@ export default function OPACHomePage() {
           </div>
         </div>
       </section>
+
+      {/* Upcoming Events */}
+      {featureFlags.opacEvents && featuredEvents.length > 0 && (
+        <section className="py-12 md:py-16 bg-card">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary-100 rounded-lg">
+                  <CalendarDays className="h-6 w-6 text-primary-600" />
+                </div>
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground">Upcoming Events</h2>
+              </div>
+              <Link
+                href="/opac/events"
+                className="flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
+              >
+                View All Events
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {featuredEvents.slice(0, 4).map((event) => {
+                const eventDate = new Date(event.date + "T12:00:00");
+                const monthAbbr = eventDate
+                  .toLocaleDateString("en-US", { month: "short" })
+                  .toUpperCase();
+                const day = eventDate.getDate().toString();
+                return (
+                  <div
+                    key={event.id}
+                    className="bg-muted/30 rounded-xl border border-border p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="shrink-0 text-center">
+                        <div className="bg-primary-600 text-white text-[10px] font-bold rounded-t-md py-0.5 px-2">
+                          {monthAbbr}
+                        </div>
+                        <div className="bg-white dark:bg-muted border border-t-0 border-border rounded-b-md py-1 px-2">
+                          <span className="text-lg font-bold text-foreground">{day}</span>
+                        </div>
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-2">
+                          {event.title}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {event.startTime} &middot; {event.branch}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                      {event.description}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300">
+                        {event.ageGroup}
+                      </span>
+                      {event.registrationRequired ? (
+                        <button
+                          onClick={() =>
+                            toast.info("Registration coming soon", {
+                              description:
+                                "Online registration for this event will be available shortly.",
+                            })
+                          }
+                          className="text-xs font-medium text-primary-600 hover:underline"
+                        >
+                          Register
+                        </button>
+                      ) : (
+                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                          Drop-in
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Recommended for You - only visible to logged-in patrons */}
+      <RecommendedForYou isLoggedIn={isLoggedIn} />
 
       {/* New Arrivals */}
       {browseEnabled ? (

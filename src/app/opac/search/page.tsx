@@ -30,6 +30,8 @@ import {
   Loader2,
   AlertCircle,
   ArrowUpDown,
+  Sparkles,
+  Info,
 } from "lucide-react";
 
 interface SearchResult {
@@ -49,6 +51,7 @@ interface SearchResult {
   reviewCount?: number;
   rankingReason?: string;
   rankingScore?: number;
+  aiExplanation?: string;
 }
 
 const SORT_OPTIONS = [
@@ -97,6 +100,25 @@ function parseCsvParam(value: string): string[] {
     .filter(Boolean);
 }
 
+const AI_SEARCH_STORAGE_KEY = "stacksos_ai_search_enabled";
+
+function getStoredAiSearchEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(AI_SEARCH_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function storeAiSearchEnabled(enabled: boolean) {
+  try {
+    localStorage.setItem(AI_SEARCH_STORAGE_KEY, String(enabled));
+  } catch {
+    // ignore
+  }
+}
+
 function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -110,6 +132,16 @@ function SearchContent() {
   const [rankingMode, setRankingMode] = useState<"keyword" | "hybrid">("keyword");
   const [facets, setFacets] = useState<any>(null);
   const [saveTarget, setSaveTarget] = useState<{ bibId: number; title?: string } | null>(null);
+
+  // AI search state
+  const [aiSmartSearchOn, setAiSmartSearchOn] = useState(getStoredAiSearchEnabled);
+  const [aiDecomposedInfo, setAiDecomposedInfo] = useState<{
+    keywords?: string[];
+    subjects?: string[];
+    audience?: string | null;
+    format?: string | null;
+    searchQuery?: string;
+  } | null>(null);
 
   // UI state
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -185,7 +217,7 @@ function SearchContent() {
     if (pubdateFrom || pubdateTo) {
       filters.push({
         label: "Publication year",
-        value: `${pubdateFrom || "…"}–${pubdateTo || "…"}`,
+        value: `${pubdateFrom || "\u2026"}\u2013${pubdateTo || "\u2026"}`,
       });
     }
 
@@ -212,6 +244,14 @@ function SearchContent() {
     selectedLanguages,
   ]);
 
+  const handleToggleAiSearch = useCallback(() => {
+    setAiSmartSearchOn((prev) => {
+      const next = !prev;
+      storeAiSearchEnabled(next);
+      return next;
+    });
+  }, []);
+
   const performSearch = useCallback(async () => {
     const hasBrowseIntent =
       Boolean(format) ||
@@ -227,7 +267,56 @@ function SearchContent() {
     try {
       setIsLoading(true);
       setError(null);
+      setAiDecomposedInfo(null);
 
+      // When AI Smart Search is enabled, route to the AI search endpoint
+      if (aiSmartSearchOn && query) {
+        const aiParams = new URLSearchParams();
+        aiParams.set("q", query);
+        aiParams.set("limit", pageSize.toString());
+        aiParams.set("offset", ((page - 1) * pageSize).toString());
+
+        const aiResponse = await fetchWithAuth(`/api/evergreen/ai-search?${aiParams.toString()}`);
+
+        if (!aiResponse.ok) {
+          const errData = await aiResponse.json().catch(() => ({}));
+          throw new Error(errData.error || "AI search failed. Please try again.");
+        }
+
+        const aiData = await aiResponse.json();
+
+        if (aiData.ok === false) {
+          throw new Error(aiData.error || "AI search failed");
+        }
+
+        setAiDecomposedInfo(aiData.decomposed || null);
+
+        const transformedResults = (aiData.records || []).map((record: any) => ({
+          id: record.id,
+          title: record.title || "Unknown Title",
+          author: record.author,
+          coverUrl: record.coverUrl,
+          publicationYear: record.pubdate,
+          summary: record.summary,
+          subjects: record.subjects || [],
+          isbn: record.isbn,
+          formats: record.formats || [{ type: "book" as const, available: 0, total: 0 }],
+          availableCopies: record.availability?.available || 0,
+          totalCopies: record.availability?.total || 0,
+          holdCount: record.hold_count || 0,
+          rankingReason: record.ranking?.semanticReason || undefined,
+          rankingScore: record.ranking?.semanticScore ?? undefined,
+          aiExplanation: record.aiExplanation || undefined,
+        }));
+
+        setResults(transformedResults);
+        setTotalResults(parseInt(aiData.count, 10) || transformedResults.length);
+        setRankingMode("hybrid");
+        setFacets(null);
+        return;
+      }
+
+      // Standard search path (unchanged)
       const params = new URLSearchParams();
       if (query) params.set("q", query);
       if (format) params.set("format", format);
@@ -294,7 +383,19 @@ function SearchContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [query, format, audience, language, pubdateFrom, pubdateTo, available, location, page, sort]);
+  }, [
+    query,
+    format,
+    audience,
+    language,
+    pubdateFrom,
+    pubdateTo,
+    available,
+    location,
+    page,
+    sort,
+    aiSmartSearchOn,
+  ]);
 
   useEffect(() => {
     performSearch();
@@ -691,7 +792,7 @@ function SearchContent() {
             {isLoading ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Updating results…
+                Updating results&hellip;
               </div>
             ) : null}
           </SheetHeader>
@@ -732,9 +833,14 @@ function SearchContent() {
                 type="text"
                 name="q"
                 defaultValue={query}
-                placeholder="Search by title, author, subject..."
-                className="w-full pl-4 pr-10 py-3 border border-border rounded-lg
-                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder={
+                  aiSmartSearchOn
+                    ? "Describe what you're looking for... (e.g. mysteries set in Japan)"
+                    : "Search by title, author, subject..."
+                }
+                className={`w-full pl-4 pr-10 py-3 border rounded-lg
+                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                         ${aiSmartSearchOn ? "border-purple-300 bg-purple-50/30" : "border-border"}`}
               />
               <button
                 type="submit"
@@ -743,6 +849,23 @@ function SearchContent() {
                 <Search className="h-5 w-5" />
               </button>
             </div>
+
+            {/* AI Smart Search toggle button */}
+            <button
+              type="button"
+              onClick={handleToggleAiSearch}
+              className={`px-4 py-3 border rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap
+                        ${
+                          aiSmartSearchOn
+                            ? "bg-purple-100 border-purple-300 text-purple-700"
+                            : "border-border text-foreground/80 hover:bg-muted/30"
+                        }`}
+              title={aiSmartSearchOn ? "AI Smart Search is ON" : "Enable AI Smart Search"}
+            >
+              <Sparkles className="h-5 w-5" />
+              <span className="hidden sm:inline">AI Search</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setShowFilters(!showFilters)}
@@ -757,6 +880,44 @@ function SearchContent() {
               <span className="hidden sm:inline">Filters</span>
             </button>
           </form>
+
+          {/* AI Search disclaimer */}
+          {aiSmartSearchOn && (
+            <div className="mt-2 flex items-start gap-2 text-xs text-purple-600 bg-purple-50 rounded-lg px-3 py-2">
+              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>
+                AI-powered search results. Results are suggestions and may not be perfectly
+                accurate.
+              </span>
+            </div>
+          )}
+
+          {/* AI decomposition info */}
+          {aiSmartSearchOn && aiDecomposedInfo && !isLoading && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-purple-700">
+              <span className="font-medium">AI understood:</span>
+              {aiDecomposedInfo.keywords && aiDecomposedInfo.keywords.length > 0 && (
+                <span className="px-2 py-0.5 bg-purple-100 rounded-full">
+                  Keywords: {aiDecomposedInfo.keywords.join(", ")}
+                </span>
+              )}
+              {aiDecomposedInfo.subjects && aiDecomposedInfo.subjects.length > 0 && (
+                <span className="px-2 py-0.5 bg-purple-100 rounded-full">
+                  Subjects: {aiDecomposedInfo.subjects.join(", ")}
+                </span>
+              )}
+              {aiDecomposedInfo.audience && (
+                <span className="px-2 py-0.5 bg-purple-100 rounded-full">
+                  Audience: {aiDecomposedInfo.audience}
+                </span>
+              )}
+              {aiDecomposedInfo.format && (
+                <span className="px-2 py-0.5 bg-purple-100 rounded-full">
+                  Format: {aiDecomposedInfo.format}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Active filters */}
           {(selectedFormats.length > 0 ||
@@ -823,7 +984,7 @@ function SearchContent() {
 
               {(pubdateFrom || pubdateTo) && (
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm">
-                  Year {pubdateFrom || "…"}–{pubdateTo || "…"}
+                  Year {pubdateFrom || "\u2026"}\u2013{pubdateTo || "\u2026"}
                   <button
                     type="button"
                     onClick={() => updateSearchParams({ pubdate_from: null, pubdate_to: null })}
@@ -904,7 +1065,9 @@ function SearchContent() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 {isLoading ? (
-                  <p className="text-muted-foreground">Searching...</p>
+                  <p className="text-muted-foreground">
+                    {aiSmartSearchOn ? "AI is searching..." : "Searching..."}
+                  </p>
                 ) : (
                   <p className="text-foreground/80">
                     {totalResults > 0 ? (
@@ -917,6 +1080,12 @@ function SearchContent() {
                             <span className="font-medium">{query}</span>
                             {`"`}
                           </>
+                        )}
+                        {aiSmartSearchOn && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+                            <Sparkles className="h-3 w-3" />
+                            AI-powered
+                          </span>
                         )}
                       </>
                     ) : query ? (
@@ -935,7 +1104,7 @@ function SearchContent() {
                   <select
                     value={sort}
                     onChange={(e) => updateSearchParams({ sort: e.target.value })}
-                    className="border-0 bg-transparent text-sm font-medium text-foreground/80 
+                    className="border-0 bg-transparent text-sm font-medium text-foreground/80
                              focus:outline-none focus:ring-0 cursor-pointer"
                   >
                     {SORT_OPTIONS.map((option) => (
@@ -1029,73 +1198,103 @@ function SearchContent() {
                 {viewMode === "grid" ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {results.map((result) => (
-                      <BookCard
-                        key={result.id}
-                        isbn={result.isbn}
-                        id={result.id}
-                        title={result.title}
-                        author={result.author}
-                        coverUrl={result.coverUrl}
-                        formats={result.formats}
-                        availableCopies={result.availableCopies}
-                        totalCopies={result.totalCopies}
-                        holdCount={result.holdCount}
-                        rating={result.rating}
-                        summary={result.summary}
-                        subjects={result.subjects}
-                        explainQuery={explainSort ? query : undefined}
-                        explainSort={explainSort || undefined}
-                        explainRankingMode={rankingMode}
-                        explainRankingScore={sort === "smart" ? result.rankingScore : undefined}
-                        explainFilters={explainSort ? explainFilters : undefined}
-                        rankingReason={sort === "smart" ? result.rankingReason : undefined}
-                        variant="grid"
-                        onAddToList={
-                          featureFlags.opacLists
-                            ? () => handleSaveToList({ id: result.id, title: result.title })
-                            : undefined
-                        }
-                        onPlaceHold={() => handlePlaceHold(result.id)}
-                      />
+                      <div key={result.id}>
+                        <BookCard
+                          isbn={result.isbn}
+                          id={result.id}
+                          title={result.title}
+                          author={result.author}
+                          coverUrl={result.coverUrl}
+                          formats={result.formats}
+                          availableCopies={result.availableCopies}
+                          totalCopies={result.totalCopies}
+                          holdCount={result.holdCount}
+                          rating={result.rating}
+                          summary={result.summary}
+                          subjects={result.subjects}
+                          explainQuery={explainSort ? query : undefined}
+                          explainSort={explainSort || undefined}
+                          explainRankingMode={rankingMode}
+                          explainRankingScore={
+                            sort === "smart" || aiSmartSearchOn ? result.rankingScore : undefined
+                          }
+                          explainFilters={explainSort ? explainFilters : undefined}
+                          rankingReason={
+                            sort === "smart" || aiSmartSearchOn ? result.rankingReason : undefined
+                          }
+                          variant="grid"
+                          onAddToList={
+                            featureFlags.opacLists
+                              ? () => handleSaveToList({ id: result.id, title: result.title })
+                              : undefined
+                          }
+                          onPlaceHold={() => handlePlaceHold(result.id)}
+                        />
+                        {/* AI explanation card (grid mode) */}
+                        {aiSmartSearchOn && result.aiExplanation && (
+                          <div className="mt-1 px-2 py-1.5 bg-purple-50 border border-purple-100 rounded-lg">
+                            <p className="text-xs text-purple-700 leading-snug">
+                              <Sparkles className="h-3 w-3 inline-block mr-1 -mt-0.5" />
+                              {result.aiExplanation}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {results.map((result) => (
-                      <BookCard
-                        key={result.id}
-                        isbn={result.isbn}
-                        id={result.id}
-                        title={result.title}
-                        author={result.author}
-                        coverUrl={result.coverUrl}
-                        publicationYear={result.publicationYear}
-                        summary={result.summary}
-                        subjects={result.subjects}
-                        formats={result.formats}
-                        availableCopies={result.availableCopies}
-                        totalCopies={result.totalCopies}
-                        holdCount={result.holdCount}
-                        rating={result.rating}
-                        reviewCount={result.reviewCount}
-                        rankingLabel={
-                          sort === "smart" && rankingMode === "hybrid" ? "AI-ranked" : undefined
-                        }
-                        rankingReason={sort === "smart" ? result.rankingReason : undefined}
-                        explainQuery={explainSort ? query : undefined}
-                        explainSort={explainSort || undefined}
-                        explainRankingMode={rankingMode}
-                        explainRankingScore={sort === "smart" ? result.rankingScore : undefined}
-                        explainFilters={explainSort ? explainFilters : undefined}
-                        variant="list"
-                        showSummary
-                        onAddToList={
-                          featureFlags.opacLists
-                            ? () => handleSaveToList({ id: result.id, title: result.title })
-                            : undefined
-                        }
-                        onPlaceHold={() => handlePlaceHold(result.id)}
-                      />
+                      <div key={result.id}>
+                        <BookCard
+                          isbn={result.isbn}
+                          id={result.id}
+                          title={result.title}
+                          author={result.author}
+                          coverUrl={result.coverUrl}
+                          publicationYear={result.publicationYear}
+                          summary={result.summary}
+                          subjects={result.subjects}
+                          formats={result.formats}
+                          availableCopies={result.availableCopies}
+                          totalCopies={result.totalCopies}
+                          holdCount={result.holdCount}
+                          rating={result.rating}
+                          reviewCount={result.reviewCount}
+                          rankingLabel={
+                            (sort === "smart" || aiSmartSearchOn) && rankingMode === "hybrid"
+                              ? "AI-ranked"
+                              : undefined
+                          }
+                          rankingReason={
+                            sort === "smart" || aiSmartSearchOn ? result.rankingReason : undefined
+                          }
+                          explainQuery={explainSort ? query : undefined}
+                          explainSort={explainSort || undefined}
+                          explainRankingMode={rankingMode}
+                          explainRankingScore={
+                            sort === "smart" || aiSmartSearchOn ? result.rankingScore : undefined
+                          }
+                          explainFilters={explainSort ? explainFilters : undefined}
+                          variant="list"
+                          showSummary
+                          onAddToList={
+                            featureFlags.opacLists
+                              ? () => handleSaveToList({ id: result.id, title: result.title })
+                              : undefined
+                          }
+                          onPlaceHold={() => handlePlaceHold(result.id)}
+                        />
+                        {/* AI explanation card (list mode) */}
+                        {aiSmartSearchOn && result.aiExplanation && (
+                          <div className="mt-1 ml-28 mr-4 px-3 py-2 bg-purple-50 border border-purple-100 rounded-lg">
+                            <p className="text-sm text-purple-700 leading-snug">
+                              <Sparkles className="h-3.5 w-3.5 inline-block mr-1.5 -mt-0.5" />
+                              {result.aiExplanation}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -1140,6 +1339,25 @@ function SearchContent() {
                   {`We couldn't find anything for "${query}". Try different keywords or browse our catalog.`}
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
+                  {aiSmartSearchOn && (
+                    <button
+                      type="button"
+                      onClick={handleToggleAiSearch}
+                      className="px-4 py-2 border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50"
+                    >
+                      Try Standard Search
+                    </button>
+                  )}
+                  {!aiSmartSearchOn && (
+                    <button
+                      type="button"
+                      onClick={handleToggleAiSearch}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      Try AI Smart Search
+                    </button>
+                  )}
                   <Link
                     href="/opac"
                     className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"

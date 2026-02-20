@@ -11,14 +11,22 @@ import {
   BookOpen,
   Bookmark,
   Building,
+  Check,
+  ChevronDown,
+  ChevronRight,
   Copy,
   Edit,
   ExternalLink,
   ImageOff,
   ListOrdered,
+  Loader2,
   MapPin,
   Package,
+  Pencil,
   Plus,
+  Save,
+  Trash2,
+  X,
 } from "lucide-react";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { clientLogger } from "@/lib/client-logger";
@@ -36,17 +44,32 @@ import {
 } from "@/components/shared";
 import { AddItemDialog } from "@/components/cataloging/add-item-dialog";
 import { CoverArtPicker } from "@/components/shared/cover-art-picker";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface RecordDetail {
   id: number;
@@ -79,6 +102,7 @@ interface CopyInfo {
   status: string;
   statusId: number;
   location: string;
+  locationId?: number;
   circLib: string;
   callNumber: string;
   dueDate?: string;
@@ -130,20 +154,19 @@ interface FixedFieldRow {
   note: string;
 }
 
-interface HoldingsTreeBranch {
-  key: string;
-  location: string;
-  callNumber: string;
-  copies: CopyInfo[];
-  availableCopies: number;
+interface CopyLocationOption {
+  id: number;
+  name: string;
 }
 
-interface HoldingsTreeLibrary {
-  library: string;
-  totalCopies: number;
-  availableCopies: number;
-  branches: HoldingsTreeBranch[];
+interface CopyStatusOption {
+  id: number;
+  name: string;
 }
+
+// ---------------------------------------------------------------------------
+// MARC mapping tables
+// ---------------------------------------------------------------------------
 
 const leaderRecordStatusMap: Record<string, string> = {
   a: "Increase in encoding level",
@@ -249,6 +272,10 @@ const fixed008CatalogingSourceMap: Record<string, string> = {
   d: "Other",
   u: "Unknown",
 };
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function sortMarcTags(a: string, b: string) {
   const aNum = Number.parseInt(a, 10);
@@ -458,6 +485,10 @@ function formatDateTime(value?: string) {
   return parsed.toLocaleString();
 }
 
+// ---------------------------------------------------------------------------
+// Cover image component
+// ---------------------------------------------------------------------------
+
 function CoverImage({
   isbn,
   title,
@@ -519,6 +550,593 @@ function CoverImage({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Items tab component (unified holdings + inline editing + bulk ops)
+// ---------------------------------------------------------------------------
+
+interface LibraryGroup {
+  library: string;
+  totalCopies: number;
+  availableCopies: number;
+  copies: CopyInfo[];
+}
+
+interface EditingRowState {
+  callNumber: string;
+  statusId: string;
+  locationId: string;
+}
+
+function ItemsTab({
+  copies,
+  statuses,
+  locations,
+  onRefresh,
+  onAddItem,
+}: {
+  copies: CopyInfo[];
+  statuses: CopyStatusOption[];
+  locations: CopyLocationOption[];
+  onRefresh: () => void;
+  onAddItem: () => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [editingState, setEditingState] = useState<Record<number, EditingRowState>>({});
+  const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
+  const [collapsedLibraries, setCollapsedLibraries] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState<"status" | "location" | null>(null);
+  const [bulkValue, setBulkValue] = useState("");
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+
+  // Group copies by library
+  const libraryGroups = useMemo<LibraryGroup[]>(() => {
+    const groupMap = new Map<string, LibraryGroup>();
+    for (const copy of copies) {
+      const lib = copy.circLib || "-";
+      const existing = groupMap.get(lib);
+      if (existing) {
+        existing.copies.push(copy);
+        existing.totalCopies += 1;
+        if (isCopyAvailable(copy.statusId)) existing.availableCopies += 1;
+      } else {
+        groupMap.set(lib, {
+          library: lib,
+          totalCopies: 1,
+          availableCopies: isCopyAvailable(copy.statusId) ? 1 : 0,
+          copies: [copy],
+        });
+      }
+    }
+    return Array.from(groupMap.values())
+      .map((g) => ({
+        ...g,
+        copies: [...g.copies].sort((a, b) => a.barcode.localeCompare(b.barcode)),
+      }))
+      .sort((a, b) => a.library.localeCompare(b.library));
+  }, [copies]);
+
+  const allSelected = copies.length > 0 && selectedIds.size === copies.length;
+  const someSelected = selectedIds.size > 0 && selectedIds.size < copies.length;
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(copies.map((c) => c.id)));
+    }
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleLibraryCollapse = (library: string) => {
+    setCollapsedLibraries((prev) => {
+      const next = new Set(prev);
+      if (next.has(library)) next.delete(library);
+      else next.add(library);
+      return next;
+    });
+  };
+
+  const startEditing = (copy: CopyInfo) => {
+    setEditingState((prev) => ({
+      ...prev,
+      [copy.id]: {
+        callNumber: copy.callNumber,
+        statusId: String(copy.statusId),
+        locationId: String(copy.locationId ?? ""),
+      },
+    }));
+  };
+
+  const cancelEditing = (copyId: number) => {
+    setEditingState((prev) => {
+      const next = { ...prev };
+      delete next[copyId];
+      return next;
+    });
+  };
+
+  const updateEditField = (copyId: number, field: keyof EditingRowState, value: string) => {
+    setEditingState((prev) => ({
+      ...prev,
+      [copyId]: { ...prev[copyId], [field]: value },
+    }));
+  };
+
+  const saveItem = async (copyId: number) => {
+    const edit = editingState[copyId];
+    if (!edit) return;
+
+    setSavingIds((prev) => new Set(prev).add(copyId));
+    try {
+      const originalCopy = copies.find((c) => c.id === copyId);
+      if (!originalCopy) return;
+
+      const body: Record<string, unknown> = {};
+      if (edit.callNumber !== originalCopy.callNumber) {
+        body.callNumber = edit.callNumber;
+      }
+      if (edit.locationId && edit.locationId !== String(originalCopy.locationId ?? "")) {
+        body.locationId = parseInt(edit.locationId, 10);
+      }
+      // Status changes - the PATCH endpoint supports this
+      if (edit.statusId !== String(originalCopy.statusId)) {
+        body.statusId = parseInt(edit.statusId, 10);
+      }
+
+      const res = await fetchWithAuth(`/api/evergreen/items/${copyId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      if (data.ok) {
+        toast.success(`Item ${originalCopy.barcode} updated`);
+        cancelEditing(copyId);
+        onRefresh();
+      } else {
+        toast.error(data.error || "Failed to update item");
+      }
+    } catch {
+      toast.error("Failed to update item");
+    } finally {
+      setSavingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(copyId);
+        return next;
+      });
+    }
+  };
+
+  const executeBulkAction = async () => {
+    if (!bulkAction || !bulkValue || selectedIds.size === 0) return;
+    setBulkProcessing(true);
+
+    const ids = Array.from(selectedIds);
+    const body: Record<string, unknown> = {};
+
+    if (bulkAction === "status") {
+      body.statusId = parseInt(bulkValue, 10);
+    } else if (bulkAction === "location") {
+      body.locationId = parseInt(bulkValue, 10);
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    const results = await Promise.allSettled(
+      ids.map(async (id) => {
+        const res = await fetchWithAuth(`/api/evergreen/items/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Failed");
+        return data;
+      })
+    );
+
+    for (const result of results) {
+      if (result.status === "fulfilled") successCount++;
+      else failCount++;
+    }
+
+    if (successCount > 0) {
+      toast.success(`Updated ${successCount} item${successCount > 1 ? "s" : ""}`);
+    }
+    if (failCount > 0) {
+      toast.error(`Failed to update ${failCount} item${failCount > 1 ? "s" : ""}`);
+    }
+
+    setBulkProcessing(false);
+    setBulkAction(null);
+    setBulkValue("");
+    setSelectedIds(new Set());
+    onRefresh();
+  };
+
+  if (copies.length === 0) {
+    return (
+      <EmptyState
+        title="No copies"
+        description="No copies are attached to this record."
+        action={{ label: "Add Item", onClick: onAddItem, icon: Plus }}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Bulk actions toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 p-3">
+          <span className="text-sm font-medium">
+            {selectedIds.size} item{selectedIds.size > 1 ? "s" : ""} selected
+          </span>
+          <Separator orientation="vertical" className="h-6" />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setBulkAction("status");
+              setBulkValue("");
+            }}
+          >
+            Change Status
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setBulkAction("location");
+              setBulkValue("");
+            }}
+          >
+            Change Location
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-destructive border-destructive/50 hover:bg-destructive/10"
+            onClick={() => toast.error("Bulk delete is not yet supported from this view")}
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-1" />
+            Delete
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSelectedIds(new Set())}
+            className="ml-auto"
+          >
+            Clear Selection
+          </Button>
+        </div>
+      )}
+
+      {/* Bulk action dialog */}
+      <Dialog
+        open={bulkAction !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBulkAction(null);
+            setBulkValue("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {bulkAction === "status" ? "Change Status" : "Change Location"}
+            </DialogTitle>
+            <DialogDescription>
+              Apply to {selectedIds.size} selected item{selectedIds.size > 1 ? "s" : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {bulkAction === "status" && (
+              <Select value={bulkValue} onValueChange={setBulkValue}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select new status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statuses.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {bulkAction === "location" && (
+              <Select value={bulkValue} onValueChange={setBulkValue}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select new location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={String(loc.id)}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBulkAction(null);
+                setBulkValue("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={executeBulkAction} disabled={!bulkValue || bulkProcessing}>
+              {bulkProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Applying...
+                </>
+              ) : (
+                "Apply"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Items table grouped by library */}
+      <div className="rounded-lg border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="w-10 px-3 py-2">
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Select all items"
+                />
+              </th>
+              <th className="px-3 py-2 text-left">Barcode</th>
+              <th className="px-3 py-2 text-left">Call Number</th>
+              <th className="px-3 py-2 text-left">Location</th>
+              <th className="px-3 py-2 text-left">Status</th>
+              <th className="px-3 py-2 text-left">Due Date</th>
+              <th className="w-24 px-3 py-2 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {libraryGroups.map((group) => {
+              const isCollapsed = collapsedLibraries.has(group.library);
+              const groupCopyIds = group.copies.map((c) => c.id);
+              const allGroupSelected =
+                groupCopyIds.length > 0 && groupCopyIds.every((id) => selectedIds.has(id));
+              const someGroupSelected =
+                !allGroupSelected && groupCopyIds.some((id) => selectedIds.has(id));
+
+              return (
+                <React.Fragment key={`group-${group.library}`}>
+                  {/* Library group header row */}
+                  <tr
+                    className="bg-muted/20 border-t cursor-pointer hover:bg-muted/40 transition-colors"
+                    onClick={() => toggleLibraryCollapse(group.library)}
+                  >
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={
+                          allGroupSelected ? true : someGroupSelected ? "indeterminate" : false
+                        }
+                        onCheckedChange={() => {
+                          setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            if (allGroupSelected) {
+                              for (const id of groupCopyIds) next.delete(id);
+                            } else {
+                              for (const id of groupCopyIds) next.add(id);
+                            }
+                            return next;
+                          });
+                        }}
+                        aria-label={`Select all items in ${group.library}`}
+                      />
+                    </td>
+                    <td colSpan={6} className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        {isCollapsed ? (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <Building className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{group.library}</span>
+                        <Badge
+                          variant={group.availableCopies > 0 ? "default" : "secondary"}
+                          className="ml-2"
+                        >
+                          {group.availableCopies} / {group.totalCopies} available
+                        </Badge>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Individual copy rows */}
+                  {!isCollapsed &&
+                    group.copies.map((copy) => {
+                      const isEditing = editingState[copy.id] !== undefined;
+                      const isSaving = savingIds.has(copy.id);
+                      const edit = editingState[copy.id];
+
+                      return (
+                        <tr
+                          key={`copy-${copy.id}`}
+                          className={
+                            "border-t transition-colors " +
+                            (isEditing ? "bg-blue-50/50 dark:bg-blue-950/20" : "hover:bg-muted/30")
+                          }
+                        >
+                          <td className="px-3 py-2">
+                            <Checkbox
+                              checked={selectedIds.has(copy.id)}
+                              onCheckedChange={() => toggleSelect(copy.id)}
+                              aria-label={`Select item ${copy.barcode}`}
+                            />
+                          </td>
+
+                          {/* Barcode - always a link */}
+                          <td className="px-3 py-2">
+                            <Link
+                              href={`/staff/catalog/item/${copy.id}`}
+                              className="font-mono text-sm text-primary hover:underline"
+                            >
+                              {copy.barcode}
+                            </Link>
+                          </td>
+
+                          {/* Call Number */}
+                          <td className="px-3 py-2">
+                            {isEditing ? (
+                              <Input
+                                value={edit.callNumber}
+                                onChange={(e) =>
+                                  updateEditField(copy.id, "callNumber", e.target.value)
+                                }
+                                className="h-8 text-sm font-mono"
+                                disabled={isSaving}
+                              />
+                            ) : (
+                              <span className="text-sm">{copy.callNumber}</span>
+                            )}
+                          </td>
+
+                          {/* Location */}
+                          <td className="px-3 py-2">
+                            {isEditing ? (
+                              <Select
+                                value={edit.locationId}
+                                onValueChange={(val) => updateEditField(copy.id, "locationId", val)}
+                                disabled={isSaving}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder={copy.location} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {locations.map((loc) => (
+                                    <SelectItem key={loc.id} value={String(loc.id)}>
+                                      {loc.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-sm">{copy.location}</span>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-3 py-2">
+                            {isEditing ? (
+                              <Select
+                                value={edit.statusId}
+                                onValueChange={(val) => updateEditField(copy.id, "statusId", val)}
+                                disabled={isSaving}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder={copy.status} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {statuses.map((s) => (
+                                    <SelectItem key={s.id} value={String(s.id)}>
+                                      {s.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Badge variant="outline" className={getStatusColor(copy.statusId)}>
+                                {copy.status}
+                              </Badge>
+                            )}
+                          </td>
+
+                          {/* Due Date */}
+                          <td className="px-3 py-2">
+                            <span className="text-sm text-muted-foreground">
+                              {copy.dueDate ? new Date(copy.dueDate).toLocaleDateString() : "-"}
+                            </span>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-3 py-2 text-right">
+                            {isEditing ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => saveItem(copy.id)}
+                                  disabled={isSaving}
+                                  title="Save"
+                                >
+                                  {isSaving ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Check className="h-3.5 w-3.5 text-green-600" />
+                                  )}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => cancelEditing(copy.id)}
+                                  disabled={isSaving}
+                                  title="Cancel"
+                                >
+                                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0"
+                                onClick={() => startEditing(copy)}
+                                title="Edit item"
+                              >
+                                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page component
+// ---------------------------------------------------------------------------
+
 export default function CatalogRecordPage() {
   const params = useParams();
   const router = useRouter();
@@ -535,6 +1153,10 @@ export default function CatalogRecordPage() {
   const [customCoverUrl, setCustomCoverUrl] = useState<string | undefined>(undefined);
   const [holdOpen, setHoldOpen] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
+
+  // Metadata for Items tab inline editing
+  const [copyLocations, setCopyLocations] = useState<CopyLocationOption[]>([]);
+  const [copyStatuses, setCopyStatuses] = useState<CopyStatusOption[]>([]);
 
   const loadRecordData = useCallback(async () => {
     setIsLoading(true);
@@ -622,6 +1244,12 @@ export default function CatalogRecordPage() {
                 status: String(c.status_name ?? c.status ?? "Unknown"),
                 statusId: Number.parseInt(String(c.status_id ?? c.statusId ?? "0"), 10) || 0,
                 location: String(c.location ?? c.copy_location ?? "-"),
+                locationId:
+                  c.location_id !== undefined
+                    ? Number.parseInt(String(c.location_id), 10) || undefined
+                    : c.locationId !== undefined
+                      ? Number.parseInt(String(c.locationId), 10) || undefined
+                      : undefined,
                 circLib: String(c.circ_lib_name ?? c.circLib ?? "-"),
                 callNumber: String(c.call_number ?? c.callNumber ?? "-"),
                 dueDate: typeof c.due_date === "string" ? c.due_date : undefined,
@@ -682,9 +1310,42 @@ export default function CatalogRecordPage() {
     }
   }, [recordId]);
 
+  // Load copy metadata (locations + statuses) for inline editing
+  const loadCopyMetadata = useCallback(async () => {
+    try {
+      const [locRes, statusRes] = await Promise.all([
+        fetchWithAuth("/api/evergreen/catalog?action=copy_locations"),
+        fetchWithAuth("/api/evergreen/copy-statuses"),
+      ]);
+
+      const locData = await locRes.json();
+      if (locData.ok && locData.locations) {
+        setCopyLocations(
+          locData.locations.map((l: { id: number; name: string }) => ({
+            id: l.id,
+            name: l.name,
+          }))
+        );
+      }
+
+      const statusData = await statusRes.json();
+      if (statusData.ok && statusData.statuses) {
+        setCopyStatuses(
+          statusData.statuses.map((s: { id: number; name: string }) => ({
+            id: s.id,
+            name: s.name,
+          }))
+        );
+      }
+    } catch (err) {
+      clientLogger.warn("Failed to load copy metadata for inline editing", err);
+    }
+  }, []);
+
   useEffect(() => {
     void loadRecordData();
-  }, [loadRecordData]);
+    void loadCopyMetadata();
+  }, [loadRecordData, loadCopyMetadata]);
 
   const parsedMarc = useMemo(() => parseMarcXmlForView(record?.marcXml), [record?.marcXml]);
   const leaderRows = useMemo(() => buildLeaderRows(parsedMarc?.leader || ""), [parsedMarc?.leader]);
@@ -702,78 +1363,6 @@ export default function CatalogRecordPage() {
       ? holdings.reduce((sum, holding) => sum + holding.availableCopies, 0)
       : copies.filter((copy) => isCopyAvailable(copy.statusId)).length;
   const holdQueueCount = titleHoldCount > 0 ? titleHoldCount : record?.holdCount || 0;
-
-  const holdingsTree = useMemo<HoldingsTreeLibrary[]>(() => {
-    const tree = new Map<
-      string,
-      {
-        library: string;
-        totalCopies: number;
-        availableCopies: number;
-        branches: Map<string, HoldingsTreeBranch>;
-      }
-    >();
-
-    for (const copy of copies) {
-      const library = copy.circLib || "-";
-      const location = copy.location || "-";
-      const callNumber = copy.callNumber || "-";
-      const branchKey = `${location}||${callNumber}`;
-      const libraryNode =
-        tree.get(library) ||
-        ({
-          library,
-          totalCopies: 0,
-          availableCopies: 0,
-          branches: new Map<string, HoldingsTreeBranch>(),
-        } as {
-          library: string;
-          totalCopies: number;
-          availableCopies: number;
-          branches: Map<string, HoldingsTreeBranch>;
-        });
-
-      libraryNode.totalCopies += 1;
-      if (isCopyAvailable(copy.statusId)) {
-        libraryNode.availableCopies += 1;
-      }
-
-      const branch =
-        libraryNode.branches.get(branchKey) ||
-        ({
-          key: branchKey,
-          location,
-          callNumber,
-          copies: [],
-          availableCopies: 0,
-        } as HoldingsTreeBranch);
-      branch.copies.push(copy);
-      if (isCopyAvailable(copy.statusId)) {
-        branch.availableCopies += 1;
-      }
-
-      libraryNode.branches.set(branchKey, branch);
-      tree.set(library, libraryNode);
-    }
-
-    return Array.from(tree.values())
-      .map((libraryNode) => ({
-        library: libraryNode.library,
-        totalCopies: libraryNode.totalCopies,
-        availableCopies: libraryNode.availableCopies,
-        branches: Array.from(libraryNode.branches.values())
-          .map((branch) => ({
-            ...branch,
-            copies: [...branch.copies].sort((a, b) => a.barcode.localeCompare(b.barcode)),
-          }))
-          .sort((a, b) => {
-            const callNumberCompare = a.callNumber.localeCompare(b.callNumber);
-            if (callNumberCompare !== 0) return callNumberCompare;
-            return a.location.localeCompare(b.location);
-          }),
-      }))
-      .sort((a, b) => a.library.localeCompare(b.library));
-  }, [copies]);
 
   const handleCoverSelected = async (url: string, source: string) => {
     setCustomCoverUrl(url);
@@ -795,64 +1384,6 @@ export default function CatalogRecordPage() {
       toast.error("Cover updated locally, but failed to save to server");
     }
   };
-
-  const copyColumns: ColumnDef<CopyInfo>[] = [
-    {
-      accessorKey: "barcode",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Barcode" />,
-      cell: ({ row }) => (
-        <Link
-          href={"/staff/catalog/item/" + row.original.id}
-          className="font-mono text-sm text-primary hover:underline"
-        >
-          {row.original.barcode}
-        </Link>
-      ),
-    },
-    {
-      accessorKey: "callNumber",
-      header: "Call Number",
-      cell: ({ row }) => <span className="text-sm">{row.original.callNumber}</span>,
-    },
-    {
-      accessorKey: "location",
-      header: "Location",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1.5">
-          <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-sm">{row.original.location}</span>
-        </div>
-      ),
-    },
-    {
-      accessorKey: "circLib",
-      header: "Library",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1.5">
-          <Building className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-sm">{row.original.circLib}</span>
-        </div>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => (
-        <Badge variant="outline" className={getStatusColor(row.original.statusId)}>
-          {row.original.status}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: "dueDate",
-      header: "Due Date",
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">
-          {row.original.dueDate ? new Date(row.original.dueDate).toLocaleDateString() : "-"}
-        </span>
-      ),
-    },
-  ];
 
   if (isLoading) {
     return <LoadingSpinner message="Loading record..." />;
@@ -882,20 +1413,29 @@ export default function CatalogRecordPage() {
     <ErrorBoundary onReset={() => router.refresh()}>
       <PageContainer>
         <PageHeader
-          title={record.title}
+          title={
+            <>
+              {record.title}
+              {copies.length > 0 && (
+                <Badge variant="secondary" className="ml-3 text-sm font-normal align-middle">
+                  {copies.length} {copies.length === 1 ? "item" : "items"}
+                </Badge>
+              )}
+            </>
+          }
           subtitle={[
             record.author ? `by ${record.author}` : null,
             record.pubdate || null,
             record.format || null,
           ]
             .filter(Boolean)
-            .join(" • ")}
+            .join(" \u2022 ")}
           breadcrumbs={[
             { label: "Catalog", href: "/staff/catalog" },
             {
               label:
                 record.title && record.title.length > 42
-                  ? `${record.title.slice(0, 42)}…`
+                  ? `${record.title.slice(0, 42)}\u2026`
                   : record.title || `Record ${record.id}`,
             },
           ]}
@@ -981,13 +1521,17 @@ export default function CatalogRecordPage() {
                         <span className="text-xs uppercase tracking-wide text-muted-foreground">
                           Record Created
                         </span>
-                        <span className="text-xs font-medium">{formatDateTime(record.createDate)}</span>
+                        <span className="text-xs font-medium">
+                          {formatDateTime(record.createDate)}
+                        </span>
                       </div>
                       <div className="mt-1 flex items-center justify-between gap-3">
                         <span className="text-xs uppercase tracking-wide text-muted-foreground">
                           Last Edited
                         </span>
-                        <span className="text-xs font-medium">{formatDateTime(record.editDate)}</span>
+                        <span className="text-xs font-medium">
+                          {formatDateTime(record.editDate)}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -1030,6 +1574,14 @@ export default function CatalogRecordPage() {
                 <Tabs defaultValue="details">
                   <TabsList>
                     <TabsTrigger value="details">Details</TabsTrigger>
+                    <TabsTrigger value="items" className="flex items-center gap-1.5">
+                      Items
+                      {copies.length > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                          {copies.length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
                     <TabsTrigger value="marc">MARC</TabsTrigger>
                     <TabsTrigger value="subjects">Subjects</TabsTrigger>
                     {record.summary && <TabsTrigger value="summary">Summary</TabsTrigger>}
@@ -1121,6 +1673,17 @@ export default function CatalogRecordPage() {
                         </div>
                       )}
                     </div>
+                  </TabsContent>
+
+                  {/* Items Tab */}
+                  <TabsContent value="items" className="mt-4">
+                    <ItemsTab
+                      copies={copies}
+                      statuses={copyStatuses}
+                      locations={copyLocations}
+                      onRefresh={loadRecordData}
+                      onAddItem={() => setAddItemOpen(true)}
+                    />
                   </TabsContent>
 
                   <TabsContent value="marc" className="mt-4 space-y-4">
@@ -1351,7 +1914,7 @@ export default function CatalogRecordPage() {
                           {hold.patronBarcode
                             ? `Patron ${hold.patronBarcode}`
                             : "Patron details unavailable"}
-                          {hold.pickupLib ? ` • Pickup Library ${hold.pickupLib}` : ""}
+                          {hold.pickupLib ? ` \u2022 Pickup Library ${hold.pickupLib}` : ""}
                         </p>
                       </div>
                       <Badge variant="outline" className={getHoldStatusClass(hold.status)}>
@@ -1365,118 +1928,6 @@ export default function CatalogRecordPage() {
               <Button variant="outline" size="sm" className="mt-4" asChild>
                 <Link href={holdQueueHref}>Open Hold Queue Management</Link>
               </Button>
-            </CardContent>
-          </Card>
-
-          {holdingsTree.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building className="h-5 w-5" />
-                  Holdings Tree
-                </CardTitle>
-                <CardDescription>
-                  Hierarchy by library, call number, and copy barcode
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Accordion type="multiple" className="w-full">
-                  {holdingsTree.map((libraryNode, libraryIndex) => (
-                    <AccordionItem
-                      key={`library-${libraryIndex}-${libraryNode.library}`}
-                      value={`library-${libraryIndex}`}
-                    >
-                      <AccordionTrigger className="hover:no-underline">
-                        <div className="flex w-full items-center justify-between gap-3 pr-3 text-left">
-                          <div className="flex items-center gap-2">
-                            <Building className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{libraryNode.library}</span>
-                          </div>
-                          <Badge
-                            variant={libraryNode.availableCopies > 0 ? "default" : "secondary"}
-                          >
-                            {libraryNode.availableCopies}/{libraryNode.totalCopies}
-                          </Badge>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-3 pb-1">
-                          {libraryNode.branches.map((branch) => (
-                            <div
-                              key={`branch-${libraryNode.library}-${branch.key}`}
-                              className="rounded-lg border p-3"
-                            >
-                              <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                  <p className="font-mono text-xs">{branch.callNumber}</p>
-                                  <p className="text-xs text-muted-foreground">{branch.location}</p>
-                                </div>
-                                <Badge
-                                  variant={branch.availableCopies > 0 ? "default" : "secondary"}
-                                >
-                                  {branch.availableCopies}/{branch.copies.length}
-                                </Badge>
-                              </div>
-
-                              <div className="mt-2 space-y-1">
-                                {branch.copies.map((copy) => (
-                                  <div
-                                    key={`tree-copy-${copy.id}`}
-                                    className="flex flex-wrap items-center justify-between gap-2 rounded border border-dashed px-2 py-1"
-                                  >
-                                    <Link
-                                      href={`/staff/catalog/item/${copy.id}`}
-                                      className="font-mono text-xs text-primary hover:underline"
-                                    >
-                                      {copy.barcode}
-                                    </Link>
-                                    <Badge
-                                      variant="outline"
-                                      className={getStatusColor(copy.statusId)}
-                                    >
-                                      {copy.status}
-                                    </Badge>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Copy className="h-5 w-5" />
-                Item Copies ({copies.length})
-              </CardTitle>
-              <CardDescription>
-                Individual copies attached to this bibliographic record
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                columns={copyColumns}
-                data={copies}
-                searchable={false}
-                emptyState={
-                  <EmptyState
-                    title="No copies"
-                    description="No copies are attached to this record."
-                    action={{ label: "Add item", onClick: () => setAddItemOpen(true) }}
-                    secondaryAction={{
-                      label: "Seed demo data",
-                      onClick: () => router.push("/staff/help#demo-data"),
-                    }}
-                  />
-                }
-              />
             </CardContent>
           </Card>
         </PageContent>
@@ -1507,7 +1958,7 @@ export default function CatalogRecordPage() {
             author: record.author,
             isbn: record.isbn,
           }}
-          onItemCreated={() => window.location.reload()}
+          onItemCreated={() => loadRecordData()}
         />
       </PageContainer>
     </ErrorBoundary>

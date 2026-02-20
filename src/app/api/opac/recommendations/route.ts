@@ -1,37 +1,28 @@
 import { NextRequest } from "next/server";
-import {
-  callOpenSRF,
-  successResponse,
-  serverErrorResponse,
-} from "@/lib/api";
+import { callOpenSRF, successResponse, serverErrorResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { getOpacPrivacyPrefs } from "@/lib/db/opac";
 import { requirePatronSession } from "@/lib/opac-auth";
 
-// GET /api/opac/recommendations - Get personalized recommendations
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const type = searchParams.get("type") || "personalized";
-  const bibId = searchParams.get("bibId"); // For similar items
+  const bibId = searchParams.get("bibId");
   const limit = parseInt(searchParams.get("limit") || "10");
 
   try {
-    // If getting similar items for a specific bib
-    if (type === "similar" && bibId) {
-      return await getSimilarItems(parseInt(bibId), limit);
-    }
-
-    // If getting "While You Wait" recommendations for a hold
-    if (type === "while-you-wait" && bibId) {
+    if (type === "similar" && bibId) return await getSimilarItems(parseInt(bibId), limit);
+    if (type === "while-you-wait" && bibId)
       return await getWhileYouWaitItems(parseInt(bibId), limit);
-    }
+    if (type === "because_you_read" && bibId)
+      return await getBecauseYouReadItems(parseInt(bibId), limit);
+    if (type === "trending") return await getTrendingItems(limit);
 
-    // If user is logged in, optionally return personalized recommendations (opt-in).
     try {
       const { patronToken, patronId } = await requirePatronSession();
       return await getPersonalizedRecommendations(patronToken, patronId, type, limit);
     } catch {
-      // Treat missing/expired session as "guest" and fall back to popular items.
+      // Fall back to popular items for guests
     }
 
     return await getPopularItems(limit);
@@ -60,25 +51,20 @@ async function getPersonalizedRecommendations(
       });
     }
 
-    // 1) Current holds (safe personalization)
-    const holdsResponse = await callOpenSRF(
-      "open-ils.circ",
-      "open-ils.circ.holds.retrieve",
-      [authtoken, patronId]
-    );
+    const holdsResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.holds.retrieve", [
+      authtoken,
+      patronId,
+    ]);
     const holds = holdsResponse.payload?.[0] || [];
-
-    // Track bib IDs to avoid recommending items already on hold or checked out
     for (const hold of holds) {
       if (hold.target) seenBibIds.add(hold.target);
     }
 
-    // 2) Optional reading-history personalization (explicit opt-in)
     const authorCounts: Record<string, number> = {};
+    const recentReads: Array<{ bibId: number; title: string }> = [];
 
     if (prefs.readingHistoryPersonalization) {
       let allowHistory = false;
-      // Respect Evergreen reading-history setting as an additional guardrail.
       try {
         const settingsResponse = await callOpenSRF(
           "open-ils.actor",
@@ -98,12 +84,9 @@ async function getPersonalizedRecommendations(
           [authtoken, patronId]
         );
         const history = historyResponse.payload?.[0] || [];
-
-        const recentCheckouts = history.slice(0, 20);
-        for (const circ of recentCheckouts) {
+        for (const circ of history.slice(0, 20)) {
           if (circ.target_biblio_record_entry) {
             seenBibIds.add(circ.target_biblio_record_entry);
-
             try {
               const modsResponse = await callOpenSRF(
                 "open-ils.search",
@@ -111,21 +94,28 @@ async function getPersonalizedRecommendations(
                 [circ.target_biblio_record_entry]
               );
               const mods = modsResponse.payload?.[0];
-              if (mods && mods.author) {
-                authorCounts[mods.author] = (authorCounts[mods.author] || 0) + 1;
+              if (mods) {
+                if (mods.author) authorCounts[mods.author] = (authorCounts[mods.author] || 0) + 1;
+                if (mods.title)
+                  recentReads.push({ bibId: circ.target_biblio_record_entry, title: mods.title });
               }
             } catch {
-              // Continue on _error
+              /* continue */
             }
           }
         }
       }
     }
 
-    // 3) "More like this" from current holds (metadata-only)
-    for (const hold of holds.slice(0, 3)) {
-      if (!hold.target) continue;
-      const similar = await getSimilarItems(Number(hold.target), Math.min(4, limit - recommendations.length));
+    // "Because you read" clusters
+    const sourcesForClusters =
+      recentReads.length > 0 ? recentReads.slice(0, 3) : await getHoldTitles(holds.slice(0, 3));
+
+    for (const source of sourcesForClusters) {
+      const similar = await getSimilarItems(
+        source.bibId,
+        Math.min(4, limit - recommendations.length)
+      );
       const payload = await similar.json();
       const recs = Array.isArray(payload?.recommendations) ? payload.recommendations : [];
       for (const r of recs) {
@@ -133,7 +123,10 @@ async function getPersonalizedRecommendations(
         if (r?.id && !seenBibIds.has(r.id)) {
           recommendations.push({
             ...r,
-            reason: r.reason || "Similar to an item you requested",
+            reason: `Because you ${recentReads.length > 0 ? "read" : "requested"} "${source.title}"`,
+            reasonType: "because_you_read",
+            sourceTitle: source.title,
+            sourceBibId: source.bibId,
             source: "similar",
           });
           seenBibIds.add(r.id);
@@ -141,7 +134,7 @@ async function getPersonalizedRecommendations(
       }
     }
 
-    // 4) Top authors (only if reading history opt-in is enabled)
+    // Top authors (reading history opt-in only)
     const topAuthors = Object.entries(authorCounts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
@@ -153,7 +146,6 @@ async function getPersonalizedRecommendations(
         "open-ils.search.biblio.multiclass.query",
         [{ limit: 5 }, `author: ${author}`, 1]
       );
-
       const results = searchResponse.payload?.[0];
       if (results?.ids) {
         for (const idArray of results.ids) {
@@ -175,6 +167,7 @@ async function getPersonalizedRecommendations(
                   ? `https://covers.openlibrary.org/b/isbn/${mods.isbn}-M.jpg`
                   : null,
                 reason: `Because you read books by ${author}`,
+                reasonType: "favorite_author",
                 source: "author",
               });
               seenBibIds.add(id);
@@ -184,14 +177,13 @@ async function getPersonalizedRecommendations(
       }
     }
 
-    // 5. Add popular items to fill remaining slots
+    // Fill remaining with popular items
     if (recommendations.length < limit) {
       const popularResponse = await callOpenSRF(
         "open-ils.search",
         "open-ils.search.biblio.multiclass.query",
         [{ limit: limit - recommendations.length, sort: ["popularity", "desc"] }, "keyword:*", 1]
       );
-
       const popular = popularResponse.payload?.[0];
       if (popular?.ids) {
         for (const idArray of popular.ids) {
@@ -213,6 +205,7 @@ async function getPersonalizedRecommendations(
                   ? `https://covers.openlibrary.org/b/isbn/${mods.isbn}-M.jpg`
                   : null,
                 reason: "Popular at your library",
+                reasonType: "popular",
                 source: "popular",
               });
               seenBibIds.add(id);
@@ -228,39 +221,119 @@ async function getPersonalizedRecommendations(
   return successResponse({
     recommendations,
     personalized: true,
-    personalization: {
-      enabled: true,
-      readingHistory: prefs.readingHistoryPersonalization,
-    },
+    personalization: { enabled: true, readingHistory: prefs.readingHistoryPersonalization },
   });
+}
+
+async function getHoldTitles(holds: any[]): Promise<Array<{ bibId: number; title: string }>> {
+  const results: Array<{ bibId: number; title: string }> = [];
+  for (const hold of holds) {
+    if (!hold.target) continue;
+    try {
+      const modsResponse = await callOpenSRF(
+        "open-ils.search",
+        "open-ils.search.biblio.record.mods_slim.retrieve",
+        [hold.target]
+      );
+      const mods = modsResponse.payload?.[0];
+      if (mods?.title) results.push({ bibId: hold.target, title: mods.title });
+    } catch {
+      /* skip */
+    }
+  }
+  return results;
+}
+
+async function getBecauseYouReadItems(bibId: number, limit: number) {
+  let sourceTitle = "this title";
+  try {
+    const modsResponse = await callOpenSRF(
+      "open-ils.search",
+      "open-ils.search.biblio.record.mods_slim.retrieve",
+      [bibId]
+    );
+    const mods = modsResponse.payload?.[0];
+    if (mods?.title) sourceTitle = mods.title;
+  } catch {
+    /* fallback */
+  }
+
+  const similar = await getSimilarItems(bibId, limit);
+  const payload = await similar.json();
+  const recs = Array.isArray(payload?.recommendations) ? payload.recommendations : [];
+  const enrichedRecs = recs.map((r: any) => ({
+    ...r,
+    reason: `Because you read "${sourceTitle}"`,
+    reasonType: "because_you_read",
+    sourceTitle,
+    sourceBibId: bibId,
+  }));
+
+  return successResponse({ recommendations: enrichedRecs, sourceTitle, sourceBibId: bibId });
+}
+
+async function getTrendingItems(limit: number) {
+  const recommendations: any[] = [];
+  try {
+    const searchResponse = await callOpenSRF(
+      "open-ils.search",
+      "open-ils.search.biblio.multiclass.query",
+      [{ limit: limit * 2, sort: ["popularity", "desc"] }, "keyword:*", 1]
+    );
+    const results = searchResponse.payload?.[0];
+    if (results?.ids) {
+      for (const idArray of results.ids) {
+        if (recommendations.length >= limit) break;
+        const id = Array.isArray(idArray) ? idArray[0] : idArray;
+        const mods = await fetchMods(id);
+        if (mods) {
+          let holdCount = 0;
+          try {
+            const hcr = await callOpenSRF("open-ils.circ", "open-ils.circ.bre.holds.count", [id]);
+            holdCount = hcr.payload?.[0] || 0;
+          } catch {
+            /* optional */
+          }
+
+          recommendations.push({
+            ...mods,
+            holdCount,
+            reason:
+              holdCount > 5
+                ? `Trending - ${holdCount} patrons are waiting for this`
+                : "Trending at your library",
+            reasonType: "trending",
+            source: "trending",
+          });
+        }
+      }
+    }
+    recommendations.sort((a, b) => (b.holdCount || 0) - (a.holdCount || 0));
+  } catch (error) {
+    logger.error({ error: String(error) }, "Error getting trending items");
+  }
+  return successResponse({ recommendations: recommendations.slice(0, limit), type: "trending" });
 }
 
 async function getSimilarItems(bibId: number, limit: number) {
   const recommendations: any[] = [];
-
   try {
-    // Get the source record details
     const modsResponse = await callOpenSRF(
       "open-ils.search",
       "open-ils.search.biblio.record.mods_slim.retrieve",
       [bibId]
     );
     const sourceMods = modsResponse.payload?.[0];
-
-    if (!sourceMods) {
-      return successResponse({ recommendations: [] });
-    }
+    if (!sourceMods) return successResponse({ recommendations: [] });
 
     const seenBibIds = new Set<number>([bibId]);
 
-    // Search for items by same author
     if (sourceMods.author) {
       const authorSearchResponse = await callOpenSRF(
         "open-ils.search",
         "open-ils.search.biblio.multiclass.query",
         [{ limit: 5 }, `author: ${sourceMods.author}`, 1]
       );
-
       const results = authorSearchResponse.payload?.[0];
       if (results?.ids) {
         for (const idArray of results.ids) {
@@ -280,7 +353,6 @@ async function getSimilarItems(bibId: number, limit: number) {
       }
     }
 
-    // Search by a few subject headings (MARC 650$a) as a metadata-only "more like this"
     if (recommendations.length < limit) {
       try {
         const marcResponse = await callOpenSRF(
@@ -288,9 +360,12 @@ async function getSimilarItems(bibId: number, limit: number) {
           "open-ils.supercat.record.marcxml.retrieve",
           [bibId]
         );
-        const marcXml = typeof marcResponse?.payload?.[0] === "string" ? String(marcResponse.payload[0]) : "";
+        const marcXml =
+          typeof marcResponse?.payload?.[0] === "string" ? String(marcResponse.payload[0]) : "";
         const subjects = Array.from(
-          marcXml.matchAll(/<datafield\s+tag="650"[\s\S]*?<subfield\s+code="a">([^<]+)<\/subfield>/g)
+          marcXml.matchAll(
+            /<datafield\s+tag="650"[\s\S]*?<subfield\s+code="a">([^<]+)<\/subfield>/g
+          )
         )
           .map((m) => String(m[1] || "").trim())
           .filter(Boolean)
@@ -321,58 +396,51 @@ async function getSimilarItems(bibId: number, limit: number) {
           }
         }
       } catch {
-        // Best-effort: subject extraction failures should not break recs.
+        /* best-effort */
       }
     }
   } catch (error) {
     logger.error({ error: String(error) }, "Error getting similar items");
   }
-
   return successResponse({ recommendations });
 }
 
 async function getWhileYouWaitItems(bibId: number, limit: number) {
-  // Similar to getSimilarItems but specifically for hold queue
-  // Prioritizes available items in similar genres
   return getSimilarItems(bibId, limit);
 }
 
 async function getPopularItems(limit: number) {
-  const recommendations = await collectPopularItems(limit);
   return successResponse({
-    recommendations,
+    recommendations: await collectPopularItems(limit),
     personalized: false,
   });
 }
 
 async function collectPopularItems(limit: number) {
   const recommendations: any[] = [];
-
   try {
     const searchResponse = await callOpenSRF(
       "open-ils.search",
       "open-ils.search.biblio.multiclass.query",
       [{ limit, sort: ["popularity", "desc"] }, "keyword:*", 1]
     );
-
     const results = searchResponse.payload?.[0];
     if (results?.ids) {
       for (const idArray of results.ids) {
         const id = Array.isArray(idArray) ? idArray[0] : idArray;
         const mods = await fetchMods(id);
-        if (mods) {
+        if (mods)
           recommendations.push({
             ...mods,
             reason: "Popular at your library",
+            reasonType: "popular",
             source: "popular",
           });
-        }
       }
     }
   } catch (error) {
     logger.error({ error: String(error) }, "Error getting popular items");
   }
-
   return recommendations;
 }
 
@@ -390,13 +458,11 @@ async function fetchMods(bibId: number) {
         title: mods.title,
         author: mods.author,
         isbn: mods.isbn,
-        coverUrl: mods.isbn
-          ? `https://covers.openlibrary.org/b/isbn/${mods.isbn}-M.jpg`
-          : null,
+        coverUrl: mods.isbn ? `https://covers.openlibrary.org/b/isbn/${mods.isbn}-M.jpg` : null,
       };
     }
   } catch {
-    // Continue on error
+    /* continue */
   }
   return null;
 }
