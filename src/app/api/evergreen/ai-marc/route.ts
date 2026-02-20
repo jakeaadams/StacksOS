@@ -1,4 +1,6 @@
 import { NextRequest } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { loadAiConfig } from "@/lib/ai/config";
 import { z } from "zod";
 import {
   successResponse,
@@ -59,6 +61,29 @@ const marcGenerationResponseSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    // Feature flag: check if AI features are enabled
+    const aiConfig = loadAiConfig();
+    if (!aiConfig.enabled) {
+      return Response.json({ error: "AI features are currently disabled" }, { status: 503 });
+    }
+
+    // Rate limit: 20 AI MARC generations per hour per IP
+    const clientIp =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+    const rateResult = await checkRateLimit(clientIp, {
+      maxAttempts: 20,
+      windowMs: 60 * 60 * 1000,
+      endpoint: "ai-marc",
+    });
+    if (!rateResult.allowed) {
+      return Response.json(
+        { error: "AI MARC generation rate limit exceeded. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     // Require staff cataloging permissions
     const { actor } = await requirePermissions(["CREATE_MARC", "UPDATE_MARC"]);
     const actorId =

@@ -401,6 +401,10 @@ function SearchContent() {
     performSearch();
   }, [performSearch]);
 
+  useEffect(() => {
+    document.title = query ? `Search: ${query} | Library Catalog` : "Search | Library Catalog";
+  }, [query]);
+
   const getCoverUrl = (record: any): string | undefined => {
     const isbn = record.isbn || record.simple_record?.isbn;
     if (isbn) {

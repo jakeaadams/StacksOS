@@ -1,6 +1,7 @@
 "use client";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
+import { featureFlags } from "@/lib/feature-flags";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -289,226 +290,228 @@ export default function CreateRecordPage() {
             </Card>
 
             {/* AI MARC Record Generation */}
-            <Card className="border-purple-200">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-purple-600" />
-                  <CardTitle>AI Record Generation</CardTitle>
-                </div>
-                <CardDescription>
-                  Generate a draft MARC record from basic bibliographic info using AI. Staff must
-                  review and approve all fields before saving.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="ai-title">
-                      Title <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="ai-title"
-                      placeholder="e.g. The Great Gatsby"
-                      value={aiTitle}
-                      onChange={(e) => setAiTitle(e.target.value)}
-                    />
+            {featureFlags.ai && (
+              <Card className="border-purple-200">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-purple-600" />
+                    <CardTitle>AI Record Generation</CardTitle>
                   </div>
-                  <div>
-                    <Label htmlFor="ai-author">Author</Label>
-                    <Input
-                      id="ai-author"
-                      placeholder="e.g. F. Scott Fitzgerald"
-                      value={aiAuthor}
-                      onChange={(e) => setAiAuthor(e.target.value)}
-                    />
+                  <CardDescription>
+                    Generate a draft MARC record from basic bibliographic info using AI. Staff must
+                    review and approve all fields before saving.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <Label htmlFor="ai-title">
+                        Title <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="ai-title"
+                        placeholder="e.g. The Great Gatsby"
+                        value={aiTitle}
+                        onChange={(e) => setAiTitle(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="ai-author">Author</Label>
+                      <Input
+                        id="ai-author"
+                        placeholder="e.g. F. Scott Fitzgerald"
+                        value={aiAuthor}
+                        onChange={(e) => setAiAuthor(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="ai-isbn">ISBN</Label>
+                      <Input
+                        id="ai-isbn"
+                        placeholder="e.g. 978-0743273565"
+                        value={aiIsbn}
+                        onChange={(e) => setAiIsbn(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="ai-publisher">Publisher</Label>
+                      <Input
+                        id="ai-publisher"
+                        placeholder="e.g. Scribner"
+                        value={aiPublisher}
+                        onChange={(e) => setAiPublisher(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="ai-format">Format</Label>
+                      <Select value={aiFormat} onValueChange={setAiFormat}>
+                        <SelectTrigger id="ai-format">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="book">Book</SelectItem>
+                          <SelectItem value="ebook">eBook</SelectItem>
+                          <SelectItem value="audiobook">Audiobook</SelectItem>
+                          <SelectItem value="dvd">DVD</SelectItem>
+                          <SelectItem value="serial">Serial</SelectItem>
+                          <SelectItem value="music_score">Music Score</SelectItem>
+                          <SelectItem value="map">Map</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label htmlFor="ai-description">Description / Notes</Label>
+                      <Textarea
+                        id="ai-description"
+                        placeholder="Optional: describe the work to help AI generate better subjects, summary, and classification..."
+                        value={aiDescription}
+                        onChange={(e) => setAiDescription(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="ai-isbn">ISBN</Label>
-                    <Input
-                      id="ai-isbn"
-                      placeholder="e.g. 978-0743273565"
-                      value={aiIsbn}
-                      onChange={(e) => setAiIsbn(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="ai-publisher">Publisher</Label>
-                    <Input
-                      id="ai-publisher"
-                      placeholder="e.g. Scribner"
-                      value={aiPublisher}
-                      onChange={(e) => setAiPublisher(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="ai-format">Format</Label>
-                    <Select value={aiFormat} onValueChange={setAiFormat}>
-                      <SelectTrigger id="ai-format">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="book">Book</SelectItem>
-                        <SelectItem value="ebook">eBook</SelectItem>
-                        <SelectItem value="audiobook">Audiobook</SelectItem>
-                        <SelectItem value="dvd">DVD</SelectItem>
-                        <SelectItem value="serial">Serial</SelectItem>
-                        <SelectItem value="music_score">Music Score</SelectItem>
-                        <SelectItem value="map">Map</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="ai-description">Description / Notes</Label>
-                    <Textarea
-                      id="ai-description"
-                      placeholder="Optional: describe the work to help AI generate better subjects, summary, and classification..."
-                      value={aiDescription}
-                      onChange={(e) => setAiDescription(e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                  <Button
-                    onClick={handleAiGenerate}
-                    disabled={aiGenerating || !aiTitle.trim()}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
-                  >
-                    {aiGenerating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Generate MARC Record
-                      </>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      onClick={handleAiGenerate}
+                      disabled={aiGenerating || !aiTitle.trim()}
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      {aiGenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Generate MARC Record
+                        </>
+                      )}
+                    </Button>
+                    {aiGenerating && (
+                      <span className="text-sm text-muted-foreground">
+                        AI is generating MARC fields...
+                      </span>
                     )}
-                  </Button>
-                  {aiGenerating && (
-                    <span className="text-sm text-muted-foreground">
-                      AI is generating MARC fields...
-                    </span>
-                  )}
-                </div>
+                  </div>
 
-                {aiError && (
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>{aiError}</AlertDescription>
-                  </Alert>
-                )}
-
-                {/* AI Generated Results */}
-                {aiResult && (
-                  <div className="space-y-4 mt-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold text-foreground flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-purple-600" />
-                        Generated MARC Record (Draft)
-                      </h4>
-                      <Button variant="outline" size="sm" onClick={handleOpenInMarcEditor}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Open in MARC Editor
-                      </Button>
-                    </div>
-
-                    <Alert className="bg-amber-50 border-amber-200">
-                      <Info className="h-4 w-4 text-amber-600" />
-                      <AlertDescription className="text-amber-800">
-                        This is an AI-generated draft. All fields must be reviewed and approved by
-                        cataloging staff before saving to the catalog. Fields highlighted in amber
-                        are AI-generated.
-                      </AlertDescription>
+                  {aiError && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>{aiError}</AlertDescription>
                     </Alert>
+                  )}
 
-                    {/* Fixed fields */}
-                    <div className="space-y-2">
-                      <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono text-xs font-bold text-foreground">LDR</span>
-                          <span className="text-xs text-muted-foreground">Leader</span>
-                        </div>
-                        <code className="text-sm font-mono text-foreground/80 break-all">
-                          {aiResult.leader}
-                        </code>
+                  {/* AI Generated Results */}
+                  {aiResult && (
+                    <div className="space-y-4 mt-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-foreground flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-purple-600" />
+                          Generated MARC Record (Draft)
+                        </h4>
+                        <Button variant="outline" size="sm" onClick={handleOpenInMarcEditor}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Open in MARC Editor
+                        </Button>
                       </div>
 
-                      <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono text-xs font-bold text-foreground">008</span>
-                          <span className="text-xs text-muted-foreground">
-                            Fixed-Length Data Elements
-                          </span>
-                        </div>
-                        <code className="text-sm font-mono text-foreground/80 break-all">
-                          {aiResult.field_008}
-                        </code>
-                      </div>
-                    </div>
+                      <Alert className="bg-amber-50 border-amber-200">
+                        <Info className="h-4 w-4 text-amber-600" />
+                        <AlertDescription className="text-amber-800">
+                          This is an AI-generated draft. All fields must be reviewed and approved by
+                          cataloging staff before saving to the catalog. Fields highlighted in amber
+                          are AI-generated.
+                        </AlertDescription>
+                      </Alert>
 
-                    {/* Variable fields */}
-                    <div className="space-y-2">
-                      {aiResult.fields.map((field, idx) => (
-                        <div
-                          key={`${field.tag}-${idx}`}
-                          className="bg-amber-50/50 border border-amber-200 rounded-lg p-3"
-                        >
+                      {/* Fixed fields */}
+                      <div className="space-y-2">
+                        <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-3">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="font-mono text-xs font-bold text-foreground">
-                              {field.tag}
-                            </span>
+                            <span className="font-mono text-xs font-bold text-foreground">LDR</span>
+                            <span className="text-xs text-muted-foreground">Leader</span>
+                          </div>
+                          <code className="text-sm font-mono text-foreground/80 break-all">
+                            {aiResult.leader}
+                          </code>
+                        </div>
+
+                        <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-mono text-xs font-bold text-foreground">008</span>
                             <span className="text-xs text-muted-foreground">
-                              {MARC_FIELD_LABELS[field.tag] || ""}
-                            </span>
-                            <span className="font-mono text-xs text-muted-foreground">
-                              [{field.ind1 || " "}
-                              {field.ind2 || " "}]
-                            </span>
-                            <span className="ml-auto">
-                              <span
-                                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${confidenceColor(
-                                  field.confidence
-                                )}`}
-                              >
-                                {field.confidence}
-                              </span>
+                              Fixed-Length Data Elements
                             </span>
                           </div>
                           <code className="text-sm font-mono text-foreground/80 break-all">
-                            {subfieldString(field.subfields)}
+                            {aiResult.field_008}
                           </code>
                         </div>
-                      ))}
-                    </div>
+                      </div>
 
-                    {/* Confidence legend */}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2">
-                      <span className="font-medium">Confidence:</span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-green-500" /> High - from provided
-                        input
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-yellow-500" /> Medium - inferred
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-red-500" /> Low - speculative
-                      </span>
-                    </div>
+                      {/* Variable fields */}
+                      <div className="space-y-2">
+                        {aiResult.fields.map((field, idx) => (
+                          <div
+                            key={`${field.tag}-${idx}`}
+                            className="bg-amber-50/50 border border-amber-200 rounded-lg p-3"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-mono text-xs font-bold text-foreground">
+                                {field.tag}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {MARC_FIELD_LABELS[field.tag] || ""}
+                              </span>
+                              <span className="font-mono text-xs text-muted-foreground">
+                                [{field.ind1 || " "}
+                                {field.ind2 || " "}]
+                              </span>
+                              <span className="ml-auto">
+                                <span
+                                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${confidenceColor(
+                                    field.confidence
+                                  )}`}
+                                >
+                                  {field.confidence}
+                                </span>
+                              </span>
+                            </div>
+                            <code className="text-sm font-mono text-foreground/80 break-all">
+                              {subfieldString(field.subfields)}
+                            </code>
+                          </div>
+                        ))}
+                      </div>
 
-                    {aiResult.draftId && (
-                      <p className="text-xs text-muted-foreground">
-                        Draft ID: {aiResult.draftId} | Provider: {aiResult.provider}
-                        {aiResult.model ? ` (${aiResult.model})` : ""}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                      {/* Confidence legend */}
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2">
+                        <span className="font-medium">Confidence:</span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-green-500" /> High - from
+                          provided input
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-yellow-500" /> Medium - inferred
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-red-500" /> Low - speculative
+                        </span>
+                      </div>
+
+                      {aiResult.draftId && (
+                        <p className="text-xs text-muted-foreground">
+                          Draft ID: {aiResult.draftId} | Provider: {aiResult.provider}
+                          {aiResult.model ? ` (${aiResult.model})` : ""}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <Card>

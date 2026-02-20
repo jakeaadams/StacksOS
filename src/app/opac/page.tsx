@@ -143,6 +143,10 @@ export default function OPACHomePage() {
     void fetchFeaturedContent();
   }, [fetchFeaturedContent]);
 
+  useEffect(() => {
+    document.title = library?.name ? `${library.name} | Library Catalog` : "Library Catalog";
+  }, [library?.name]);
+
   const QuickSearchChip = ({ label, href }: { label: string; href: string }) => (
     <Link
       href={href}

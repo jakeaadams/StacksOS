@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callOpenSRF } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 /**
  * Spellcheck / "Did you mean?" API
@@ -177,6 +178,23 @@ export async function GET(req: NextRequest) {
 
   if (!query.trim()) {
     return NextResponse.json({ ok: true, suggestion: null });
+  }
+
+  // Rate limit: 60 spellcheck requests per hour per IP
+  const clientIp =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
+  const rateResult = await checkRateLimit(clientIp, {
+    maxAttempts: 60,
+    windowMs: 60 * 60 * 1000,
+    endpoint: "spellcheck",
+  });
+  if (!rateResult.allowed) {
+    return NextResponse.json(
+      { ok: false, error: "Spellcheck rate limit exceeded. Please try again later." },
+      { status: 429 }
+    );
   }
 
   try {

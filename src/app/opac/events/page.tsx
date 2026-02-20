@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { featureFlags } from "@/lib/feature-flags";
 import { useLibrary } from "@/hooks/use-library";
 import {
   Calendar,
@@ -136,6 +138,7 @@ function EventCard({ event }: { event: LibraryEvent }) {
         {event.registrationRequired ? (
           <button
             onClick={handleRegister}
+            aria-label={`Register for ${event.title}`}
             className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg
                      hover:bg-primary-700 transition-colors whitespace-nowrap"
           >
@@ -285,6 +288,10 @@ function MonthView({ events }: { events: LibraryEvent[] }) {
 }
 
 export default function EventsPage() {
+  if (!featureFlags.opacEvents) {
+    notFound();
+  }
+
   const { library } = useLibrary();
   const [events, setEvents] = useState<LibraryEvent[]>([]);
   const [branches, setBranches] = useState<string[]>([]);
@@ -369,6 +376,7 @@ export default function EventsPage() {
               placeholder="Search events..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Search events"
               className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg bg-background
                        text-foreground placeholder:text-muted-foreground
                        focus:outline-none focus:ring-2 focus:ring-primary-500"

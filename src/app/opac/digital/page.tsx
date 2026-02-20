@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, notFound } from "next/navigation";
+import { featureFlags } from "@/lib/feature-flags";
 import { useLibrary } from "@/hooks/use-library";
 import {
   ArrowLeft,
@@ -20,6 +21,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { getEContentProviders, type EContentProvider } from "@/lib/econtent-providers";
 
 const TYPE_LABELS: Record<string, { label: string; icon: React.ElementType }> = {
@@ -65,16 +67,12 @@ function ProviderCard({ provider }: { provider: EContentProvider }) {
         </p>
       )}
 
-      <a
-        href={provider.browseUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg
-                 hover:bg-primary-700 transition-colors font-medium text-sm"
-      >
-        Browse Collection
-        <ExternalLink className="h-4 w-4" />
-      </a>
+      <Button asChild>
+        <a href={provider.browseUrl} target="_blank" rel="noopener noreferrer">
+          Browse Collection
+          <ExternalLink className="h-4 w-4 ml-2" />
+        </a>
+      </Button>
     </div>
   );
 }
@@ -117,6 +115,10 @@ const GETTING_STARTED_STEPS = [
 ];
 
 export default function DigitalLibraryPage() {
+  if (!featureFlags.opacDigitalLibrary) {
+    notFound();
+  }
+
   const router = useRouter();
   const { library } = useLibrary();
   const providers = getEContentProviders();
@@ -132,12 +134,12 @@ export default function DigitalLibraryPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Page header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white py-10 md:py-14">
+      <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white py-10 md:py-14">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center gap-2 mb-2">
             <Link
               href="/opac"
-              className="text-purple-200 hover:text-white transition-colors text-sm inline-flex items-center gap-1"
+              className="text-white hover:text-white transition-colors text-sm inline-flex items-center gap-1"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Catalog
@@ -149,7 +151,7 @@ export default function DigitalLibraryPage() {
             </div>
             <h1 className="text-3xl md:text-4xl font-bold">Digital Library</h1>
           </div>
-          <p className="text-purple-100 text-lg max-w-2xl mb-6">
+          <p className="text-white/90 text-lg max-w-2xl mb-6">
             Free eBooks, audiobooks, movies, and more -- all you need is your{" "}
             {library?.name || "library"} card.
           </p>
@@ -162,13 +164,14 @@ export default function DigitalLibraryPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search for eBooks & digital content..."
+                aria-label="Search digital content"
                 className="w-full pl-5 pr-14 py-3.5 rounded-full text-foreground placeholder:text-muted-foreground
                          bg-white shadow-lg focus:outline-none focus:ring-4 focus:ring-white/30"
               />
               <button
                 type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-purple-600 text-white
-                         rounded-full hover:bg-purple-700 transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-primary-600 text-white
+                         rounded-full hover:bg-primary-700 transition-colors"
                 aria-label="Search digital library"
               >
                 <Search className="h-5 w-5" />
@@ -281,21 +284,15 @@ export default function DigitalLibraryPage() {
               Need help getting started? Visit any branch or contact us for one-on-one assistance.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
-              <Link
-                href="/opac/register"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg
-                         hover:bg-primary-700 transition-colors font-medium"
-              >
-                Get a Library Card
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/opac/help"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-card text-foreground rounded-lg
-                         border border-border hover:bg-muted/50 transition-colors font-medium"
-              >
-                Help & FAQs
-              </Link>
+              <Button asChild>
+                <Link href="/opac/register">
+                  Get a Library Card
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/opac/help">Help & FAQs</Link>
+              </Button>
             </div>
           </div>
         </section>

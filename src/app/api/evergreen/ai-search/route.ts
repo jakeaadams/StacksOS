@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { loadAiConfig } from "@/lib/ai/config";
 import { generateAiJson, safeUserText } from "@/lib/ai";
 import {
   buildNaturalLanguageSearchPrompt,
@@ -69,6 +70,12 @@ function getClientIp(req: NextRequest): string {
 // ---------------------------------------------------------------------------
 
 export async function GET(req: NextRequest) {
+  // Feature flag: check if AI features are enabled
+  const aiConfig = loadAiConfig();
+  if (!aiConfig.enabled) {
+    return Response.json({ error: "AI features are currently disabled" }, { status: 503 });
+  }
+
   const rawQuery = (req.nextUrl.searchParams.get("q") || "").trim();
   const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "20", 10) || 20, 50);
   const offset = parseInt(req.nextUrl.searchParams.get("offset") || "0", 10) || 0;

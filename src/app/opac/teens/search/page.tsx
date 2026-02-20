@@ -17,6 +17,13 @@ import {
   Sparkles,
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/shared/loading-state";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface SearchResult {
   id: number;
@@ -139,6 +146,12 @@ function TeensSearchContent() {
     void searchCatalog();
   }, [searchCatalog]);
 
+  useEffect(() => {
+    document.title = query
+      ? `Search: ${query} | Teen Zone | Library Catalog`
+      : "Teen Search | Library Catalog";
+  }, [query]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     updateSearchParams({ q: searchInput });
@@ -147,7 +160,7 @@ function TeensSearchContent() {
   const totalPages = Math.ceil(totalResults / limit);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Search Header */}
       <div className="mb-8">
         <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-6">
@@ -157,6 +170,7 @@ function TeensSearchContent() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search YA books, graphic novels, manga..."
+              aria-label="Search teen books"
               className="w-full pl-5 pr-14 py-4 text-lg rounded-full border-2 border-indigo-200 text-foreground placeholder:text-muted-foreground/70 bg-card focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
             />
             <button
@@ -188,23 +202,26 @@ function TeensSearchContent() {
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Sort:</span>
-              <select
+              <Select
                 value={sort}
-                onChange={(e) => {
-                  const next = e.target.value;
+                onValueChange={(next) => {
                   updateSearchParams({
                     sort: next,
                     order: next === "create_date" ? "desc" : null,
                   });
                 }}
-                className="px-3 py-2 rounded-xl border-2 border-border bg-card text-sm focus:outline-none focus:border-indigo-400"
               >
-                {SORT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-[140px]" aria-label="Sort results">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <button
@@ -220,6 +237,7 @@ function TeensSearchContent() {
               <button
                 type="button"
                 onClick={() => setViewMode("grid")}
+                aria-label="Grid view"
                 className={`p-2 ${viewMode === "grid" ? "bg-indigo-100 text-indigo-700" : "text-muted-foreground"}`}
               >
                 <Grid className="h-5 w-5" />
@@ -227,6 +245,7 @@ function TeensSearchContent() {
               <button
                 type="button"
                 onClick={() => setViewMode("list")}
+                aria-label="List view"
                 className={`p-2 ${viewMode === "list" ? "bg-indigo-100 text-indigo-700" : "text-muted-foreground"}`}
               >
                 <LayoutList className="h-5 w-5" />
@@ -241,35 +260,45 @@ function TeensSearchContent() {
             <div className="flex flex-wrap gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground/80 mb-1">Format</label>
-                <select
-                  value={format}
-                  onChange={(e) => updateSearchParams({ format: e.target.value || null })}
-                  className="px-3 py-2 rounded-lg border border-border focus:border-indigo-400 focus:outline-none"
+                <Select
+                  value={format || "all"}
+                  onValueChange={(val) =>
+                    updateSearchParams({ format: val === "all" ? null : val })
+                  }
                 >
-                  <option value="">All Formats</option>
-                  <option value="book">Books</option>
-                  <option value="ebook">eBooks</option>
-                  <option value="audiobook">Audiobooks</option>
-                  <option value="dvd">DVDs</option>
-                </select>
+                  <SelectTrigger className="w-[160px]" aria-label="Filter by format">
+                    <SelectValue placeholder="All Formats" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Formats</SelectItem>
+                    <SelectItem value="book">Books</SelectItem>
+                    <SelectItem value="ebook">eBooks</SelectItem>
+                    <SelectItem value="audiobook">Audiobooks</SelectItem>
+                    <SelectItem value="dvd">DVDs</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground/80 mb-1">
                   Availability
                 </label>
-                <select
-                  value={availableOnly ? "available" : ""}
-                  onChange={(e) =>
+                <Select
+                  value={availableOnly ? "available" : "all"}
+                  onValueChange={(val) =>
                     updateSearchParams({
-                      available: e.target.value === "available" ? "true" : null,
+                      available: val === "available" ? "true" : null,
                     })
                   }
-                  className="px-3 py-2 rounded-lg border border-border focus:border-indigo-400 focus:outline-none"
                 >
-                  <option value="">All</option>
-                  <option value="available">Available Now</option>
-                </select>
+                  <SelectTrigger className="w-[160px]" aria-label="Filter by availability">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="available">Available Now</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <button

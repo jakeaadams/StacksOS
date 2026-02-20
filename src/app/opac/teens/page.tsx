@@ -173,6 +173,10 @@ export default function TeensHomePage() {
     void fetchContent();
   }, [fetchContent]);
 
+  useEffect(() => {
+    document.title = "Teen Zone | Library Catalog";
+  }, []);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -197,13 +201,9 @@ export default function TeensHomePage() {
           )}
 
           <h1 className="text-4xl md:text-6xl font-extrabold mb-4 tracking-tight">
-            <span className="bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">
-              Your Next
-            </span>
+            <span className="text-purple-700 dark:text-purple-300">Your Next</span>
             <br />
-            <span className="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 bg-clip-text text-transparent">
-              Great Read
-            </span>
+            <span className="text-purple-700 dark:text-purple-300">Great Read</span>
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
@@ -219,6 +219,7 @@ export default function TeensHomePage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search YA books, graphic novels, manga..."
+                  aria-label="Search teen books"
                   className="w-full pl-6 pr-16 py-5 text-xl rounded-full border-2 border-indigo-200 text-foreground placeholder:text-muted-foreground/70 bg-card focus:outline-none focus:border-indigo-400"
                 />
                 <button
@@ -235,7 +236,7 @@ export default function TeensHomePage() {
 
       {/* Browse by Category */}
       <section className="py-8 md:py-12 px-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
             <h2 className="text-2xl md:text-3xl font-extrabold text-foreground mb-2 tracking-tight">
               Browse by Genre
@@ -266,7 +267,7 @@ export default function TeensHomePage() {
 
       {/* Trending for Teens */}
       <section className="py-8 md:py-12 px-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-indigo-100 rounded-xl">
@@ -311,7 +312,7 @@ export default function TeensHomePage() {
 
       {/* New YA Releases */}
       <section className="py-8 md:py-12 px-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 rounded-xl">
@@ -356,7 +357,7 @@ export default function TeensHomePage() {
 
       {/* Why Read YA promo */}
       <section className="py-8 px-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="bg-gradient-to-br from-purple-100 via-indigo-50 to-violet-100 rounded-3xl p-6 md:p-8">
             <h3 className="text-xl font-extrabold text-foreground mb-4 text-center tracking-tight">
               Why Read YA?

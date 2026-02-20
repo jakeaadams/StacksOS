@@ -3,8 +3,9 @@
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { clientLogger } from "@/lib/client-logger";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, notFound } from "next/navigation";
 import Link from "next/link";
+import { featureFlags } from "@/lib/feature-flags";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { RecommendationCard, type RecommendationItem } from "@/components/opac/recommendation-card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,6 +21,10 @@ interface RecommendationSection {
 }
 
 export default function RecommendationsPage() {
+  if (!featureFlags.opacPersonalization) {
+    notFound();
+  }
+
   const router = useRouter();
   const { patron, isLoggedIn, isLoading: sessionLoading } = usePatronSession();
   const [personalized, setPersonalized] = useState<RecommendationItem[]>([]);
@@ -116,6 +121,10 @@ export default function RecommendationsPage() {
     } finally {
       setLoadingStates((prev) => ({ ...prev, genres: false }));
     }
+  }, []);
+
+  useEffect(() => {
+    document.title = "Recommendations | Library Catalog";
   }, []);
 
   useEffect(() => {

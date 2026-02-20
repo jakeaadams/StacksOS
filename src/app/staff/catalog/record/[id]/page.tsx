@@ -571,12 +571,14 @@ function ItemsTab({
   copies,
   statuses,
   locations,
+  recordId: itemsRecordId,
   onRefresh,
   onAddItem,
 }: {
   copies: CopyInfo[];
   statuses: CopyStatusOption[];
   locations: CopyLocationOption[];
+  recordId: string;
   onRefresh: () => void;
   onAddItem: () => void;
 }) {
@@ -700,6 +702,12 @@ function ItemsTab({
       const data = await res.json();
       if (data.ok) {
         toast.success(`Item ${originalCopy.barcode} updated`);
+        clientLogger.info("Item edited", {
+          itemId: copyId,
+          recordId: itemsRecordId,
+          changes: Object.keys(body),
+          action: "item_inline_edit",
+        });
         cancelEditing(copyId);
         onRefresh();
       } else {
@@ -752,6 +760,13 @@ function ItemsTab({
 
     if (successCount > 0) {
       toast.success(`Updated ${successCount} item${successCount > 1 ? "s" : ""}`);
+      clientLogger.info("Bulk item operation", {
+        recordId: itemsRecordId,
+        action: bulkAction,
+        itemCount: ids.length,
+        itemIds: ids,
+        operation: "bulk_item_action",
+      });
     }
     if (failCount > 0) {
       toast.error(`Failed to update ${failCount} item${failCount > 1 ? "s" : ""}`);
@@ -1681,6 +1696,7 @@ export default function CatalogRecordPage() {
                       copies={copies}
                       statuses={copyStatuses}
                       locations={copyLocations}
+                      recordId={recordId}
                       onRefresh={loadRecordData}
                       onAddItem={() => setAddItemOpen(true)}
                     />
