@@ -10,8 +10,13 @@ import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { KeyboardProvider } from "@/components/keyboard/keyboard-shortcuts";
-import { AlertTriangle, Loader2 } from "lucide-react";
-import { KeyboardShortcutsOverlay, SessionTimeoutWarning, IdleTimeoutWarning } from "@/components/shared";
+import { AlertTriangle, Loader2, Menu } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  KeyboardShortcutsOverlay,
+  SessionTimeoutWarning,
+  IdleTimeoutWarning,
+} from "@/components/shared";
 import { useApi } from "@/hooks";
 import { WorkformsProvider } from "@/contexts/workforms-context";
 import { clientLogger } from "@/lib/client-logger";
@@ -25,6 +30,7 @@ const SIDEBAR_KEY = "stacksos_sidebar_collapsed";
 export function StaffLayout({ children }: StaffLayoutProps) {
   const [commandOpen, setCommandOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const router = useRouter();
   const { user, orgs, isLoading, isAuthenticated, logout, updateUser } = useAuth();
 
@@ -34,7 +40,10 @@ export function StaffLayout({ children }: StaffLayoutProps) {
     revalidateOnFocus: true,
     revalidateInterval: 60_000,
   });
-  const { data: envData } = useApi<any>("/api/env", { immediate: true, revalidateInterval: 5 * 60_000 });
+  const { data: envData } = useApi<any>("/api/env", {
+    immediate: true,
+    revalidateInterval: 5 * 60_000,
+  });
 
   const evergreenOk = !!pingData?.ok;
   const evergreenStatus = typeof pingData?.status === "number" ? pingData.status : undefined;
@@ -113,72 +122,109 @@ export function StaffLayout({ children }: StaffLayoutProps) {
   return (
     <KeyboardProvider>
       <WorkformsProvider>
-      <div className="app-shell min-h-screen flex flex-col">
-        <TopNav
-          onCommandOpen={() => setCommandOpen(true)}
-          currentLibrary={user?.activeOrgName || user?.homeLibrary || "Library"}
-          userId={user?.id}
-          userName={user?.displayName || "Staff User"}
-          userInitials={
-            user?.displayName
-              ?.split(" ")
-              .map((n) => n[0])
-              .join("")
-              .toUpperCase() || "SU"
-          }
-          userPhotoUrl={user?.photoUrl}
-          userTitle={user?.profileName || "Library Staff"}
-          onUserPhotoUpdated={(url) => updateUser({ photoUrl: url })}
-          onLogout={logout}
-          orgs={orgs}
-          evergreenOk={evergreenOk}
-          evergreenStatus={evergreenStatus}
-        />
-        <div className="flex flex-1 min-h-0">
-          <Sidebar
-            collapsed={sidebarCollapsed}
-            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-            evergreenOk={evergreenOk}
-            evergreenStatus={evergreenStatus}
-          />
-          <main className="flex-1 min-h-0 overflow-auto pb-10">
-            <div className="mx-auto w-full max-w-[1600px] px-5 py-6 sm:px-6 lg:px-8">
-              {evergreenOk ? null : (
-                <div className="mb-6 rounded-2xl border border-amber-200/70 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-amber-500/15">
-                        <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+        <div className="app-shell min-h-screen flex flex-col">
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden h-10 w-10 ml-2 mr-1 flex-shrink-0"
+              onClick={() => setMobileSidebarOpen(true)}
+              aria-label="Open navigation menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <TopNav
+                onCommandOpen={() => setCommandOpen(true)}
+                currentLibrary={user?.activeOrgName || user?.homeLibrary || "Library"}
+                userId={user?.id}
+                userName={user?.displayName || "Staff User"}
+                userInitials={
+                  user?.displayName
+                    ?.split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase() || "SU"
+                }
+                userPhotoUrl={user?.photoUrl}
+                userTitle={user?.profileName || "Library Staff"}
+                onUserPhotoUpdated={(url) => updateUser({ photoUrl: url })}
+                onLogout={logout}
+                orgs={orgs}
+                evergreenOk={evergreenOk}
+                evergreenStatus={evergreenStatus}
+              />
+            </div>
+          </div>
+          <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+            <SheetContent side="left" className="w-72 p-0">
+              <SheetHeader className="px-4 py-3 border-b border-border/70">
+                <SheetTitle className="text-sm">Navigation</SheetTitle>
+              </SheetHeader>
+              <div className="flex-1 overflow-hidden" onClick={() => setMobileSidebarOpen(false)}>
+                <Sidebar
+                  mobile
+                  collapsed={false}
+                  onToggleCollapse={() => setMobileSidebarOpen(false)}
+                  evergreenOk={evergreenOk}
+                  evergreenStatus={evergreenStatus}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+          <div className="flex flex-1 min-h-0">
+            <Sidebar
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+              evergreenOk={evergreenOk}
+              evergreenStatus={evergreenStatus}
+            />
+            <main className="flex-1 min-h-0 overflow-auto pb-10">
+              <div className="mx-auto w-full max-w-[1600px] px-5 py-6 sm:px-6 lg:px-8">
+                {evergreenOk ? null : (
+                  <div className="mb-6 rounded-2xl border border-amber-200/70 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-amber-500/15">
+                          <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-sm font-medium">Evergreen is unreachable</p>
+                          <p className="text-xs text-amber-800/80 dark:text-amber-200/80">
+                            Some actions may fail. If you are at the circulation desk, switch to
+                            Offline Mode.
+                          </p>
+                        </div>
                       </div>
-                      <div className="space-y-0.5">
-                        <p className="text-sm font-medium">Evergreen is unreachable</p>
-                        <p className="text-xs text-amber-800/80 dark:text-amber-200/80">
-                          Some actions may fail. If you are at the circulation desk, switch to Offline Mode.
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="outline"
+                          className="border-amber-300/70 bg-white/60 hover:bg-white dark:border-amber-900/60 dark:bg-amber-950/30"
+                        >
+                          <Link href="/staff/circulation/offline">Open Offline Mode</Link>
+                        </Button>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button asChild size="sm" variant="outline" className="border-amber-300/70 bg-white/60 hover:bg-white dark:border-amber-900/60 dark:bg-amber-950/30">
-                        <Link href="/staff/circulation/offline">Open Offline Mode</Link>
-                      </Button>
                     </div>
                   </div>
-                </div>
-              )}
-              {children}
-            </div>
-          </main>
+                )}
+                {children}
+              </div>
+            </main>
+          </div>
+          <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
+          <KeyboardShortcutsOverlay />
+          <SessionTimeoutWarning
+            sessionDurationMinutes={480}
+            warningBeforeMinutes={5}
+            onSessionExpiring={handleSessionExpiring}
+          />
+          {idleTimeoutMinutes ? (
+            <IdleTimeoutWarning idleTimeoutMinutes={idleTimeoutMinutes} warningBeforeMinutes={2} />
+          ) : null}
+          <Toaster position="top-right" richColors />
         </div>
-        <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
-        <KeyboardShortcutsOverlay />
-        <SessionTimeoutWarning
-          sessionDurationMinutes={480}
-          warningBeforeMinutes={5}
-          onSessionExpiring={handleSessionExpiring}
-        />
-        {idleTimeoutMinutes ? <IdleTimeoutWarning idleTimeoutMinutes={idleTimeoutMinutes} warningBeforeMinutes={2} /> : null}
-        <Toaster position="top-right" richColors />
-      </div>
       </WorkformsProvider>
     </KeyboardProvider>
   );

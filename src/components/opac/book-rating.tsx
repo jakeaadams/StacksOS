@@ -71,22 +71,16 @@ export function BookRating({
         {[1, 2, 3, 4, 5].map((star) => {
           const filled = rating >= star;
           const partial = !filled && rating > star - 1;
-          
+
           return (
             <div key={star} className="relative">
-              <Star
-                className={`${starSizes[size]} text-muted-foreground/50`}
-                fill="currentColor"
-              />
+              <Star className={`${starSizes[size]} text-muted-foreground/50`} fill="currentColor" />
               {(filled || partial) && (
                 <div
                   className="absolute inset-0 overflow-hidden"
                   style={{ width: filled ? "100%" : `${(rating - (star - 1)) * 100}%` }}
                 >
-                  <Star
-                    className={`${starSizes[size]} text-amber-400`}
-                    fill="currentColor"
-                  />
+                  <Star className={`${starSizes[size]} text-amber-400`} fill="currentColor" />
                 </div>
               )}
             </div>
@@ -136,12 +130,12 @@ export function useBookRatings(isbns: string[]) {
 }
 
 // Compact rating display for search results
-export function CompactRating({ 
-  rating, 
+export function CompactRating({
+  rating,
   count,
-  size = "sm" 
-}: { 
-  rating: number | null; 
+  size = "sm",
+}: {
+  rating: number | null;
   count?: number | null;
   size?: "sm" | "md";
 }) {

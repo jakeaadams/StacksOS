@@ -8,17 +8,22 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 function maskEmail(email: string): string {
   if (!email || !email.includes("@")) return "your registered email";
   const [localPart, domain] = email.split("@");
-  const maskedLocal = localPart.length > 2 
-    ? localPart[0] + "*".repeat(Math.min(localPart.length - 2, 5)) + localPart[localPart.length - 1]
-    : "**";
+  const maskedLocal =
+    localPart.length > 2
+      ? localPart[0] +
+        "*".repeat(Math.min(localPart.length - 2, 5)) +
+        localPart[localPart.length - 1]
+      : "**";
   const domainParts = domain.split(".");
-  const maskedDomain = domainParts[0].length > 2
-    ? domainParts[0][0] + "***" + domainParts[0][domainParts[0].length - 1]
-    : "***";
+  const maskedDomain =
+    domainParts[0].length > 2
+      ? domainParts[0][0] + "***" + domainParts[0][domainParts[0].length - 1]
+      : "***";
   return maskedLocal + "@" + maskedDomain + "." + domainParts.slice(1).join(".");
 }
 
@@ -29,6 +34,22 @@ function maskEmail(email: string): string {
 export async function POST(req: NextRequest) {
   let identifier: string | undefined;
   const { ip, userAgent, requestId } = getRequestMeta(req);
+
+  // Rate limiting - 5 attempts per 15 minutes per IP
+  const rateLimit = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 5,
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    endpoint: "forgot-pin",
+  });
+
+  if (!rateLimit.allowed) {
+    const waitMinutes = Math.ceil(rateLimit.resetIn / 60000);
+    logger.warn({ ip, requestId, rateLimit }, "Forgot PIN rate limit exceeded");
+    return errorResponse(
+      `Too many reset attempts. Please try again in ${waitMinutes} minute(s).`,
+      429
+    );
+  }
   try {
     const body = await req.json();
     identifier = body.identifier;
@@ -65,10 +86,9 @@ export async function POST(req: NextRequest) {
           textcode: result.textcode,
         },
       });
-      
+
       // Do not reveal if user exists for security
-      if (result.textcode === "PATRON_NOT_FOUND" || 
-          result.textcode === "ACTOR_USR_NOT_FOUND") {
+      if (result.textcode === "PATRON_NOT_FOUND" || result.textcode === "ACTOR_USR_NOT_FOUND") {
         // Return success anyway to not reveal user existence
         return successResponse({
           success: true,
@@ -78,11 +98,16 @@ export async function POST(req: NextRequest) {
       }
 
       if (result.textcode === "PATRON_NO_EMAIL_ADDRESS") {
-        return errorResponse("No email address is on file for this account. Please visit the library to reset your PIN.");
+        return errorResponse(
+          "No email address is on file for this account. Please visit the library to reset your PIN."
+        );
       }
 
       logger.error({ error: String(result) }, "Password reset error");
-      return errorResponse("Unable to process your request. Please try again or contact the library.", 500);
+      return errorResponse(
+        "Unable to process your request. Please try again or contact the library.",
+        500
+      );
     }
 
     // SECURITY FIX: Log successful reset request
@@ -107,7 +132,6 @@ export async function POST(req: NextRequest) {
       maskedEmail: maskEmail(result?.email || ""),
       message: "PIN reset instructions have been sent to your email.",
     });
-
   } catch (error) {
     // SECURITY FIX: Log exception during reset
     await logAuditEvent({
@@ -119,7 +143,7 @@ export async function POST(req: NextRequest) {
       requestId,
       details: { error: String(error) },
     });
-    
+
     logger.error({ error: String(error) }, "Forgot PIN error");
     return serverErrorResponse(error, "Forgot PIN POST", req);
   }

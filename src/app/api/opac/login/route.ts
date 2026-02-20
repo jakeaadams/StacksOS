@@ -15,7 +15,7 @@ import { isCookieSecure } from "@/lib/csrf";
 /**
  * OPAC Patron Login
  * POST /api/opac/login
- * 
+ *
  * Authenticates patron using library card barcode and PIN
  */
 export async function POST(req: NextRequest) {
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   if (!rateLimit.allowed) {
     const waitMinutes = Math.ceil(rateLimit.resetIn / 60000);
     logger.warn({ ip, requestId, rateLimit }, "Patron auth rate limit exceeded");
-    
+
     return errorResponse(
       `Too many login attempts. Please try again in ${waitMinutes} minute(s).`,
       429,
@@ -73,35 +73,31 @@ export async function POST(req: NextRequest) {
     const finalHash = hashPassword(cleanPin, String(seed));
 
     // Step 3: Authenticate as OPAC user
-    const authResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.authenticate.complete",
-      [{
+    const authResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.complete", [
+      {
         barcode: cleanBarcode,
         password: finalHash,
         type: "opac",
         agent: "stacksos",
-      }]
-    );
+      },
+    ]);
 
     const authResult = authResponse?.payload?.[0];
 
     if (authResult?.ilsevent === 0 && authResult?.payload?.authtoken) {
       const cookieStore = await cookies();
       const cookieSecure = isCookieSecure(req);
-      
+
       cookieStore.set("patron_authtoken", authResult.payload.authtoken, {
         httpOnly: true,
         secure: cookieSecure,
         sameSite: "lax",
-        maxAge: rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 8,
+        maxAge: rememberMe ? 60 * 60 * 24 * 7 : 60 * 60 * 8,
       });
 
-      const userResponse = await callOpenSRF(
-        "open-ils.auth",
-        "open-ils.auth.session.retrieve",
-        [authResult.payload.authtoken]
-      );
+      const userResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [
+        authResult.payload.authtoken,
+      ]);
 
       const user = userResponse?.payload?.[0];
 

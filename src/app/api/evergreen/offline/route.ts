@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { NextRequest } from "next/server";
 import {
   callOpenSRF,
@@ -11,10 +12,54 @@ import {
   extractPayload,
   getErrorMessage,
   getCopyByBarcode,
+  parseJsonBodyWithSchema,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+
+// ---------------------------------------------------------------------------
+// Zod schemas for offline transaction POST body
+// ---------------------------------------------------------------------------
+
+const offlineCheckoutSchema = z.object({
+  type: z.literal("checkout"),
+  data: z.object({
+    patronBarcode: z.string().trim().min(1),
+    itemBarcode: z.string().trim().min(1),
+  }),
+});
+
+const offlineCheckinSchema = z.object({
+  type: z.literal("checkin"),
+  data: z.object({
+    itemBarcode: z.string().trim().min(1),
+    backdateDate: z.string().trim().optional(),
+  }),
+});
+
+const offlineRenewalSchema = z.object({
+  type: z.literal("renewal"),
+  data: z.object({
+    itemBarcode: z.string().trim().min(1),
+  }),
+});
+
+const offlineInHouseUseSchema = z.object({
+  type: z.literal("in_house_use"),
+  data: z.object({
+    itemBarcode: z.string().trim().min(1),
+    orgId: z.number().int().positive().optional(),
+    count: z.number().int().min(1).max(999).optional(),
+  }),
+});
+
+const offlineTransactionSchema = z.discriminatedUnion("type", [
+  offlineCheckoutSchema,
+  offlineCheckinSchema,
+  offlineRenewalSchema,
+  offlineInHouseUseSchema,
+]);
 
 // GET - Download offline data (blocks, patrons, policies)
 export async function GET(req: NextRequest) {
@@ -35,18 +80,24 @@ export async function GET(req: NextRequest) {
 
         const penalties = penaltiesResponse?.payload?.[0] || [];
 
-        return successResponse({
-          blocks: [], // Would be populated from library-specific block list report
-          penaltyThresholds: penalties,
-        }, "Block configuration downloaded. Note: Full block list requires library-specific report configuration.");
+        return successResponse(
+          {
+            blocks: [], // Would be populated from library-specific block list report
+            penaltyThresholds: penalties,
+          },
+          "Block configuration downloaded. Note: Full block list requires library-specific report configuration."
+        );
       }
 
       case "patrons": {
         // Download patron cache - in production this would be a subset
         // based on recent activity or configured patron groups
-        return successResponse({
-          patrons: [],
-        }, "Patron cache downloaded");
+        return successResponse(
+          {
+            patrons: [],
+          },
+          "Patron cache downloaded"
+        );
       }
 
       case "policies": {
@@ -55,24 +106,27 @@ export async function GET(req: NextRequest) {
           // Prefer pcrud `*.atomic` methods (faster, no transaction management),
           // but fall back automatically when the Evergreen install does not
           // expose the atomic variant.
-          const durationResponse = await callPcrud(
-            "open-ils.pcrud.search.crcd",
-            [authtoken, { id: { "!=": null } }, { flesh: 0, limit: 100 }]
-          );
+          const durationResponse = await callPcrud("open-ils.pcrud.search.crcd", [
+            authtoken,
+            { id: { "!=": null } },
+            { flesh: 0, limit: 100 },
+          ]);
           const durationsRaw = extractPayload<any>(durationResponse);
           const durations = Array.isArray(durationsRaw) ? durationsRaw : [];
 
-          const fineResponse = await callPcrud(
-            "open-ils.pcrud.search.crrf",
-            [authtoken, { id: { "!=": null } }, { flesh: 0, limit: 100 }]
-          );
+          const fineResponse = await callPcrud("open-ils.pcrud.search.crrf", [
+            authtoken,
+            { id: { "!=": null } },
+            { flesh: 0, limit: 100 },
+          ]);
           const finesRaw = extractPayload<any>(fineResponse);
           const fines = Array.isArray(finesRaw) ? finesRaw : [];
 
-          const maxFineResponse = await callPcrud(
-            "open-ils.pcrud.search.crmf",
-            [authtoken, { id: { "!=": null } }, { flesh: 0, limit: 100 }]
-          );
+          const maxFineResponse = await callPcrud("open-ils.pcrud.search.crmf", [
+            authtoken,
+            { id: { "!=": null } },
+            { flesh: 0, limit: 100 },
+          ]);
           const maxFinesRaw = extractPayload<any>(maxFineResponse);
           const maxFines = Array.isArray(maxFinesRaw) ? maxFinesRaw : [];
 
@@ -80,9 +134,15 @@ export async function GET(req: NextRequest) {
           const policies = durations.map((d: any) => ({
             id: d.id,
             name: d.name,
-            loanPeriodDays: d.normal ? Math.floor(parseInt(d.normal.split(" ")[0]) / (d.normal.includes("day") ? 1 : 24)) : 21,
+            loanPeriodDays: d.normal
+              ? Math.floor(parseInt(d.normal.split(" ")[0]) / (d.normal.includes("day") ? 1 : 24))
+              : 21,
             renewalLimit: d.max_renewals || 2,
-            gracePeriodDays: d.grace_period ? Math.floor(parseInt(d.grace_period.split(" ")[0]) / (d.grace_period.includes("day") ? 1 : 24)) : 0,
+            gracePeriodDays: d.grace_period
+              ? Math.floor(
+                  parseInt(d.grace_period.split(" ")[0]) / (d.grace_period.includes("day") ? 1 : 24)
+                )
+              : 0,
           }));
 
           // Add fine rules
@@ -94,12 +154,22 @@ export async function GET(req: NextRequest) {
           }));
 
           return successResponse({
-            policies: policies.length > 0 ? policies : [
-              { id: 0, name: "Default", loanPeriodDays: 21, renewalLimit: 2, gracePeriodDays: 0 }
-            ],
-            fineRules: fineRules.length > 0 ? fineRules : [
-              { id: 0, name: "Default Fine", fineAmount: 0.10, fineInterval: "1 day" }
-            ],
+            policies:
+              policies.length > 0
+                ? policies
+                : [
+                    {
+                      id: 0,
+                      name: "Default",
+                      loanPeriodDays: 21,
+                      renewalLimit: 2,
+                      gracePeriodDays: 0,
+                    },
+                  ],
+            fineRules:
+              fineRules.length > 0
+                ? fineRules
+                : [{ id: 0, name: "Default Fine", fineAmount: 0.1, fineInterval: "1 day" }],
             maxFines: maxFines.map((m: any) => ({
               id: m.id,
               name: m.name,
@@ -109,20 +179,21 @@ export async function GET(req: NextRequest) {
         } catch (error) {
           const code = error && typeof error === "object" ? (error as any).code : undefined;
           if (code === "OSRF_METHOD_NOT_FOUND") {
-            logger.warn({ route: "api.evergreen.offline", type: "policies" }, "Offline policies not available on this Evergreen install");
+            logger.warn(
+              { route: "api.evergreen.offline", type: "policies" },
+              "Offline policies not available on this Evergreen install"
+            );
           } else {
             logger.error({ error: String(error) }, "Error fetching policies");
           }
           // Return safe defaults if fetch fails
           return successResponse({
             policies: [
-              { id: 0, name: "Default", loanPeriodDays: 21, renewalLimit: 2, gracePeriodDays: 0 }
+              { id: 0, name: "Default", loanPeriodDays: 21, renewalLimit: 2, gracePeriodDays: 0 },
             ],
-            fineRules: [
-              { id: 0, name: "Default Fine", fineAmount: 0.10, fineInterval: "1 day" }
-            ],
+            fineRules: [{ id: 0, name: "Default Fine", fineAmount: 0.1, fineInterval: "1 day" }],
             maxFines: [],
-            message: "Using default policies - could not fetch from Evergreen"
+            message: "Using default policies - could not fetch from Evergreen",
           });
         }
       }
@@ -130,17 +201,20 @@ export async function GET(req: NextRequest) {
       case "status": {
         // Get sync status - check connection to Evergreen
         try {
-          await callOpenSRF(
-            "open-ils.actor",
-            "open-ils.actor.org_tree.retrieve"
+          await callOpenSRF("open-ils.actor", "open-ils.actor.org_tree.retrieve");
+          return successResponse(
+            {
+              online: true,
+            },
+            "Connected to Evergreen"
           );
-          return successResponse({
-            online: true,
-          }, "Connected to Evergreen");
         } catch {
-          return successResponse({
-            online: false,
-          }, "Cannot connect to Evergreen");
+          return successResponse(
+            {
+              online: false,
+            },
+            "Cannot connect to Evergreen"
+          );
         }
       }
 
@@ -157,12 +231,9 @@ export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
-    const transaction = await req.json();
-    const { type, data } = transaction;
-
-    if (!type) {
-      return errorResponse("type is required", 400);
-    }
+    const parsed = await parseJsonBodyWithSchema(req, offlineTransactionSchema);
+    if (parsed instanceof Response) return parsed as any;
+    const { type, data } = parsed;
 
     const TYPE_PERMS: Record<string, string[]> = {
       checkout: ["COPY_CHECKOUT"],
@@ -194,77 +265,85 @@ export async function POST(req: NextRequest) {
 
     switch (type) {
       case "checkout": {
-        const checkoutResponse = await callOpenSRF(
-          "open-ils.circ",
-          "open-ils.circ.checkout.full",
-          [authtoken, { patron_barcode: data.patronBarcode, copy_barcode: data.itemBarcode }]
-        );
+        const checkoutResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.checkout.full", [
+          authtoken,
+          { patron_barcode: data.patronBarcode, copy_barcode: data.itemBarcode },
+        ]);
 
         const result = checkoutResponse?.payload?.[0];
 
         if (isSuccessResult(result) || result?.payload?.circ) {
-          await audit("success", { patronBarcode: data.patronBarcode, itemBarcode: data.itemBarcode });
-          return successResponse({
-            action: "checkout",
-          }, "Checkout processed successfully");
+          await audit("success", {
+            patronBarcode: data.patronBarcode,
+            itemBarcode: data.itemBarcode,
+          });
+          return successResponse(
+            {
+              action: "checkout",
+            },
+            "Checkout processed successfully"
+          );
         } else {
           const message = getErrorMessage(result, "Checkout failed");
-          await audit("failure", { patronBarcode: data.patronBarcode, itemBarcode: data.itemBarcode }, message);
-          return errorResponse(
-            message,
-            400,
-            result
+          await audit(
+            "failure",
+            { patronBarcode: data.patronBarcode, itemBarcode: data.itemBarcode },
+            message
           );
+          return errorResponse(message, 400, result);
         }
       }
 
       case "checkin": {
-        const checkinResponse = await callOpenSRF(
-          "open-ils.circ",
-          "open-ils.circ.checkin",
-          [authtoken, { copy_barcode: data.itemBarcode, backdate: data.backdateDate }]
-        );
+        const checkinResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.checkin", [
+          authtoken,
+          { copy_barcode: data.itemBarcode, backdate: data.backdateDate },
+        ]);
 
         const result = checkinResponse?.payload?.[0];
 
         if (isSuccessResult(result) || result?.payload) {
-          await audit("success", { itemBarcode: data.itemBarcode, backdateDate: data.backdateDate || null });
-          return successResponse({
-            action: "checkin",
-          }, "Checkin processed successfully");
+          await audit("success", {
+            itemBarcode: data.itemBarcode,
+            backdateDate: data.backdateDate || null,
+          });
+          return successResponse(
+            {
+              action: "checkin",
+            },
+            "Checkin processed successfully"
+          );
         } else {
           const message = getErrorMessage(result, "Checkin failed");
-          await audit("failure", { itemBarcode: data.itemBarcode, backdateDate: data.backdateDate || null }, message);
-          return errorResponse(
-            message,
-            400,
-            result
+          await audit(
+            "failure",
+            { itemBarcode: data.itemBarcode, backdateDate: data.backdateDate || null },
+            message
           );
+          return errorResponse(message, 400, result);
         }
       }
 
       case "renewal": {
-        const renewResponse = await callOpenSRF(
-          "open-ils.circ",
-          "open-ils.circ.renew",
-          [authtoken, { copy_barcode: data.itemBarcode }]
-        );
+        const renewResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.renew", [
+          authtoken,
+          { copy_barcode: data.itemBarcode },
+        ]);
 
         const result = renewResponse?.payload?.[0];
 
         if (isSuccessResult(result) || result?.payload?.circ) {
           await audit("success", { itemBarcode: data.itemBarcode });
-          return successResponse({
-            action: "renewal",
-          }, "Renewal processed successfully");
+          return successResponse(
+            {
+              action: "renewal",
+            },
+            "Renewal processed successfully"
+          );
         } else {
           const message = getErrorMessage(result, "Renewal failed");
           await audit("failure", { itemBarcode: data.itemBarcode }, message);
-          return errorResponse(
-            message,
-            400,
-            result
-          );
+          return errorResponse(message, 400, result);
         }
       }
 
@@ -290,18 +369,21 @@ export async function POST(req: NextRequest) {
 
         if (result && !result.ilsevent) {
           await audit("success", { itemBarcode: data.itemBarcode, count: data.count || 1, orgId });
-          return successResponse({
-            action: "in_house_use",
-            count: data.count || 1,
-          }, `In-house use recorded for ${data.itemBarcode}`);
+          return successResponse(
+            {
+              action: "in_house_use",
+              count: data.count || 1,
+            },
+            `In-house use recorded for ${data.itemBarcode}`
+          );
         } else {
           const message = getErrorMessage(result, "Failed to record in-house use");
-          await audit("failure", { itemBarcode: data.itemBarcode, count: data.count || 1, orgId }, message);
-          return errorResponse(
-            message,
-            400,
-            result
+          await audit(
+            "failure",
+            { itemBarcode: data.itemBarcode, count: data.count || 1, orgId },
+            message
           );
+          return errorResponse(message, 400, result);
         }
       }
 

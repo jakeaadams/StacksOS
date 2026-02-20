@@ -1,6 +1,13 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, parseJsonBodyWithSchema, successResponse, serverErrorResponse, getRequestMeta } from "@/lib/api";
+import {
+  errorResponse,
+  parseJsonBodyWithSchema,
+  successResponse,
+  serverErrorResponse,
+  withErrorHandling,
+  getRequestMeta,
+} from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { addReleaseNote, listReleaseNotes } from "@/lib/db/support";
 import { logAuditEvent } from "@/lib/audit";
@@ -13,14 +20,10 @@ const CreateSchema = z
   })
   .strict();
 
-export async function GET(req: NextRequest) {
-  try {
-    const notes = await listReleaseNotes(50);
-    return successResponse({ notes });
-  } catch (error) {
-    return serverErrorResponse(error, "Release notes GET", req);
-  }
-}
+export const GET = withErrorHandling(async (_req: Request) => {
+  const notes = await listReleaseNotes(50);
+  return successResponse({ notes });
+}, "Release notes GET");
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
@@ -56,4 +59,3 @@ export async function POST(req: NextRequest) {
     return serverErrorResponse(error, "Release notes POST", req);
   }
 }
-

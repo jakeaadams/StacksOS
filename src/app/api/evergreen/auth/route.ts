@@ -139,11 +139,9 @@ export async function POST(req: NextRequest) {
     logger.info({ requestId, route: "api.evergreen.auth", username }, "Login attempt");
 
     // Step 1: Get auth seed
-    const seedResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.authenticate.init",
-      [username]
-    );
+    const seedResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.init", [
+      username,
+    ]);
 
     const seed = seedResponse?.payload?.[0];
     if (!seed) {
@@ -173,17 +171,18 @@ export async function POST(req: NextRequest) {
       authParams.workstation = workstation;
     }
 
-    const authResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.authenticate.complete",
-      [authParams]
-    );
+    const authResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.complete", [
+      authParams,
+    ]);
 
     let authResult = authResponse?.payload?.[0];
 
     // If workstation not found, retry without it
     if (authResult?.textcode === "WORKSTATION_NOT_FOUND" && workstation) {
-      logger.warn({ requestId, route: "api.evergreen.auth", username, workstation }, "Workstation not found; retrying without workstation");
+      logger.warn(
+        { requestId, route: "api.evergreen.auth", username, workstation },
+        "Workstation not found; retrying without workstation"
+      );
 
       const retrySeedResponse = await callOpenSRF(
         "open-ils.auth",
@@ -218,11 +217,9 @@ export async function POST(req: NextRequest) {
       if (authResult?.ilsevent === 0 && authResult?.payload?.authtoken) {
         await setStaffAuthCookies(authResult.payload.authtoken, cookieSecure);
 
-        const userResponse = await callOpenSRF(
-          "open-ils.auth",
-          "open-ils.auth.session.retrieve",
-          [authResult.payload.authtoken]
-        );
+        const userResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [
+          authResult.payload.authtoken,
+        ]);
         const user = await enrichUserWithPhotoUrl(userResponse?.payload?.[0]);
         const profileName = await resolveProfileName(authResult.payload.authtoken, user);
 
@@ -243,7 +240,6 @@ export async function POST(req: NextRequest) {
 
         return successResponse(
           {
-            authtoken: authResult.payload.authtoken,
             user,
             needsWorkstation: true,
             profileName,
@@ -257,11 +253,9 @@ export async function POST(req: NextRequest) {
     if (authResult?.ilsevent === 0 && authResult?.payload?.authtoken) {
       await setStaffAuthCookies(authResult.payload.authtoken, cookieSecure);
 
-      const userResponse = await callOpenSRF(
-        "open-ils.auth",
-        "open-ils.auth.session.retrieve",
-        [authResult.payload.authtoken]
-      );
+      const userResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [
+        authResult.payload.authtoken,
+      ]);
       const user = await enrichUserWithPhotoUrl(userResponse?.payload?.[0]);
       const profileName = await resolveProfileName(authResult.payload.authtoken, user);
 
@@ -281,7 +275,6 @@ export async function POST(req: NextRequest) {
       await recordSuccess(ip || "unknown", "staff-auth");
 
       return successResponse({
-        authtoken: authResult.payload.authtoken,
         user,
         workstation: workstation || null,
         profileName,
@@ -298,10 +291,7 @@ export async function POST(req: NextRequest) {
       error: authResult?.textcode || authResult?.desc || "auth_failed",
     });
 
-    return errorResponse(
-      authResult?.textcode || authResult?.desc || "Authentication failed",
-      401
-    );
+    return errorResponse(authResult?.textcode || authResult?.desc || "Authentication failed", 401);
   } catch (error) {
     return serverErrorResponse(error, "Auth POST", req);
   }
@@ -356,11 +346,9 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const sessionResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.session.retrieve",
-      [authtoken]
-    );
+    const sessionResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [
+      authtoken,
+    ]);
 
     const user = sessionResponse?.payload?.[0];
 

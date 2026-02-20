@@ -1,3 +1,5 @@
+import "server-only";
+
 import fs from "fs/promises";
 import path from "path";
 import { callOpenSRF, isOpenSRFEvent } from "@/lib/api";
@@ -104,7 +106,8 @@ export async function logAuditEvent(event: AuditEvent): Promise<void> {
       await fs.mkdir(path.dirname(AUDIT_LOG_PATH), { recursive: true });
       await fs.appendFile(AUDIT_LOG_PATH, line, "utf8");
     } catch (err) {
-      const e = err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) };
+      const e =
+        err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) };
       logger.warn({ error: e, path: AUDIT_LOG_PATH }, "Failed to write audit log");
     }
   }

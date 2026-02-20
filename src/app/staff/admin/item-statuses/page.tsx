@@ -1,9 +1,9 @@
+"use client";
+
 /**
  * Item Statuses
  * Configure Evergreen config.copy_status through StacksOS.
  */
-
-"use client";
 
 import * as React from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -22,7 +22,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import {
   CircleDot,
@@ -225,7 +232,9 @@ export default function ItemStatusPage() {
     {
       accessorKey: "id",
       header: "ID",
-      cell: ({ row }) => <span className="font-mono text-sm text-muted-foreground">{row.original.id}</span>,
+      cell: ({ row }) => (
+        <span className="font-mono text-sm text-muted-foreground">{row.original.id}</span>
+      ),
     },
     {
       accessorKey: "name",
@@ -419,7 +428,9 @@ export default function ItemStatusPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <CardTitle>All Statuses</CardTitle>
-                <CardDescription>Source of truth is Evergreen (Config → Item Statuses)</CardDescription>
+                <CardDescription>
+                  Source of truth is Evergreen (Config → Item Statuses)
+                </CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Input
@@ -442,7 +453,9 @@ export default function ItemStatusPage() {
               <EmptyState title="Loading…" description="Fetching copy statuses from Evergreen." />
             ) : filteredStatuses.length === 0 ? (
               <EmptyState
-                title={searchQuery.trim() ? "No statuses match your search" : "No statuses returned"}
+                title={
+                  searchQuery.trim() ? "No statuses match your search" : "No statuses returned"
+                }
                 description={
                   searchQuery.trim()
                     ? "Try a different search term."
@@ -464,7 +477,9 @@ export default function ItemStatusPage() {
           <DialogContent className="sm:max-w-[520px]">
             <DialogHeader>
               <DialogTitle>Create Copy Status</DialogTitle>
-              <DialogDescription>This creates a new Evergreen copy status (config.copy_status).</DialogDescription>
+              <DialogDescription>
+                This creates a new Evergreen copy status (config.copy_status).
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="space-y-2">
@@ -558,27 +573,47 @@ export default function ItemStatusPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex items-center justify-between gap-3">
                     <Label>Holdable</Label>
-                    <Switch checked={editStatus.holdable} onCheckedChange={(v) => setEditStatus({ ...editStatus, holdable: v })} />
+                    <Switch
+                      checked={editStatus.holdable}
+                      onCheckedChange={(v) => setEditStatus({ ...editStatus, holdable: v })}
+                    />
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <Label>OPAC Visible</Label>
-                    <Switch checked={editStatus.opacVisible} onCheckedChange={(v) => setEditStatus({ ...editStatus, opacVisible: v })} />
+                    <Switch
+                      checked={editStatus.opacVisible}
+                      onCheckedChange={(v) => setEditStatus({ ...editStatus, opacVisible: v })}
+                    />
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <Label>Sets Copy Active</Label>
-                    <Switch checked={editStatus.copyActive} onCheckedChange={(v) => setEditStatus({ ...editStatus, copyActive: v })} />
+                    <Switch
+                      checked={editStatus.copyActive}
+                      onCheckedChange={(v) => setEditStatus({ ...editStatus, copyActive: v })}
+                    />
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <Label>Available</Label>
-                    <Switch checked={editStatus.isAvailable} onCheckedChange={(v) => setEditStatus({ ...editStatus, isAvailable: v })} />
+                    <Switch
+                      checked={editStatus.isAvailable}
+                      onCheckedChange={(v) => setEditStatus({ ...editStatus, isAvailable: v })}
+                    />
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <Label>Restrict Deletion</Label>
-                    <Switch checked={editStatus.restrictCopyDelete} onCheckedChange={(v) => setEditStatus({ ...editStatus, restrictCopyDelete: v })} />
+                    <Switch
+                      checked={editStatus.restrictCopyDelete}
+                      onCheckedChange={(v) =>
+                        setEditStatus({ ...editStatus, restrictCopyDelete: v })
+                      }
+                    />
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <Label>Hopeless-Prone</Label>
-                    <Switch checked={editStatus.hopelessProne} onCheckedChange={(v) => setEditStatus({ ...editStatus, hopelessProne: v })} />
+                    <Switch
+                      checked={editStatus.hopelessProne}
+                      onCheckedChange={(v) => setEditStatus({ ...editStatus, hopelessProne: v })}
+                    />
                   </div>
                 </div>
               </div>

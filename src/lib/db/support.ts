@@ -18,10 +18,13 @@ export async function ensureSupportTables() {
         starts_at TIMESTAMP DEFAULT NOW(),
         ends_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT NOW(),
-        created_by INTEGER
+        created_by INTEGER,
+        updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_incident_banners_active ON library.incident_banners(active, id)`);
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_incident_banners_active ON library.incident_banners(active, id)`
+    );
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS library.support_tickets (
@@ -34,10 +37,13 @@ export async function ensureSupportTables() {
         priority TEXT NOT NULL DEFAULT 'normal',
         subject TEXT NOT NULL,
         body TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'open'
+        status TEXT NOT NULL DEFAULT 'open',
+        updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON library.support_tickets(status, id)`);
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON library.support_tickets(status, id)`
+    );
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS library.release_notes (
@@ -46,10 +52,13 @@ export async function ensureSupportTables() {
         created_by INTEGER,
         version TEXT,
         title TEXT NOT NULL,
-        body TEXT NOT NULL
+        body TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_release_notes_created_at ON library.release_notes(created_at)`);
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_release_notes_created_at ON library.release_notes(created_at)`
+    );
   });
   tablesReady = true;
   logger.info({ component: "support" }, "Support/ops tables ready");
@@ -76,7 +85,12 @@ export async function listIncidents(limit = 50) {
   );
 }
 
-export async function createIncident(args: { message: string; severity: string; endsAt?: string | null; createdBy?: number | null }) {
+export async function createIncident(args: {
+  message: string;
+  severity: string;
+  endsAt?: string | null;
+  createdBy?: number | null;
+}) {
   await ensureSupportTables();
   const { message, severity, endsAt = null, createdBy = null } = args;
   return await querySingle<{ id: number }>(
@@ -91,7 +105,10 @@ export async function createIncident(args: { message: string; severity: string; 
 
 export async function resolveIncident(id: number) {
   await ensureSupportTables();
-  await query(`update library.incident_banners set active = false, ends_at = coalesce(ends_at, now()) where id = $1`, [id]);
+  await query(
+    `update library.incident_banners set active = false, ends_at = coalesce(ends_at, now()), updated_at = NOW() where id = $1`,
+    [id]
+  );
 }
 
 export async function createTicket(args: {
@@ -104,7 +121,15 @@ export async function createTicket(args: {
   body: string;
 }) {
   await ensureSupportTables();
-  const { createdBy = null, requesterEmail = null, requesterName = null, category, priority, subject, body } = args;
+  const {
+    createdBy = null,
+    requesterEmail = null,
+    requesterName = null,
+    category,
+    priority,
+    subject,
+    body,
+  } = args;
   return await querySingle<{ id: number }>(
     `
       insert into library.support_tickets (created_by, requester_email, requester_name, category, priority, subject, body)
@@ -128,7 +153,12 @@ export async function listTickets(limit = 100) {
   );
 }
 
-export async function addReleaseNote(args: { createdBy?: number | null; version?: string | null; title: string; body: string }) {
+export async function addReleaseNote(args: {
+  createdBy?: number | null;
+  version?: string | null;
+  title: string;
+  body: string;
+}) {
   await ensureSupportTables();
   const { createdBy = null, version = null, title, body } = args;
   return await querySingle<{ id: number }>(

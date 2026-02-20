@@ -21,6 +21,81 @@ function resolveEvergreenBaseUrl(): string {
 const missingMethodOnce = new Set<string>();
 
 // ============================================================================
+// Circuit Breaker (process-level singleton)
+// ============================================================================
+
+const CIRCUIT_BREAKER_THRESHOLD = 5;
+const CIRCUIT_BREAKER_RESET_MS = 30_000;
+
+type CircuitState = "closed" | "open" | "half-open";
+
+let cbState: CircuitState = "closed";
+let cbConsecutiveFailures = 0;
+let cbLastFailureTime = 0;
+
+export class CircuitOpenError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CircuitOpenError";
+  }
+}
+
+function circuitBreakerPreCheck(): void {
+  if (cbState === "closed") return;
+
+  if (cbState === "open") {
+    const elapsed = Date.now() - cbLastFailureTime;
+    if (elapsed >= CIRCUIT_BREAKER_RESET_MS) {
+      cbState = "half-open";
+      logger.info(
+        { component: "circuit-breaker" },
+        "Circuit breaker transitioning to half-open, allowing probe request"
+      );
+      return;
+    }
+    const remaining = Math.ceil((CIRCUIT_BREAKER_RESET_MS - elapsed) / 1000);
+    throw new CircuitOpenError(
+      `Evergreen circuit breaker is OPEN. ${remaining}s until next probe. Recent consecutive failures: ${cbConsecutiveFailures}`
+    );
+  }
+
+  // half-open: allow the request through (probe)
+}
+
+function circuitBreakerOnSuccess(): void {
+  if (cbState !== "closed") {
+    logger.info(
+      { component: "circuit-breaker", previousState: cbState },
+      "Circuit breaker closing after successful request"
+    );
+  }
+  cbState = "closed";
+  cbConsecutiveFailures = 0;
+}
+
+function circuitBreakerOnFailure(): void {
+  cbConsecutiveFailures++;
+  cbLastFailureTime = Date.now();
+
+  if (cbState === "half-open") {
+    cbState = "open";
+    logger.warn(
+      { component: "circuit-breaker", failures: cbConsecutiveFailures },
+      "Circuit breaker probe failed, re-opening"
+    );
+    return;
+  }
+
+  if (cbConsecutiveFailures >= CIRCUIT_BREAKER_THRESHOLD) {
+    cbState = "open";
+    logger.warn(
+      { component: "circuit-breaker", failures: cbConsecutiveFailures },
+      `Circuit breaker OPEN after ${cbConsecutiveFailures} consecutive failures`
+    );
+  }
+}
+
+// ============================================================================
 // Core OpenSRF Gateway
 // ============================================================================
 
@@ -36,6 +111,9 @@ export async function callOpenSRF<T = any>(
   let outcome: "success" | "timeout" | "method_not_found" | "error" = "success";
 
   try {
+    // Circuit breaker pre-check: fail fast if circuit is open
+    circuitBreakerPreCheck();
+
     // Some Evergreen installs expose pcrud reads via `open-ils.pcrud.*.atomic`
     // but require a stateful client-managed transaction for writes.
     // `open-ils.permacrud` provides CRUD methods that manage their own
@@ -159,13 +237,23 @@ export async function callOpenSRF<T = any>(
       throw err;
     }
 
-    return decodeOpenSRFResponse(json);
+    const decoded = decodeOpenSRFResponse(json);
+    circuitBreakerOnSuccess();
+    return decoded;
   } catch (error) {
     const e = error instanceof Error ? error : new Error(String(error));
     const code = typeof (e as any).code === "string" ? String((e as any).code) : "";
-    if (code === "OSRF_METHOD_NOT_FOUND") outcome = "method_not_found";
-    else if (e.message.startsWith("OpenSRF timeout after")) outcome = "timeout";
-    else outcome = "error";
+    if (code === "OSRF_METHOD_NOT_FOUND") {
+      outcome = "method_not_found";
+      // Method-not-found is a capability mismatch, not a connectivity failure.
+    } else if (e instanceof CircuitOpenError) {
+      outcome = "error";
+      // Already handled by circuit breaker, just re-throw.
+    } else {
+      if (e.message.startsWith("OpenSRF timeout after")) outcome = "timeout";
+      else outcome = "error";
+      circuitBreakerOnFailure();
+    }
     throw e;
   } finally {
     const durationSeconds = Number(process.hrtime.bigint() - startedNs) / 1e9;
@@ -173,9 +261,14 @@ export async function callOpenSRF<T = any>(
       const isPcrudWrite =
         service === "open-ils.pcrud" && method.match(/^open-ils\.pcrud\.(create|update|delete)\./);
       const metricService = isPcrudWrite ? "open-ils.permacrud" : service;
-      const metricMethod = isPcrudWrite ? method.replace(/^open-ils\.pcrud\./, "open-ils.permacrud.") : method;
+      const metricMethod = isPcrudWrite
+        ? method.replace(/^open-ils\.pcrud\./, "open-ils.permacrud.")
+        : method;
       opensrfRequestsTotal.inc({ service: metricService, method: metricMethod, outcome });
-      opensrfRequestDurationSeconds.observe({ service: metricService, method: metricMethod, outcome }, durationSeconds);
+      opensrfRequestDurationSeconds.observe(
+        { service: metricService, method: metricMethod, outcome },
+        durationSeconds
+      );
     } catch {
       // Metrics must never break production traffic.
     }
@@ -291,11 +384,10 @@ export async function getPatronByBarcode(authtoken: string, barcode: string) {
  * Get patron by ID (requires auth)
  */
 export async function getPatronById(authtoken: string, patronId: number) {
-  const response = await callOpenSRF(
-    "open-ils.actor",
-    "open-ils.actor.user.retrieve",
-    [authtoken, patronId]
-  );
+  const response = await callOpenSRF("open-ils.actor", "open-ils.actor.user.retrieve", [
+    authtoken,
+    patronId,
+  ]);
   return extractPayload(response);
 }
 
@@ -303,22 +395,11 @@ export async function getPatronById(authtoken: string, patronId: number) {
  * Get patron fleshed (with cards, addresses, penalties)
  */
 export async function getPatronFleshed(authtoken: string, patronId: number) {
-  const response = await callOpenSRF(
-    "open-ils.actor",
-    "open-ils.actor.user.fleshed.retrieve",
-    [
-      authtoken,
-      patronId,
-      [
-        "card",
-        "cards",
-        "standing_penalties",
-        "addresses",
-        "billing_address",
-        "mailing_address",
-      ],
-    ]
-  );
+  const response = await callOpenSRF("open-ils.actor", "open-ils.actor.user.fleshed.retrieve", [
+    authtoken,
+    patronId,
+    ["card", "cards", "standing_penalties", "addresses", "billing_address", "mailing_address"],
+  ]);
   return extractPayload(response);
 }
 
@@ -326,10 +407,7 @@ export async function getPatronFleshed(authtoken: string, patronId: number) {
  * Get org tree
  */
 export async function getOrgTree() {
-  const response = await callOpenSRF(
-    "open-ils.actor",
-    "open-ils.actor.org_tree.retrieve"
-  );
+  const response = await callOpenSRF("open-ils.actor", "open-ils.actor.org_tree.retrieve");
   return extractPayload(response);
 }
 

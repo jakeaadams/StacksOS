@@ -79,26 +79,33 @@ const mainNav: NavSection[] = [
   {
     title: "Dashboard",
     defaultOpen: true,
-    items: [{ title: "Home", href: "/staff", icon: Home, shortcut: "⌘1" },
-      { title: "Activity Log", href: "/staff/activity", icon: Activity }],
+    items: [
+      { title: "Home", href: "/staff", icon: Home, shortcut: "⌘1" },
+      { title: "Activity Log", href: "/staff/activity", icon: Activity },
+    ],
   },
   {
     title: "Training & Support",
-      defaultOpen: false,
-      items: [
-        { title: "Training", href: "/staff/training", icon: GraduationCap },
-        { title: "Support", href: "/staff/support", icon: LifeBuoy },
-        { title: "Help & Runbook", href: "/staff/help", icon: FileQuestion },
-        { title: "Status", href: "/status", icon: Activity },
-        { title: "Release Notes", href: "/release-notes", icon: FileText },
-      ],
+    defaultOpen: false,
+    items: [
+      { title: "Training", href: "/staff/training", icon: GraduationCap },
+      { title: "Support", href: "/staff/support", icon: LifeBuoy },
+      { title: "Help & Runbook", href: "/staff/help", icon: FileQuestion },
+      { title: "Status", href: "/status", icon: Activity },
+      { title: "Release Notes", href: "/release-notes", icon: FileText },
+    ],
   },
   {
     title: "Circulation",
     defaultOpen: true,
     items: [
       { title: "Circulation Desk", href: "/staff/circulation", icon: ArrowLeftRight },
-      { title: "Check Out", href: "/staff/circulation/checkout", icon: ArrowLeftRight, shortcut: "F1" },
+      {
+        title: "Check Out",
+        href: "/staff/circulation/checkout",
+        icon: ArrowLeftRight,
+        shortcut: "F1",
+      },
       { title: "Check In", href: "/staff/circulation/checkin", icon: Package, shortcut: "F2" },
       { title: "Transits", href: "/staff/circulation/transits", icon: Truck },
       { title: "Renew Items", href: "/staff/circulation/renew", icon: Clock },
@@ -158,7 +165,9 @@ const mainNav: NavSection[] = [
         {
           title: "Course Reserves",
           defaultOpen: false,
-          items: [{ title: "Course Materials", href: "/staff/course-reserves", icon: GraduationCap }],
+          items: [
+            { title: "Course Materials", href: "/staff/course-reserves", icon: GraduationCap },
+          ],
         },
       ]
     : []),
@@ -221,11 +230,19 @@ const mainNav: NavSection[] = [
       { title: "Notifications", href: "/staff/admin/notifications", icon: Bell },
       { title: "System Settings", href: "/staff/admin/settings", icon: Sliders },
       { title: "My Settings", href: "/staff/settings", icon: UserCog },
-	      { title: "Policy Inspector", href: "/staff/admin/policy-inspector", icon: Database },
-	      ...(featureFlags.policyEditors
-	        ? [{ title: "Policy Editors", href: "/staff/admin/policies", icon: Gavel, badge: "New", badgeVariant: "outline" as const }]
-	        : []),
-	      { title: "Item Statuses", href: "/staff/admin/item-statuses", icon: Tag },
+      { title: "Policy Inspector", href: "/staff/admin/policy-inspector", icon: Database },
+      ...(featureFlags.policyEditors
+        ? [
+            {
+              title: "Policy Editors",
+              href: "/staff/admin/policies",
+              icon: Gavel,
+              badge: "New",
+              badgeVariant: "outline" as const,
+            },
+          ]
+        : []),
+      { title: "Item Statuses", href: "/staff/admin/item-statuses", icon: Tag },
       ...(featureFlags.statCategories
         ? [{ title: "Stat Categories", href: "/staff/admin/stat-categories", icon: BarChart3 }]
         : []),
@@ -295,11 +312,14 @@ function NavSection({ section, collapsed }: { section: NavSection; collapsed: bo
 
   return (
     <div className="mb-3">
-      <button type="button"
+      <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "flex items-center justify-between w-full px-2 py-1.5 text-[11px] font-semibold tracking-wider uppercase",
-          hasActiveItem ? "text-[hsl(var(--brand-1))]" : "text-muted-foreground hover:text-foreground"
+          hasActiveItem
+            ? "text-[hsl(var(--brand-1))]"
+            : "text-muted-foreground hover:text-foreground"
         )}
       >
         {section.title}
@@ -310,13 +330,13 @@ function NavSection({ section, collapsed }: { section: NavSection; collapsed: bo
           {section.items.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-label={item.title}
-                  className={cn(
-                    "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all",
-                    isActive
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-label={item.title}
+                className={cn(
+                  "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all",
+                  isActive
                     ? "bg-[hsl(var(--brand-1))]/10 text-foreground shadow-sm border border-[hsl(var(--brand-1))]/15"
                     : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                 )}
@@ -324,7 +344,9 @@ function NavSection({ section, collapsed }: { section: NavSection; collapsed: bo
                 <item.icon
                   className={cn(
                     "h-4 w-4 flex-shrink-0",
-                    isActive ? "text-[hsl(var(--brand-1))]" : "text-muted-foreground group-hover:text-foreground"
+                    isActive
+                      ? "text-[hsl(var(--brand-1))]"
+                      : "text-muted-foreground group-hover:text-foreground"
                   )}
                 />
                 <span className="truncate flex-1">{item.title}</span>
@@ -340,7 +362,10 @@ function NavSection({ section, collapsed }: { section: NavSection; collapsed: bo
                   </Badge>
                 )}
                 {item.shortcut && !isActive && (
-                  <span aria-hidden="true" className="text-[10px] text-muted-foreground/70 font-mono">
+                  <span
+                    aria-hidden="true"
+                    className="text-[10px] text-muted-foreground/70 font-mono"
+                  >
                     {item.shortcut}
                   </span>
                 )}
@@ -359,17 +384,29 @@ interface SidebarProps {
   evergreenOk?: boolean;
   evergreenStatus?: number;
   branchName?: string;
+  /** When true, renders as a mobile drawer (removes hidden class and forces full height). */
+  mobile?: boolean;
 }
 
-export function Sidebar({ collapsed = false, onToggleCollapse, evergreenOk = true, evergreenStatus, branchName }: SidebarProps) {
+export function Sidebar({
+  collapsed = false,
+  onToggleCollapse,
+  evergreenOk = true,
+  evergreenStatus,
+  branchName,
+  mobile = false,
+}: SidebarProps) {
   return (
     <aside
       className={cn(
         "border-r border-border/70 surface-glass flex flex-col transition-all duration-200",
-        collapsed ? "w-20" : "w-64"
+        !mobile && "hidden md:flex",
+        mobile ? "w-full h-full border-r-0" : collapsed ? "w-20" : "w-64"
       )}
     >
-      <div className={cn("flex items-center justify-between px-3 py-3", collapsed && "justify-center")}>
+      <div
+        className={cn("flex items-center justify-between px-3 py-3", collapsed && "justify-center")}
+      >
         {!collapsed && (
           <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
             Navigation
@@ -382,7 +419,11 @@ export function Sidebar({ collapsed = false, onToggleCollapse, evergreenOk = tru
           onClick={onToggleCollapse}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          {collapsed ? (
+            <PanelLeftOpen className="h-4 w-4" />
+          ) : (
+            <PanelLeftClose className="h-4 w-4" />
+          )}
         </Button>
       </div>
 
@@ -390,9 +431,9 @@ export function Sidebar({ collapsed = false, onToggleCollapse, evergreenOk = tru
         <div className={cn(collapsed ? "px-2" : "px-3")}>
           {collapsed ? null : <WorkformTracker />}
           <nav className="space-y-1">
-          {mainNav.map((section) => (
-            <NavSection key={section.title} section={section} collapsed={collapsed} />
-          ))}
+            {mainNav.map((section) => (
+              <NavSection key={section.title} section={section} collapsed={collapsed} />
+            ))}
           </nav>
         </div>
       </ScrollArea>
@@ -400,20 +441,26 @@ export function Sidebar({ collapsed = false, onToggleCollapse, evergreenOk = tru
       <div className={cn("border-t border-border/70 px-3 py-3", collapsed && "px-2")}>
         {collapsed ? (
           <div className="flex items-center justify-center">
-            <span className={"h-2.5 w-2.5 rounded-full " + (evergreenOk ? "bg-emerald-500" : "bg-rose-500")} />
+            <span
+              className={
+                "h-2.5 w-2.5 rounded-full " + (evergreenOk ? "bg-emerald-500" : "bg-rose-500")
+              }
+            />
           </div>
         ) : (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-              <span className={"h-2 w-2 rounded-full " + (evergreenOk ? "bg-emerald-500" : "bg-rose-500")} />
+              <span
+                className={
+                  "h-2 w-2 rounded-full " + (evergreenOk ? "bg-emerald-500" : "bg-rose-500")
+                }
+              />
               <span>{evergreenOk ? "ILS Online" : "ILS Offline"}</span>
               {typeof evergreenStatus === "number" && (
                 <span className="text-[10px] text-muted-foreground/70">({evergreenStatus})</span>
               )}
             </div>
-            <div className="text-[10px] text-muted-foreground/70">
-              {branchName || "StacksOS"}
-            </div>
+            <div className="text-[10px] text-muted-foreground/70">{branchName || "StacksOS"}</div>
           </div>
         )}
       </div>

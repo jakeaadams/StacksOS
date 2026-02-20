@@ -9,19 +9,19 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useLibrary } from "@/hooks/use-library";
 import { usePatronSession } from "@/hooks/use-patron-session";
-import { BookCard } from "@/components/opac/BookCard";
-import { 
-  Search, 
-  BookOpen, 
-  Clock, 
-  Star, 
+import { BookCard } from "@/components/opac/book-card";
+import {
+  Search,
+  BookOpen,
+  Clock,
+  Star,
   TrendingUp,
   Sparkles,
   ArrowRight,
   Smartphone,
   Headphones,
   MonitorPlay,
-  MapPin
+  MapPin,
 } from "lucide-react";
 
 interface FeaturedBook {
@@ -85,7 +85,7 @@ export default function OPACHomePage() {
 
     try {
       setIsLoading(true);
-      
+
       // Fetch new arrivals from Evergreen catalog
       const [newResponse, popularResponse] = await Promise.all([
         fetchWithAuth("/api/evergreen/catalog?sort=create_date&limit=8&order=desc"),
@@ -101,7 +101,7 @@ export default function OPACHomePage() {
         const data = await popularResponse.json();
         setPopularItems(transformCatalogResults(data.records || []));
       }
-      
+
       // Fetch staff picks from Evergreen public bookbags
       try {
         const staffPicksResponse = await fetchWithAuth("/api/opac/staff-picks?limit=4");
@@ -112,7 +112,6 @@ export default function OPACHomePage() {
       } catch {
         // Staff picks are optional - don't fail if unavailable
       }
-
     } catch (err) {
       clientLogger.error("Error fetching featured content:", err);
     } finally {
@@ -141,14 +140,14 @@ export default function OPACHomePage() {
     </Link>
   );
 
-  const FormatCard = ({ 
-    icon: Icon, 
-    label, 
-    href, 
-    color 
-  }: { 
-    icon: React.ElementType; 
-    label: string; 
+  const FormatCard = ({
+    icon: Icon,
+    label,
+    href,
+    color,
+  }: {
+    icon: React.ElementType;
+    label: string;
     href: string;
     color: string;
   }) => (
@@ -167,19 +166,22 @@ export default function OPACHomePage() {
   return (
     <div className="min-h-screen">
       {/* Hero section with search */}
-      <section className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 
-                        text-white py-16 md:py-24">
+      <section
+        className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 
+                        text-white py-16 md:py-24"
+      >
         {/* Background pattern */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width=60 height=60 viewBox=0 0 60 60 xmlns=http://www.w3.org/2000/svg%3E%3Cg fill=none fill-rule=evenodd%3E%3Cg fill=%23ffffff fill-opacity=0.4%3E%3Cpath d=M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }} />
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width=60 height=60 viewBox=0 0 60 60 xmlns=http://www.w3.org/2000/svg%3E%3Cg fill=none fill-rule=evenodd%3E%3Cg fill=%23ffffff fill-opacity=0.4%3E%3Cpath d=M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            }}
+          />
         </div>
 
         <div className="relative max-w-4xl mx-auto px-4 text-center">
-          <h1 className="text-3xl md:text-5xl font-bold mb-4">
-            Discover Your Next Great Read
-          </h1>
+          <h1 className="text-3xl md:text-5xl font-bold mb-4">Discover Your Next Great Read</h1>
           <p className="text-lg md:text-xl text-primary-100 mb-8 max-w-2xl mx-auto">
             Search our collection of books, eBooks, audiobooks, movies, and more
           </p>
@@ -196,7 +198,8 @@ export default function OPACHomePage() {
                          text-foreground placeholder:text-muted-foreground shadow-xl
                          focus:outline-none focus:ring-4 focus:ring-white/30"
               />
-              <button type="submit"
+              <button
+                type="submit"
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-3 md:p-4 bg-primary-600 
                          text-white rounded-full hover:bg-primary-700 transition-colors
                          shadow-lg"
@@ -214,8 +217,14 @@ export default function OPACHomePage() {
               href={browseEnabled ? "/opac/new-titles" : "/opac/search?sort=create_date&order=desc"}
             />
             <QuickSearchChip label="Popular" href="/opac/search?sort=popularity" />
-            <QuickSearchChip label="Award Winners" href={`/opac/search?q=${encodeURIComponent("subject: award winners")}`} />
-            <QuickSearchChip label="Book Club" href={`/opac/search?q=${encodeURIComponent("subject: book club")}`} />
+            <QuickSearchChip
+              label="Award Winners"
+              href={`/opac/search?q=${encodeURIComponent("subject: award winners")}`}
+            />
+            <QuickSearchChip
+              label="Book Club"
+              href={`/opac/search?q=${encodeURIComponent("subject: book club")}`}
+            />
           </div>
         </div>
       </section>
@@ -226,18 +235,20 @@ export default function OPACHomePage() {
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <span className="text-muted-foreground">Welcome back, <strong>{patron.firstName}</strong>!</span>
+                <span className="text-muted-foreground">
+                  Welcome back, <strong>{patron.firstName}</strong>!
+                </span>
                 {patron.checkoutCount > 0 && (
-                  <Link 
+                  <Link
                     href="/opac/account/checkouts"
                     className="text-sm text-primary-600 hover:underline"
                   >
                     {patron.checkoutCount} items checked out
                   </Link>
                 )}
-                {holds.filter(h => h.status === "ready").length > 0 && (
+                {holds.filter((h) => h.status === "ready").length > 0 && (
                   <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                    {holds.filter(h => h.status === "ready").length} holds ready!
+                    {holds.filter((h) => h.status === "ready").length} holds ready!
                   </span>
                 )}
               </div>
@@ -259,27 +270,27 @@ export default function OPACHomePage() {
             Browse by Format
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            <FormatCard 
-              icon={BookOpen} 
-              label="Books" 
+            <FormatCard
+              icon={BookOpen}
+              label="Books"
               href="/opac/search?format=book"
               color="bg-blue-500"
             />
-            <FormatCard 
-              icon={Smartphone} 
-              label="eBooks" 
+            <FormatCard
+              icon={Smartphone}
+              label="eBooks"
               href="/opac/search?format=ebook"
               color="bg-purple-500"
             />
-            <FormatCard 
-              icon={Headphones} 
-              label="Audiobooks" 
+            <FormatCard
+              icon={Headphones}
+              label="Audiobooks"
               href="/opac/search?format=audiobook"
               color="bg-green-500"
             />
-            <FormatCard 
-              icon={MonitorPlay} 
-              label="Movies & TV" 
+            <FormatCard
+              icon={MonitorPlay}
+              label="Movies & TV"
               href="/opac/search?format=dvd"
               color="bg-red-500"
             />
@@ -296,9 +307,7 @@ export default function OPACHomePage() {
                 <div className="p-2 bg-amber-100 rounded-lg">
                   <Sparkles className="h-6 w-6 text-amber-600" />
                 </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                  New Arrivals
-                </h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground">New Arrivals</h2>
               </div>
               <Link
                 href="/opac/new-titles"
@@ -411,9 +420,7 @@ export default function OPACHomePage() {
                 <div className="p-2 bg-purple-100 rounded-lg">
                   <Star className="h-6 w-6 text-purple-600" />
                 </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                  Staff Picks
-                </h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground">Staff Picks</h2>
               </div>
               <Link
                 href="/opac/lists"
@@ -426,29 +433,29 @@ export default function OPACHomePage() {
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {staffPicks.map((pick) => (
-                <div 
+                <div
                   key={pick.id}
                   className="bg-gradient-to-br from-purple-50 to-white p-6 rounded-xl 
                            border border-purple-100"
                 >
                   <div className="flex gap-4">
-	                    <div className="w-20 h-28 bg-muted rounded-lg shrink-0 overflow-hidden">
-	                      {pick.coverUrl ? (
-	                        <Image
-	                          src={pick.coverUrl}
-	                          alt={pick.title}
-	                          width={80}
-	                          height={112}
-	                          className="w-full h-full object-cover"
-	                        />
-	                      ) : (
-	                        <div className="w-full h-full bg-purple-200 flex items-center justify-center">
-	                          <BookOpen className="h-8 w-8 text-purple-400" />
-	                        </div>
-	                      )}
+                    <div className="w-20 h-28 bg-muted rounded-lg shrink-0 overflow-hidden">
+                      {pick.coverUrl ? (
+                        <Image
+                          src={pick.coverUrl}
+                          alt={pick.title}
+                          width={80}
+                          height={112}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-purple-200 flex items-center justify-center">
+                          <BookOpen className="h-8 w-8 text-purple-400" />
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1">
-                      <Link 
+                      <Link
                         href={`/opac/record/${pick.id}`}
                         className="font-semibold text-foreground hover:text-primary-600 line-clamp-2"
                       >
@@ -481,7 +488,7 @@ export default function OPACHomePage() {
                 <h3 className="font-semibold text-lg">Library Hours</h3>
               </div>
               {library?.hoursDetailed ? (
-                <ul className="space-y-1 text-muted-foreground/50 text-sm">
+                <ul className="space-y-1 text-white/70 text-sm">
                   {library.hoursDetailed.map((day) => (
                     <li key={day.day} className="flex justify-between">
                       <span>{day.day}</span>
@@ -501,7 +508,7 @@ export default function OPACHomePage() {
                   <MapPin className="h-5 w-5 text-primary-400" />
                   <h3 className="font-semibold text-lg">Your Library</h3>
                 </div>
-                <p className="text-muted-foreground/50 mb-2">{currentLocation.name}</p>
+                <p className="text-white/70 mb-2">{currentLocation.name}</p>
                 {currentLocation.address && (
                   <p className="text-muted-foreground/70 text-sm">{currentLocation.address}</p>
                 )}
@@ -514,7 +521,7 @@ export default function OPACHomePage() {
             {/* Quick Links */}
             <div>
               <h3 className="font-semibold text-lg mb-4">Quick Links</h3>
-              <ul className="space-y-2 text-muted-foreground/50">
+              <ul className="space-y-2 text-white/70">
                 <li>
                   <Link href="/opac/account" className="hover:text-white transition-colors">
                     My Account
@@ -528,7 +535,10 @@ export default function OPACHomePage() {
                   ) : null}
                 </li>
                 <li>
-                  <Link href="/opac/search?format=ebook" className="hover:text-white transition-colors">
+                  <Link
+                    href="/opac/search?format=ebook"
+                    className="hover:text-white transition-colors"
+                  >
                     Digital Resources
                   </Link>
                 </li>

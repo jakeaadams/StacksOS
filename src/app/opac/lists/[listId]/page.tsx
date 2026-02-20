@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import { BookCard } from "@/components/opac/BookCard";
+import { BookCard } from "@/components/opac/book-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { featureFlags } from "@/lib/feature-flags";
@@ -187,7 +187,12 @@ export default function PublicListPage() {
               Back
             </Link>
           </Button>
-          <Button type="button" variant="outline" className="rounded-xl" onClick={() => void handleShare()}>
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-xl"
+            onClick={() => void handleShare()}
+          >
             <Share2 className="h-4 w-4 mr-2" />
             Share
           </Button>
@@ -197,7 +202,9 @@ export default function PublicListPage() {
           <div className="flex items-start justify-between gap-6 flex-wrap">
             <div className="min-w-0">
               <h1 className="text-2xl font-bold text-foreground">{list.name}</h1>
-              {list.description ? <p className="mt-2 text-muted-foreground">{list.description}</p> : null}
+              {list.description ? (
+                <p className="mt-2 text-muted-foreground">{list.description}</p>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 {list.ownerName ? <Badge variant="secondary">{list.ownerName}</Badge> : null}
                 <Badge variant="outline">{items.length} items</Badge>

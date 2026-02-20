@@ -31,7 +31,8 @@ async function ensureAiTables(): Promise<void> {
       decision_reason TEXT,
       decided_by INTEGER,
       ip TEXT,
-      user_agent TEXT
+      user_agent TEXT,
+      updated_at TIMESTAMP DEFAULT NOW()
     )
   `);
 
@@ -39,6 +40,9 @@ async function ensureAiTables(): Promise<void> {
   await query(`ALTER TABLE library.ai_drafts ADD COLUMN IF NOT EXISTS decision_reason TEXT`);
   await query(`ALTER TABLE library.ai_drafts ADD COLUMN IF NOT EXISTS prompt_template TEXT`);
   await query(`ALTER TABLE library.ai_drafts ADD COLUMN IF NOT EXISTS prompt_version INTEGER`);
+  await query(
+    `ALTER TABLE library.ai_drafts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()`
+  );
 
   await query(`
     CREATE TABLE IF NOT EXISTS library.ai_draft_decisions (
@@ -151,7 +155,8 @@ export async function decideAiDraft(args: {
       SET decision = $2,
           decided_at = NOW(),
           decided_by = $3,
-          decision_reason = $4
+          decision_reason = $4,
+          updated_at = NOW()
       WHERE id = $1
     `,
     [args.id, args.decision, args.decidedBy || null, reason]

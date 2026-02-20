@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchEvergreen } from "@/lib/api/evergreen-fetch";
 import { getEvergreenPool } from "@/lib/db/evergreen";
+import { cookies } from "next/headers";
 
 const startTime = Date.now();
 
@@ -130,10 +131,17 @@ async function checkEvergreen(): Promise<HealthCheck> {
 }
 
 export async function GET(_req: NextRequest) {
-  const [dbCheck, evergreenCheck] = await Promise.all([
-    checkDatabase(),
-    checkEvergreen(),
-  ]);
+  // Check if the request is from an authenticated staff user
+  const cookieStore = await cookies();
+  const authtoken = cookieStore.get("authtoken")?.value;
+
+  if (!authtoken) {
+    // Unauthenticated: return only basic status for load balancers
+    return NextResponse.json({ status: "ok" }, { status: 200 });
+  }
+
+  // Authenticated staff: return full detailed health info
+  const [dbCheck, evergreenCheck] = await Promise.all([checkDatabase(), checkEvergreen()]);
 
   const allHealthy = dbCheck.status === "up" && evergreenCheck.status === "up";
   const anyDown = dbCheck.status === "down" || evergreenCheck.status === "down";

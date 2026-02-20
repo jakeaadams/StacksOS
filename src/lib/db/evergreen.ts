@@ -1,3 +1,5 @@
+import "server-only";
+
 import { Pool, PoolClient } from "pg";
 import { logger } from "@/lib/logger";
 import { ensureLibrarySchemaExists } from "./library-schema";
@@ -17,7 +19,10 @@ export function getEvergreenPool(): Pool {
       if (!String(process.env.EVERGREEN_DB_HOST || "").trim()) missing.push("EVERGREEN_DB_HOST");
       if (!String(process.env.EVERGREEN_DB_USER || "").trim()) missing.push("EVERGREEN_DB_USER");
       if (missing.length) {
-        logger.warn({ component: "db", missing }, "Evergreen DB env vars missing; using safe defaults");
+        logger.warn(
+          { component: "db", missing },
+          "Evergreen DB env vars missing; using safe defaults"
+        );
       }
     }
 
@@ -40,36 +45,28 @@ export function getEvergreenPool(): Pool {
   return pool;
 }
 
-export async function query<T = any>(
-  text: string,
-  params?: any[]
-): Promise<T[]> {
+export async function query<T = any>(text: string, params?: any[]): Promise<T[]> {
   const pool = getEvergreenPool();
   const result = await pool.query(text, params);
   return result.rows;
 }
 
-export async function querySingle<T = any>(
-  text: string,
-  params?: any[]
-): Promise<T | null> {
+export async function querySingle<T = any>(text: string, params?: any[]): Promise<T | null> {
   const rows = await query<T>(text, params);
   return rows.length > 0 ? rows[0] : null;
 }
 
-export async function withTransaction<T>(
-  callback: (client: PoolClient) => Promise<T>
-): Promise<T> {
+export async function withTransaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
   const pool = getEvergreenPool();
   const client = await pool.connect();
 
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
     const result = await callback(client);
-    await client.query('COMMIT');
+    await client.query("COMMIT");
     return result;
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     throw error;
   } finally {
     client.release();
@@ -150,13 +147,16 @@ export async function savePatronPhotoUrl(
   uploadedBy?: number
 ): Promise<void> {
   await ensurePatronPhotosTable();
-  
-  await query(`
+
+  await query(
+    `
     INSERT INTO library.patron_photos (patron_id, photo_url, uploaded_by, updated_at)
     VALUES ($1, $2, $3, NOW())
     ON CONFLICT (patron_id)
     DO UPDATE SET photo_url = $2, uploaded_by = $3, updated_at = NOW()
-  `, [patronId, photoUrl, uploadedBy || null]);
+  `,
+    [patronId, photoUrl, uploadedBy || null]
+  );
 
   // Best-effort: also persist to Evergreen core so other clients can display it.
   try {
@@ -175,10 +175,13 @@ export async function savePatronPhotoUrl(
 
 export async function getPatronPhotoUrl(patronId: number): Promise<string | null> {
   await ensurePatronPhotosTable();
-  
-  const result = await querySingle<{ photo_url: string }>(`
+
+  const result = await querySingle<{ photo_url: string }>(
+    `
     SELECT photo_url FROM library.patron_photos WHERE patron_id = $1
-  `, [patronId]);
+  `,
+    [patronId]
+  );
 
   if (result?.photo_url) return result.photo_url;
 

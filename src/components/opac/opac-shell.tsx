@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { OPACFooter } from "@/components/opac/OPACFooter";
-import { OPACHeader } from "@/components/opac/OPACHeader";
+import { OPACFooter } from "@/components/opac/opac-footer";
+import { OPACHeader } from "@/components/opac/opac-header";
 import { Toaster } from "@/components/ui/sonner";
 import { useAccessibilityPrefs } from "@/hooks/use-accessibility-prefs";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,12 @@ export function OpacShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className={cn("min-h-screen flex flex-col bg-muted/30", dyslexiaFriendly ? "stacksos-dyslexia" : "")}>
+    <div
+      className={cn(
+        "min-h-screen flex flex-col bg-muted/30",
+        dyslexiaFriendly ? "stacksos-dyslexia" : ""
+      )}
+    >
       {/* Skip link for keyboard navigation */}
       <a
         href="#main-content"

@@ -1,5 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck, FileText, AlertTriangle } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Terms of Use",
+  description:
+    "Library card terms of use including cardholder responsibilities, fees, loss and damage policies, and account security.",
+};
 
 export default function OpacTermsPage() {
   return (

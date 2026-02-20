@@ -2,7 +2,14 @@
 
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Search, Sparkles } from "lucide-react";
 
@@ -117,7 +124,8 @@ export function WhyThisResultDialog({
         <DialogHeader>
           <DialogTitle>Why this result?</DialogTitle>
           <DialogDescription>
-            A best-effort explanation based on visible metadata, availability, and the selected sort mode.
+            A best-effort explanation based on visible metadata, availability, and the selected sort
+            mode.
           </DialogDescription>
         </DialogHeader>
 
@@ -175,8 +183,9 @@ export function WhyThisResultDialog({
                   </div>
                 ) : (
                   <div className="mt-2 text-sm text-muted-foreground">
-                    This record matched in the library catalog search, but the exact query terms do not appear in the fields shown
-                    here. It may match other metadata (series, alternate titles, MARC fields, etc.).
+                    This record matched in the library catalog search, but the exact query terms do
+                    not appear in the fields shown here. It may match other metadata (series,
+                    alternate titles, MARC fields, etc.).
                   </div>
                 )
               ) : (
@@ -199,7 +208,8 @@ export function WhyThisResultDialog({
                 )}
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
-                Some libraries boost available items for relevance sorting; exact weights vary by Evergreen configuration.
+                Some libraries boost available items for relevance sorting; exact weights vary by
+                Evergreen configuration.
               </div>
             </div>
 
@@ -208,7 +218,10 @@ export function WhyThisResultDialog({
                 <div className="text-xs font-medium text-muted-foreground">Your filters</div>
                 <div className="mt-2 space-y-2 text-sm">
                   {filters.map((f) => (
-                    <div key={`${f.label}:${f.value}`} className="flex items-start justify-between gap-3">
+                    <div
+                      key={`${f.label}:${f.value}`}
+                      className="flex items-start justify-between gap-3"
+                    >
                       <div className="text-muted-foreground">{f.label}</div>
                       <div className="text-right text-sm">{f.value}</div>
                     </div>
@@ -224,7 +237,9 @@ export function WhyThisResultDialog({
                   {semanticReason ? (
                     <div className="text-muted-foreground">{semanticReason}</div>
                   ) : (
-                    <div className="text-muted-foreground">No AI rationale was provided for this result.</div>
+                    <div className="text-muted-foreground">
+                      No AI rationale was provided for this result.
+                    </div>
                   )}
                   {typeof semanticScore === "number" ? (
                     <div className="flex items-center justify-between gap-3">
@@ -233,8 +248,8 @@ export function WhyThisResultDialog({
                     </div>
                   ) : null}
                   <div className="text-xs text-muted-foreground">
-                    AI explanations are generated from bibliographic metadata and may be imperfect. Always verify key details in the
-                    record view.
+                    AI explanations are generated from bibliographic metadata and may be imperfect.
+                    Always verify key details in the record view.
                   </div>
                 </div>
               </div>
@@ -244,7 +259,8 @@ export function WhyThisResultDialog({
           <Separator />
 
           <div className="text-xs text-muted-foreground">
-            Tip: Use filters to narrow results first, then switch between <span className="font-medium">Relevance</span> and{" "}
+            Tip: Use filters to narrow results first, then switch between{" "}
+            <span className="font-medium">Relevance</span> and{" "}
             <span className="font-medium">Smart (AI)</span> sorting to compare ranking behaviors.
           </div>
         </div>
@@ -252,4 +268,3 @@ export function WhyThisResultDialog({
     </Dialog>
   );
 }
-

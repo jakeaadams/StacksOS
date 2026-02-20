@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AccessibilityControls } from "@/components/opac/AccessibilityControls";
+import { AccessibilityControls } from "@/components/opac/accessibility-controls";
 
 export const metadata = {
   title: "Accessibility",
@@ -41,8 +41,11 @@ export default function AccessibilityPage() {
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-foreground">Need help?</h2>
           <p className="mt-3 text-sm text-muted-foreground">
-            See <Link className="text-primary underline" href="/opac/help">Help</Link> for common
-            questions, or contact your library for assistance.
+            See{" "}
+            <Link className="text-primary underline" href="/opac/help">
+              Help
+            </Link>{" "}
+            for common questions, or contact your library for assistance.
           </p>
         </div>
       </div>

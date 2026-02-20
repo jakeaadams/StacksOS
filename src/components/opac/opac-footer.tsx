@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { useLibrary } from "@/hooks/use-library";
 import { featureFlags } from "@/lib/feature-flags";
-import { 
-  Facebook, 
-  Twitter, 
-  Instagram, 
+import {
+  Facebook,
+  Twitter,
+  Instagram,
   Youtube,
   Mail,
   Phone,
   MapPin,
-  ExternalLink
+  ExternalLink,
 } from "lucide-react";
 
 export function OPACFooter() {
@@ -25,9 +25,7 @@ export function OPACFooter() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Library info */}
           <div>
-            <h3 className="text-white font-bold text-lg mb-4">
-              {library?.name || "Your Library"}
-            </h3>
+            <h3 className="text-white font-bold text-lg mb-4">{library?.name || "Your Library"}</h3>
             {library?.address && (
               <div className="flex items-start gap-2 mb-3">
                 <MapPin className="h-5 w-5 shrink-0 mt-0.5" />
@@ -50,13 +48,14 @@ export function OPACFooter() {
                 </a>
               </div>
             )}
-            
+
             {/* Social links */}
             <div className="flex items-center gap-4 mt-4">
               {library?.socialLinks?.facebook && (
-                <a 
+                <a
                   href={library.socialLinks.facebook}
-                  target="_blank" rel="noopener noreferrer"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
                   aria-label="Facebook"
                 >
@@ -64,9 +63,10 @@ export function OPACFooter() {
                 </a>
               )}
               {library?.socialLinks?.twitter && (
-                <a 
+                <a
                   href={library.socialLinks.twitter}
-                  target="_blank" rel="noopener noreferrer"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
                   aria-label="Twitter"
                 >
@@ -74,9 +74,10 @@ export function OPACFooter() {
                 </a>
               )}
               {library?.socialLinks?.instagram && (
-                <a 
+                <a
                   href={library.socialLinks.instagram}
-                  target="_blank" rel="noopener noreferrer"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
                   aria-label="Instagram"
                 >
@@ -84,9 +85,10 @@ export function OPACFooter() {
                 </a>
               )}
               {library?.socialLinks?.youtube && (
-                <a 
+                <a
                   href={library.socialLinks.youtube}
-                  target="_blank" rel="noopener noreferrer"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
                   aria-label="YouTube"
                 >
@@ -108,7 +110,10 @@ export function OPACFooter() {
               {featureFlags.opacBrowseV2 ? (
                 <>
                   <li>
-                    <Link href="/opac/new-titles" className="text-sm hover:text-white transition-colors">
+                    <Link
+                      href="/opac/new-titles"
+                      className="text-sm hover:text-white transition-colors"
+                    >
                       New Arrivals
                     </Link>
                   </li>
@@ -127,7 +132,10 @@ export function OPACFooter() {
                 ) : null}
               </li>
               <li>
-                <Link href="/opac/search?format=ebook" className="text-sm hover:text-white transition-colors">
+                <Link
+                  href="/opac/search?format=ebook"
+                  className="text-sm hover:text-white transition-colors"
+                >
                   eBooks & Audiobooks
                 </Link>
               </li>
@@ -144,17 +152,26 @@ export function OPACFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/opac/account/checkouts" className="text-sm hover:text-white transition-colors">
+                <Link
+                  href="/opac/account/checkouts"
+                  className="text-sm hover:text-white transition-colors"
+                >
                   My Checkouts
                 </Link>
               </li>
               <li>
-                <Link href="/opac/account/holds" className="text-sm hover:text-white transition-colors">
+                <Link
+                  href="/opac/account/holds"
+                  className="text-sm hover:text-white transition-colors"
+                >
                   My Holds
                 </Link>
               </li>
               <li>
-                <Link href="/opac/account/fines" className="text-sm hover:text-white transition-colors">
+                <Link
+                  href="/opac/account/fines"
+                  className="text-sm hover:text-white transition-colors"
+                >
                   Fines & Fees
                 </Link>
               </li>
@@ -181,9 +198,9 @@ export function OPACFooter() {
             ) : (
               <p className="text-sm">Contact library for hours</p>
             )}
-            
+
             {library?.locations && library.locations.length > 1 && (
-              <Link 
+              <Link
                 href="/opac/locations"
                 className="inline-flex items-center gap-1 mt-4 text-sm text-primary-400 hover:text-primary-300"
               >
@@ -203,10 +220,16 @@ export function OPACFooter() {
               © {currentYear} {library?.name || "Library"}. All rights reserved.
             </p>
             <div className="flex items-center gap-6 text-sm">
-              <Link href="/opac/accessibility" className="text-muted-foreground hover:text-muted-foreground/50">
+              <Link
+                href="/opac/accessibility"
+                className="text-muted-foreground hover:text-muted-foreground/50"
+              >
                 Accessibility
               </Link>
-              <Link href="/opac/privacy" className="text-muted-foreground hover:text-muted-foreground/50">
+              <Link
+                href="/opac/privacy"
+                className="text-muted-foreground hover:text-muted-foreground/50"
+              >
                 Privacy Policy
               </Link>
               <span className="text-muted-foreground">

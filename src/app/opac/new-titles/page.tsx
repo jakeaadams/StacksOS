@@ -6,7 +6,7 @@ import { featureFlags } from "@/lib/feature-flags";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { BookCard } from "@/components/opac/BookCard";
+import { BookCard } from "@/components/opac/book-card";
 import {
   Sparkles,
   Filter,
@@ -37,9 +37,9 @@ function transformResults(records: any[]): NewTitle[] {
     id: record.id,
     title: record.title || "Unknown Title",
     author: record.author,
-    coverUrl: record.coverUrl || (record.isbn
-      ? `https://covers.openlibrary.org/b/isbn/${record.isbn}-M.jpg`
-      : undefined),
+    coverUrl:
+      record.coverUrl ||
+      (record.isbn ? `https://covers.openlibrary.org/b/isbn/${record.isbn}-M.jpg` : undefined),
     publicationYear: record.pubdate ? parseInt(record.pubdate, 10) : undefined,
     format: record.format || "Book",
     dateAdded: record.create_date || record.createDate || new Date().toISOString(),
@@ -78,7 +78,7 @@ export default function NewTitlesPage() {
     if (!enabled) return;
     try {
       setIsLoading(true);
-      
+
       const params = new URLSearchParams({
         q: "*",
         sort: "create_date",
@@ -98,11 +98,12 @@ export default function NewTitlesPage() {
       params.set("since", sinceDate.toISOString().split("T")[0]);
 
       const response = await fetchWithAuth(`/api/evergreen/catalog?${params}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         setTitles(transformResults(data.records || []));
-        const totalCount = Number(data.count) || (Array.isArray(data.records) ? data.records.length : 0);
+        const totalCount =
+          Number(data.count) || (Array.isArray(data.records) ? data.records.length : 0);
         setTotalPages(Math.max(1, Math.ceil(totalCount / pageSize)));
       }
     } catch (error) {
@@ -154,9 +155,7 @@ export default function NewTitlesPage() {
             </div>
             <h1 className="text-3xl font-bold text-foreground">New Arrivals</h1>
           </div>
-          <p className="text-muted-foreground">
-            Discover the latest additions to our collection.
-          </p>
+          <p className="text-muted-foreground">Discover the latest additions to our collection.</p>
         </div>
       </div>
 
@@ -170,13 +169,19 @@ export default function NewTitlesPage() {
               <span className="text-sm text-muted-foreground">Format:</span>
               <div className="flex gap-1">
                 {FORMAT_FILTERS.map((filter) => (
-                  <button type="button"
+                  <button
+                    type="button"
                     key={filter.value}
-                    onClick={() => { setFormatFilter(filter.value); setPage(1); }}
+                    onClick={() => {
+                      setFormatFilter(filter.value);
+                      setPage(1);
+                    }}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors
-                      ${formatFilter === filter.value
-                        ? "bg-primary-600 text-white"
-                        : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+                      ${
+                        formatFilter === filter.value
+                          ? "bg-primary-600 text-white"
+                          : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                      }`}
                   >
                     {filter.label}
                   </button>
@@ -189,7 +194,10 @@ export default function NewTitlesPage() {
               <span className="text-sm text-muted-foreground">Added:</span>
               <select
                 value={timeFilter}
-                onChange={(e) => { setTimeFilter(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setTimeFilter(e.target.value);
+                  setPage(1);
+                }}
                 className="px-3 py-1.5 border border-border rounded-lg text-sm focus:outline-none 
                          focus:ring-2 focus:ring-primary-500"
               >
@@ -241,7 +249,8 @@ export default function NewTitlesPage() {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="mt-8 flex items-center justify-center gap-2">
-                <button type="button"
+                <button
+                  type="button"
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
                   className="p-2 rounded-lg border border-border hover:bg-muted/30 
@@ -249,7 +258,7 @@ export default function NewTitlesPage() {
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
-                
+
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum;
@@ -262,15 +271,18 @@ export default function NewTitlesPage() {
                     } else {
                       pageNum = page - 2 + i;
                     }
-                    
+
                     return (
-                      <button type="button"
+                      <button
+                        type="button"
                         key={pageNum}
                         onClick={() => setPage(pageNum)}
                         className={`w-10 h-10 rounded-lg font-medium transition-colors
-                          ${page === pageNum
-                            ? "bg-primary-600 text-white"
-                            : "border border-border hover:bg-muted/30"}`}
+                          ${
+                            page === pageNum
+                              ? "bg-primary-600 text-white"
+                              : "border border-border hover:bg-muted/30"
+                          }`}
                       >
                         {pageNum}
                       </button>
@@ -278,7 +290,8 @@ export default function NewTitlesPage() {
                   })}
                 </div>
 
-                <button type="button"
+                <button
+                  type="button"
                   onClick={() => setPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
                   className="p-2 rounded-lg border border-border hover:bg-muted/30 

@@ -1,6 +1,12 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, getRequestMeta, serverErrorResponse, successResponse } from "@/lib/api";
+import {
+  errorResponse,
+  getRequestMeta,
+  parseJsonBodyWithSchema,
+  serverErrorResponse,
+  successResponse,
+} from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logAuditEvent } from "@/lib/audit";
 import { createRecordTask, listRecordTasks, updateRecordTask } from "@/lib/db/collaboration";
@@ -26,7 +32,9 @@ const updateSchema = z.object({
 export async function GET(req: NextRequest) {
   try {
     await requirePermissions(["STAFF_LOGIN"]);
-    const recordType = recordTypeSchema.safeParse(req.nextUrl.searchParams.get("recordType") || "").data;
+    const recordType = recordTypeSchema.safeParse(
+      req.nextUrl.searchParams.get("recordType") || ""
+    ).data;
     const recordIdRaw = req.nextUrl.searchParams.get("recordId") || "";
     const recordId = /^\d+$/.test(recordIdRaw) ? parseInt(recordIdRaw, 10) : 0;
     if (!recordType || recordId <= 0) {
@@ -43,18 +51,16 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
   try {
-    const parsed = createSchema.safeParse(await req.json().catch(() => null));
-    if (!parsed.success) {
-      return errorResponse("Invalid request body", 400, parsed.error.flatten());
-    }
+    const parsed = await parseJsonBodyWithSchema(req, createSchema);
+    if (parsed instanceof Response) return parsed as any;
 
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
     const task = await createRecordTask({
-      recordType: parsed.data.recordType,
-      recordId: parsed.data.recordId,
-      title: parsed.data.title,
-      body: parsed.data.body || null,
-      assignedTo: parsed.data.assignedTo || null,
+      recordType: parsed.recordType,
+      recordId: parsed.recordId,
+      title: parsed.title,
+      body: parsed.body || null,
+      assignedTo: parsed.assignedTo || null,
       createdBy: actor?.id || null,
     });
 
@@ -65,7 +71,12 @@ export async function POST(req: NextRequest) {
       ip,
       userAgent,
       requestId,
-      details: { taskId: task.id, recordType: task.recordType, recordId: task.recordId, assignedTo: task.assignedTo || null },
+      details: {
+        taskId: task.id,
+        recordType: task.recordType,
+        recordId: task.recordId,
+        assignedTo: task.assignedTo || null,
+      },
     });
 
     return successResponse({ task });
@@ -77,18 +88,16 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
   try {
-    const parsed = updateSchema.safeParse(await req.json().catch(() => null));
-    if (!parsed.success) {
-      return errorResponse("Invalid request body", 400, parsed.error.flatten());
-    }
+    const parsed = await parseJsonBodyWithSchema(req, updateSchema);
+    if (parsed instanceof Response) return parsed as any;
 
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
     const task = await updateRecordTask({
-      id: parsed.data.id,
-      title: parsed.data.title,
-      body: parsed.data.body,
-      status: parsed.data.status,
-      assignedTo: parsed.data.assignedTo,
+      id: parsed.id,
+      title: parsed.title,
+      body: parsed.body,
+      status: parsed.status,
+      assignedTo: parsed.assignedTo,
       updatedBy: actor?.id || null,
     });
     if (!task) return errorResponse("Task not found", 404);
@@ -100,7 +109,12 @@ export async function PATCH(req: NextRequest) {
       ip,
       userAgent,
       requestId,
-      details: { taskId: task.id, recordType: task.recordType, recordId: task.recordId, status: task.status },
+      details: {
+        taskId: task.id,
+        recordType: task.recordType,
+        recordId: task.recordId,
+        status: task.status,
+      },
     });
 
     return successResponse({ task });
@@ -108,4 +122,3 @@ export async function PATCH(req: NextRequest) {
     return serverErrorResponse(error, "Collaboration tasks PATCH", req);
   }
 }
-

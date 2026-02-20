@@ -4,16 +4,19 @@ import {
   successResponse,
   errorResponse,
   serverErrorResponse,
+  unauthorizedResponse,
+  getRequestMeta,
 } from "@/lib/api";
-import { cookies } from "next/headers";
+import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 /**
  * OPAC Reviews API
  * Manages patron reviews and ratings for bibliographic records
  *
- * NOTE: Evergreen doesn't have a native reviews system, so this implementation
+ * NOTE: Evergreen does not have a native reviews system, so this implementation
  * uses a custom approach with patron notes or a separate database table.
- * For now, we'll use a simplified in-memory/localStorage approach that can
+ * For now, we use a simplified in-memory/localStorage approach that can
  * be replaced with a proper database later.
  */
 
@@ -32,7 +35,7 @@ interface Review {
 }
 
 // In production, this would be stored in a database
-// For now, we'll use a Map that persists during server runtime
+// For now, we use a Map that persists during server runtime
 const reviewsStore = new Map<number, Review[]>();
 let nextReviewId = 1;
 
@@ -59,7 +62,7 @@ function calculateStats(reviews: Review[]) {
     }
   }
 
-  const visibleReviews = reviews.filter(r => !r.reported);
+  const visibleReviews = reviews.filter((r) => !r.reported);
   const averageRating = visibleReviews.length > 0 ? totalRating / visibleReviews.length : 0;
 
   return {
@@ -80,7 +83,7 @@ export async function GET(req: NextRequest) {
     }
 
     const bibIdNum = parseInt(bibId, 10);
-    const reviews = getReviewsForBib(bibIdNum).filter(r => !r.reported);
+    const reviews = getReviewsForBib(bibIdNum).filter((r) => !r.reported);
 
     // Sort reviews
     const sortedReviews = [...reviews];
@@ -90,7 +93,9 @@ export async function GET(req: NextRequest) {
       sortedReviews.sort((a, b) => b.rating - a.rating);
     } else {
       // recent
-      sortedReviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      sortedReviews.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
     }
 
     const stats = calculateStats(reviews);
@@ -106,52 +111,39 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    // Get patron from self-checkout cookie or staff auth
-    const cookieStore = await cookies();
-    const selfCheckoutToken = cookieStore.get("self_checkout_token")?.value;
+    const { ip } = getRequestMeta(req);
 
-    let patronId: number;
-    let patronName: string;
-    let verified = false;
+    // Rate limiting - 10 reviews per hour per IP
+    const rateLimit = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 10,
+      windowMs: 60 * 60 * 1000, // 1 hour
+      endpoint: "opac-reviews",
+    });
 
-    if (selfCheckoutToken) {
-      // Get patron info from self-checkout session
-      try {
-        const sessionRes = await callOpenSRF(
-          "open-ils.auth",
-          "open-ils.auth.session.retrieve",
-          [selfCheckoutToken]
-        );
-        const session = sessionRes?.payload?.[0];
-        if (session && !session.ilsevent) {
-          patronId = session.id || session.usrname;
-
-          // Get patron details
-          const patronRes = await callOpenSRF(
-            "open-ils.actor",
-            "open-ils.actor.user.fleshed.retrieve",
-            [selfCheckoutToken, session.id, ["card"]]
-          );
-          const patron = patronRes?.payload?.[0];
-          if (patron && !patron.ilsevent) {
-            patronName = `${patron.first_given_name || ""} ${patron.family_name || ""}`.trim() || "Anonymous";
-            patronId = patron.id;
-            verified = true; // They're logged in with valid credentials
-          } else {
-            patronName = "Anonymous";
-          }
-        } else {
-          return errorResponse("Please log in to submit a review", 401);
-        }
-      } catch (_error) {
-        return errorResponse("Authentication error", 401);
-      }
-    } else {
-      // No authentication - anonymous review (you might want to disable this)
-      patronId = 0;
-      patronName = "Guest";
-      verified = false;
+    if (!rateLimit.allowed) {
+      const waitMinutes = Math.ceil(rateLimit.resetIn / 60000);
+      return errorResponse(
+        `Too many reviews submitted. Please try again in ${waitMinutes} minute(s).`,
+        429
+      );
     }
+
+    // Require patron authentication
+    let patronToken: string;
+    let patronId: number;
+    let user: any;
+    try {
+      ({ patronToken, patronId, user } = await requirePatronSession());
+    } catch (error) {
+      if (error instanceof PatronAuthError) {
+        return unauthorizedResponse(error.message);
+      }
+      throw error;
+    }
+
+    const patronName =
+      `${user.first_given_name || ""} ${user.family_name || ""}`.trim() || "Anonymous";
+    const verified = true; // They are logged in with valid credentials
 
     const body = await req.json();
     const { bibId, rating, title, text } = body;
@@ -168,23 +160,20 @@ export async function POST(req: NextRequest) {
 
     // Check if patron already reviewed this item
     const existingReviews = getReviewsForBib(bibIdNum);
-    if (patronId > 0 && existingReviews.some(r => r.patronId === patronId)) {
+    if (existingReviews.some((r) => r.patronId === patronId)) {
       return errorResponse("You have already reviewed this item", 400);
     }
 
     // Check if patron has borrowed this item (for verified badge)
-    if (patronId > 0 && verified) {
-      try {
-        await callOpenSRF(
-          "open-ils.circ",
-          "open-ils.circ.patron_items_by_copy",
-          [selfCheckoutToken!, patronId]
-        );
-        // If they have any circulation history with this bib, mark as verified
-        // This is a simplified check - production would verify specific bib
-      } catch (_error) {
-        // Continue without verification
-      }
+    try {
+      await callOpenSRF("open-ils.circ", "open-ils.circ.patron_items_by_copy", [
+        patronToken,
+        patronId,
+      ]);
+      // If they have any circulation history with this bib, mark as verified
+      // This is a simplified check - production would verify specific bib
+    } catch (_error) {
+      // Continue without verification
     }
 
     const review: Review = {
@@ -214,6 +203,17 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    // Require patron authentication
+    let patronId: number;
+    try {
+      ({ patronId } = await requirePatronSession());
+    } catch (error) {
+      if (error instanceof PatronAuthError) {
+        return unauthorizedResponse(error.message);
+      }
+      throw error;
+    }
+
     const body = await req.json();
     const { reviewId, action } = body;
 
@@ -226,7 +226,7 @@ export async function PUT(req: NextRequest) {
     let foundBibId: number | null = null;
 
     for (const [bibId, reviews] of reviewsStore.entries()) {
-      const review = reviews.find(r => r.id === reviewId);
+      const review = reviews.find((r) => r.id === reviewId);
       if (review) {
         foundReview = review;
         foundBibId = bibId;
@@ -256,6 +256,17 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    // Require patron authentication
+    let patronId: number;
+    try {
+      ({ patronId } = await requirePatronSession());
+    } catch (error) {
+      if (error instanceof PatronAuthError) {
+        return unauthorizedResponse(error.message);
+      }
+      throw error;
+    }
+
     const searchParams = req.nextUrl.searchParams;
     const reviewId = searchParams.get("id");
 
@@ -265,36 +276,14 @@ export async function DELETE(req: NextRequest) {
 
     const reviewIdNum = parseInt(reviewId, 10);
 
-    // Get patron from self-checkout cookie
-    const cookieStore = await cookies();
-    const selfCheckoutToken = cookieStore.get("self_checkout_token")?.value;
-
-    let patronId: number | null = null;
-
-    if (selfCheckoutToken) {
-      try {
-        const sessionRes = await callOpenSRF(
-          "open-ils.auth",
-          "open-ils.auth.session.retrieve",
-          [selfCheckoutToken]
-        );
-        const session = sessionRes?.payload?.[0];
-        if (session && !session.ilsevent) {
-          patronId = session.id;
-        }
-      } catch {
-        // Continue without auth
-      }
-    }
-
     // Find and delete the review
     for (const [bibId, reviews] of reviewsStore.entries()) {
-      const reviewIndex = reviews.findIndex(r => r.id === reviewIdNum);
+      const reviewIndex = reviews.findIndex((r) => r.id === reviewIdNum);
       if (reviewIndex !== -1) {
-        const review = reviews[reviewIndex];
+        const review = reviews[reviewIndex]!;
 
         // Only allow deletion by the review owner
-        if (patronId !== null && review.patronId !== patronId) {
+        if (review.patronId !== patronId) {
           return errorResponse("You can only delete your own reviews", 403);
         }
 
@@ -306,7 +295,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     return errorResponse("Review not found", 404);
-  } catch (_error) {
-    return serverErrorResponse(_error, "Reviews DELETE", req);
+  } catch (error) {
+    return serverErrorResponse(error, "Reviews DELETE", req);
   }
 }

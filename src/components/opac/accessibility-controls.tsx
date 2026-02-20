@@ -16,14 +16,18 @@ export function AccessibilityControls() {
 
       <div className="mt-5 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <Label className="text-sm font-medium text-foreground">Dyslexia-friendly typography</Label>
+          <Label className="text-sm font-medium text-foreground">
+            Dyslexia-friendly typography
+          </Label>
           <p className="mt-1 text-sm text-muted-foreground">
             Increases spacing and disables ligatures for readability.
           </p>
         </div>
-        <Switch checked={dyslexiaFriendly} onCheckedChange={(checked) => setDyslexiaFriendly(Boolean(checked))} />
+        <Switch
+          checked={dyslexiaFriendly}
+          onCheckedChange={(checked) => setDyslexiaFriendly(Boolean(checked))}
+        />
       </div>
     </div>
   );
 }
-

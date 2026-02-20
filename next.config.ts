@@ -11,9 +11,12 @@ const nextConfig: NextConfig = {
   // Production optimizations
   compiler: {
     // Remove console.* in production
-    removeConsole: process.env.NODE_ENV === "production" ? {
-      exclude: ["error", "warn"],
-    } : false,
+    removeConsole:
+      process.env.NODE_ENV === "production"
+        ? {
+            exclude: ["error", "warn"],
+          }
+        : false,
   },
 
   // Experimental optimizations
@@ -42,6 +45,7 @@ const nextConfig: NextConfig = {
       "date-fns",
       "zod",
       "react-hook-form",
+      "@/components/shared",
     ],
   },
 

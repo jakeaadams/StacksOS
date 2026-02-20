@@ -3,12 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { WhyThisResultDialog, type ExplainFilter } from "@/components/opac/WhyThisResultDialog";
+import { WhyThisResultDialog, type ExplainFilter } from "@/components/opac/why-this-result-dialog";
 import { clientLogger } from "@/lib/client-logger";
-import { 
-  Book, 
-  Headphones, 
-  MonitorPlay, 
+import {
+  Book,
+  Headphones,
+  MonitorPlay,
   Smartphone,
   CheckCircle,
   Clock,
@@ -91,8 +91,10 @@ function AvailabilityBadge({
 }) {
   if (availableCopies > 0) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 
-                     text-xs font-medium rounded-full">
+      <span
+        className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 
+                     text-xs font-medium rounded-full"
+      >
         <CheckCircle className="h-3 w-3" />
         Available
       </span>
@@ -101,8 +103,10 @@ function AvailabilityBadge({
 
   if (holdCount > 0) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-800 
-                       text-xs font-medium rounded-full">
+      <span
+        className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-800 
+                       text-xs font-medium rounded-full"
+      >
         <Clock className="h-3 w-3" />
         {holdCount} {holdCount === 1 ? "hold" : "holds"}
       </span>
@@ -110,8 +114,10 @@ function AvailabilityBadge({
   }
 
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-1 bg-muted/50 text-muted-foreground 
-                     text-xs font-medium rounded-full">
+    <span
+      className="inline-flex items-center gap-1 px-2 py-1 bg-muted/50 text-muted-foreground 
+                     text-xs font-medium rounded-full"
+    >
       <AlertCircle className="h-3 w-3" />
       Checked out
     </span>
@@ -185,12 +191,13 @@ export function BookCard({
   const [googleRating, setGoogleRating] = useState<{ rating: number; count: number } | null>(null);
 
   const canExplain =
-    Boolean(explainSort) && (Boolean(explainQuery?.trim()) || (Array.isArray(explainFilters) && explainFilters.length > 0));
+    Boolean(explainSort) &&
+    (Boolean(explainQuery?.trim()) || (Array.isArray(explainFilters) && explainFilters.length > 0));
 
   // Fetch Google Books rating if isbn provided and no rating passed
   useEffect(() => {
     if (!isbn || propRating || !fetchGoogleRating || !showRating) return;
-    
+
     const cleanIsbn = isbn.replace(/-/g, "");
     if (cleanIsbn.length < 10) return;
 
@@ -229,8 +236,10 @@ export function BookCard({
       >
         <Link href={isKidsMode ? `/opac/kids/record/${id}` : `/opac/record/${id}`}>
           {/* Cover image */}
-          <div className={`relative aspect-[2/3] bg-muted/50 overflow-hidden
-                         ${isKidsMode ? "aspect-square" : ""}`}>
+          <div
+            className={`relative aspect-[2/3] bg-muted/50 overflow-hidden
+                         ${isKidsMode ? "aspect-square" : ""}`}
+          >
             {coverUrl && !imageError ? (
               <Image
                 src={coverUrl}
@@ -241,14 +250,16 @@ export function BookCard({
                 onError={() => setImageError(true)}
               />
             ) : (
-              <div 
+              <div
                 className="w-full h-full flex items-center justify-center p-4"
                 style={{ backgroundColor: placeholderColor }}
               >
                 <div className="text-center text-white">
                   <Book className={`mx-auto mb-2 ${isKidsMode ? "h-12 w-12" : "h-8 w-8"}`} />
-                  <p className={`font-medium leading-tight line-clamp-3
-                               ${isKidsMode ? "text-lg" : "text-sm"}`}>
+                  <p
+                    className={`font-medium leading-tight line-clamp-3
+                               ${isKidsMode ? "text-lg" : "text-sm"}`}
+                  >
                     {title}
                   </p>
                 </div>
@@ -296,10 +307,13 @@ export function BookCard({
 
             {/* Quick actions on hover */}
             {isHovered && (
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-2 
-                            opacity-0 group-hover:opacity-100 transition-opacity">
+              <div
+                className="absolute inset-0 bg-black/40 flex items-center justify-center gap-2 
+                            opacity-0 group-hover:opacity-100 transition-opacity"
+              >
                 {onAddToList && (
-                  <button type="button"
+                  <button
+                    type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       onAddToList();
@@ -311,7 +325,8 @@ export function BookCard({
                   </button>
                 )}
                 {onPlaceHold && (
-                  <button type="button"
+                  <button
+                    type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       onPlaceHold();
@@ -329,16 +344,20 @@ export function BookCard({
 
           {/* Content */}
           <div className={`p-3 ${isKidsMode ? "p-4" : ""}`}>
-            <h3 className={`font-semibold text-foreground line-clamp-2 leading-tight mb-1
-                          ${isKidsMode ? "text-lg" : "text-sm"}`}>
+            <h3
+              className={`font-semibold text-foreground line-clamp-2 leading-tight mb-1
+                          ${isKidsMode ? "text-lg" : "text-sm"}`}
+            >
               {title}
             </h3>
             {author && (
-              <p className={`text-muted-foreground line-clamp-1 ${isKidsMode ? "text-base" : "text-xs"}`}>
+              <p
+                className={`text-muted-foreground line-clamp-1 ${isKidsMode ? "text-base" : "text-xs"}`}
+              >
                 {author}
               </p>
             )}
-            
+
             {showRating && (
               <div className="mt-2">
                 <StarRating rating={rating} reviewCount={reviewCount} />
@@ -353,9 +372,11 @@ export function BookCard({
                     <span
                       key={format.type}
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs
-                                ${format.available > 0 
-                                  ? "bg-green-50 text-green-700" 
-                                  : "bg-muted/50 text-muted-foreground"}`}
+                                ${
+                                  format.available > 0
+                                    ? "bg-green-50 text-green-700"
+                                    : "bg-muted/50 text-muted-foreground"
+                                }`}
                     >
                       <Icon className="h-3 w-3" />
                       {formatLabels[format.type]}
@@ -373,9 +394,11 @@ export function BookCard({
   // List variant
   if (variant === "list") {
     return (
-      <div className="group flex gap-4 p-4 bg-card rounded-xl shadow-sm border border-border 
-                     hover:shadow-md hover:border-primary-300 transition-all">
-        <Link 
+      <div
+        className="group flex gap-4 p-4 bg-card rounded-xl shadow-sm border border-border 
+                     hover:shadow-md hover:border-primary-300 transition-all"
+      >
+        <Link
           href={isKidsMode ? `/opac/kids/record/${id}` : `/opac/record/${id}`}
           className="shrink-0"
         >
@@ -390,7 +413,7 @@ export function BookCard({
                 onError={() => setImageError(true)}
               />
             ) : (
-              <div 
+              <div
                 className="w-full h-full flex items-center justify-center p-2"
                 style={{ backgroundColor: placeholderColor }}
               >
@@ -402,19 +425,17 @@ export function BookCard({
 
         <div className="flex-1 min-w-0">
           <Link href={isKidsMode ? `/opac/kids/record/${id}` : `/opac/record/${id}`}>
-            <h3 className="font-semibold text-foreground hover:text-primary-600 transition-colors 
-                         line-clamp-2 text-lg">
+            <h3
+              className="font-semibold text-foreground hover:text-primary-600 transition-colors 
+                         line-clamp-2 text-lg"
+            >
               {title}
             </h3>
           </Link>
-          
-          {author && (
-            <p className="text-muted-foreground mt-1">{author}</p>
-          )}
-          
-          {publicationYear && (
-            <p className="text-muted-foreground text-sm">{publicationYear}</p>
-          )}
+
+          {author && <p className="text-muted-foreground mt-1">{author}</p>}
+
+          {publicationYear && <p className="text-muted-foreground text-sm">{publicationYear}</p>}
 
           {(rankingLabel || rankingReason) && (
             <div className="mt-2">
@@ -467,22 +488,24 @@ export function BookCard({
             <p className="text-muted-foreground text-sm mt-2 line-clamp-2">{summary}</p>
           )}
 
-	          <div className="mt-3 flex flex-wrap items-center gap-3">
-	            {showAvailability ? (
-	              <AvailabilityBadge availableCopies={availableCopies} holdCount={holdCount} />
-	            ) : null}
-	            
-	            {showFormats && formats.length > 0 && (
-	              <div className="flex flex-wrap gap-1">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {showAvailability ? (
+              <AvailabilityBadge availableCopies={availableCopies} holdCount={holdCount} />
+            ) : null}
+
+            {showFormats && formats.length > 0 && (
+              <div className="flex flex-wrap gap-1">
                 {formats.map((format) => {
                   const Icon = formatIcons[format.type] || Book;
                   return (
                     <span
                       key={format.type}
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs
-                                ${format.available > 0 
-                                  ? "bg-green-50 text-green-700" 
-                                  : "bg-muted/50 text-muted-foreground"}`}
+                                ${
+                                  format.available > 0
+                                    ? "bg-green-50 text-green-700"
+                                    : "bg-muted/50 text-muted-foreground"
+                                }`}
                     >
                       <Icon className="h-3 w-3" />
                       {formatLabels[format.type]}
@@ -496,7 +519,8 @@ export function BookCard({
 
         <div className="flex flex-col gap-2 shrink-0">
           {onPlaceHold && (
-            <button type="button"
+            <button
+              type="button"
               onClick={onPlaceHold}
               className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 
                        transition-colors text-sm font-medium"
@@ -505,7 +529,8 @@ export function BookCard({
             </button>
           )}
           {onAddToList && (
-            <button type="button"
+            <button
+              type="button"
               onClick={onAddToList}
               className="px-4 py-2 border border-border text-foreground/80 rounded-lg 
                        hover:bg-muted/30 transition-colors text-sm font-medium"
@@ -535,7 +560,7 @@ export function BookCard({
             onError={() => setImageError(true)}
           />
         ) : (
-          <div 
+          <div
             className="w-full h-full flex items-center justify-center"
             style={{ backgroundColor: placeholderColor }}
           >
@@ -545,19 +570,19 @@ export function BookCard({
       </div>
       <div className="flex-1 min-w-0">
         <h4 className="font-medium text-foreground text-sm line-clamp-1">{title}</h4>
-        {author && (
-          <p className="text-muted-foreground text-xs line-clamp-1">{author}</p>
+        {author && <p className="text-muted-foreground text-xs line-clamp-1">{author}</p>}
+        {showRating && rating && (
+          <div className="flex items-center gap-1 mt-1">
+            <Star className="h-3 w-3 text-amber-400" fill="currentColor" />
+            <span className="text-xs text-muted-foreground">{rating.toFixed(1)}</span>
+          </div>
         )}
-	        {showRating && rating && (
-	          <div className="flex items-center gap-1 mt-1">
-	            <Star className="h-3 w-3 text-amber-400" fill="currentColor" />
-	            <span className="text-xs text-muted-foreground">{rating.toFixed(1)}</span>
-	          </div>
-	        )}
-	      </div>
-	      {showAvailability ? <AvailabilityBadge availableCopies={availableCopies} holdCount={holdCount} /> : null}
-	    </Link>
-	  );
-	}
+      </div>
+      {showAvailability ? (
+        <AvailabilityBadge availableCopies={availableCopies} holdCount={holdCount} />
+      ) : null}
+    </Link>
+  );
+}
 
 export default BookCard;

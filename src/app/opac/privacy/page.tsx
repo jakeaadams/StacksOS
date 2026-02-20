@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Privacy Policy",
+  description:
+    "Learn how the library catalog handles your data, including session cookies, account information, and reading history.",
 };
 
 export default function PrivacyPage() {
@@ -11,8 +14,8 @@ export default function PrivacyPage() {
         <div className="max-w-4xl mx-auto px-4">
           <h1 className="text-3xl font-bold text-foreground">Privacy Policy</h1>
           <p className="mt-3 text-muted-foreground">
-            This page explains, in plain language, what information the catalog uses to provide
-            core features like sign-in, holds, and account pages.
+            This page explains, in plain language, what information the catalog uses to provide core
+            features like sign-in, holds, and account pages.
           </p>
         </div>
       </section>
@@ -30,8 +33,8 @@ export default function PrivacyPage() {
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-foreground">Reading history</h2>
           <p className="mt-3 text-sm text-muted-foreground">
-            Reading history should be treated as sensitive. If your library enables it, it should
-            be opt-in and provide clear controls to view or clear history.
+            Reading history should be treated as sensitive. If your library enables it, it should be
+            opt-in and provide clear controls to view or clear history.
           </p>
         </div>
 
@@ -49,4 +52,3 @@ export default function PrivacyPage() {
     </div>
   );
 }
-

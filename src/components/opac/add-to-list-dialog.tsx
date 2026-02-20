@@ -109,11 +109,14 @@ export function AddToListDialog({
     setIsSaving(true);
     setError(null);
     try {
-      const res = await fetchWithAuth(`/api/opac/lists/${encodeURIComponent(selectedListId)}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bibId }),
-      });
+      const res = await fetchWithAuth(
+        `/api/opac/lists/${encodeURIComponent(selectedListId)}/items`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bibId }),
+        }
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data?.ok === false) {
         throw new Error(data?.error || "Could not add item");
@@ -152,11 +155,14 @@ export function AddToListDialog({
         throw new Error("List created but missing id");
       }
 
-      const addRes = await fetchWithAuth(`/api/opac/lists/${encodeURIComponent(String(createdId))}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bibId }),
-      });
+      const addRes = await fetchWithAuth(
+        `/api/opac/lists/${encodeURIComponent(String(createdId))}/items`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bibId }),
+        }
+      );
       const addData = await addRes.json().catch(() => ({}));
       if (!addRes.ok || addData?.ok === false) {
         throw new Error(addData?.error || "List created but item could not be added");
@@ -212,7 +218,10 @@ export function AddToListDialog({
             Create
           </Button>
           <div className="ml-auto">
-            <Link href="/opac/account/lists" className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline">
+            <Link
+              href="/opac/account/lists"
+              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            >
               Manage lists
             </Link>
           </div>
@@ -244,7 +253,12 @@ export function AddToListDialog({
                           active ? "bg-muted" : ""
                         )}
                       >
-                        <div className={cn("h-6 w-6 rounded-md border flex items-center justify-center", active ? "border-primary" : "border-border")}>
+                        <div
+                          className={cn(
+                            "h-6 w-6 rounded-md border flex items-center justify-center",
+                            active ? "border-primary" : "border-border"
+                          )}
+                        >
                           {active ? <Check className="h-4 w-4 text-primary" /> : null}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -262,11 +276,15 @@ export function AddToListDialog({
                             ) : null}
                           </div>
                           {l.description ? (
-                            <div className="text-xs text-muted-foreground line-clamp-1">{l.description}</div>
+                            <div className="text-xs text-muted-foreground line-clamp-1">
+                              {l.description}
+                            </div>
                           ) : null}
                         </div>
                         {typeof l.itemCount === "number" ? (
-                          <div className="text-xs text-muted-foreground tabular-nums">{l.itemCount}</div>
+                          <div className="text-xs text-muted-foreground tabular-nums">
+                            {l.itemCount}
+                          </div>
                         ) : null}
                       </button>
                     );
@@ -303,7 +321,9 @@ export function AddToListDialog({
                   onClick={() => setNewVisibility("private")}
                   className={cn(
                     "px-3 py-1.5 rounded-lg border text-sm",
-                    newVisibility === "private" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/50"
+                    newVisibility === "private"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:bg-muted/50"
                   )}
                 >
                   Private
@@ -313,7 +333,9 @@ export function AddToListDialog({
                   onClick={() => setNewVisibility("public")}
                   className={cn(
                     "px-3 py-1.5 rounded-lg border text-sm",
-                    newVisibility === "public" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/50"
+                    newVisibility === "public"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:bg-muted/50"
                   )}
                 >
                   Public
@@ -326,7 +348,12 @@ export function AddToListDialog({
         {error ? <div className="text-sm text-rose-600">{error}</div> : null}
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isSaving}
+          >
             Cancel
           </Button>
           {mode === "existing" ? (
@@ -344,7 +371,11 @@ export function AddToListDialog({
               onClick={() => void handleCreateAndAdd()}
               disabled={isSaving || !newName.trim()}
             >
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
               Create & save
             </Button>
           )}
@@ -359,4 +390,3 @@ export function AddToListDialog({
     </Dialog>
   );
 }
-

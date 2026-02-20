@@ -99,7 +99,7 @@ export function GroupedWorkCard({
                 <BookOpen className="h-12 w-12 text-primary-400" />
               </div>
             )}
-            
+
             {/* Format badges */}
             <div className="absolute bottom-2 left-2 flex gap-1">
               {formatTypes.slice(0, 3).map((type) => {
@@ -124,9 +124,7 @@ export function GroupedWorkCard({
             {/* Availability indicator */}
             <div
               className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ${
-                hasAvailable
-                  ? "bg-green-100 text-green-800"
-                  : "bg-amber-100 text-amber-800"
+                hasAvailable ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"
               }`}
             >
               {hasAvailable ? "Available" : "On Hold"}
@@ -153,10 +151,7 @@ export function GroupedWorkCard({
     <div className="bg-card rounded-xl border border-border overflow-hidden">
       <div className="p-4 flex gap-4">
         {/* Cover */}
-        <Link
-          href={`/opac/record/${work.primaryBibId}`}
-          className="shrink-0"
-        >
+        <Link href={`/opac/record/${work.primaryBibId}`} className="shrink-0">
           <div className="w-24 h-36 bg-muted/50 rounded-lg overflow-hidden">
             {work.coverUrl && !imageError ? (
               <UnoptimizedImage
@@ -183,14 +178,13 @@ export function GroupedWorkCard({
               >
                 {work.title}
               </Link>
-              {work.author && (
-                <p className="text-muted-foreground">{work.author}</p>
-              )}
+              {work.author && <p className="text-muted-foreground">{work.author}</p>}
               {work.publicationYear && (
                 <p className="text-sm text-muted-foreground">{work.publicationYear}</p>
               )}
             </div>
-            <button type="button"
+            <button
+              type="button"
               onClick={() => onAddToList?.(work.primaryBibId)}
               className="p-2 text-muted-foreground/70 hover:text-red-500 transition-colors"
               title="Add to list"
@@ -260,19 +254,17 @@ export function GroupedWorkCard({
 
       {/* Expandable format details */}
       <div className="border-t border-border/50">
-        <button type="button"
+        <button
+          type="button"
           onClick={() => setShowFormats(!showFormats)}
           className="w-full px-4 py-2 flex items-center justify-between text-sm text-muted-foreground 
                    hover:bg-muted/30 transition-colors"
         >
           <span>
-            {totalAvailable} of {totalCopies} copies available across {formatTypes.length} format{formatTypes.length !== 1 ? "s" : ""}
+            {totalAvailable} of {totalCopies} copies available across {formatTypes.length} format
+            {formatTypes.length !== 1 ? "s" : ""}
           </span>
-          {showFormats ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )}
+          {showFormats ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
 
         {showFormats && (
@@ -289,9 +281,7 @@ export function GroupedWorkCard({
                       <Icon className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="font-medium text-foreground">
-                        {formatLabels[format.type]}
-                      </p>
+                      <p className="font-medium text-foreground">{formatLabels[format.type]}</p>
                       {format.callNumber && (
                         <p className="text-sm text-muted-foreground">{format.callNumber}</p>
                       )}
@@ -316,11 +306,10 @@ export function GroupedWorkCard({
                           </span>
                         )}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {format.total} total copies
-                      </p>
+                      <p className="text-xs text-muted-foreground">{format.total} total copies</p>
                     </div>
-                    <button type="button"
+                    <button
+                      type="button"
                       onClick={() => onPlaceHold?.(format.bibId)}
                       className="px-3 py-1.5 bg-primary-600 text-white text-sm font-medium 
                                rounded-lg hover:bg-primary-700 transition-colors"

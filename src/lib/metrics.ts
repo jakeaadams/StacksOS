@@ -1,3 +1,5 @@
+import "server-only";
+
 import { Counter, Histogram, Registry, collectDefaultMetrics } from "prom-client";
 
 const registry = new Registry();
@@ -47,4 +49,3 @@ export const scheduledReportRunDurationSeconds = new Histogram({
 export function getMetricsRegistry(): Registry {
   return registry;
 }
-

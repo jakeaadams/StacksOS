@@ -7,8 +7,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useLibrary } from "@/hooks/use-library";
 import { usePatronSession } from "@/hooks/use-patron-session";
-import { BookCard } from "@/components/opac/BookCard";
-import { AddToListDialog } from "@/components/opac/AddToListDialog";
+import { BookCard } from "@/components/opac/book-card";
+import { AddToListDialog } from "@/components/opac/add-to-list-dialog";
 import { featureFlags } from "@/lib/feature-flags";
 import { toast } from "sonner";
 import {
@@ -124,7 +124,7 @@ export default function RecordDetailPage() {
   const searchParams = useSearchParams();
   const { library } = useLibrary();
   const { patron, isLoggedIn, placeHold } = usePatronSession();
-  
+
   const [record, setRecord] = useState<RecordDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,27 +132,33 @@ export default function RecordDetailPage() {
   const [selectedPickupLocation, setSelectedPickupLocation] = useState<number | null>(null);
   const [isPlacingHold, setIsPlacingHold] = useState(false);
   const [holdSuccess, setHoldSuccess] = useState(false);
-  const [holdError, setHoldError] = useState<{ message: string; nextSteps?: string[]; code?: string } | null>(null);
+  const [holdError, setHoldError] = useState<{
+    message: string;
+    nextSteps?: string[];
+    code?: string;
+  } | null>(null);
   const [showHoldModal, setShowHoldModal] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [googleRating, setGoogleRating] = useState<{ rating: number; count: number } | null>(null);
-  const [similar, setSimilar] = useState<Array<{ id: number; title: string; author?: string; coverUrl?: string; reason?: string }>>([]);
+  const [similar, setSimilar] = useState<
+    Array<{ id: number; title: string; author?: string; coverUrl?: string; reason?: string }>
+  >([]);
   const [similarLoading, setSimilarLoading] = useState(false);
 
-	  const recordId = params.id as string;
-    const requestedHold = searchParams.get("hold") === "1";
+  const recordId = params.id as string;
+  const requestedHold = searchParams.get("hold") === "1";
 
-    useEffect(() => {
-      if (!requestedHold) return;
-      setShowHoldModal(true);
-    }, [requestedHold]);
+  useEffect(() => {
+    if (!requestedHold) return;
+    setShowHoldModal(true);
+  }, [requestedHold]);
 
-	  // Fetch Google Books rating if available
-	  useEffect(() => {
-	    if (!record?.isbn || record?.rating) return;
-	    const cleanIsbn = record.isbn.replace(/-/g, "");
-	    if (cleanIsbn.length < 10) return;
+  // Fetch Google Books rating if available
+  useEffect(() => {
+    if (!record?.isbn || record?.rating) return;
+    const cleanIsbn = record.isbn.replace(/-/g, "");
+    if (cleanIsbn.length < 10) return;
     fetch(`/api/google-books?isbn=${cleanIsbn}`)
       .then((res) => res.json())
       .then((result) => {
@@ -164,70 +170,76 @@ export default function RecordDetailPage() {
       .catch((error) => {
         clientLogger.warn("OPAC record rating lookup failed", error);
       });
-	  }, [record?.isbn, record?.rating]);
+  }, [record?.isbn, record?.rating]);
 
-	  const fetchRecordDetail = useCallback(async () => {
-	    try {
-	      setIsLoading(true);
-	      setError(null);
+  const fetchRecordDetail = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-	      const response = await fetch(`/api/evergreen/catalog/${recordId}`, { credentials: "include" });
-	      
-	      if (!response.ok) {
-	        if (response.status === 404) {
-	          throw new Error("Record not found");
-	        }
-	        throw new Error("Failed to load record details");
-	      }
+      const response = await fetch(`/api/evergreen/catalog/${recordId}`, {
+        credentials: "include",
+      });
 
-	      const data = await response.json();
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("Record not found");
+        }
+        throw new Error("Failed to load record details");
+      }
 
-	      // API returns record nested under 'record' key
-	      const rec = data.record || data;
+      const data = await response.json();
 
-	      // Transform the data
-	      const transformedRecord: RecordDetail = {
-	        id: rec.id || parseInt(recordId),
-	        title: rec.title || rec.simple_record?.title || "Unknown Title",
-	        author: rec.author || rec.simple_record?.author,
-	        contributors: rec.contributors || [],
-	        coverUrl: getCoverUrl(rec),
-	        summary: rec.summary || rec.simple_record?.abstract,
-	        subjects: rec.subjects || [],
-	        isbn: rec.isbn || rec.simple_record?.isbn,
-	        publisher: rec.publisher || rec.simple_record?.publisher,
-	        publicationDate: rec.pubdate || rec.simple_record?.pubdate,
-	        edition: rec.edition,
-	        physicalDescription: rec.physical_description || rec.physicalDescription,
-	        language: rec.language,
-	        series: rec.series,
-	        seriesNumber: rec.series_number,
-	        format: rec.format || "book",
-	        copies: transformCopies(data.copies || rec.copies || data.holdings || []),
-	        totalCopies: data.copy_counts?.total || rec.copyCounts?.total || data.copies?.length || 0,
-	        availableCopies: data.copy_counts?.available || rec.copyCounts?.available || (data.copies?.filter((c: any) => c.status === 0 || c.status === 7)?.length) || 0,
-	        holdCount: data.hold_count || rec.holdCount || 0,
-	        rating: rec.rating,
-	        reviewCount: rec.review_count,
-	        reviews: rec.reviews || [],
-	        relatedTitles: rec.related || [],
-	        lexileLevel: rec.lexile,
-	        arLevel: rec.ar_level,
-	        awards: rec.awards || [],
-	      };
+      // API returns record nested under 'record' key
+      const rec = data.record || data;
 
-	      setRecord(transformedRecord);
-	    } catch (err) {
-	      clientLogger.error("Error fetching record:", err);
-	      setError(err instanceof Error ? err.message : "An error occurred");
-	    } finally {
-	      setIsLoading(false);
-	    }
-	  }, [recordId]);
+      // Transform the data
+      const transformedRecord: RecordDetail = {
+        id: rec.id || parseInt(recordId),
+        title: rec.title || rec.simple_record?.title || "Unknown Title",
+        author: rec.author || rec.simple_record?.author,
+        contributors: rec.contributors || [],
+        coverUrl: getCoverUrl(rec),
+        summary: rec.summary || rec.simple_record?.abstract,
+        subjects: rec.subjects || [],
+        isbn: rec.isbn || rec.simple_record?.isbn,
+        publisher: rec.publisher || rec.simple_record?.publisher,
+        publicationDate: rec.pubdate || rec.simple_record?.pubdate,
+        edition: rec.edition,
+        physicalDescription: rec.physical_description || rec.physicalDescription,
+        language: rec.language,
+        series: rec.series,
+        seriesNumber: rec.series_number,
+        format: rec.format || "book",
+        copies: transformCopies(data.copies || rec.copies || data.holdings || []),
+        totalCopies: data.copy_counts?.total || rec.copyCounts?.total || data.copies?.length || 0,
+        availableCopies:
+          data.copy_counts?.available ||
+          rec.copyCounts?.available ||
+          data.copies?.filter((c: any) => c.status === 0 || c.status === 7)?.length ||
+          0,
+        holdCount: data.hold_count || rec.holdCount || 0,
+        rating: rec.rating,
+        reviewCount: rec.review_count,
+        reviews: rec.reviews || [],
+        relatedTitles: rec.related || [],
+        lexileLevel: rec.lexile,
+        arLevel: rec.ar_level,
+        awards: rec.awards || [],
+      };
 
-		  useEffect(() => {
-		    void fetchRecordDetail();
-		  }, [fetchRecordDetail]);
+      setRecord(transformedRecord);
+    } catch (err) {
+      clientLogger.error("Error fetching record:", err);
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [recordId]);
+
+  useEffect(() => {
+    void fetchRecordDetail();
+  }, [fetchRecordDetail]);
 
   const handleShare = useCallback(async () => {
     if (!record?.id) return;
@@ -262,40 +274,44 @@ export default function RecordDetailPage() {
     setSaveOpen(true);
   }, [isLoggedIn, record?.id, router]);
 
-		  useEffect(() => {
-		    if (selectedPickupLocation) return;
-		    const locations = library?.locations;
-	    if (!locations || locations.length === 0) return;
-	    const pickupLocations = locations.filter((l) => l.isPickupLocation);
-	    if (pickupLocations.length > 0) {
-        const storedRaw = featureFlags.opacHoldsUXV2
-          ? (() => {
-              try {
-                return localStorage.getItem("stacksos:last_pickup_location");
-              } catch {
-                return null;
-              }
-            })()
-          : null;
-        const storedId = storedRaw ? parseInt(storedRaw, 10) : null;
-        const preferred =
-          (Number.isFinite(storedId) && pickupLocations.some((l) => l.id === storedId) ? storedId : null) ??
-          (featureFlags.opacHoldsUXV2 &&
-          typeof patron?.defaultPickupLocation === "number" &&
-          pickupLocations.some((l) => l.id === patron.defaultPickupLocation)
-            ? patron.defaultPickupLocation
-            : null) ??
-          pickupLocations[0].id;
+  useEffect(() => {
+    if (selectedPickupLocation) return;
+    const locations = library?.locations;
+    if (!locations || locations.length === 0) return;
+    const pickupLocations = locations.filter((l) => l.isPickupLocation);
+    if (pickupLocations.length > 0) {
+      const storedRaw = featureFlags.opacHoldsUXV2
+        ? (() => {
+            try {
+              return localStorage.getItem("stacksos:last_pickup_location");
+            } catch {
+              return null;
+            }
+          })()
+        : null;
+      const storedId = storedRaw ? parseInt(storedRaw, 10) : null;
+      const preferred =
+        (Number.isFinite(storedId) && pickupLocations.some((l) => l.id === storedId)
+          ? storedId
+          : null) ??
+        (featureFlags.opacHoldsUXV2 &&
+        typeof patron?.defaultPickupLocation === "number" &&
+        pickupLocations.some((l) => l.id === patron.defaultPickupLocation)
+          ? patron.defaultPickupLocation
+          : null) ??
+        pickupLocations[0].id;
 
-        setSelectedPickupLocation(preferred);
-	    }
-	  }, [library?.locations, patron?.defaultPickupLocation, selectedPickupLocation]);
+      setSelectedPickupLocation(preferred);
+    }
+  }, [library?.locations, patron?.defaultPickupLocation, selectedPickupLocation]);
 
   useEffect(() => {
     if (!record?.id) return;
     let cancelled = false;
     setSimilarLoading(true);
-    void fetch(`/api/opac/recommendations?type=similar&bibId=${record.id}&limit=8`, { credentials: "include" })
+    void fetch(`/api/opac/recommendations?type=similar&bibId=${record.id}&limit=8`, {
+      credentials: "include",
+    })
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
@@ -326,10 +342,10 @@ export default function RecordDetailPage() {
     };
   }, [record?.id]);
 
-	  const getCoverUrl = (data: any): string | undefined => {
-	    const isbn = data.isbn || data.simple_record?.isbn;
-	    if (isbn) {
-	      return `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+  const getCoverUrl = (data: any): string | undefined => {
+    const isbn = data.isbn || data.simple_record?.isbn;
+    if (isbn) {
+      return `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
     }
     return undefined;
   };
@@ -340,36 +356,36 @@ export default function RecordDetailPage() {
       return;
     }
 
-	    if (!selectedPickupLocation) {
-	      setHoldError({ message: "Please select a pickup location." });
-	      return;
-	    }
+    if (!selectedPickupLocation) {
+      setHoldError({ message: "Please select a pickup location." });
+      return;
+    }
 
     setIsPlacingHold(true);
     setHoldError(null);
 
-		    try {
-		      const result = await placeHold(parseInt(recordId), selectedPickupLocation);
-		      
-		      if (result.success) {
-	        setHoldSuccess(true);
-	        setShowHoldModal(false);
-	        setTimeout(() => setHoldSuccess(false), 5000);
-		      } else {
-		        setHoldError({
-              message: result.message,
-              nextSteps: result.details?.nextSteps,
-              code: result.details?.code,
-            });
-		      }
-		    } catch {
-		      setHoldError({ message: "Failed to place hold. Please try again." });
-		    } finally {
-		      setIsPlacingHold(false);
-		    }
-		  };
+    try {
+      const result = await placeHold(parseInt(recordId), selectedPickupLocation);
 
-  const placeholderColor = record 
+      if (result.success) {
+        setHoldSuccess(true);
+        setShowHoldModal(false);
+        setTimeout(() => setHoldSuccess(false), 5000);
+      } else {
+        setHoldError({
+          message: result.message,
+          nextSteps: result.details?.nextSteps,
+          code: result.details?.code,
+        });
+      }
+    } catch {
+      setHoldError({ message: "Failed to place hold. Please try again." });
+    } finally {
+      setIsPlacingHold(false);
+    }
+  };
+
+  const placeholderColor = record
     ? `hsl(${(record.title.charCodeAt(0) * 137) % 360}, 60%, 75%)`
     : "#e5e7eb";
 
@@ -389,26 +405,24 @@ export default function RecordDetailPage() {
           <h2 className="text-xl font-semibold text-foreground mb-2">
             {error || "Record not found"}
           </h2>
-          <Link
-            href="/opac"
-            className="text-primary-600 hover:text-primary-700 font-medium"
-          >
+          <Link href="/opac" className="text-primary-600 hover:text-primary-700 font-medium">
             Return to catalog
           </Link>
         </div>
       </div>
     );
-	  }
+  }
 
-	  const FormatIcon = formatIcons[record.format] || BookOpen;
-	  const displayedCopies = showAllCopies ? record.copies : record.copies.slice(0, 5);
+  const FormatIcon = formatIcons[record.format] || BookOpen;
+  const displayedCopies = showAllCopies ? record.copies : record.copies.slice(0, 5);
 
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Back button */}
       <div className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 py-3">
-          <button type="button"
+          <button
+            type="button"
             onClick={() => router.back()}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -418,19 +432,19 @@ export default function RecordDetailPage() {
         </div>
       </div>
 
-	      <div className="max-w-7xl mx-auto px-4 py-8">
-          {featureFlags.opacLists ? (
-            <AddToListDialog
-              open={saveOpen}
-              onOpenChange={setSaveOpen}
-              bibId={record.id}
-              title={record.title}
-            />
-          ) : null}
-	        {/* Success message */}
-	        {holdSuccess && (
-	          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
-	            <CheckCircle className="h-5 w-5 text-green-600" />
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {featureFlags.opacLists ? (
+          <AddToListDialog
+            open={saveOpen}
+            onOpenChange={setSaveOpen}
+            bibId={record.id}
+            title={record.title}
+          />
+        ) : null}
+        {/* Success message */}
+        {holdSuccess && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+            <CheckCircle className="h-5 w-5 text-green-600" />
             <p className="text-green-800 font-medium">Hold placed successfully!</p>
           </div>
         )}
@@ -438,20 +452,20 @@ export default function RecordDetailPage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left column - Cover and actions */}
           <div className="lg:col-span-1">
-	            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-	              {/* Cover image */}
-	              <div className="aspect-[2/3] bg-muted/50 relative">
-	                {record.coverUrl && !imageError ? (
-	                  <Image
-	                    src={record.coverUrl}
-	                    alt={`Cover of ${record.title}`}
-	                    fill
-	                    sizes="320px"
-	                    className="object-cover"
-	                    onError={() => setImageError(true)}
-	                  />
-	                ) : (
-                  <div 
+            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+              {/* Cover image */}
+              <div className="aspect-[2/3] bg-muted/50 relative">
+                {record.coverUrl && !imageError ? (
+                  <Image
+                    src={record.coverUrl}
+                    alt={`Cover of ${record.title}`}
+                    fill
+                    sizes="320px"
+                    className="object-cover"
+                    onError={() => setImageError(true)}
+                  />
+                ) : (
+                  <div
                     className="w-full h-full flex items-center justify-center p-8"
                     style={{ backgroundColor: placeholderColor }}
                   >
@@ -468,14 +482,18 @@ export default function RecordDetailPage() {
                 {/* Availability badge */}
                 <div className="flex items-center justify-center">
                   {record.availableCopies > 0 ? (
-                    <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 
-                                   text-green-800 rounded-full font-medium">
+                    <span
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 
+                                   text-green-800 rounded-full font-medium"
+                    >
                       <CheckCircle className="h-5 w-5" />
                       {record.availableCopies} of {record.totalCopies} available
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 
-                                   text-amber-800 rounded-full font-medium">
+                    <span
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 
+                                   text-amber-800 rounded-full font-medium"
+                    >
                       <Clock className="h-5 w-5" />
                       {record.holdCount} holds on {record.totalCopies} copies
                     </span>
@@ -483,7 +501,8 @@ export default function RecordDetailPage() {
                 </div>
 
                 {/* Place hold button */}
-                <button type="button"
+                <button
+                  type="button"
                   onClick={() => setShowHoldModal(true)}
                   disabled={holdSuccess}
                   className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium
@@ -503,29 +522,29 @@ export default function RecordDetailPage() {
                   )}
                 </button>
 
-	                {/* Secondary actions */}
-	                <div className="flex gap-2">
-	                  {featureFlags.opacLists ? (
-	                    <button
-	                      type="button"
-	                      onClick={handleSave}
-	                      className="flex-1 py-2 border border-border rounded-lg text-foreground/80
+                {/* Secondary actions */}
+                <div className="flex gap-2">
+                  {featureFlags.opacLists ? (
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      className="flex-1 py-2 border border-border rounded-lg text-foreground/80
 	                                   hover:bg-muted/30 transition-colors flex items-center justify-center gap-2"
-	                    >
-	                      <Heart className="h-4 w-4" />
-	                      Save
-	                    </button>
-	                  ) : null}
-	                  <button
-	                    type="button"
-	                    onClick={() => void handleShare()}
-	                    className="flex-1 py-2 border border-border rounded-lg text-foreground/80
+                    >
+                      <Heart className="h-4 w-4" />
+                      Save
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => void handleShare()}
+                    className="flex-1 py-2 border border-border rounded-lg text-foreground/80
 	                                   hover:bg-muted/30 transition-colors flex items-center justify-center gap-2"
-	                  >
-	                    <Share2 className="h-4 w-4" />
-	                    Share
-	                  </button>
-	                </div>
+                  >
+                    <Share2 className="h-4 w-4" />
+                    Share
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -560,13 +579,16 @@ export default function RecordDetailPage() {
                   <FormatIcon className="h-6 w-6 text-primary-600" />
                 </div>
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                    {record.title}
-                  </h1>
+                  <h1 className="text-2xl md:text-3xl font-bold text-foreground">{record.title}</h1>
                   {record.author && (
                     <p className="text-lg text-muted-foreground mt-1">
-                      by <Link href={`/opac/search?q=author:${encodeURIComponent(record.author)}`}
-                             className="text-primary-600 hover:underline">{record.author}</Link>
+                      by{" "}
+                      <Link
+                        href={`/opac/search?q=author:${encodeURIComponent(record.author)}`}
+                        className="text-primary-600 hover:underline"
+                      >
+                        {record.author}
+                      </Link>
                     </p>
                   )}
                 </div>
@@ -582,7 +604,8 @@ export default function RecordDetailPage() {
                     />
                   ))}
                   <span className="text-muted-foreground">
-                    {(record.rating || googleRating?.rating || 0).toFixed(1)} ({(record.reviewCount || googleRating?.count || 0).toLocaleString()} reviews)
+                    {(record.rating || googleRating?.rating || 0).toFixed(1)} (
+                    {(record.reviewCount || googleRating?.count || 0).toLocaleString()} reviews)
                   </span>
                 </div>
               )}
@@ -631,8 +654,14 @@ export default function RecordDetailPage() {
               {record.series && (
                 <div className="mt-4 p-3 bg-primary-50 rounded-lg">
                   <p className="text-primary-800">
-                    Part of the <Link href={`/opac/search?q=series:${encodeURIComponent(record.series)}`}
-                                     className="font-medium hover:underline">{record.series}</Link> series
+                    Part of the{" "}
+                    <Link
+                      href={`/opac/search?q=series:${encodeURIComponent(record.series)}`}
+                      className="font-medium hover:underline"
+                    >
+                      {record.series}
+                    </Link>{" "}
+                    series
                     {record.seriesNumber && ` (#${record.seriesNumber})`}
                   </p>
                 </div>
@@ -673,13 +702,15 @@ export default function RecordDetailPage() {
               <h2 className="text-lg font-semibold text-foreground mb-4">
                 Availability ({record.availableCopies} of {record.totalCopies} available)
               </h2>
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border">
                       <th className="text-left py-2 font-medium text-muted-foreground">Location</th>
-                      <th className="text-left py-2 font-medium text-muted-foreground">Call Number</th>
+                      <th className="text-left py-2 font-medium text-muted-foreground">
+                        Call Number
+                      </th>
                       <th className="text-left py-2 font-medium text-muted-foreground">Status</th>
                     </tr>
                   </thead>
@@ -715,15 +746,20 @@ export default function RecordDetailPage() {
               </div>
 
               {record.copies.length > 5 && (
-                <button type="button"
+                <button
+                  type="button"
                   onClick={() => setShowAllCopies(!showAllCopies)}
                   className="mt-4 text-primary-600 hover:text-primary-700 font-medium 
                            flex items-center gap-1"
                 >
                   {showAllCopies ? (
-                    <>Show less <ChevronUp className="h-4 w-4" /></>
+                    <>
+                      Show less <ChevronUp className="h-4 w-4" />
+                    </>
                   ) : (
-                    <>Show all {record.copies.length} copies <ChevronDown className="h-4 w-4" /></>
+                    <>
+                      Show all {record.copies.length} copies <ChevronDown className="h-4 w-4" />
+                    </>
                   )}
                 </button>
               )}
@@ -767,7 +803,9 @@ export default function RecordDetailPage() {
                         showRating={false}
                       />
                       {rec.reason ? (
-                        <div className="text-xs text-muted-foreground line-clamp-2">{rec.reason}</div>
+                        <div className="text-xs text-muted-foreground line-clamp-2">
+                          {rec.reason}
+                        </div>
                       ) : null}
                     </div>
                   ))}
@@ -783,7 +821,7 @@ export default function RecordDetailPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-semibold text-foreground mb-4">Place Hold</h3>
-            
+
             <div className="mb-4">
               <p className="text-muted-foreground mb-2">
                 <strong>{record.title}</strong>
@@ -791,7 +829,8 @@ export default function RecordDetailPage() {
               </p>
               {record.availableCopies === 0 && (
                 <p className="text-amber-600 text-sm">
-                  All copies are currently checked out. You will be #{record.holdCount + 1} in the queue.
+                  All copies are currently checked out. You will be #{record.holdCount + 1} in the
+                  queue.
                 </p>
               )}
             </div>
@@ -808,7 +847,7 @@ export default function RecordDetailPage() {
               >
                 <option value="">Select a location...</option>
                 {library?.locations
-                  .filter(l => l.isPickupLocation)
+                  .filter((l) => l.isPickupLocation)
                   .map((location) => (
                     <option key={location.id} value={location.id}>
                       {location.name}
@@ -817,29 +856,32 @@ export default function RecordDetailPage() {
               </select>
             </div>
 
-	            {holdError ? (
-	              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                  <div className="font-medium">{holdError.message}</div>
-                  {holdError.nextSteps && holdError.nextSteps.length > 0 ? (
-                    <div className="mt-2">
-                      <div className="text-xs font-medium text-red-800/90">Next steps</div>
-                      <ul className="mt-1 list-disc pl-5 space-y-1">
-                        {holdError.nextSteps.map((step) => (
-                          <li key={step} className="text-sm text-red-700">
-                            {step}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {holdError.code ? (
-                    <div className="mt-2 text-[11px] text-red-800/80 font-mono">Code: {holdError.code}</div>
-                  ) : null}
-	              </div>
-	            ) : null}
+            {holdError ? (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                <div className="font-medium">{holdError.message}</div>
+                {holdError.nextSteps && holdError.nextSteps.length > 0 ? (
+                  <div className="mt-2">
+                    <div className="text-xs font-medium text-red-800/90">Next steps</div>
+                    <ul className="mt-1 list-disc pl-5 space-y-1">
+                      {holdError.nextSteps.map((step) => (
+                        <li key={step} className="text-sm text-red-700">
+                          {step}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {holdError.code ? (
+                  <div className="mt-2 text-[11px] text-red-800/80 font-mono">
+                    Code: {holdError.code}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="flex gap-3">
-              <button type="button"
+              <button
+                type="button"
                 onClick={() => {
                   setShowHoldModal(false);
                   setHoldError(null);
@@ -849,18 +891,15 @@ export default function RecordDetailPage() {
               >
                 Cancel
               </button>
-              <button type="button"
+              <button
+                type="button"
                 onClick={handlePlaceHold}
                 disabled={isPlacingHold || !selectedPickupLocation}
                 className="flex-1 py-2 bg-primary-600 text-white rounded-lg font-medium
                          hover:bg-primary-700 transition-colors disabled:opacity-50 
                          disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {isPlacingHold ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Confirm Hold"
-                )}
+                {isPlacingHold ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Hold"}
               </button>
             </div>
           </div>

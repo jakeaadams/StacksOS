@@ -6,9 +6,9 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 import { useState, useEffect, useCallback, Suspense, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { BookCard, BookFormat } from "@/components/opac/BookCard";
-import { AddToListDialog } from "@/components/opac/AddToListDialog";
-import type { ExplainFilter } from "@/components/opac/WhyThisResultDialog";
+import { BookCard, BookFormat } from "@/components/opac/book-card";
+import { AddToListDialog } from "@/components/opac/add-to-list-dialog";
+import type { ExplainFilter } from "@/components/opac/why-this-result-dialog";
 import { useLibrary } from "@/hooks/use-library";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { featureFlags } from "@/lib/feature-flags";
@@ -130,12 +130,22 @@ function SearchContent() {
 
   const pageSize = 20;
 
-  const selectedFormats = useMemo(() => parseCsvParam(format).map((v) => v.toLowerCase()), [format]);
-  const selectedAudiences = useMemo(() => parseCsvParam(audience).map((v) => v.toLowerCase()), [audience]);
-  const selectedLanguages = useMemo(() => parseCsvParam(language).map((v) => v.toLowerCase()), [language]);
+  const selectedFormats = useMemo(
+    () => parseCsvParam(format).map((v) => v.toLowerCase()),
+    [format]
+  );
+  const selectedAudiences = useMemo(
+    () => parseCsvParam(audience).map((v) => v.toLowerCase()),
+    [audience]
+  );
+  const selectedLanguages = useMemo(
+    () => parseCsvParam(language).map((v) => v.toLowerCase()),
+    [language]
+  );
 
   const languageOptions = useMemo(() => {
-    const counts = facets?.languages && typeof facets.languages === "object" ? facets.languages : null;
+    const counts =
+      facets?.languages && typeof facets.languages === "object" ? facets.languages : null;
     if (counts) {
       return Object.entries(counts as Record<string, number>)
         .filter(([k, v]) => Boolean(k) && typeof v === "number")
@@ -191,7 +201,16 @@ function SearchContent() {
     }
 
     return filters;
-  }, [available, library?.locations, location, pubdateFrom, pubdateTo, selectedAudiences, selectedFormats, selectedLanguages]);
+  }, [
+    available,
+    library?.locations,
+    location,
+    pubdateFrom,
+    pubdateTo,
+    selectedAudiences,
+    selectedFormats,
+    selectedLanguages,
+  ]);
 
   const performSearch = useCallback(async () => {
     const hasBrowseIntent =
@@ -259,13 +278,15 @@ function SearchContent() {
         rating: record.rating,
         reviewCount: record.review_count,
         rankingReason: record.ranking?.semanticReason || undefined,
-        rankingScore: typeof record.ranking?.semanticScore === "number" ? record.ranking.semanticScore : undefined,
+        rankingScore:
+          typeof record.ranking?.semanticScore === "number"
+            ? record.ranking.semanticScore
+            : undefined,
       }));
 
       setResults(transformedResults);
       setTotalResults(parseInt(data.count, 10) || transformedResults.length);
       setRankingMode(data.rankingMode === "hybrid" ? "hybrid" : "keyword");
-
     } catch (err) {
       clientLogger.error("Search error:", err);
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -334,9 +355,9 @@ function SearchContent() {
     return formats;
   };
 
-	  const updateSearchParams = (updates: Record<string, string | null>) => {
-	    const params = new URLSearchParams(searchParams.toString());
-    
+  const updateSearchParams = (updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+
     Object.entries(updates).forEach(([key, value]) => {
       if (value === null || value === "") {
         params.delete(key);
@@ -350,8 +371,8 @@ function SearchContent() {
       params.delete("page");
     }
 
-	    router.push(`/opac/search?${params.toString()}`);
-	  };
+    router.push(`/opac/search?${params.toString()}`);
+  };
 
   const toggleCsvParamValue = (key: string, value: string) => {
     const current = parseCsvParam(searchParams.get(key) || "").map((v) => v.toLowerCase());
@@ -361,10 +382,8 @@ function SearchContent() {
   };
 
   const toggleFacet = (facetName: string) => {
-    setExpandedFacets(prev => 
-      prev.includes(facetName)
-        ? prev.filter(f => f !== facetName)
-        : [...prev, facetName]
+    setExpandedFacets((prev) =>
+      prev.includes(facetName) ? prev.filter((f) => f !== facetName) : [...prev, facetName]
     );
   };
 
@@ -414,7 +433,11 @@ function SearchContent() {
           className="flex items-center justify-between w-full text-left font-medium text-foreground"
         >
           Format
-          {expandedFacets.includes("format") ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          {expandedFacets.includes("format") ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
         </button>
         {expandedFacets.includes("format") ? (
           <div className="mt-3 space-y-2">
@@ -433,7 +456,9 @@ function SearchContent() {
                     }
                   }}
                   className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm transition-colors ${
-                    isSelected ? "bg-primary-100 text-primary-800" : "hover:bg-muted/50 text-foreground/80"
+                    isSelected
+                      ? "bg-primary-100 text-primary-800"
+                      : "hover:bg-muted/50 text-foreground/80"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -454,7 +479,11 @@ function SearchContent() {
           className="flex items-center justify-between w-full text-left font-medium text-foreground"
         >
           Availability
-          {expandedFacets.includes("availability") ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          {expandedFacets.includes("availability") ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
         </button>
         {expandedFacets.includes("availability") ? (
           <div className="mt-3">
@@ -462,7 +491,9 @@ function SearchContent() {
               <input
                 type="checkbox"
                 checked={available}
-                onChange={(e) => updateSearchParams({ available: e.target.checked ? "true" : null })}
+                onChange={(e) =>
+                  updateSearchParams({ available: e.target.checked ? "true" : null })
+                }
                 className="rounded border-border text-primary-600 focus:ring-primary-500"
               />
               <span className="text-sm text-foreground/80">Available now</span>
@@ -480,7 +511,11 @@ function SearchContent() {
             className="flex items-center justify-between w-full text-left font-medium text-foreground"
           >
             Location
-            {expandedFacets.includes("location") ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {expandedFacets.includes("location") ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
           </button>
           {expandedFacets.includes("location") ? (
             <div className="mt-3">
@@ -511,7 +546,11 @@ function SearchContent() {
               className="flex items-center justify-between w-full text-left font-medium text-foreground"
             >
               Audience
-              {expandedFacets.includes("audience") ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {expandedFacets.includes("audience") ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
             </button>
             {expandedFacets.includes("audience") ? (
               <div className="mt-3 space-y-2">
@@ -523,7 +562,9 @@ function SearchContent() {
                       type="button"
                       onClick={() => toggleCsvParamValue("audience", a.value)}
                       className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm transition-colors ${
-                        isSelected ? "bg-primary-100 text-primary-800" : "hover:bg-muted/50 text-foreground/80"
+                        isSelected
+                          ? "bg-primary-100 text-primary-800"
+                          : "hover:bg-muted/50 text-foreground/80"
                       }`}
                     >
                       {a.label}
@@ -543,7 +584,11 @@ function SearchContent() {
               className="flex items-center justify-between w-full text-left font-medium text-foreground"
             >
               Language
-              {expandedFacets.includes("language") ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {expandedFacets.includes("language") ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
             </button>
             {expandedFacets.includes("language") ? (
               <div className="mt-3 space-y-2">
@@ -551,7 +596,8 @@ function SearchContent() {
                   const isSelected = selectedLanguages.includes(code);
                   const count =
                     facets?.languages && typeof facets.languages === "object"
-                      ? (facets.languages as Record<string, number>)[code] || (facets.languages as Record<string, number>)[code.toUpperCase()]
+                      ? (facets.languages as Record<string, number>)[code] ||
+                        (facets.languages as Record<string, number>)[code.toUpperCase()]
                       : null;
                   return (
                     <button
@@ -559,10 +605,14 @@ function SearchContent() {
                       type="button"
                       onClick={() => toggleCsvParamValue("language", code)}
                       className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm transition-colors ${
-                        isSelected ? "bg-primary-100 text-primary-800" : "hover:bg-muted/50 text-foreground/80"
+                        isSelected
+                          ? "bg-primary-100 text-primary-800"
+                          : "hover:bg-muted/50 text-foreground/80"
                       }`}
                     >
-                      <span className="min-w-0 flex-1 truncate">{LANGUAGE_LABELS[code] || code}</span>
+                      <span className="min-w-0 flex-1 truncate">
+                        {LANGUAGE_LABELS[code] || code}
+                      </span>
                       {typeof count === "number" ? (
                         <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
                       ) : null}
@@ -582,7 +632,11 @@ function SearchContent() {
               className="flex items-center justify-between w-full text-left font-medium text-foreground"
             >
               Publication year
-              {expandedFacets.includes("pubdate") ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {expandedFacets.includes("pubdate") ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
             </button>
             {expandedFacets.includes("pubdate") ? (
               <div className="mt-3 grid grid-cols-2 gap-2">
@@ -641,9 +695,7 @@ function SearchContent() {
               </div>
             ) : null}
           </SheetHeader>
-          <div className="flex-1 overflow-y-auto p-4">
-            {filtersPanel}
-          </div>
+          <div className="flex-1 overflow-y-auto p-4">{filtersPanel}</div>
           <SheetFooter className="border-t border-border flex-row gap-3">
             <button
               type="button"
@@ -666,7 +718,7 @@ function SearchContent() {
       <div className="bg-card border-b border-border sticky top-[73px] z-40">
         <div className="max-w-7xl mx-auto px-4 py-4">
           {/* Search form */}
-          <form 
+          <form
             onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
@@ -684,18 +736,22 @@ function SearchContent() {
                 className="w-full pl-4 pr-10 py-3 border border-border rounded-lg
                          focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
-              <button type="submit"
+              <button
+                type="submit"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-muted-foreground"
               >
                 <Search className="h-5 w-5" />
               </button>
             </div>
-            <button type="button"
+            <button
+              type="button"
               onClick={() => setShowFilters(!showFilters)}
               className={`px-4 py-3 border rounded-lg flex items-center gap-2 transition-colors
-                        ${showFilters 
-                          ? "bg-primary-50 border-primary-300 text-primary-700" 
-                          : "border-border text-foreground/80 hover:bg-muted/30"}`}
+                        ${
+                          showFilters
+                            ? "bg-primary-50 border-primary-300 text-primary-700"
+                            : "border-border text-foreground/80 hover:bg-muted/30"
+                        }`}
             >
               <SlidersHorizontal className="h-5 w-5" />
               <span className="hidden sm:inline">Filters</span>
@@ -781,7 +837,8 @@ function SearchContent() {
 
               {location ? (
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-muted text-foreground/80 rounded-full text-sm">
-                  {library?.locations?.find((l) => String(l.id) === location)?.name || `Location ${location}`}
+                  {library?.locations?.find((l) => String(l.id) === location)?.name ||
+                    `Location ${location}`}
                   <button
                     type="button"
                     onClick={() => updateSearchParams({ location: null })}
@@ -854,10 +911,18 @@ function SearchContent() {
                       <>
                         <span className="font-semibold">{totalResults.toLocaleString()}</span>
                         {" results"}
-                        {query && <>{` for "`}<span className="font-medium">{query}</span>{`"`}</>}
+                        {query && (
+                          <>
+                            {` for "`}
+                            <span className="font-medium">{query}</span>
+                            {`"`}
+                          </>
+                        )}
                       </>
+                    ) : query ? (
+                      `No results for "${query}"`
                     ) : (
-                      query ? `No results for "${query}"` : "Enter a search term"
+                      "Enter a search term"
                     )}
                   </p>
                 )}
@@ -883,20 +948,26 @@ function SearchContent() {
 
                 {/* View toggle */}
                 <div className="flex items-center border border-border rounded-lg overflow-hidden">
-                  <button type="button"
+                  <button
+                    type="button"
                     onClick={() => setViewMode("grid")}
-                    className={`p-2 ${viewMode === "grid" 
-                      ? "bg-primary-100 text-primary-700" 
-                      : "text-muted-foreground hover:bg-muted/50"}`}
+                    className={`p-2 ${
+                      viewMode === "grid"
+                        ? "bg-primary-100 text-primary-700"
+                        : "text-muted-foreground hover:bg-muted/50"
+                    }`}
                     aria-label="Grid view"
                   >
                     <Grid className="h-4 w-4" />
                   </button>
-                  <button type="button"
+                  <button
+                    type="button"
                     onClick={() => setViewMode("list")}
-                    className={`p-2 ${viewMode === "list" 
-                      ? "bg-primary-100 text-primary-700" 
-                      : "text-muted-foreground hover:bg-muted/50"}`}
+                    className={`p-2 ${
+                      viewMode === "list"
+                        ? "bg-primary-100 text-primary-700"
+                        : "text-muted-foreground hover:bg-muted/50"
+                    }`}
                     aria-label="List view"
                   >
                     <List className="h-4 w-4" />
@@ -910,7 +981,10 @@ function SearchContent() {
               viewMode === "grid" ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {Array.from({ length: 10 }).map((_, i) => (
-                    <div key={i} className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+                    <div
+                      key={i}
+                      className="bg-card rounded-xl shadow-sm border border-border overflow-hidden"
+                    >
                       <Skeleton className="aspect-[2/3] w-full" />
                       <div className="p-3 space-y-2">
                         <Skeleton className="h-4 w-3/4" />
@@ -922,7 +996,10 @@ function SearchContent() {
               ) : (
                 <div className="space-y-4">
                   {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="flex gap-4 p-4 bg-card rounded-xl shadow-sm border border-border">
+                    <div
+                      key={i}
+                      className="flex gap-4 p-4 bg-card rounded-xl shadow-sm border border-border"
+                    >
                       <Skeleton className="h-36 w-24 rounded-lg" />
                       <div className="flex-1 space-y-2">
                         <Skeleton className="h-5 w-3/4" />
@@ -974,7 +1051,9 @@ function SearchContent() {
                         rankingReason={sort === "smart" ? result.rankingReason : undefined}
                         variant="grid"
                         onAddToList={
-                          featureFlags.opacLists ? () => handleSaveToList({ id: result.id, title: result.title }) : undefined
+                          featureFlags.opacLists
+                            ? () => handleSaveToList({ id: result.id, title: result.title })
+                            : undefined
                         }
                         onPlaceHold={() => handlePlaceHold(result.id)}
                       />
@@ -999,7 +1078,9 @@ function SearchContent() {
                         holdCount={result.holdCount}
                         rating={result.rating}
                         reviewCount={result.reviewCount}
-                        rankingLabel={sort === "smart" && rankingMode === "hybrid" ? "AI-ranked" : undefined}
+                        rankingLabel={
+                          sort === "smart" && rankingMode === "hybrid" ? "AI-ranked" : undefined
+                        }
                         rankingReason={sort === "smart" ? result.rankingReason : undefined}
                         explainQuery={explainSort ? query : undefined}
                         explainSort={explainSort || undefined}
@@ -1009,7 +1090,9 @@ function SearchContent() {
                         variant="list"
                         showSummary
                         onAddToList={
-                          featureFlags.opacLists ? () => handleSaveToList({ id: result.id, title: result.title }) : undefined
+                          featureFlags.opacLists
+                            ? () => handleSaveToList({ id: result.id, title: result.title })
+                            : undefined
                         }
                         onPlaceHold={() => handlePlaceHold(result.id)}
                       />
@@ -1020,7 +1103,8 @@ function SearchContent() {
                 {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="mt-8 flex items-center justify-center gap-2">
-                    <button type="button"
+                    <button
+                      type="button"
                       onClick={() => updateSearchParams({ page: (page - 1).toString() })}
                       disabled={page === 1}
                       className="px-4 py-2 border border-border rounded-lg text-sm font-medium
@@ -1028,12 +1112,13 @@ function SearchContent() {
                     >
                       Previous
                     </button>
-                    
+
                     <span className="px-4 py-2 text-sm text-foreground/80">
                       Page {page} of {totalPages}
                     </span>
 
-                    <button type="button"
+                    <button
+                      type="button"
                       onClick={() => updateSearchParams({ page: (page + 1).toString() })}
                       disabled={page === totalPages}
                       className="px-4 py-2 border border-border rounded-lg text-sm font-medium
@@ -1079,11 +1164,13 @@ function SearchContent() {
 
 export default function OPACSearchPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
+        </div>
+      }
+    >
       <SearchContent />
     </Suspense>
   );

@@ -92,15 +92,15 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
     }
 
     setIsSubmitting(true);
-	    setSubmitError(null);
+    setSubmitError(null);
 
-	    try {
-	      const response = await fetchWithAuth("/api/opac/reviews", {
-	        method: "POST",
-	        headers: { "Content-Type": "application/json" },
-	        body: JSON.stringify({
-	          bibId,
-	          rating,
+    try {
+      const response = await fetchWithAuth("/api/opac/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bibId,
+          rating,
           title: reviewTitle,
           text: reviewText,
         }),
@@ -151,13 +151,16 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
     return (
       <div className="flex items-center gap-0.5">
         {[1, 2, 3, 4, 5].map((star) => (
-          <button type="button"
+          <button
+            type="button"
             key={star}
             disabled={readonly}
             onClick={() => onChange?.(star)}
             onMouseEnter={() => !readonly && setHoverRating(star)}
             onMouseLeave={() => !readonly && setHoverRating(0)}
-            className={readonly ? "cursor-default" : "cursor-pointer transition-transform hover:scale-110"}
+            className={
+              readonly ? "cursor-default" : "cursor-pointer transition-transform hover:scale-110"
+            }
           >
             <Star
               className={`${sizeClasses[size]} ${
@@ -172,17 +175,22 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
     );
   };
 
-  const RatingBar = ({ rating, count, total }: { rating: number; count: number; total: number }) => {
+  const RatingBar = ({
+    rating,
+    count,
+    total,
+  }: {
+    rating: number;
+    count: number;
+    total: number;
+  }) => {
     const percentage = total > 0 ? (count / total) * 100 : 0;
     return (
       <div className="flex items-center gap-2 text-sm">
         <span className="w-3 text-muted-foreground">{rating}</span>
         <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
         <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full bg-amber-400 rounded-full"
-            style={{ width: `${percentage}%` }}
-          />
+          <div className="h-full bg-amber-400 rounded-full" style={{ width: `${percentage}%` }} />
         </div>
         <span className="w-8 text-muted-foreground text-right">{count}</span>
       </div>
@@ -227,7 +235,8 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
           {/* Write review button */}
           <div className="flex items-center justify-center md:justify-end">
             {isLoggedIn ? (
-              <button type="button"
+              <button
+                type="button"
                 onClick={() => setShowWriteReview(true)}
                 className="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium
                          hover:bg-primary-700 transition-colors flex items-center gap-2"
@@ -302,14 +311,16 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
             </div>
 
             <div className="flex justify-end gap-3">
-              <button type="button"
+              <button
+                type="button"
                 onClick={() => setShowWriteReview(false)}
                 className="px-4 py-2 border border-border text-foreground/80 rounded-lg
                          hover:bg-muted/30 transition-colors"
               >
                 Cancel
               </button>
-              <button type="submit"
+              <button
+                type="submit"
                 disabled={isSubmitting || !rating}
                 className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium
                          hover:bg-primary-700 transition-colors disabled:opacity-50
@@ -334,7 +345,8 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
           <CheckCircle className="h-5 w-5 text-green-600" />
           <p className="text-green-700">Your review has been submitted. Thank you for sharing!</p>
-          <button type="button"
+          <button
+            type="button"
             onClick={() => setSubmitSuccess(false)}
             className="ml-auto text-green-600 hover:text-green-800"
           >
@@ -378,10 +390,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
       ) : (
         <div className="space-y-4">
           {reviews.map((review) => (
-            <div
-              key={review.id}
-              className="bg-card rounded-xl border border-border p-6"
-            >
+            <div key={review.id} className="bg-card rounded-xl border border-border p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
@@ -391,8 +400,10 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-foreground">{review.patronName}</span>
                       {review.verified && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 
-                                       text-green-800 text-xs font-medium rounded-full">
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 
+                                       text-green-800 text-xs font-medium rounded-full"
+                        >
                           <CheckCircle className="h-3 w-3" />
                           Verified
                         </span>
@@ -420,7 +431,8 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
               )}
 
               {review.text && review.text.length > 300 && (
-                <button type="button"
+                <button
+                  type="button"
                   onClick={() => {
                     setExpandedReviews((prev) => {
                       const next = new Set(prev);
@@ -439,7 +451,8 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
               )}
 
               <div className="mt-4 flex items-center gap-4">
-                <button type="button"
+                <button
+                  type="button"
                   onClick={() => handleHelpful(review.id)}
                   className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground/80"
                 >

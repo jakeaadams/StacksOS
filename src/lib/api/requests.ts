@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
  * Extract request metadata (IP, user agent, request ID)
  * for logging and audit purposes
  */
-export function getRequestMeta(req?: NextRequest) {
+export function getRequestMeta(req?: Request | NextRequest) {
   return {
     ip: req?.headers.get("x-forwarded-for") || req?.headers.get("x-real-ip") || null,
     userAgent: req?.headers.get("user-agent") || null,

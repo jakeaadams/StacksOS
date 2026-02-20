@@ -6,7 +6,7 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 import { clientLogger } from "@/lib/client-logger";
 import { featureFlags } from "@/lib/feature-flags";
 import { usePatronSession } from "@/hooks/use-patron-session";
-import { BookCard } from "@/components/opac/BookCard";
+import { BookCard } from "@/components/opac/book-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -69,7 +69,9 @@ function CuratedLinkCard({
       className="group rounded-2xl border border-border/70 bg-card p-5 shadow-sm hover:shadow-md hover:border-primary/40 transition-all"
     >
       <div className="flex items-start justify-between gap-4">
-        <div className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl", accent)}>
+        <div
+          className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl", accent)}
+        >
           <Icon className="h-5 w-5" />
         </div>
         <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
@@ -118,8 +120,12 @@ export default function OpacListsPage() {
         return;
       }
 
-      const nextPicks = Array.isArray(picksRes.json?.picks) ? (picksRes.json.picks as StaffPick[]) : [];
-      const nextListsRaw = Array.isArray(listsRes.json?.lists) ? (listsRes.json.lists as PublicList[]) : [];
+      const nextPicks = Array.isArray(picksRes.json?.picks)
+        ? (picksRes.json.picks as StaffPick[])
+        : [];
+      const nextListsRaw = Array.isArray(listsRes.json?.lists)
+        ? (listsRes.json.lists as PublicList[])
+        : [];
 
       // Avoid duplicating staff-pick lists in the "Public lists" section.
       const nextLists = nextListsRaw.filter((l) => {
@@ -229,7 +235,10 @@ export default function OpacListsPage() {
                 Hand-picked recommendations from your library staff.
               </p>
             </div>
-            <Link href="/opac/search?sort=smart" className="text-sm text-primary hover:underline underline-offset-2">
+            <Link
+              href="/opac/search?sort=smart"
+              className="text-sm text-primary hover:underline underline-offset-2"
+            >
               Explore more
               <ArrowRight className="inline h-4 w-4 ml-1" />
             </Link>
@@ -237,8 +246,8 @@ export default function OpacListsPage() {
 
           {picks.length === 0 ? (
             <div className="mt-4 rounded-2xl border border-border/70 bg-card p-6 text-sm text-muted-foreground">
-              No staff picks are configured yet. Create a public Evergreen bookbag with “staff pick” in the name to
-              enable this section.
+              No staff picks are configured yet. Create a public Evergreen bookbag with “staff pick”
+              in the name to enable this section.
             </div>
           ) : (
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -278,7 +287,10 @@ export default function OpacListsPage() {
               </p>
             </div>
             {!isLoggedIn ? (
-              <Link href="/opac/login?redirect=/opac/lists" className="text-sm text-primary hover:underline underline-offset-2">
+              <Link
+                href="/opac/login?redirect=/opac/lists"
+                className="text-sm text-primary hover:underline underline-offset-2"
+              >
                 Log in for personal lists
               </Link>
             ) : null}
@@ -300,7 +312,9 @@ export default function OpacListsPage() {
                     <div className="min-w-0">
                       <div className="font-semibold text-foreground truncate">{l.name}</div>
                       {l.description ? (
-                        <div className="mt-1 text-sm text-muted-foreground line-clamp-2">{l.description}</div>
+                        <div className="mt-1 text-sm text-muted-foreground line-clamp-2">
+                          {l.description}
+                        </div>
                       ) : null}
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />

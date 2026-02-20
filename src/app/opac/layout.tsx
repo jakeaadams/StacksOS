@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { LibraryProvider } from "@/hooks/use-library";
 import { PatronSessionProvider } from "@/hooks/use-patron-session";
-import { OpacShell } from "@/components/opac/OpacShell";
+import { OpacShell } from "@/components/opac/opac-shell";
 
 export const metadata: Metadata = {
   title: {
@@ -11,11 +11,7 @@ export const metadata: Metadata = {
   description: "Search our catalog, place holds, and manage your library account.",
 };
 
-export default function OPACLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function OPACLayout({ children }: { children: React.ReactNode }) {
   return (
     <LibraryProvider>
       <PatronSessionProvider>
