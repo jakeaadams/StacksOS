@@ -165,7 +165,7 @@ export default function InHouseUsePage() {
         id: "actions",
         header: "",
         cell: ({ row }) => (
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => removeItem(row.original.id)} title="Remove from list">
+          <Button variant="destructive" size="sm" className="h-8 w-8 p-0" onClick={() => removeItem(row.original.id)} title="Remove from list">
             <Trash2 className="h-4 w-4 text-rose-500" />
             <span className="sr-only">Remove from list</span>
           </Button>

@@ -593,8 +593,8 @@ export default function CourseReservesPage() {
                 </div>
 
                 <div className="grid gap-2">
-                  <Label>Owning library</Label>
-                  <Select value={courseForm.owningLibId} onValueChange={(v) => setCourseForm((p) => ({ ...p, owningLibId: v }))}>
+                  <Label htmlFor="owning-library">Owning library</Label>
+                  <Select id="owning-library" value={courseForm.owningLibId} onValueChange={(v) => setCourseForm((p) => ({ ...p, owningLibId: v }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a library" />
                     </SelectTrigger>
@@ -629,8 +629,8 @@ export default function CourseReservesPage() {
                 </div>
 
                 <div className="grid gap-2">
-                  <Label>Owning library</Label>
-                  <Select value={termForm.owningLibId} onValueChange={(v) => setTermForm((p) => ({ ...p, owningLibId: v }))}>
+                  <Label htmlFor="owning-library-2">Owning library</Label>
+                  <Select id="owning-library-2" value={termForm.owningLibId} onValueChange={(v) => setTermForm((p) => ({ ...p, owningLibId: v }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a library" />
                     </SelectTrigger>

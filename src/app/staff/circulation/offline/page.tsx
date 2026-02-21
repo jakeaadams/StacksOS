@@ -74,6 +74,7 @@ export default function OfflineCirculationPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [discardConfirmDialog, setDiscardConfirmDialog] = useState<{ open: boolean; onConfirm: () => void }>({ open: false, onConfirm: () => {} });
   const [selectedErrorTx, setSelectedErrorTx] = useState<OfflineTransaction | null>(null);
 
   const itemInputRef = useRef<HTMLInputElement>(null);
@@ -337,7 +338,13 @@ export default function OfflineCirculationPage() {
   }, [loadPendingTransactions, loadSyncStatus]);
 
   const handleDiscardTransaction = useCallback(async (tx: OfflineTransaction) => {
-    if (!confirm("Discard this transaction? This cannot be undone.")) return;
+    setDiscardConfirmDialog({
+      open: true,
+      onConfirm: () => doDiscardTransaction(tx),
+    });
+  }, []);
+
+  const doDiscardTransaction = useCallback(async (tx: OfflineTransaction) => {
     try {
       await offlineDB.updateTransactionStatus(tx.id, "processed");
       toast.success("Transaction discarded");
@@ -465,7 +472,7 @@ export default function OfflineCirculationPage() {
                 <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => handleRetryTransaction(tx)}>
                   Retry
                 </Button>
-                <Button variant="ghost" size="sm" className="h-7 px-2 text-rose-600" onClick={() => handleDiscardTransaction(tx)}>
+                <Button variant="destructive" size="sm" className="h-7 px-2" onClick={() => handleDiscardTransaction(tx)}>
                   Discard
                 </Button>
               </div>
@@ -661,8 +668,8 @@ export default function OfflineCirculationPage() {
                       isLoading={isLoading}
                     />
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Custom Due Date (optional)</label>
-                      <Input
+                      <label htmlFor="custom-due-date" className="text-sm font-medium">Custom Due Date (optional)</label>
+                      <Input id="custom-due-date"
                         type="date"
                         value={customDueDate}
                         onChange={(e) => setCustomDueDate(e.target.value)}
@@ -705,8 +712,8 @@ export default function OfflineCirculationPage() {
                       isLoading={isLoading}
                     />
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Backdate (optional)</label>
-                      <Input
+                      <label htmlFor="backdate" className="text-sm font-medium">Backdate (optional)</label>
+                      <Input id="backdate"
                         type="date"
                         value={backdateDate}
                         onChange={(e) => setBackdateDate(e.target.value)}
@@ -792,8 +799,8 @@ export default function OfflineCirculationPage() {
                       isLoading={isLoading}
                     />
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Use Count</label>
-                      <Input
+                      <label htmlFor="use-count" className="text-sm font-medium">Use Count</label>
+                      <Input id="use-count"
                         type="number"
                         min={1}
                         value={inHouseCount}
@@ -905,6 +912,14 @@ export default function OfflineCirculationPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={discardConfirmDialog.open}
+        onOpenChange={(open) => setDiscardConfirmDialog((s) => ({ ...s, open }))}
+        title="Discard Transaction"
+        description="Discard this transaction? This cannot be undone."
+        variant="danger"
+        onConfirm={discardConfirmDialog.onConfirm}
+      />
     </PageContainer>
   );
 }

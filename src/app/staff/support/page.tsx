@@ -92,8 +92,8 @@ export default function SupportPage() {
           <CardContent className="grid gap-4">
             <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <Label>Category</Label>
-                <Select value={category} onValueChange={setCategory}>
+                <Label htmlFor="category">Category</Label>
+                <Select id="category" value={category} onValueChange={setCategory}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="general">General</SelectItem>
@@ -106,8 +106,8 @@ export default function SupportPage() {
                 </Select>
               </div>
               <div>
-                <Label>Priority</Label>
-                <Select value={priority} onValueChange={setPriority}>
+                <Label htmlFor="priority">Priority</Label>
+                <Select id="priority" value={priority} onValueChange={setPriority}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low</SelectItem>
@@ -120,13 +120,13 @@ export default function SupportPage() {
             </div>
 
             <div>
-              <Label>Subject</Label>
-              <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Short summary" />
+              <Label htmlFor="subject">Subject</Label>
+              <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Short summary" />
             </div>
 
             <div>
-              <Label>Description</Label>
-              <Textarea value={body} onChange={(e) => setBody(e.target.value)} className="min-h-[140px]" placeholder="What happened? What did you expect? Include steps to reproduce and any requestId from error screens." />
+              <Label htmlFor="description">Description</Label>
+              <Textarea id="description" value={body} onChange={(e) => setBody(e.target.value)} className="min-h-[140px]" placeholder="What happened? What did you expect? Include steps to reproduce and any requestId from error screens." />
             </div>
 
             <div className="flex justify-end">

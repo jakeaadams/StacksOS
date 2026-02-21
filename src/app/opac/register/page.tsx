@@ -18,6 +18,7 @@ import {
   Smartphone,
   Users,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface FormData {
   firstName: string;
@@ -56,6 +57,7 @@ const initialFormData: FormData = {
 };
 
 export default function RegisterPage() {
+  const t = useTranslations("registerPage");
   const { library } = useLibrary();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<FormData>(initialFormData);
@@ -274,23 +276,25 @@ export default function RegisterPage() {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground/80 mb-1">
+                  <label htmlFor="first-name" className="block text-sm font-medium text-foreground/80 mb-1">
                     First Name *
                   </label>
-                  <input
+                  <input id="first-name"
                     type="text"
                     value={formData.firstName}
                     onChange={(e) => updateField("firstName", e.target.value)}
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
                       ${errors.firstName ? "border-red-500" : "border-border"}`}
+                    aria-invalid={!!errors.firstName}
+                    aria-describedby={errors.firstName ? "firstName-error" : undefined}
                   />
-                  {errors.firstName && <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>}
+                  {errors.firstName && <p id="firstName-error" role="alert" className="mt-1 text-sm text-red-600">{errors.firstName}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground/80 mb-1">
+                  <label htmlFor="middle-name" className="block text-sm font-medium text-foreground/80 mb-1">
                     Middle Name
                   </label>
-                  <input
+                  <input id="middle-name"
                     type="text"
                     value={formData.middleName}
                     onChange={(e) => updateField("middleName", e.target.value)}
@@ -300,35 +304,39 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                <label htmlFor="last-name" className="block text-sm font-medium text-foreground/80 mb-1">
                   Last Name *
                 </label>
-                <input
+                <input id="last-name"
                   type="text"
                   value={formData.lastName}
                   onChange={(e) => updateField("lastName", e.target.value)}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
                     ${errors.lastName ? "border-red-500" : "border-border"}`}
+                    aria-invalid={!!errors.lastName}
+                    aria-describedby={errors.lastName ? "lastName-error" : undefined}
                 />
-                {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
+                {errors.lastName && <p id="lastName-error" role="alert" className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                <label htmlFor="date-of-birth" className="block text-sm font-medium text-foreground/80 mb-1">
                   Date of Birth *
                 </label>
-                <input
+                <input id="date-of-birth"
                   type="date"
                   value={formData.dateOfBirth}
                   onChange={(e) => updateField("dateOfBirth", e.target.value)}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
                     ${errors.dateOfBirth ? "border-red-500" : "border-border"}`}
+                    aria-invalid={!!errors.dateOfBirth}
+                    aria-describedby={errors.dateOfBirth ? "dateOfBirth-error" : undefined}
                 />
-                {errors.dateOfBirth && <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth}</p>}
+                {errors.dateOfBirth && <p id="dateOfBirth-error" role="alert" className="mt-1 text-sm text-red-600">{errors.dateOfBirth}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label htmlFor="card-type" className="block text-sm font-medium text-foreground/80 mb-2">
                   Card Type
                 </label>
                 <div className="grid grid-cols-3 gap-3">
@@ -363,38 +371,42 @@ export default function RegisterPage() {
               </h2>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                <label htmlFor="street-address" className="block text-sm font-medium text-foreground/80 mb-1">
                   Street Address *
                 </label>
-                <input
+                <input id="street-address"
                   type="text"
                   value={formData.streetAddress}
                   onChange={(e) => updateField("streetAddress", e.target.value)}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
                     ${errors.streetAddress ? "border-red-500" : "border-border"}`}
+                    aria-invalid={!!errors.streetAddress}
+                    aria-describedby={errors.streetAddress ? "streetAddress-error" : undefined}
                 />
-                {errors.streetAddress && <p className="mt-1 text-sm text-red-600">{errors.streetAddress}</p>}
+                {errors.streetAddress && <p id="streetAddress-error" role="alert" className="mt-1 text-sm text-red-600">{errors.streetAddress}</p>}
               </div>
 
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="md:col-span-1">
-                  <label className="block text-sm font-medium text-foreground/80 mb-1">
+                  <label htmlFor="city" className="block text-sm font-medium text-foreground/80 mb-1">
                     City *
                   </label>
-                  <input
+                  <input id="city"
                     type="text"
                     value={formData.city}
                     onChange={(e) => updateField("city", e.target.value)}
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
                       ${errors.city ? "border-red-500" : "border-border"}`}
+                    aria-invalid={!!errors.city}
+                    aria-describedby={errors.city ? "city-error" : undefined}
                   />
-                  {errors.city && <p className="mt-1 text-sm text-red-600">{errors.city}</p>}
+                  {errors.city && <p id="city-error" role="alert" className="mt-1 text-sm text-red-600">{errors.city}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground/80 mb-1">
+                  <label htmlFor="state" className="block text-sm font-medium text-foreground/80 mb-1">
                     State *
                   </label>
-                  <input
+                  <input id="state"
                     type="text"
                     value={formData.state}
                     onChange={(e) => updateField("state", e.target.value)}
@@ -402,14 +414,16 @@ export default function RegisterPage() {
                     placeholder="CA"
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
                       ${errors.state ? "border-red-500" : "border-border"}`}
+                    aria-invalid={!!errors.state}
+                    aria-describedby={errors.state ? "state-error" : undefined}
                   />
-                  {errors.state && <p className="mt-1 text-sm text-red-600">{errors.state}</p>}
+                  {errors.state && <p id="state-error" role="alert" className="mt-1 text-sm text-red-600">{errors.state}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground/80 mb-1">
+                  <label htmlFor="zip-code" className="block text-sm font-medium text-foreground/80 mb-1">
                     ZIP Code *
                   </label>
-                  <input
+                  <input id="zip-code"
                     type="text"
                     value={formData.zipCode}
                     onChange={(e) => updateField("zipCode", e.target.value)}
@@ -417,8 +431,10 @@ export default function RegisterPage() {
                     placeholder="12345"
                     className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
                       ${errors.zipCode ? "border-red-500" : "border-border"}`}
+                    aria-invalid={!!errors.zipCode}
+                    aria-describedby={errors.zipCode ? "zipCode-error" : undefined}
                   />
-                  {errors.zipCode && <p className="mt-1 text-sm text-red-600">{errors.zipCode}</p>}
+                  {errors.zipCode && <p id="zipCode-error" role="alert" className="mt-1 text-sm text-red-600">{errors.zipCode}</p>}
                 </div>
               </div>
             </div>
@@ -433,24 +449,26 @@ export default function RegisterPage() {
               </h2>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                <label htmlFor="email-address" className="block text-sm font-medium text-foreground/80 mb-1">
                   Email Address *
                 </label>
-                <input
+                <input id="email-address"
                   type="email"
                   value={formData.email}
                   onChange={(e) => updateField("email", e.target.value)}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
                     ${errors.email ? "border-red-500" : "border-border"}`}
+                    aria-invalid={!!errors.email}
+                    aria-describedby={errors.email ? "email-error" : undefined}
                 />
-                {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+                {errors.email && <p id="email-error" role="alert" className="mt-1 text-sm text-red-600">{errors.email}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                <label htmlFor="phone-number" className="block text-sm font-medium text-foreground/80 mb-1">
                   Phone Number
                 </label>
-                <input
+                <input id="phone-number"
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => updateField("phone", e.target.value)}
@@ -460,14 +478,16 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                <label htmlFor="preferred-branch" className="block text-sm font-medium text-foreground/80 mb-1">
                   Preferred Branch *
                 </label>
-                <select
+                <select id="preferred-branch"
                   value={formData.preferredBranch}
                   onChange={(e) => updateField("preferredBranch", e.target.value)}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
                     ${errors.preferredBranch ? "border-red-500" : "border-border"}`}
+                    aria-invalid={!!errors.preferredBranch}
+                    aria-describedby={errors.preferredBranch ? "preferredBranch-error" : undefined}
                 >
                   <option value="">Select a branch</option>
                   {(library?.locations || []).map((loc) => (
@@ -479,7 +499,7 @@ export default function RegisterPage() {
                     <option value="main">Main Library</option>
                   )}
                 </select>
-                {errors.preferredBranch && <p className="mt-1 text-sm text-red-600">{errors.preferredBranch}</p>}
+                {errors.preferredBranch && <p id="preferredBranch-error" role="alert" className="mt-1 text-sm text-red-600">{errors.preferredBranch}</p>}
               </div>
 
               {formData.cardType === "juvenile" && (
@@ -487,37 +507,41 @@ export default function RegisterPage() {
                   <h3 className="font-medium text-amber-900 mb-3">Parent/Guardian Information</h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-foreground/80 mb-1">
+                      <label htmlFor="parent-guardian-name" className="block text-sm font-medium text-foreground/80 mb-1">
                         Parent/Guardian Name *
                       </label>
-                      <input
+                      <input id="parent-guardian-name"
                         type="text"
                         value={formData.parentName || ""}
                         onChange={(e) => updateField("parentName", e.target.value)}
                         className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
                           ${errors.parentName ? "border-red-500" : "border-border"}`}
+                    aria-invalid={!!errors.parentName}
+                    aria-describedby={errors.parentName ? "parentName-error" : undefined}
                       />
-                      {errors.parentName && <p className="mt-1 text-sm text-red-600">{errors.parentName}</p>}
+                      {errors.parentName && <p id="parentName-error" role="alert" className="mt-1 text-sm text-red-600">{errors.parentName}</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-foreground/80 mb-1">
+                      <label htmlFor="parent-guardian-phone" className="block text-sm font-medium text-foreground/80 mb-1">
                         Parent/Guardian Phone *
                       </label>
-                      <input
+                      <input id="parent-guardian-phone"
                         type="tel"
                         value={formData.parentPhone || ""}
                         onChange={(e) => updateField("parentPhone", e.target.value)}
                         className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
                           ${errors.parentPhone ? "border-red-500" : "border-border"}`}
+                    aria-invalid={!!errors.parentPhone}
+                    aria-describedby={errors.parentPhone ? "parentPhone-error" : undefined}
                       />
-                      {errors.parentPhone && <p className="mt-1 text-sm text-red-600">{errors.parentPhone}</p>}
+                      {errors.parentPhone && <p id="parentPhone-error" role="alert" className="mt-1 text-sm text-red-600">{errors.parentPhone}</p>}
                     </div>
                   </div>
                 </div>
               )}
 
               <div className="space-y-3">
-                <label className="flex items-start gap-3">
+                <label htmlFor="library-card-terms-of-use" className="flex items-start gap-3">
                   <input
                     type="checkbox"
                     checked={formData.agreeToTerms}
@@ -534,7 +558,7 @@ export default function RegisterPage() {
                 </label>
                 {errors.agreeToTerms && <p className="text-sm text-red-600">{errors.agreeToTerms}</p>}
 
-                <label className="flex items-start gap-3">
+                <label htmlFor="email-opt-in" className="flex items-start gap-3">
                   <input
                     type="checkbox"
                     checked={formData.emailOptIn}

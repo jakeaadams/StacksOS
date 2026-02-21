@@ -311,7 +311,7 @@ export default function ScheduledReportsPage() {
               <Pencil className="h-4 w-4" />
               <span className="sr-only">Edit</span>
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => requestDelete(row.original)}>
+            <Button size="sm" variant="destructive" onClick={() => requestDelete(row.original)}>
               <Trash2 className="h-4 w-4" />
               <span className="sr-only">Delete</span>
             </Button>
@@ -449,13 +449,13 @@ export default function ScheduledReportsPage() {
 
           <div className="grid gap-4">
             <div className="grid gap-2">
-              <Label>Name</Label>
-              <Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. Daily KPIs" />
+              <Label htmlFor="name">Name</Label>
+              <Input id="name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. Daily KPIs" />
             </div>
 
             <div className="grid gap-2">
-              <Label>Report</Label>
-              <Select value={form.reportKey} onValueChange={(v) => setForm((p) => ({ ...p, reportKey: v as any }))}>
+              <Label htmlFor="report">Report</Label>
+              <Select id="report" value={form.reportKey} onValueChange={(v) => setForm((p) => ({ ...p, reportKey: v as any }))}>
                 <SelectTrigger><SelectValue placeholder="Select report" /></SelectTrigger>
                 <SelectContent>
                   {SCHEDULED_REPORT_DEFINITIONS.map((r) => (
@@ -469,8 +469,8 @@ export default function ScheduledReportsPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label>Organization</Label>
-              <Select value={form.orgId} onValueChange={(v) => setForm((p) => ({ ...p, orgId: v }))}>
+              <Label htmlFor="organization">Organization</Label>
+              <Select id="organization" value={form.orgId} onValueChange={(v) => setForm((p) => ({ ...p, orgId: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select org" /></SelectTrigger>
                 <SelectContent>
                   {orgs.map((o) => (
@@ -482,8 +482,8 @@ export default function ScheduledReportsPage() {
 
             <div className="grid gap-2 sm:grid-cols-3">
               <div className="grid gap-2">
-                <Label>Cadence</Label>
-                <Select value={form.cadence} onValueChange={(v) => setForm((p) => ({ ...p, cadence: v as any }))}>
+                <Label htmlFor="cadence">Cadence</Label>
+                <Select id="cadence" value={form.cadence} onValueChange={(v) => setForm((p) => ({ ...p, cadence: v as any }))}>
                   <SelectTrigger><SelectValue placeholder="Cadence" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="daily">Daily</SelectItem>
@@ -493,14 +493,14 @@ export default function ScheduledReportsPage() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>Time</Label>
-                <Input value={form.timeOfDay} onChange={(e) => setForm((p) => ({ ...p, timeOfDay: e.target.value }))} placeholder="08:00" />
+                <Label htmlFor="time">Time</Label>
+                <Input id="time" value={form.timeOfDay} onChange={(e) => setForm((p) => ({ ...p, timeOfDay: e.target.value }))} placeholder="08:00" />
                 <div className="text-[11px] text-muted-foreground">Server local time</div>
               </div>
               {form.cadence === "weekly" ? (
                 <div className="grid gap-2">
-                  <Label>Day</Label>
-                  <Select value={form.dayOfWeek} onValueChange={(v) => setForm((p) => ({ ...p, dayOfWeek: v }))}>
+                  <Label htmlFor="day">Day</Label>
+                  <Select id="day" value={form.dayOfWeek} onValueChange={(v) => setForm((p) => ({ ...p, dayOfWeek: v }))}>
                     <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">Mon</SelectItem>
@@ -515,14 +515,14 @@ export default function ScheduledReportsPage() {
                 </div>
               ) : form.cadence === "monthly" ? (
                 <div className="grid gap-2">
-                  <Label>Day</Label>
-                  <Input value={form.dayOfMonth} onChange={(e) => setForm((p) => ({ ...p, dayOfMonth: e.target.value }))} placeholder="1" />
+                  <Label htmlFor="day-2">Day</Label>
+                  <Input id="day-2" value={form.dayOfMonth} onChange={(e) => setForm((p) => ({ ...p, dayOfMonth: e.target.value }))} placeholder="1" />
                 </div>
               ) : (
                 <div className="grid gap-2">
-                  <Label>Enabled</Label>
+                  <Label htmlFor="enabled">Enabled</Label>
                   <div className="flex items-center gap-3 h-9">
-                    <Switch checked={form.enabled} onCheckedChange={(v) => setForm((p) => ({ ...p, enabled: Boolean(v) }))} />
+                    <Switch id="enabled" checked={form.enabled} onCheckedChange={(v) => setForm((p) => ({ ...p, enabled: Boolean(v) }))} />
                     <span className="text-xs text-muted-foreground">{form.enabled ? "On" : "Off"}</span>
                   </div>
                 </div>
@@ -531,17 +531,17 @@ export default function ScheduledReportsPage() {
 
             {(form.cadence === "weekly" || form.cadence === "monthly") && (
               <div className="grid gap-2">
-                <Label>Enabled</Label>
+                <Label htmlFor="enabled-2">Enabled</Label>
                 <div className="flex items-center gap-3 h-9">
-                  <Switch checked={form.enabled} onCheckedChange={(v) => setForm((p) => ({ ...p, enabled: Boolean(v) }))} />
+                  <Switch id="enabled-2" checked={form.enabled} onCheckedChange={(v) => setForm((p) => ({ ...p, enabled: Boolean(v) }))} />
                   <span className="text-xs text-muted-foreground">{form.enabled ? "On" : "Off"}</span>
                 </div>
               </div>
             )}
 
             <div className="grid gap-2">
-              <Label>Recipients</Label>
-              <Input
+              <Label htmlFor="recipients">Recipients</Label>
+              <Input id="recipients"
                 value={form.recipients}
                 onChange={(e) => setForm((p) => ({ ...p, recipients: e.target.value }))}
                 placeholder="email1@library.org, email2@library.org"

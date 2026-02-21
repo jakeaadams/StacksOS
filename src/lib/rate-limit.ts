@@ -192,21 +192,18 @@ function checkRateLimitMemory(identifier: string, config: RateLimitConfig): Rate
 export async function recordSuccess(identifier: string, endpoint: string = "default"): Promise<void> {
   const key = `${identifier}:${endpoint}`;
 
-  // On successful auth, reset attempts to avoid penalizing real users.
-  rateLimitStore.delete(key);
+  // SECURITY: Do NOT fully reset the rate-limit counter on success.
+  // A full reset allows an attacker to interleave one valid login between
+  // brute-force bursts, effectively bypassing the rate limit. Instead we
+  // leave the counter in place so that sustained abuse within the window
+  // is still tracked. The counter naturally resets when the time window
+  // expires.
+  // rateLimitStore.delete(key);  // removed for security
 
-  if (redisEnabled()) {
-    const client = await getRedisClient();
-    if (client) {
-      try {
-        await client.del(redisRateLimitKey(endpoint, identifier));
-      } catch (err) {
-        logger.warn({ error: String(err) }, "Failed to clear Redis rate limit key");
-      }
-    }
-  }
+  // Similarly, do not clear the Redis key on success.
+  // if (redisEnabled()) { ... client.del(...) }
 
-  logger.debug({ identifier, endpoint }, "Successful authentication recorded");
+  logger.debug({ identifier, endpoint }, "Successful authentication recorded (counter preserved)");
 }
 
 /**

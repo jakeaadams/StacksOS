@@ -570,8 +570,8 @@ export default function ILLPage() {
           <div className="space-y-4 py-2">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Request Type</Label>
-                <Select value={requestType} onValueChange={(value) => setRequestType(value as "borrow" | "lend") }>
+                <Label htmlFor="request-type">Request Type</Label>
+                <Select id="request-type" value={requestType} onValueChange={(value) => setRequestType(value as "borrow" | "lend") }>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -583,8 +583,8 @@ export default function ILLPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Priority</Label>
-                <Select value={priority} onValueChange={(value) => setPriority(value as "low" | "normal" | "high") }>
+                <Label htmlFor="priority">Priority</Label>
+                <Select id="priority" value={priority} onValueChange={(value) => setPriority(value as "low" | "normal" | "high") }>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -599,45 +599,45 @@ export default function ILLPage() {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Patron Barcode</Label>
-                <Input value={patronBarcode} onChange={(event) => setPatronBarcode(event.target.value)} placeholder="Patron barcode" />
+                <Label htmlFor="patron-barcode">Patron Barcode</Label>
+                <Input id="patron-barcode" value={patronBarcode} onChange={(event) => setPatronBarcode(event.target.value)} placeholder="Patron barcode" />
               </div>
               <div className="space-y-2">
-                <Label>Patron Name (optional)</Label>
-                <Input value={patronName} onChange={(event) => setPatronName(event.target.value)} placeholder="Last, First" />
+                <Label htmlFor="patron-name">Patron Name (optional)</Label>
+                <Input id="patron-name" value={patronName} onChange={(event) => setPatronName(event.target.value)} placeholder="Last, First" />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Title</Label>
-              <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Requested title" />
+              <Label htmlFor="title">Title</Label>
+              <Input id="title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Requested title" />
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Author (optional)</Label>
-                <Input value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="Author" />
+                <Label htmlFor="author">Author (optional)</Label>
+                <Input id="author" value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="Author" />
               </div>
               <div className="space-y-2">
-                <Label>ISBN (optional)</Label>
-                <Input value={isbn} onChange={(event) => setIsbn(event.target.value)} placeholder="ISBN" />
+                <Label htmlFor="isbn">ISBN (optional)</Label>
+                <Input id="isbn" value={isbn} onChange={(event) => setIsbn(event.target.value)} placeholder="ISBN" />
               </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Source (optional)</Label>
-                <Input value={source} onChange={(event) => setSource(event.target.value)} placeholder="Provider/library" />
+                <Label htmlFor="source">Source (optional)</Label>
+                <Input id="source" value={source} onChange={(event) => setSource(event.target.value)} placeholder="Provider/library" />
               </div>
               <div className="space-y-2">
-                <Label>Need By (optional)</Label>
-                <Input type="date" value={neededBy} onChange={(event) => setNeededBy(event.target.value)} />
+                <Label htmlFor="need-by">Need By (optional)</Label>
+                <Input id="need-by" type="date" value={neededBy} onChange={(event) => setNeededBy(event.target.value)} />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Notes (optional)</Label>
-              <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} placeholder="Request notes" />
+              <Label htmlFor="notes">Notes (optional)</Label>
+              <Textarea id="notes" value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} placeholder="Request notes" />
             </div>
           </div>
 

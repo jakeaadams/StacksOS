@@ -22,6 +22,7 @@ import {
   Computer,
   ChevronRight,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface BrowseCategory {
   name: string;
@@ -114,6 +115,7 @@ const QUICK_LISTS = [
 ];
 
 export default function BrowsePage() {
+  const t = useTranslations("browsePage");
   const enabled = featureFlags.opacBrowseV2;
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 

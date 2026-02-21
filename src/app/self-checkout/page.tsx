@@ -22,6 +22,7 @@ import {
   RotateCcw,
   Printer,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface CheckedOutItem {
   id: number;
@@ -44,6 +45,7 @@ type KioskState = "idle" | "patron-login" | "ready" | "scanning" | "complete";
 const IDLE_TIMEOUT = 60000; // 60 seconds of inactivity returns to idle
 
 export default function SelfCheckoutPage() {
+  const t = useTranslations("selfCheckout");
   const [state, setState] = useState<KioskState>("idle");
   const [patron, setPatron] = useState<PatronInfo | null>(null);
   const [checkedOutItems, setCheckedOutItems] = useState<CheckedOutItem[]>([]);
@@ -148,7 +150,8 @@ export default function SelfCheckoutPage() {
         setLastError(data.error || "Invalid barcode or PIN");
         playSound("error");
       }
-    } catch {
+    } catch (error) {
+      clientLogger.warn("Self-checkout login failed", { error });
       setLastError("Connection error. Please try again.");
       playSound("error");
     } finally {
@@ -191,7 +194,8 @@ export default function SelfCheckoutPage() {
         setLastError(data.error || "Could not check out item");
         playSound("error");
       }
-    } catch {
+    } catch (error) {
+      clientLogger.warn("Self-checkout login failed", { error });
       setLastError("Connection error. Please try again.");
       playSound("error");
     } finally {
@@ -253,6 +257,7 @@ export default function SelfCheckoutPage() {
               variant="ghost"
               size="icon"
               className="text-primary-foreground hover:bg-white/20"
+              aria-label={soundEnabled ? "Mute sound" : "Enable sound"}
               onClick={() => setSoundEnabled(!soundEnabled)}
             >
               {soundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}

@@ -309,7 +309,7 @@ export default function CatalogImportPage() {
     if (isbnField) {
       const isbnText = isbnField.querySelector('subfield[code="a"]')?.textContent || '';
       // Clean ISBN (remove hyphens, spaces, and anything after first space)
-      isbn = isbnText.split(' ')[0].replace(/[^0-9Xx]/g, '');
+      isbn = isbnText!.split(' ')[0]!.replace(/[^0-9Xx]/g, '');
     }
 
     return { title, author, isbn };
@@ -361,7 +361,7 @@ export default function CatalogImportPage() {
       
       try {
         // Check for duplicate
-        const dupeCheck = await checkDuplicate(record.metadata.isbn);
+        const dupeCheck = await checkDuplicate(record!.metadata.isbn);
         
         if (dupeCheck.isDuplicate) {
           results.push({
@@ -384,7 +384,7 @@ export default function CatalogImportPage() {
         const res = await fetchWithAuth('/api/evergreen/marc', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ marcxml: record.marcxml, source }),
+          body: JSON.stringify({ marcxml: record!.marcxml, source }),
         });
 
         const data = await res.json();
@@ -481,8 +481,8 @@ export default function CatalogImportPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-2">
-              <label className="text-sm font-medium">Record Source</label>
-              <Select value={source} onValueChange={setSource} disabled={isImporting}>
+              <label htmlFor="record-source" className="text-sm font-medium">Record Source</label>
+              <Select id="record-source" value={source} onValueChange={setSource} disabled={isImporting}>
                 <SelectTrigger className="max-w-sm">
                   <SelectValue placeholder="Select source" />
                 </SelectTrigger>
@@ -501,7 +501,7 @@ export default function CatalogImportPage() {
             </div>
 
             <div className="grid gap-2">
-              <label className="text-sm font-medium">MARC Files *</label>
+              <label htmlFor="marc-file-input" className="text-sm font-medium">MARC Files *</label>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"

@@ -1048,7 +1048,7 @@ export default function PatronDetailPage() {
                               <p className="text-xs text-muted-foreground mt-1">Added {toDateLabel(setDate)}</p>
                             </div>
                           </div>
-                          <Button variant="ghost" size="sm" onClick={() => handleRemoveBlock(penaltyId)}>
+                          <Button variant="destructive" size="sm" onClick={() => handleRemoveBlock(penaltyId)}>
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
@@ -1089,7 +1089,7 @@ export default function PatronDetailPage() {
                             <p className="text-xs text-muted-foreground mt-1">Created {toDateLabel(note.createDate)}</p>
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteNote(note.id)}>
+                        <Button variant="destructive" size="sm" onClick={() => handleDeleteNote(note.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -1160,20 +1160,20 @@ export default function PatronDetailPage() {
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Active</Label>
+                <Label htmlFor="active">Active</Label>
                 <p className="text-xs text-muted-foreground">Allow patron to use library services</p>
               </div>
-              <Switch
+              <Switch id="active"
                 checked={editForm.active}
                 onCheckedChange={(checked) => setEditForm({ ...editForm, active: checked })}
               />
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Barred</Label>
+                <Label htmlFor="barred">Barred</Label>
                 <p className="text-xs text-muted-foreground">Block all library services</p>
               </div>
-              <Switch
+              <Switch id="barred"
                 checked={editForm.barred}
                 onCheckedChange={(checked) => setEditForm({ ...editForm, barred: checked })}
               />
@@ -1258,10 +1258,10 @@ export default function PatronDetailPage() {
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Public</Label>
+                <Label htmlFor="public">Public</Label>
                 <p className="text-xs text-muted-foreground">Visible to patron in their account</p>
               </div>
-              <Switch
+              <Switch id="public"
                 checked={noteForm.public}
                 onCheckedChange={(checked) => setNoteForm({ ...noteForm, public: checked })}
               />

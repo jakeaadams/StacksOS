@@ -151,3 +151,15 @@ export const LazyKeyboardShortcutsOverlay = dynamic(
     ssr: false,
   }
 );
+
+/**
+ * Lazy-loaded command palette
+ * ~12KB - Staff command palette loaded on demand via Cmd+K
+ */
+export const LazyCommandPalette = dynamic(
+  () => import("../layout/command-palette").then((mod) => mod.CommandPalette),
+  {
+    loading: CompactLoading,
+    ssr: false,
+  }
+);

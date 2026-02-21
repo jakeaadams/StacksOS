@@ -194,12 +194,12 @@ export default function HoldsShelfPage() {
       '<table style="margin-top: 16px;">' +
       "<thead>" +
       "<tr>" +
-      "<th>Title / Author</th>" +
-      "<th>Patron</th>" +
-      "<th>Pickup Date</th>" +
-      "<th>Expire Date</th>" +
-      "<th>Shelf Location</th>" +
-      "<th>Days</th>" +
+      "<th scope=\"col\">Title / Author</th>" +
+      "<th scope=\"col\">Patron</th>" +
+      "<th scope=\"col\">Pickup Date</th>" +
+      "<th scope=\"col\">Expire Date</th>" +
+      "<th scope=\"col\">Shelf Location</th>" +
+      "<th scope=\"col\">Days</th>" +
       "</tr>" +
       "</thead>" +
       "<tbody>" +

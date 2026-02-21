@@ -324,7 +324,7 @@ export function SearchAutocomplete({
     } else if (e.key === "Enter") {
       if (activeIndex >= 0 && activeIndex < flatItems.length) {
         e.preventDefault();
-        handleSelectSuggestion(flatItems[activeIndex]);
+        handleSelectSuggestion(flatItems[activeIndex]!);
       }
     } else if (e.key === "Escape") {
       setIsOpen(false);

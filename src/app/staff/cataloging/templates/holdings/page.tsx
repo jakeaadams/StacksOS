@@ -290,8 +290,8 @@ export default function HoldingsTemplatesPage() {
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-3">
             <div className="space-y-2">
-              <Label>Organization</Label>
-              <Select value={String(orgId)} onValueChange={(v) => setOrgId(parseInt(v, 10))}>
+              <Label htmlFor="organization">Organization</Label>
+              <Select id="organization" value={String(orgId)} onValueChange={(v) => setOrgId(parseInt(v, 10))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select org" />
                 </SelectTrigger>
@@ -305,11 +305,11 @@ export default function HoldingsTemplatesPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Prefixes</Label>
+              <Label htmlFor="prefixes">Prefixes</Label>
               <div className="text-sm text-muted-foreground">{prefixes.length} configured</div>
             </div>
             <div className="space-y-2">
-              <Label>Suffixes</Label>
+              <Label htmlFor="suffixes">Suffixes</Label>
               <div className="text-sm text-muted-foreground">{suffixes.length} configured</div>
             </div>
           </CardContent>
@@ -352,13 +352,13 @@ export default function HoldingsTemplatesPage() {
 
           <div className="grid gap-4 py-2 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
-              <Label>Name</Label>
-              <Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g., Adult Fiction" />
+              <Label htmlFor="name">Name</Label>
+              <Input id="name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g., Adult Fiction" />
             </div>
 
             <div className="space-y-2">
-              <Label>Owning library</Label>
-              <Select value={form.owningLib} onValueChange={(v) => setForm((p) => ({ ...p, owningLib: v }))}>
+              <Label htmlFor="owning-library">Owning library</Label>
+              <Select id="owning-library" value={form.owningLib} onValueChange={(v) => setForm((p) => ({ ...p, owningLib: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select org" /></SelectTrigger>
                 <SelectContent>
                   {orgs.map((o) => (
@@ -369,8 +369,8 @@ export default function HoldingsTemplatesPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Classification</Label>
-              <Select value={form.classification} onValueChange={(v) => setForm((p) => ({ ...p, classification: v }))}>
+              <Label htmlFor="classification">Classification</Label>
+              <Select id="classification" value={form.classification} onValueChange={(v) => setForm((p) => ({ ...p, classification: v }))}>
                 <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">(None)</SelectItem>
@@ -382,8 +382,8 @@ export default function HoldingsTemplatesPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Prefix</Label>
-              <Select value={form.callNumberPrefix} onValueChange={(v) => setForm((p) => ({ ...p, callNumberPrefix: v }))}>
+              <Label htmlFor="prefix">Prefix</Label>
+              <Select id="prefix" value={form.callNumberPrefix} onValueChange={(v) => setForm((p) => ({ ...p, callNumberPrefix: v }))}>
                 <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">(None)</SelectItem>
@@ -395,8 +395,8 @@ export default function HoldingsTemplatesPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Suffix</Label>
-              <Select value={form.callNumberSuffix} onValueChange={(v) => setForm((p) => ({ ...p, callNumberSuffix: v }))}>
+              <Label htmlFor="suffix">Suffix</Label>
+              <Select id="suffix" value={form.callNumberSuffix} onValueChange={(v) => setForm((p) => ({ ...p, callNumberSuffix: v }))}>
                 <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">(None)</SelectItem>

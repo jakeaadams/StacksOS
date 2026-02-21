@@ -10,6 +10,7 @@ import {
   PageContent,
   EmptyState,
   ErrorMessage,
+  ConfirmDialog,
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -71,6 +72,7 @@ export default function ClaimsPage() {
   const [notes, setNotes] = useState("");
   const [sendNotification, setSendNotification] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
 
   const refresh = async () => {
     setLoading(true);
@@ -235,8 +237,8 @@ export default function ClaimsPage() {
               <CardContent className="space-y-3">
                 <div className="grid gap-3 md:grid-cols-3">
                   <div>
-                    <Label>Claim type</Label>
-                    <Select value={claimTypeId} onValueChange={setClaimTypeId}>
+                    <Label htmlFor="claim-type">Claim type</Label>
+                    <Select id="claim-type" value={claimTypeId} onValueChange={setClaimTypeId}>
                       <SelectTrigger><SelectValue placeholder="Select claim type" /></SelectTrigger>
                       <SelectContent>
                         {(claimTypes.length > 0 ? claimTypes : [{ id: 1, code: "NOT_RECEIVED", description: "Item not received from vendor" }]).map((t) => (
@@ -248,8 +250,8 @@ export default function ClaimsPage() {
                     </Select>
                   </div>
                   <div className="md:col-span-2">
-                    <Label>Notes (optional)</Label>
-                    <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional note to store with the claim and (optionally) email to vendor." className="min-h-[80px]" />
+                    <Label htmlFor="notes">Notes (optional)</Label>
+                    <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional note to store with the claim and (optionally) email to vendor." className="min-h-[80px]" />
                   </div>
                 </div>
 
@@ -347,9 +349,12 @@ export default function ClaimsPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => {
-                                const ok = window.confirm("Cancel the claim for this lineitem detail?");
-                                if (!ok) return;
-                                void runAction({ action: "cancel_claim", lineitemDetailId: i.lineitemDetailId }, "Claim cancelled");
+                                setConfirmDialog({
+                                  open: true,
+                                  title: "Cancel Claim",
+                                  description: "Cancel the claim for this lineitem detail?",
+                                  onConfirm: () => void runAction({ action: "cancel_claim", lineitemDetailId: i.lineitemDetailId }, "Claim cancelled"),
+                                });
                               }}
                               disabled={submitting}
                             >
@@ -411,6 +416,13 @@ export default function ClaimsPage() {
           </TabsContent>
         </Tabs>
       </PageContent>
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((s) => ({ ...s, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </PageContainer>
   );
 }

@@ -60,7 +60,7 @@ export interface LibraryEvent {
 function futureDate(daysFromNow: number): string {
   const d = new Date();
   d.setDate(d.getDate() + daysFromNow);
-  return d.toISOString().split("T")[0];
+  return d.toISOString().split("T")[0]!;
 }
 
 const MOCK_EVENTS: LibraryEvent[] = [

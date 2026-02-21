@@ -13,7 +13,6 @@ import { BookCard } from "@/components/opac/book-card";
 import { RecommendedForYou } from "@/components/opac/recommended-for-you";
 import { SearchAutocomplete } from "@/components/opac/search-autocomplete";
 import {
-  Search,
   BookOpen,
   Clock,
   Star,
@@ -25,11 +24,11 @@ import {
   MonitorPlay,
   MapPin,
   CalendarDays,
-  Users,
 } from "lucide-react";
 
 import type { LibraryEvent } from "@/lib/events-data";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 interface FeaturedBook {
   id: number;
@@ -72,6 +71,7 @@ function transformCatalogResults(records: any[]): FeaturedBook[] {
 }
 
 export default function OPACHomePage() {
+  const t = useTranslations("home");
   const { library, currentLocation } = useLibrary();
   const { patron, isLoggedIn, holds } = usePatronSession();
   const browseEnabled = featureFlags.opacBrowseV2;
@@ -116,8 +116,9 @@ export default function OPACHomePage() {
           const picksData = await staffPicksResponse.json();
           setStaffPicks(picksData.picks || []);
         }
-      } catch {
+      } catch (error) {
         // Staff picks are optional - don't fail if unavailable
+        clientLogger.warn("Failed to fetch staff picks", { error });
       }
 
       // Fetch featured events for the home page
@@ -200,7 +201,7 @@ export default function OPACHomePage() {
         <div className="relative max-w-4xl mx-auto px-4 text-center">
           <h1 className="text-3xl md:text-5xl font-bold mb-4">Discover Your Next Great Read</h1>
           <p className="text-lg md:text-xl text-primary-100 mb-8 max-w-2xl mx-auto">
-            Search our collection of books, eBooks, audiobooks, movies, and more
+            {t("discoverSubtitle")}
           </p>
 
           {/* Search form with autocomplete and scope selector */}
@@ -209,16 +210,16 @@ export default function OPACHomePage() {
           {/* Quick search suggestions */}
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <QuickSearchChip
-              label="New Releases"
+              label={t("newReleases")}
               href={browseEnabled ? "/opac/new-titles" : "/opac/search?sort=create_date&order=desc"}
             />
-            <QuickSearchChip label="Popular" href="/opac/search?sort=popularity" />
+            <QuickSearchChip label={t("popular")} href="/opac/search?sort=popularity" />
             <QuickSearchChip
-              label="Award Winners"
+              label={t("awardWinners")}
               href={`/opac/search?q=${encodeURIComponent("subject: award winners")}`}
             />
             <QuickSearchChip
-              label="Book Club"
+              label={t("bookClub")}
               href={`/opac/search?q=${encodeURIComponent("subject: book club")}`}
             />
           </div>
@@ -239,12 +240,12 @@ export default function OPACHomePage() {
                     href="/opac/account/checkouts"
                     className="text-sm text-primary-600 hover:underline"
                   >
-                    {patron.checkoutCount} items checked out
+                    {patron.checkoutCount} {t("itemsCheckedOut", {count: patron.checkoutCount})}
                   </Link>
                 )}
                 {holds.filter((h) => h.status === "ready").length > 0 && (
                   <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                    {holds.filter((h) => h.status === "ready").length} holds ready!
+                    {holds.filter((h) => h.status === "ready").length} {t("holdsReady", {count: holds.filter((h) => h.status === "ready").length})}
                   </span>
                 )}
               </div>
@@ -268,25 +269,25 @@ export default function OPACHomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             <FormatCard
               icon={BookOpen}
-              label="Books"
+              label={t("books")}
               href="/opac/search?format=book"
               color="bg-blue-500"
             />
             <FormatCard
               icon={Smartphone}
-              label="eBooks"
+              label={t("eBooks")}
               href="/opac/search?format=ebook"
               color="bg-purple-500"
             />
             <FormatCard
               icon={Headphones}
-              label="Audiobooks"
+              label={t("audiobooks")}
               href="/opac/search?format=audiobook"
               color="bg-green-500"
             />
             <FormatCard
               icon={MonitorPlay}
-              label="Movies & TV"
+              label={t("moviesTV")}
               href="/opac/search?format=dvd"
               color="bg-red-500"
             />
@@ -354,9 +355,9 @@ export default function OPACHomePage() {
                       {event.registrationRequired ? (
                         <button
                           onClick={() =>
-                            toast.info("Registration coming soon", {
+                            toast.info(t("registrationComingSoon"), {
                               description:
-                                "Online registration for this event will be available shortly.",
+                                t("registrationComingSoonDesc"),
                             })
                           }
                           className="text-xs font-medium text-primary-600 hover:underline"
@@ -429,7 +430,7 @@ export default function OPACHomePage() {
               </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
-                No new arrivals to display. Check back soon!
+                {t("noNewArrivals")}
               </p>
             )}
           </div>
@@ -486,7 +487,7 @@ export default function OPACHomePage() {
               </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
-                Search our catalog to discover popular items!
+                {t("searchCatalogDiscover")}
               </p>
             )}
           </div>
@@ -579,7 +580,7 @@ export default function OPACHomePage() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-muted-foreground/70 text-sm">Contact library for hours</p>
+                <p className="text-muted-foreground/70 text-sm">{t("contactForHours")}</p>
               )}
             </div>
 
@@ -602,7 +603,7 @@ export default function OPACHomePage() {
 
             {/* Quick Links */}
             <div>
-              <h3 className="font-semibold text-lg mb-4">Quick Links</h3>
+              <h3 className="font-semibold text-lg mb-4">{t("quickLinks")}</h3>
               <ul className="space-y-2 text-white/70">
                 <li>
                   <Link href="/opac/account" className="hover:text-white transition-colors">
@@ -634,9 +635,9 @@ export default function OPACHomePage() {
 
             {/* Get a Card */}
             <div>
-              <h3 className="font-semibold text-lg mb-4">Get a Library Card</h3>
+              <h3 className="font-semibold text-lg mb-4">{t("getLibraryCard")}</h3>
               <p className="text-muted-foreground/70 text-sm mb-4">
-                Free for all residents! Access books, eBooks, movies, and more.
+                {t("getCardDescription")}
               </p>
               <Link
                 href="/opac/register"

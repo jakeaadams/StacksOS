@@ -58,7 +58,7 @@ function convertToISBN10(isbn13: string): string | null {
   const base = isbn13.substring(3, 12);
   let checksum = 0;
   for (let i = 0; i < 9; i++) {
-    checksum += parseInt(base[i]) * (10 - i);
+    checksum += parseInt(base[i]!) * (10 - i);
   }
   const check = (11 - (checksum % 11)) % 11;
   return base + (check === 10 ? "X" : check.toString());

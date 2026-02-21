@@ -3,6 +3,7 @@ import Link from "next/link";
 import { HelpCircle, User, CreditCard, Download, Mail, Phone, MapPin } from "lucide-react";
 import { HelpFAQ } from "@/components/opac/HelpFAQ";
 import { HelpContactPhone } from "@/components/opac/HelpContactPhone";
+import { useTranslations } from "next-intl";
 
 export const metadata: Metadata = {
   title: "Help & FAQ",
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default function HelpPage() {
+  const t = useTranslations("helpPage");
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}

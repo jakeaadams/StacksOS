@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/shared/loading-state";
 import { UnoptimizedImage } from "@/components/shared";
+import { useTranslations } from "next-intl";
 
 interface Category {
   id: string;
@@ -198,9 +199,9 @@ function BrowseContent() {
                 <Icon className={`h-10 w-10 ${category.color}`} />
               </div>
               <div className="text-center">
-                <h3 className="font-bold text-foreground group-hover:text-purple-600 transition-colors">
+                <h2 className="font-bold text-foreground group-hover:text-purple-600 transition-colors">
                   {category.label}
-                </h3>
+                </h2>
                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                   {category.description}
                 </p>
@@ -246,9 +247,9 @@ function BookCard({ book }: { book: Book }) {
         )}
       </div>
       <div className="mt-2">
-        <h3 className="font-medium text-foreground text-sm line-clamp-2 group-hover:text-purple-600">
+        <h2 className="font-medium text-foreground text-sm line-clamp-2 group-hover:text-purple-600">
           {book.title}
-        </h3>
+        </h2>
         {book.author && (
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{book.author}</p>
         )}
@@ -258,6 +259,7 @@ function BookCard({ book }: { book: Book }) {
 }
 
 export default function KidsBrowsePage() {
+  const t = useTranslations("kidsBrowse");
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center py-20">

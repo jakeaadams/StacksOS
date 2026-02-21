@@ -22,6 +22,7 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface ReadingEntry {
   id: number;
@@ -77,6 +78,7 @@ function computeCurrentStreak(entries: ReadingEntry[]): number {
 }
 
 export default function ReadingLogPage() {
+  const t = useTranslations("kidsReadingLog");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoggedIn, checkouts } = usePatronSession();
@@ -635,7 +637,7 @@ function AddReadingModal({
 
               {/* Minutes */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label htmlFor="how-many-minutes-did-you-read" className="block text-sm font-medium text-foreground/80 mb-2">
                   How many minutes did you read?
                 </label>
                 <div className="flex items-center gap-3">
@@ -653,7 +655,7 @@ function AddReadingModal({
                     </button>
                   ))}
                 </div>
-                <input
+                <input id="how-many-minutes-did-you-read"
                   type="number"
                   value={minutesRead}
                   onChange={(e) => setMinutesRead(parseInt(e.target.value) || 0)}
@@ -665,10 +667,10 @@ function AddReadingModal({
 
               {/* Pages (optional) */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label htmlFor="how-many-pages" className="block text-sm font-medium text-foreground/80 mb-2">
                   How many pages? (optional)
                 </label>
-                <input
+                <input id="how-many-pages"
                   type="number"
                   value={pagesRead || ""}
                   onChange={(e) => setPagesRead(parseInt(e.target.value) || undefined)}
@@ -680,7 +682,7 @@ function AddReadingModal({
 
 	              {/* Rating */}
 	              <div className="mb-6">
-	                <label className="block text-sm font-medium text-foreground/80 mb-2">
+	                <label htmlFor="rate-this-book" className="block text-sm font-medium text-foreground/80 mb-2">
 	                  Rate this book (optional)
 	                </label>
 	                <div className="flex items-center gap-2">
@@ -704,10 +706,10 @@ function AddReadingModal({
 
                 {/* Notes */}
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-foreground/80 mb-2">
+                  <label htmlFor="notes" className="block text-sm font-medium text-foreground/80 mb-2">
                     Notes (optional)
                   </label>
-                  <textarea
+                  <textarea id="notes"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={3}

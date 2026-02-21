@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { PageContainer, PageHeader, PageContent, ErrorMessage, EmptyState } from "@/components/shared";
+import { PageContainer, PageHeader, PageContent, ErrorMessage, EmptyState, ConfirmDialog } from "@/components/shared";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Clock, Calendar, History, Save, RotateCcw, Plus, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +24,8 @@ export default function LibraryHoursPage() {
   const [closedDates, setClosedDates] = useState<any[]>([]);
   const [versions, setVersions] = useState<any[]>([]);
   const [note, setNote] = useState("");
+
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
 
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const blankHours = useMemo(
@@ -160,8 +162,16 @@ export default function LibraryHoursPage() {
 
   const rollback = async (versionId: number) => {
     if (!orgId) return;
-    const ok = window.confirm(`Rollback calendar to version ${versionId}? This will overwrite current hours/closed dates.`);
-    if (!ok) return;
+    setConfirmDialog({
+      open: true,
+      title: "Confirm Rollback",
+      description: `Rollback calendar to version ${versionId}? This will overwrite current hours/closed dates.`,
+      onConfirm: () => doRollback(versionId),
+    });
+  };
+
+  const doRollback = async (versionId: number) => {
+    if (!orgId) return;
     setSaving(true);
     try {
       const res = await fetchWithAuth("/api/evergreen/calendars", {
@@ -207,8 +217,8 @@ export default function LibraryHoursPage() {
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Org</Label>
-              <Select value={orgId ? String(orgId) : ""} onValueChange={(v) => setOrgId(parseInt(v, 10))}>
+              <Label htmlFor="org">Org</Label>
+              <Select id="org" value={orgId ? String(orgId) : ""} onValueChange={(v) => setOrgId(parseInt(v, 10))}>
                 <SelectTrigger>
                   <SelectValue placeholder={loading ? "Loading…" : "Select org"} />
                 </SelectTrigger>
@@ -223,8 +233,8 @@ export default function LibraryHoursPage() {
             </div>
 
             <div>
-              <Label>Change note (optional)</Label>
-              <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why are you changing this calendar?" />
+              <Label htmlFor="change-note">Change note (optional)</Label>
+              <Textarea id="change-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why are you changing this calendar?" />
             </div>
           </CardContent>
         </Card>
@@ -296,8 +306,8 @@ export default function LibraryHoursPage() {
                 {closedDates.map((cd, idx) => (
                   <div key={`${cd.id ?? "new"}_${idx}`} className="grid gap-2 rounded-lg border p-3 md:grid-cols-[1fr,1fr,220px,120px,120px,44px] md:items-end">
                     <div>
-                      <Label>Start</Label>
-                      <Input
+                      <Label htmlFor="start">Start</Label>
+                      <Input id="start"
                         value={String(cd.closeStart || "").slice(0, 10)}
                         type="date"
                         onChange={(e) => {
@@ -307,8 +317,8 @@ export default function LibraryHoursPage() {
                       />
                     </div>
                     <div>
-                      <Label>End</Label>
-                      <Input
+                      <Label htmlFor="end">End</Label>
+                      <Input id="end"
                         value={String(cd.closeEnd || "").slice(0, 10)}
                         type="date"
                         onChange={(e) => {
@@ -318,8 +328,8 @@ export default function LibraryHoursPage() {
                       />
                     </div>
                     <div>
-                      <Label>Reason</Label>
-                      <Input
+                      <Label htmlFor="reason">Reason</Label>
+                      <Input id="reason"
                         value={cd.reason ?? ""}
                         onChange={(e) => setClosedDates((prev) => prev.map((x, i) => (i === idx ? { ...x, reason: e.target.value } : x)))}
                       />
@@ -385,6 +395,13 @@ export default function LibraryHoursPage() {
           </CardContent>
         </Card>
       </PageContent>
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((s) => ({ ...s, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </PageContainer>
   );
 }

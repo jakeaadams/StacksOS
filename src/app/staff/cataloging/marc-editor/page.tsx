@@ -510,7 +510,7 @@ function MarcEditorContent() {
     const order = new Map<string, number>();
     for (let i = 0; i < baseLines.length; i += 1) {
       const line = baseLines[i];
-      if (!order.has(line)) order.set(line, i);
+      if (!order.has(line!)) order.set(line!, i);
     }
 
     let nextOrder = baseLines.length;
@@ -587,9 +587,9 @@ function MarcEditorContent() {
       const idx = next.fields.findIndex((f) => f.tag === "520");
       if (idx >= 0) {
         const f = next.fields[idx];
-        const sfIdx = f.subfields.findIndex((sf) => sf.code === "a");
-        if (sfIdx >= 0) f.subfields[sfIdx] = { code: "a", value: suggestedValue };
-        else f.subfields.push({ code: "a", value: suggestedValue });
+        const sfIdx = f!.subfields.findIndex((sf) => sf.code === "a");
+        if (sfIdx >= 0) f!.subfields[sfIdx] = { code: "a", value: suggestedValue };
+        else f!.subfields.push({ code: "a", value: suggestedValue });
       } else {
         addFieldSorted({
           tag: "520",
@@ -602,9 +602,9 @@ function MarcEditorContent() {
       const idx = next.fields.findIndex((f) => f.tag === "490");
       if (idx >= 0) {
         const f = next.fields[idx];
-        const sfIdx = f.subfields.findIndex((sf) => sf.code === "a");
-        if (sfIdx >= 0) f.subfields[sfIdx] = { code: "a", value: suggestedValue };
-        else f.subfields.push({ code: "a", value: suggestedValue });
+        const sfIdx = f!.subfields.findIndex((sf) => sf.code === "a");
+        if (sfIdx >= 0) f!.subfields[sfIdx] = { code: "a", value: suggestedValue };
+        else f!.subfields.push({ code: "a", value: suggestedValue });
       } else {
         addFieldSorted({
           tag: "490",
@@ -966,7 +966,7 @@ function MarcEditorContent() {
       .slice(0, width)
       .padEnd(width, " ");
     for (let i = 0; i < width; i += 1) {
-      next[start + i] = normalized[i];
+      next[start + i] = normalized[i]!;
     }
     updateControlField("008", next.join(""));
   };
@@ -978,7 +978,7 @@ function MarcEditorContent() {
 
   const updateField = (index: number, updates: Partial<MarcField>) => {
     const newFields = [...record.fields];
-    newFields[index] = { ...newFields[index], ...updates };
+    newFields[index] = { ...newFields[index], ...updates }! as MarcField;
     setRecord({ ...record, fields: newFields });
     setHasChanges(true);
   };
@@ -990,16 +990,16 @@ function MarcEditorContent() {
     value: string
   ) => {
     const newFields = [...record.fields];
-    const newSubfields = [...newFields[fieldIndex].subfields];
+    const newSubfields = [...newFields[fieldIndex]!.subfields];
     newSubfields[subfieldIndex] = { code, value };
-    newFields[fieldIndex] = { ...newFields[fieldIndex], subfields: newSubfields };
+    newFields[fieldIndex] = { ...newFields[fieldIndex], subfields: newSubfields }! as MarcField;
     setRecord({ ...record, fields: newFields });
     setHasChanges(true);
   };
 
   const addSubfield = (fieldIndex: number) => {
     const newFields = [...record.fields];
-    newFields[fieldIndex].subfields.push({ code: "", value: "" });
+    newFields[fieldIndex]!.subfields.push({ code: "", value: "" });
     setRecord({ ...record, fields: newFields });
     setHasChanges(true);
   };
@@ -1767,7 +1767,7 @@ function MarcEditorContent() {
                             variant="ghost"
                             className="h-8 w-8"
                             onClick={() => setAiPanelOpen(false)}
-                            title="Close AI panel"
+                            title="Close AI panel" aria-label="Close AI panel"
                           >
                             <X className="h-4 w-4" />
                             <span className="sr-only">Close AI panel</span>
@@ -1969,7 +1969,7 @@ function MarcEditorContent() {
                             variant="ghost"
                             className="h-8 w-8"
                             onClick={() => setTasksPanelOpen(false)}
-                            title="Close tasks panel"
+                            title="Close tasks panel" aria-label="Close tasks panel"
                           >
                             <X className="h-4 w-4" />
                             <span className="sr-only">Close tasks panel</span>
@@ -2082,7 +2082,7 @@ function MarcEditorContent() {
                             variant="ghost"
                             className="h-8 w-8"
                             onClick={closeCompare}
-                            title="Close compare"
+                            title="Close compare" aria-label="Close compare panel"
                           >
                             <X className="h-4 w-4" />
                             <span className="sr-only">Close compare</span>

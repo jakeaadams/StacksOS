@@ -21,12 +21,14 @@ import {
   LogIn,
   LogOut,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface KidsLayoutProps {
   children: ReactNode;
 }
 
 export default function KidsLayout({ children }: KidsLayoutProps) {
+  const t = useTranslations("kidsLayout");
   const pathname = usePathname();
   const { library } = useLibrary();
   const { patron, isLoggedIn, logout } = usePatronSession();

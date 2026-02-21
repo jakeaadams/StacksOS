@@ -314,8 +314,8 @@ export async function GET(req: NextRequest) {
       );
 
       if (lookupRows.length > 0) {
-        circModifierName = lookupRows[0].circ_modifier_name ?? null;
-        floatingGroupName = lookupRows[0].floating_group_name ?? null;
+        circModifierName = lookupRows[0]!.circ_modifier_name ?? null;
+        floatingGroupName = lookupRows[0]!.floating_group_name ?? null;
       }
     } catch {
       // Best-effort enrichment only.

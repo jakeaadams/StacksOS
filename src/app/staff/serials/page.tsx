@@ -149,7 +149,7 @@ export default function SerialsPage() {
       if (subsData.ok) setSetupMessage(subsData.message || null);
 
       // Default selection: first subscription.
-      setActiveSubscriptionId((prev) => (prev == null && subs.length > 0 ? subs[0].id : prev));
+      setActiveSubscriptionId((prev) => (prev == null && subs.length > 0 ? subs[0]!.id : prev));
     } catch (err) {
       setError("Failed to load subscriptions");
       clientLogger.error("Load subscriptions error:", err);
@@ -521,8 +521,8 @@ export default function SerialsPage() {
                           </CardHeader>
                           <CardContent className="space-y-3">
                             <div>
-                              <Label>Claim note (optional)</Label>
-                              <Textarea value={claimNote} onChange={(e) => setClaimNote(e.target.value)} placeholder="Optional note to include with claims" />
+                              <Label htmlFor="claim-note">Claim note (optional)</Label>
+                              <Textarea id="claim-note" value={claimNote} onChange={(e) => setClaimNote(e.target.value)} placeholder="Optional note to include with claims" />
                             </div>
                             <div className="flex justify-end">
                               <Button onClick={handleClaimSelected} disabled={claiming || selectedClaimIds.size === 0}>

@@ -204,9 +204,9 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     // Require patron authentication
-    let patronId: number;
+    let _patronId: number;
     try {
-      ({ patronId } = await requirePatronSession());
+      ({ patronId: _patronId } = await requirePatronSession());
     } catch (error) {
       if (error instanceof PatronAuthError) {
         return unauthorizedResponse(error.message);

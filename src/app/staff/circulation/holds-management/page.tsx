@@ -1169,8 +1169,8 @@ export default function HoldsManagementPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Cancel Reason</Label>
-              <Select value={cancelReason} onValueChange={setCancelReason}>
+              <Label htmlFor="cancel-reason">Cancel Reason</Label>
+              <Select id="cancel-reason" value={cancelReason} onValueChange={setCancelReason}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -1184,8 +1184,8 @@ export default function HoldsManagementPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Note (optional)</Label>
-              <Textarea
+              <Label htmlFor="note">Note (optional)</Label>
+              <Textarea id="note"
                 value={cancelNote}
                 onChange={(e) => setCancelNote(e.target.value)}
                 placeholder="Add a note..."
@@ -1213,8 +1213,8 @@ export default function HoldsManagementPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Thaw Date (optional)</Label>
-              <Input type="date" value={thawDate} onChange={(e) => setThawDate(e.target.value)} />
+              <Label htmlFor="thaw-date">Thaw Date (optional)</Label>
+              <Input id="thaw-date" type="date" value={thawDate} onChange={(e) => setThawDate(e.target.value)} />
               <p className="text-sm text-muted-foreground">Leave empty to freeze indefinitely</p>
             </div>
           </div>
@@ -1240,8 +1240,8 @@ export default function HoldsManagementPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>New Pickup Library</Label>
-              <Input
+              <Label htmlFor="new-pickup-library">New Pickup Library</Label>
+              <Input id="new-pickup-library"
                 type="number"
                 value={newPickupLib}
                 onChange={(e) => setNewPickupLib(e.target.value)}
@@ -1271,12 +1271,12 @@ export default function HoldsManagementPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Title</Label>
-              <Input value={noteTitle} onChange={(e) => setNoteTitle(e.target.value)} placeholder="Note title..." />
+              <Label htmlFor="title">Title</Label>
+              <Input id="title" value={noteTitle} onChange={(e) => setNoteTitle(e.target.value)} placeholder="Note title..." />
             </div>
             <div className="space-y-2">
-              <Label>Note</Label>
-              <Textarea value={noteBody} onChange={(e) => setNoteBody(e.target.value)} placeholder="Enter note..." />
+              <Label htmlFor="note-2">Note</Label>
+              <Textarea id="note-2" value={noteBody} onChange={(e) => setNoteBody(e.target.value)} placeholder="Enter note..." />
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox

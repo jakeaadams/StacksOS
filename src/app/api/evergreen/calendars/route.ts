@@ -149,13 +149,13 @@ async function readCalendarSnapshot(client: any, orgId: number) {
 }
 
 async function writeHours(client: any, orgId: number, hours: Record<string, HoursDay>) {
-  const d0 = normalizeDayForWrite(hours.dow0);
-  const d1 = normalizeDayForWrite(hours.dow1);
-  const d2 = normalizeDayForWrite(hours.dow2);
-  const d3 = normalizeDayForWrite(hours.dow3);
-  const d4 = normalizeDayForWrite(hours.dow4);
-  const d5 = normalizeDayForWrite(hours.dow5);
-  const d6 = normalizeDayForWrite(hours.dow6);
+  const d0 = normalizeDayForWrite(hours.dow0!);
+  const d1 = normalizeDayForWrite(hours.dow1!);
+  const d2 = normalizeDayForWrite(hours.dow2!);
+  const d3 = normalizeDayForWrite(hours.dow3!);
+  const d4 = normalizeDayForWrite(hours.dow4!);
+  const d5 = normalizeDayForWrite(hours.dow5!);
+  const d6 = normalizeDayForWrite(hours.dow6!);
 
   const row = {
     id: orgId,

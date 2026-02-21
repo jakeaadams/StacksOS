@@ -33,6 +33,7 @@ import {
   Sparkles,
   Info,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface SearchResult {
   id: number;
@@ -54,29 +55,29 @@ interface SearchResult {
   aiExplanation?: string;
 }
 
-const SORT_OPTIONS = [
-  { value: "relevance", label: "Relevance" },
-  { value: "smart", label: "Smart (AI)" },
-  { value: "title_asc", label: "Title (A-Z)" },
-  { value: "title_desc", label: "Title (Z-A)" },
-  { value: "author_asc", label: "Author (A-Z)" },
-  { value: "date_desc", label: "Newest First" },
-  { value: "date_asc", label: "Oldest First" },
-  { value: "popularity", label: "Most Popular" },
-];
+function getSORT_OPTIONS(t: (key: string) => string) { return [
+  { value: "relevance", label: t("relevance") },
+  { value: "smart", label: t("smartAI") },
+  { value: "title_asc", label: t("titleAZ") },
+  { value: "title_desc", label: t("titleZA") },
+  { value: "author_asc", label: t("authorAZ") },
+  { value: "date_desc", label: t("newestFirst") },
+  { value: "date_asc", label: t("oldestFirst") },
+  { value: "popularity", label: t("mostPopular") },
+]; }
 
-const FORMAT_FILTERS = [
-  { value: "book", label: "Books", icon: BookOpen },
-  { value: "ebook", label: "eBooks", icon: Smartphone },
-  { value: "audiobook", label: "Audiobooks", icon: Headphones },
-  { value: "dvd", label: "DVDs", icon: MonitorPlay },
-];
+function getFORMAT_FILTERS(t: (key: string) => string) { return [
+  { value: "book", label: t("booksFormat"), icon: BookOpen },
+  { value: "ebook", label: t("eBooksFormat"), icon: Smartphone },
+  { value: "audiobook", label: t("audiobooksFormat"), icon: Headphones },
+  { value: "dvd", label: t("dvdsFormat"), icon: MonitorPlay },
+]; }
 
-const AUDIENCE_FILTERS = [
-  { value: "general", label: "All ages" },
-  { value: "juvenile", label: "Kids" },
-  { value: "young_adult", label: "Teens" },
-];
+function getAUDIENCE_FILTERS(t: (key: string) => string) { return [
+  { value: "general", label: t("allAges") },
+  { value: "juvenile", label: t("kids") },
+  { value: "young_adult", label: t("teens") },
+]; }
 
 const LANGUAGE_LABELS: Record<string, string> = {
   eng: "English",
@@ -107,6 +108,7 @@ function getStoredAiSearchEnabled(): boolean {
   try {
     return localStorage.getItem(AI_SEARCH_STORAGE_KEY) === "true";
   } catch {
+    // localStorage may be unavailable in private browsing mode
     return false;
   }
 }
@@ -115,11 +117,15 @@ function storeAiSearchEnabled(enabled: boolean) {
   try {
     localStorage.setItem(AI_SEARCH_STORAGE_KEY, String(enabled));
   } catch {
-    // ignore
+    // localStorage may be unavailable in private browsing mode
   }
 }
 
 function SearchContent() {
+  const t = useTranslations("searchPage");
+  const SORT_OPTIONS = getSORT_OPTIONS(t);
+  const FORMAT_FILTERS = getFORMAT_FILTERS(t);
+  const AUDIENCE_FILTERS = getAUDIENCE_FILTERS(t);
   const searchParams = useSearchParams();
   const router = useRouter();
   const { library } = useLibrary();
@@ -592,8 +598,9 @@ function SearchContent() {
         </button>
         {expandedFacets.includes("availability") ? (
           <div className="mt-3">
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label htmlFor="cb-availablenow" className="flex items-center gap-2 cursor-pointer">
               <input
+                id="cb-availablenow"
                 type="checkbox"
                 checked={available}
                 onChange={(e) =>
@@ -601,7 +608,7 @@ function SearchContent() {
                 }
                 className="rounded border-border text-primary-600 focus:ring-primary-500"
               />
-              <span className="text-sm text-foreground/80">Available now</span>
+              <span className="text-sm text-foreground/80">{t("availableNow")}</span>
             </label>
           </div>
         ) : null}
@@ -624,7 +631,7 @@ function SearchContent() {
           </button>
           {expandedFacets.includes("location") ? (
             <div className="mt-3">
-              <select
+              <select id="t-location"
                 value={location}
                 onChange={(e) => updateSearchParams({ location: e.target.value || null })}
                 className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -746,8 +753,8 @@ function SearchContent() {
             {expandedFacets.includes("pubdate") ? (
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1">From</label>
-                  <input
+                  <label htmlFor="t-from" className="block text-xs text-muted-foreground mb-1">{t("from")}</label>
+                  <input id="t-from"
                     type="number"
                     inputMode="numeric"
                     value={pubdateFrom}
@@ -757,8 +764,8 @@ function SearchContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1">To</label>
-                  <input
+                  <label htmlFor="t-to" className="block text-xs text-muted-foreground mb-1">{t("to")}</label>
+                  <input id="t-to"
                     type="number"
                     inputMode="numeric"
                     value={pubdateTo}
@@ -792,11 +799,11 @@ function SearchContent() {
       <Sheet open={showFilters} onOpenChange={setShowFilters}>
         <SheetContent side="left" className="lg:hidden p-0">
           <SheetHeader className="border-b border-border">
-            <SheetTitle>Filters</SheetTitle>
+            <SheetTitle>{t("filtersTitle")}</SheetTitle>
             {isLoading ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Updating results&hellip;
+                {t("updatingResults")}&hellip;
               </div>
             ) : null}
           </SheetHeader>
@@ -839,8 +846,8 @@ function SearchContent() {
                 defaultValue={query}
                 placeholder={
                   aiSmartSearchOn
-                    ? "Describe what you're looking for... (e.g. mysteries set in Japan)"
-                    : "Search by title, author, subject..."
+                    ? t("searchPlaceholderAI")
+                    : t("searchPlaceholder")
                 }
                 className={`w-full pl-4 pr-10 py-3 border rounded-lg
                          focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
@@ -867,7 +874,7 @@ function SearchContent() {
               title={aiSmartSearchOn ? "AI Smart Search is ON" : "Enable AI Smart Search"}
             >
               <Sparkles className="h-5 w-5" />
-              <span className="hidden sm:inline">AI Search</span>
+              <span className="hidden sm:inline">{t("aiSearch")}</span>
             </button>
 
             <button
@@ -881,7 +888,7 @@ function SearchContent() {
                         }`}
             >
               <SlidersHorizontal className="h-5 w-5" />
-              <span className="hidden sm:inline">Filters</span>
+              <span className="hidden sm:inline">{t("filters")}</span>
             </button>
           </form>
 
@@ -899,7 +906,7 @@ function SearchContent() {
           {/* AI decomposition info */}
           {aiSmartSearchOn && aiDecomposedInfo && !isLoading && (
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-purple-700">
-              <span className="font-medium">AI understood:</span>
+              <span className="font-medium">{t("aiUnderstood")}</span>
               {aiDecomposedInfo.keywords && aiDecomposedInfo.keywords.length > 0 && (
                 <span className="px-2 py-0.5 bg-purple-100 rounded-full">
                   Keywords: {aiDecomposedInfo.keywords.join(", ")}
@@ -1057,7 +1064,7 @@ function SearchContent() {
           {showFilters ? (
             <aside className="hidden lg:block w-64 shrink-0">
               <div className="bg-card rounded-lg shadow-sm border border-border p-4 sticky top-[200px]">
-                <h3 className="font-semibold text-foreground mb-4">Filters</h3>
+                <h2 className="font-semibold text-foreground mb-4">{t("filtersTitle")}</h2>
                 {filtersPanel}
               </div>
             </aside>
@@ -1070,14 +1077,14 @@ function SearchContent() {
               <div>
                 {isLoading ? (
                   <p className="text-muted-foreground">
-                    {aiSmartSearchOn ? "AI is searching..." : "Searching..."}
+                    {aiSmartSearchOn ? t("aiSearching") : t("searching")}
                   </p>
                 ) : (
                   <p className="text-foreground/80">
                     {totalResults > 0 ? (
                       <>
                         <span className="font-semibold">{totalResults.toLocaleString()}</span>
-                        {" results"}
+                        {` ${t("results")}`}
                         {query && (
                           <>
                             {` for "`}
@@ -1093,9 +1100,9 @@ function SearchContent() {
                         )}
                       </>
                     ) : query ? (
-                      `No results for "${query}"`
+                      t("noResultsFor", {query})
                     ) : (
-                      "Enter a search term"
+                      t("enterSearchTerm")
                     )}
                   </p>
                 )}
@@ -1129,7 +1136,7 @@ function SearchContent() {
                         ? "bg-primary-100 text-primary-700"
                         : "text-muted-foreground hover:bg-muted/50"
                     }`}
-                    aria-label="Grid view"
+                    aria-label={t("gridView")}
                   >
                     <Grid className="h-4 w-4" />
                   </button>
@@ -1141,7 +1148,7 @@ function SearchContent() {
                         ? "bg-primary-100 text-primary-700"
                         : "text-muted-foreground hover:bg-muted/50"
                     }`}
-                    aria-label="List view"
+                    aria-label={t("listView")}
                   >
                     <List className="h-4 w-4" />
                   </button>
@@ -1190,7 +1197,7 @@ function SearchContent() {
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium text-red-800">Search Error</p>
+                  <p className="font-medium text-red-800">{t("searchError")}</p>
                   <p className="text-red-700 text-sm">{error}</p>
                 </div>
               </div>
@@ -1338,7 +1345,7 @@ function SearchContent() {
             {!isLoading && !error && results.length === 0 && query && (
               <div className="text-center py-12">
                 <BookOpen className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">No results found</h3>
+                <h2 className="text-xl font-semibold text-foreground mb-2">{t("noResultsFound")}</h2>
                 <p className="text-muted-foreground mb-6">
                   {`We couldn't find anything for "${query}". Try different keywords or browse our catalog.`}
                 </p>

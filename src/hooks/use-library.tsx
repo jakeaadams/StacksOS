@@ -128,7 +128,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
             const savedLocation = savedLocationId
               ? libraryInfo.locations.find((l) => l.id === parseInt(savedLocationId, 10))
               : null;
-            return savedLocation || libraryInfo.locations[0];
+            return savedLocation ?? libraryInfo.locations[0]!;
           });
         }
       }

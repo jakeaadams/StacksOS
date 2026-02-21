@@ -22,7 +22,7 @@ function sanitizeFilename(value: string): string {
 }
 
 function todayIso(): string {
-  return new Date().toISOString().split("T")[0];
+  return new Date().toISOString().split("T")[0]!;
 }
 
 export type GeneratedReport = {

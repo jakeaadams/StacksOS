@@ -16,8 +16,10 @@ import {
   HelpCircle,
   ArrowRight,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 function LoginForm() {
+  const t = useTranslations("loginPage");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, isLoggedIn, isLoading: sessionLoading, error: sessionError } = usePatronSession();
@@ -44,12 +46,12 @@ function LoginForm() {
     setError(null);
 
     if (!cardNumber.trim()) {
-      setError("Please enter your library card number");
+      setError(t("enterCardNumber"));
       return;
     }
 
     if (!pin.trim()) {
-      setError("Please enter your PIN");
+      setError(t("enterPin"));
       return;
     }
 
@@ -61,10 +63,10 @@ function LoginForm() {
       if (success) {
         router.push(redirectUrl);
       } else {
-        setError(sessionError || "Invalid card number or PIN. Please try again.");
+        setError(sessionError || t("invalidCredentials"));
       }
     } catch (_error) {
-      setError("Unable to connect to the library system. Please try again.");
+      setError(t("connectionError"));
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +105,7 @@ function LoginForm() {
             {error && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-                <p className="text-red-700 text-sm">{error}</p>
+                <p id="login-error" role="alert" className="text-red-700 text-sm">{error}</p>
               </div>
             )}
 
@@ -122,10 +124,12 @@ function LoginForm() {
                   id="cardNumber"
                   value={cardNumber}
                   onChange={(e) => setCardNumber(e.target.value)}
-                  placeholder="Enter your card number"
+                  placeholder={t("cardNumberPlaceholder")}
                   className="w-full pl-14 pr-4 py-3 border border-border rounded-lg
                            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
                            text-foreground placeholder:text-muted-foreground"
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "login-error" : undefined}
                   autoComplete="username"
                   autoFocus
                 />
@@ -147,17 +151,19 @@ function LoginForm() {
                   id="pin"
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
-                  placeholder="Enter your PIN"
+                  placeholder={t("pinPlaceholder")}
                   className="w-full pl-14 pr-12 py-3 border border-border rounded-lg
                            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
                            text-foreground placeholder:text-muted-foreground"
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "login-error" : undefined}
                   autoComplete="current-password"
                 />
                 <button type="button"
                   onClick={() => setShowPin(!showPin)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 
                            hover:text-muted-foreground transition-colors"
-                  aria-label={showPin ? "Hide PIN" : "Show PIN"}
+                  aria-label={showPin ? t("hidePin") : t("showPin")}
                 >
                   {showPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -166,14 +172,14 @@ function LoginForm() {
 
             {/* Remember me */}
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label htmlFor="remember-me" className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="rounded border-border text-primary-600 focus:ring-primary-500"
                 />
-                <span className="text-sm text-foreground/80">Remember me</span>
+                <span className="text-sm text-foreground/80">{t("rememberMe")}</span>
               </label>
               <Link 
                 href="/opac/help/forgot-pin"
@@ -193,11 +199,11 @@ function LoginForm() {
               {isLoading ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Signing in...
+                  {t("signingIn")}
                 </>
               ) : (
                 <>
-                  Sign In
+                  {t("signIn")}
                   <ArrowRight className="h-5 w-5" />
                 </>
               )}
@@ -210,7 +216,7 @@ function LoginForm() {
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-card text-muted-foreground">New to the library?</span>
+              <span className="px-4 bg-card text-muted-foreground">{t("newToLibrary")}</span>
             </div>
           </div>
 

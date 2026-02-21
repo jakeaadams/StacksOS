@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     };
 
     for (let i = 0; i < circDetails.length; i++) {
-      const circ = circDetails[i].payload?.[0];
+      const circ = circDetails[i]!.payload?.[0];
       if (!circ) continue;
 
       try {

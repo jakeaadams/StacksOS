@@ -114,7 +114,7 @@ export function MobileBottomNav() {
           </DropdownMenu>
         ) : overflowItems.length === 1 ? (
           /* If only one of Kids/Teens is enabled, show it as a direct tab */
-          <SingleNavTab item={overflowItems[0]} isActive={isActive(overflowItems[0].href)} />
+          <SingleNavTab item={overflowItems[0]!} isActive={isActive(overflowItems[0]!.href)} />
         ) : null}
       </div>
     </nav>

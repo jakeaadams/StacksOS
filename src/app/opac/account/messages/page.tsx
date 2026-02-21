@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { Mail, MailOpen, Trash2, ChevronLeft, Loader2, AlertCircle, CheckCircle, Clock, DollarSign, User, Bell, X, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface PatronMessage { id: number; title: string; content: string; sendingLibrary: string; sendingLibraryId: number; isRead: boolean; readDate: string | null; createDate: string; messageType: "general" | "holds" | "fines" | "account"; }
 
@@ -13,6 +14,7 @@ const msgIcons: Record<string, React.ElementType> = { general: Bell, holds: Cloc
 const msgColors: Record<string, string> = { general: "bg-blue-100 text-blue-600", holds: "bg-purple-100 text-purple-600", fines: "bg-amber-100 text-amber-600", account: "bg-green-100 text-green-600" };
 
 export default function PatronMessagesPage() {
+  const t = useTranslations("messagesPage");
   const router = useRouter();
   const { isLoggedIn, isLoading: sessionLoading } = usePatronSession();
   const [messages, setMessages] = useState<PatronMessage[]>([]);
@@ -66,13 +68,13 @@ export default function PatronMessagesPage() {
                   {fMsgs.length > 0 ? fMsgs.map(m => { const I = msgIcons[m.messageType] || Bell; const c = msgColors[m.messageType] || "bg-gray-100 text-gray-600"; return (
                     <div key={m.id} className={"flex items-start gap-3 p-4 cursor-pointer hover:bg-muted/30 " + (selMsg?.id === m.id ? "bg-primary-50 " : "") + (!m.isRead ? "bg-blue-50/50" : "")}>
                       <input type="checkbox" checked={selIds.has(m.id)} onChange={() => toggle(m.id)} className="mt-1 rounded border-border text-primary-600" onClick={e => e.stopPropagation()} />
-                      <div className="flex-1 min-w-0" onClick={() => openMsg(m)}>
+                      <div className="flex-1 min-w-0" role="button" tabIndex={0} onClick={() => openMsg(m)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openMsg(m); } }}>
                         <div className="flex items-center gap-2 mb-1"><span className={"p-1 rounded " + c}><I className="h-3 w-3" /></span>{!m.isRead && <span className="w-2 h-2 bg-primary-600 rounded-full" />}<span className="text-xs text-muted-foreground">{new Date(m.createDate).toLocaleDateString()}</span></div>
                         <p className={"text-sm truncate " + (!m.isRead ? "font-semibold" : "")}>{m.title}</p>
                         <p className="text-xs text-muted-foreground truncate">{m.sendingLibrary}</p>
                       </div>
                     </div>
-                  ); }) : <div className="p-8 text-center"><MailOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" /><p className="text-muted-foreground">{filter === "unread" ? "No unread" : filter === "read" ? "No read" : "No messages"}</p></div>}
+                  ); }) : <div className="p-8 text-center"><MailOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" /><p className="text-muted-foreground">{filter === "unread" ? "No unread" : filter === "read" ? "No read" : t("noMessages")}</p></div>}
                 </div>
               </div>
             </div>

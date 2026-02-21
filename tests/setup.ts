@@ -6,10 +6,15 @@
 
 import { vi, beforeAll, afterAll, afterEach } from "vitest";
 
+// Mock server-only module so tests can import server-side code
+vi.mock("server-only", () => ({}));
+
 // Mock Next.js request/response for API route testing
 vi.mock("next/headers", () => ({
-  cookies: vi.fn(() => ({
-    get: vi.fn(),
+  cookies: vi.fn(async () => ({
+    get: vi.fn((name: string) =>
+      name === "authtoken" ? { value: "test-token" } : undefined
+    ),
     set: vi.fn(),
     delete: vi.fn(),
   })),

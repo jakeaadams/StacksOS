@@ -87,11 +87,11 @@ export function computeBookBadgeProgress(totalBooks: number) {
   const next = thresholds.find((t) => totalBooks < t) ?? thresholds[thresholds.length - 1];
   const prev = thresholds.filter((t) => t <= totalBooks).slice(-1)[0] ?? 0;
 
-  if (totalBooks >= thresholds[thresholds.length - 1]) {
+  if (totalBooks >= thresholds[thresholds.length - 1]!) {
     return { nextTarget: thresholds[thresholds.length - 1], progressPct: 100 };
   }
 
-  const range = next - prev;
+  const range = next! - prev;
   const progress = Math.max(0, Math.min(1, range > 0 ? (totalBooks - prev) / range : 0));
   return { nextTarget: next, progressPct: Math.round(progress * 100) };
 }

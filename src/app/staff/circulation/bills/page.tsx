@@ -244,10 +244,10 @@ function buildPaymentReceiptHtml(args: {
       <table>
         <thead>
           <tr>
-            <th>Txn</th>
-            <th>Description</th>
-            <th>Barcode</th>
-            <th class="right">Amount</th>
+            <th scope="col">Txn</th>
+            <th scope="col">Description</th>
+            <th scope="col">Barcode</th>
+            <th scope="col" class="right">Amount</th>
           </tr>
         </thead>
         <tbody>
@@ -707,12 +707,12 @@ function BillsContent() {
         <table>
           <thead>
             <tr>
-              <th>Txn</th>
-              <th>Description</th>
-              <th>Barcode</th>
-              <th class="right">Total</th>
-              <th class="right">Paid</th>
-              <th class="right">Balance</th>
+              <th scope="col">Txn</th>
+              <th scope="col">Description</th>
+              <th scope="col">Barcode</th>
+              <th scope="col" class="right">Total</th>
+              <th scope="col" class="right">Paid</th>
+              <th scope="col" class="right">Balance</th>
             </tr>
           </thead>
           <tbody>
@@ -1064,10 +1064,10 @@ function BillsContent() {
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Amount</label>
+              <label htmlFor="amount" className="text-sm font-medium">Amount</label>
               <div className="relative">
                 <DollarSign className="absolute left-4 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
+                <Input id="amount"
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   className="pl-12 text-lg font-mono"
@@ -1077,8 +1077,8 @@ function BillsContent() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Payment Method</label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <label htmlFor="payment-method" className="text-sm font-medium">Payment Method</label>
+              <Select id="payment-method" value={paymentMethod} onValueChange={setPaymentMethod}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -1092,8 +1092,8 @@ function BillsContent() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Note (optional)</label>
-              <Input
+              <label htmlFor="note" className="text-sm font-medium">Note (optional)</label>
+              <Input id="note"
                 value={paymentNote}
                 onChange={(e) => setPaymentNote(e.target.value)}
                 placeholder="Add note"
@@ -1131,10 +1131,10 @@ function BillsContent() {
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Amount</label>
+              <label htmlFor="amount-2" className="text-sm font-medium">Amount</label>
               <div className="relative">
                 <DollarSign className="absolute left-4 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
+                <Input id="amount-2"
                   value={refundAmount}
                   onChange={(e) => setRefundAmount(e.target.value)}
                   className="pl-12 text-lg font-mono"
@@ -1149,8 +1149,8 @@ function BillsContent() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Note (optional)</label>
-              <Input
+              <label htmlFor="note-2" className="text-sm font-medium">Note (optional)</label>
+              <Input id="note-2"
                 value={refundNote}
                 onChange={(e) => setRefundNote(e.target.value)}
                 placeholder="Reason for refund"

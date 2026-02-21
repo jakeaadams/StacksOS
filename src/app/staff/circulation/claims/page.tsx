@@ -595,8 +595,8 @@ export default function ClaimsPage() {
                 <div className="font-mono text-xs mt-1">{selectedItem.barcode}</div>
               </div>
               <div className="space-y-2">
-                <Label>Claim date</Label>
-                <Input
+                <Label htmlFor="claim-date">Claim date</Label>
+                <Input id="claim-date"
                   type="date"
                   value={claimDate}
                   onChange={(e) => setClaimDate(e.target.value)}
@@ -660,8 +660,8 @@ export default function ClaimsPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Resolution</Label>
-              <Select value={resolution} onValueChange={setResolution}>
+              <Label htmlFor="resolution">Resolution</Label>
+              <Select id="resolution" value={resolution} onValueChange={setResolution}>
                 <SelectTrigger><SelectValue placeholder="Select resolution" /></SelectTrigger>
                 <SelectContent>
                   {RESOLUTION_OPTIONS.map((option) => (
@@ -693,16 +693,16 @@ export default function ClaimsPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label>Claims Returned Count</Label>
-              <Input
+              <Label htmlFor="claims-returned-count">Claims Returned Count</Label>
+              <Input id="claims-returned-count"
                 type="number"
                 value={newClaimsReturnedCount}
                 onChange={(e) => setNewClaimsReturnedCount(parseInt(e.target.value) || 0)}
               />
             </div>
             <div className="space-y-2">
-              <Label>Claims Never Checked Out Count</Label>
-              <Input
+              <Label htmlFor="claims-never-checked-out-count">Claims Never Checked Out Count</Label>
+              <Input id="claims-never-checked-out-count"
                 type="number"
                 value={newClaimsNeverCheckedOutCount}
                 onChange={(e) => setNewClaimsNeverCheckedOutCount(parseInt(e.target.value) || 0)}

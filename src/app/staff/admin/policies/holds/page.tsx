@@ -420,10 +420,10 @@ export default function HoldPolicyEditorPage() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card p-4">
                       <div className="min-w-0">
-                        <Label className="text-sm">Active</Label>
+                        <Label htmlFor="active" className="text-sm">Active</Label>
                         <p className="text-xs text-muted-foreground">Inactive matchpoints are ignored by Evergreen.</p>
                       </div>
-                      <Switch
+                      <Switch id="active"
                         checked={draft.active}
                         onCheckedChange={(checked) => setDraft((prev) => ({ ...prev, active: checked }))}
                       />
@@ -431,10 +431,10 @@ export default function HoldPolicyEditorPage() {
 
                     <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card p-4">
                       <div className="min-w-0">
-                        <Label className="text-sm">Strict OU match</Label>
+                        <Label htmlFor="strict-ou-match" className="text-sm">Strict OU match</Label>
                         <p className="text-xs text-muted-foreground">If enabled, OU matching must be exact.</p>
                       </div>
-                      <Switch
+                      <Switch id="strict-ou-match"
                         checked={draft.strictOuMatch}
                         onCheckedChange={(checked) => setDraft((prev) => ({ ...prev, strictOuMatch: checked }))}
                       />
@@ -442,8 +442,8 @@ export default function HoldPolicyEditorPage() {
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>Requestor group</Label>
-                        <Select
+                        <Label htmlFor="requestor-group">Requestor group</Label>
+                        <Select id="requestor-group"
                           value={draft.requestorGrp ? String(draft.requestorGrp) : "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({ ...prev, requestorGrp: v === "__any__" ? null : parseInt(v, 10) }))
@@ -468,8 +468,8 @@ export default function HoldPolicyEditorPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>User group</Label>
-                        <Select
+                        <Label htmlFor="user-group">User group</Label>
+                        <Select id="user-group"
                           value={draft.usrGrp ? String(draft.usrGrp) : "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({ ...prev, usrGrp: v === "__any__" ? null : parseInt(v, 10) }))
@@ -494,8 +494,8 @@ export default function HoldPolicyEditorPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Pickup OU</Label>
-                        <Select
+                        <Label htmlFor="pickup-ou">Pickup OU</Label>
+                        <Select id="pickup-ou"
                           value={draft.pickupOu ? String(draft.pickupOu) : "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({ ...prev, pickupOu: v === "__any__" ? null : parseInt(v, 10) }))
@@ -519,8 +519,8 @@ export default function HoldPolicyEditorPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Owning OU</Label>
-                        <Select
+                        <Label htmlFor="owning-ou">Owning OU</Label>
+                        <Select id="owning-ou"
                           value={draft.itemOwningOu ? String(draft.itemOwningOu) : "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({
@@ -547,8 +547,8 @@ export default function HoldPolicyEditorPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Request OU</Label>
-                        <Select
+                        <Label htmlFor="request-ou">Request OU</Label>
+                        <Select id="request-ou"
                           value={draft.requestOu ? String(draft.requestOu) : "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({ ...prev, requestOu: v === "__any__" ? null : parseInt(v, 10) }))
@@ -572,8 +572,8 @@ export default function HoldPolicyEditorPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Item circ OU</Label>
-                        <Select
+                        <Label htmlFor="item-circ-ou">Item circ OU</Label>
+                        <Select id="item-circ-ou"
                           value={draft.itemCircOu ? String(draft.itemCircOu) : "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({ ...prev, itemCircOu: v === "__any__" ? null : parseInt(v, 10) }))
@@ -599,8 +599,8 @@ export default function HoldPolicyEditorPage() {
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>Circ modifier</Label>
-                        <Select
+                        <Label htmlFor="circ-modifier">Circ modifier</Label>
+                        <Select id="circ-modifier"
                           value={draft.circModifier ?? "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({ ...prev, circModifier: v === "__any__" ? null : v }))
@@ -626,8 +626,8 @@ export default function HoldPolicyEditorPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Reference</Label>
-                        <Select
+                        <Label htmlFor="reference">Reference</Label>
+                        <Select id="reference"
                           value={draft.refFlag === null ? "any" : draft.refFlag ? "yes" : "no"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({ ...prev, refFlag: v === "any" ? null : v === "yes" }))
@@ -647,16 +647,16 @@ export default function HoldPolicyEditorPage() {
 
                     <div className="grid gap-4 sm:grid-cols-3">
                       <div className="space-y-2">
-                        <Label>Transit range</Label>
-                        <Input
+                        <Label htmlFor="transit-range">Transit range</Label>
+                        <Input id="transit-range"
                           value={draft.transitRange}
                           onChange={(e) => setDraft((prev) => ({ ...prev, transitRange: e.target.value }))}
                           placeholder="e.g., 50"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Max holds</Label>
-                        <Input
+                        <Label htmlFor="max-holds">Max holds</Label>
+                        <Input id="max-holds"
                           value={draft.maxHolds}
                           onChange={(e) => setDraft((prev) => ({ ...prev, maxHolds: e.target.value }))}
                           placeholder="e.g., 25"
@@ -664,10 +664,10 @@ export default function HoldPolicyEditorPage() {
                       </div>
                       <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card p-4 sm:col-span-3">
                         <div className="min-w-0">
-                          <Label className="text-sm">Holdable</Label>
+                          <Label htmlFor="holdable" className="text-sm">Holdable</Label>
                           <p className="text-xs text-muted-foreground">If disabled, Evergreen blocks holds.</p>
                         </div>
-                        <Switch
+                        <Switch id="holdable"
                           checked={draft.holdable}
                           onCheckedChange={(checked) => setDraft((prev) => ({ ...prev, holdable: checked }))}
                         />
@@ -676,16 +676,16 @@ export default function HoldPolicyEditorPage() {
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>Item age</Label>
-                        <Input
+                        <Label htmlFor="item-age">Item age</Label>
+                        <Input id="item-age"
                           value={draft.itemAge}
                           onChange={(e) => setDraft((prev) => ({ ...prev, itemAge: e.target.value }))}
                           placeholder="Optional"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Age protection rule</Label>
-                        <Input
+                        <Label htmlFor="age-protection-rule">Age protection rule</Label>
+                        <Input id="age-protection-rule"
                           value={draft.ageProtection}
                           onChange={(e) => setDraft((prev) => ({ ...prev, ageProtection: e.target.value }))}
                           placeholder="Optional"
@@ -696,10 +696,10 @@ export default function HoldPolicyEditorPage() {
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card p-4">
                         <div className="min-w-0">
-                          <Label className="text-sm">Include locally frozen</Label>
+                          <Label htmlFor="include-locally-frozen" className="text-sm">Include locally frozen</Label>
                           <p className="text-xs text-muted-foreground">Counts frozen holds in local calculations.</p>
                         </div>
-                        <Switch
+                        <Switch id="include-locally-frozen"
                           checked={draft.includeLocallyFrozen}
                           onCheckedChange={(checked) =>
                             setDraft((prev) => ({ ...prev, includeLocallyFrozen: checked }))
@@ -709,10 +709,10 @@ export default function HoldPolicyEditorPage() {
 
                       <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card p-4">
                         <div className="min-w-0">
-                          <Label className="text-sm">Stop blocked user</Label>
+                          <Label htmlFor="stop-blocked-user" className="text-sm">Stop blocked user</Label>
                           <p className="text-xs text-muted-foreground">Block hold placement for blocked patrons.</p>
                         </div>
-                        <Switch
+                        <Switch id="stop-blocked-user"
                           checked={draft.stopBlockedUser}
                           onCheckedChange={(checked) => setDraft((prev) => ({ ...prev, stopBlockedUser: checked }))}
                         />
@@ -720,8 +720,8 @@ export default function HoldPolicyEditorPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Description</Label>
-                      <Textarea
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea id="description"
                         value={draft.description}
                         onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))}
                         placeholder="Optional notes"

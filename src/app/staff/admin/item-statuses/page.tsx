@@ -494,43 +494,43 @@ export default function ItemStatusPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex items-center justify-between gap-3">
-                  <Label>Holdable</Label>
-                  <Switch
+                  <Label htmlFor="holdable">Holdable</Label>
+                  <Switch id="holdable"
                     checked={Boolean(newDraft.holdable)}
                     onCheckedChange={(v) => setNewDraft((d) => ({ ...d, holdable: v }))}
                   />
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <Label>OPAC Visible</Label>
-                  <Switch
+                  <Label htmlFor="opac-visible">OPAC Visible</Label>
+                  <Switch id="opac-visible"
                     checked={Boolean(newDraft.opacVisible)}
                     onCheckedChange={(v) => setNewDraft((d) => ({ ...d, opacVisible: v }))}
                   />
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <Label>Sets Copy Active</Label>
-                  <Switch
+                  <Label htmlFor="sets-copy-active">Sets Copy Active</Label>
+                  <Switch id="sets-copy-active"
                     checked={Boolean(newDraft.copyActive)}
                     onCheckedChange={(v) => setNewDraft((d) => ({ ...d, copyActive: v }))}
                   />
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <Label>Available</Label>
-                  <Switch
+                  <Label htmlFor="available">Available</Label>
+                  <Switch id="available"
                     checked={Boolean(newDraft.isAvailable)}
                     onCheckedChange={(v) => setNewDraft((d) => ({ ...d, isAvailable: v }))}
                   />
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <Label>Restrict Deletion</Label>
-                  <Switch
+                  <Label htmlFor="restrict-deletion">Restrict Deletion</Label>
+                  <Switch id="restrict-deletion"
                     checked={Boolean(newDraft.restrictCopyDelete)}
                     onCheckedChange={(v) => setNewDraft((d) => ({ ...d, restrictCopyDelete: v }))}
                   />
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <Label>Hopeless-Prone</Label>
-                  <Switch
+                  <Label htmlFor="hopeless-prone">Hopeless-Prone</Label>
+                  <Switch id="hopeless-prone"
                     checked={Boolean(newDraft.hopelessProne)}
                     onCheckedChange={(v) => setNewDraft((d) => ({ ...d, hopelessProne: v }))}
                   />
@@ -564,44 +564,44 @@ export default function ItemStatusPage() {
             {editStatus && (
               <div className="space-y-4 py-2">
                 <div className="space-y-2">
-                  <Label>Status Name</Label>
-                  <Input
+                  <Label htmlFor="status-name">Status Name</Label>
+                  <Input id="status-name"
                     value={editStatus.name}
                     onChange={(e) => setEditStatus({ ...editStatus, name: e.target.value })}
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex items-center justify-between gap-3">
-                    <Label>Holdable</Label>
-                    <Switch
+                    <Label htmlFor="holdable-2">Holdable</Label>
+                    <Switch id="holdable-2"
                       checked={editStatus.holdable}
                       onCheckedChange={(v) => setEditStatus({ ...editStatus, holdable: v })}
                     />
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <Label>OPAC Visible</Label>
-                    <Switch
+                    <Label htmlFor="opac-visible-2">OPAC Visible</Label>
+                    <Switch id="opac-visible-2"
                       checked={editStatus.opacVisible}
                       onCheckedChange={(v) => setEditStatus({ ...editStatus, opacVisible: v })}
                     />
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <Label>Sets Copy Active</Label>
-                    <Switch
+                    <Label htmlFor="sets-copy-active-2">Sets Copy Active</Label>
+                    <Switch id="sets-copy-active-2"
                       checked={editStatus.copyActive}
                       onCheckedChange={(v) => setEditStatus({ ...editStatus, copyActive: v })}
                     />
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <Label>Available</Label>
-                    <Switch
+                    <Label htmlFor="available-2">Available</Label>
+                    <Switch id="available-2"
                       checked={editStatus.isAvailable}
                       onCheckedChange={(v) => setEditStatus({ ...editStatus, isAvailable: v })}
                     />
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <Label>Restrict Deletion</Label>
-                    <Switch
+                    <Label htmlFor="restrict-deletion-2">Restrict Deletion</Label>
+                    <Switch id="restrict-deletion-2"
                       checked={editStatus.restrictCopyDelete}
                       onCheckedChange={(v) =>
                         setEditStatus({ ...editStatus, restrictCopyDelete: v })
@@ -609,8 +609,8 @@ export default function ItemStatusPage() {
                     />
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <Label>Hopeless-Prone</Label>
-                    <Switch
+                    <Label htmlFor="hopeless-prone-2">Hopeless-Prone</Label>
+                    <Switch id="hopeless-prone-2"
                       checked={editStatus.hopelessProne}
                       onCheckedChange={(v) => setEditStatus({ ...editStatus, hopelessProne: v })}
                     />

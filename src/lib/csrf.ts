@@ -77,7 +77,7 @@ function constantTimeEqual(a: string, b: string): boolean {
 
   let diff = 0;
   for (let i = 0; i < aBytes.length; i++) {
-    diff |= aBytes[i] ^ bBytes[i];
+    diff |= aBytes[i]! ^ bBytes[i]!;
   }
   return diff === 0;
 }

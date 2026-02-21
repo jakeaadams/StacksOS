@@ -4,7 +4,6 @@ import { loadAiConfig } from "@/lib/ai/config";
 import { z } from "zod";
 import {
   successResponse,
-  errorResponse,
   serverErrorResponse,
   getRequestMeta,
   parseJsonBodyWithSchema,

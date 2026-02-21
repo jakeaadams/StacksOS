@@ -126,6 +126,7 @@ export default function SettingsHubPage() {
                     variant="ghost"
                     size="icon"
                     className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label={"Go to " + card.title}
                   >
                     <ArrowRight className="h-4 w-4" />
                   </Button>

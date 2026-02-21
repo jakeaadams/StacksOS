@@ -111,13 +111,13 @@ export default function FundingSourcesPage() {
 
   useEffect(() => {
     if (!formData.owner && orgs.length > 0) {
-      setFormData((prev) => ({ ...prev, owner: orgs[0].id }));
+      setFormData((prev) => ({ ...prev, owner: orgs[0]!.id }));
     }
   }, [orgs, formData.owner]);
 
   const handleOpenCreate = () => {
     setEditingSource(null);
-    setFormData({ ...DEFAULT_FORM_DATA, owner: orgs.length > 0 ? orgs[0].id : null });
+    setFormData({ ...DEFAULT_FORM_DATA, owner: orgs.length > 0 ? orgs[0]!.id : null });
     setIsFormOpen(true);
   };
 

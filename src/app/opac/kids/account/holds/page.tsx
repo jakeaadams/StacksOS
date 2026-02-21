@@ -21,8 +21,10 @@ import {
   Play,
   X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function KidsHoldsPage() {
+  const t = useTranslations("kidsHoldsPage");
   const router = useRouter();
   const { library } = useLibrary();
   const gate = useKidsParentGate();
@@ -65,13 +67,13 @@ export default function KidsHoldsPage() {
     const ok = await gate.requestUnlock({
       reason:
         action === "cancel"
-          ? "Cancel a hold"
+          ? t("cancelHoldReason")
           : action === "suspend"
-            ? "Pause a hold"
-            : "Resume a hold",
+            ? t("pauseHoldReason")
+            : t("resumeHoldReason"),
     });
     if (!ok) {
-      setMessage({ type: "error", text: "Parent/guardian PIN required." });
+      setMessage({ type: "error", text: t("parentPinRequired") });
       setTimeout(() => setMessage(null), 4000);
       return;
     }
@@ -101,9 +103,9 @@ export default function KidsHoldsPage() {
 
   const handleChangePickup = async () => {
     if (!pickupHold || !pickupLocationId) return;
-    const ok = await gate.requestUnlock({ reason: "Change hold pickup location" });
+    const ok = await gate.requestUnlock({ reason: t("changePickupReason") });
     if (!ok) {
-      setMessage({ type: "error", text: "Parent/guardian PIN required." });
+      setMessage({ type: "error", text: t("parentPinRequired") });
       setTimeout(() => setMessage(null), 4000);
       return;
     }
@@ -168,8 +170,8 @@ export default function KidsHoldsPage() {
           <ChevronLeft className="h-6 w-6" />
         </button>
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-foreground truncate">Books on Hold</h1>
-          <p className="text-sm text-muted-foreground">{holds.length} hold{holds.length === 1 ? "" : "s"}</p>
+          <h1 className="text-2xl font-bold text-foreground truncate">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("holdsCount", { count: holds.length })}</p>
         </div>
       </div>
 
@@ -199,8 +201,8 @@ export default function KidsHoldsPage() {
           <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100">
             <Clock className="h-7 w-7 text-amber-600" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">No holds yet</h2>
-          <p className="mt-2 text-sm text-muted-foreground">When you place a hold, it will show up here.</p>
+          <h2 className="text-xl font-bold text-foreground">{t("noHolds")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{t("noHoldsDesc")}</p>
           <div className="mt-6 flex items-center justify-center gap-3">
             <Link
               href="/opac/kids"
@@ -222,7 +224,7 @@ export default function KidsHoldsPage() {
             <section>
               <h2 className="text-lg font-bold text-green-700 mb-3 flex items-center gap-2">
                 <Gift className="h-5 w-5" />
-                Ready to pick up ({readyHolds.length})
+                {t("readyToPickUp", { count: readyHolds.length })}
               </h2>
               <div className="space-y-3">
                 {readyHolds.map((hold) => (
@@ -241,7 +243,7 @@ export default function KidsHoldsPage() {
             <section>
               <h2 className="text-lg font-bold text-blue-700 mb-3 flex items-center gap-2">
                 <Clock className="h-5 w-5" />
-                On the way ({inTransitHolds.length})
+                {t("onTheWay", { count: inTransitHolds.length })}
               </h2>
               <div className="space-y-3">
                 {inTransitHolds.map((hold) => (
@@ -259,7 +261,7 @@ export default function KidsHoldsPage() {
 
           {pendingHolds.length > 0 ? (
             <section>
-              <h2 className="text-lg font-bold text-foreground/80 mb-3">Waiting ({pendingHolds.length})</h2>
+              <h2 className="text-lg font-bold text-foreground/80 mb-3">{t("waiting", { count: pendingHolds.length })}</h2>
               <div className="space-y-3">
                 {pendingHolds.map((hold) => (
                   <KidsHoldCard
@@ -279,7 +281,7 @@ export default function KidsHoldsPage() {
             <section>
               <h2 className="text-lg font-bold text-amber-700 mb-3 flex items-center gap-2">
                 <Pause className="h-5 w-5" />
-                Paused ({suspendedHolds.length})
+                {t("paused", { count: suspendedHolds.length })}
               </h2>
               <div className="space-y-3">
                 {suspendedHolds.map((hold) => (
@@ -301,17 +303,17 @@ export default function KidsHoldsPage() {
       {pickupHold && featureFlags.opacHoldsUXV2 ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-card rounded-3xl max-w-md w-full shadow-xl border border-border p-6">
-            <h2 className="text-xl font-bold text-foreground mb-2">Change pickup library</h2>
+            <h2 className="text-xl font-bold text-foreground mb-2">{t("changePickupLibrary")}</h2>
             <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{pickupHold.title}</p>
 
-            <label className="block text-sm font-medium text-foreground/80 mb-2">New pickup location</label>
-            <select
+            <label htmlFor="new-pickup-location" className="block text-sm font-medium text-foreground/80 mb-2">{t("newPickupLocation")}</label>
+            <select id="new-pickup-location"
               value={pickupLocationId || ""}
               onChange={(e) => setPickupLocationId(parseInt(e.target.value, 10) || null)}
               className="w-full px-3 py-2 border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-400"
               disabled={pickupLoading}
             >
-              <option value="">Select…</option>
+              <option value="">{t("select")}</option>
               {pickupLocations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
                   {loc.name}
@@ -359,14 +361,15 @@ function KidsHoldCard({
   onActivate?: () => void;
   onChangePickup?: () => void;
 }) {
+  const t = useTranslations("kidsHoldsPage");
   const statusLabel =
     hold.status === "ready"
-      ? "Ready!"
+      ? t("statusReady")
       : hold.status === "in_transit"
-        ? "On the way"
+        ? t("statusInTransit")
         : hold.status === "suspended"
-          ? "Paused"
-          : "Waiting";
+          ? t("statusPaused")
+          : t("statusWaiting");
 
   const statusClasses =
     hold.status === "ready"
@@ -424,7 +427,7 @@ function KidsHoldCard({
             ) : hold.status === "pending" && featureFlags.opacHoldsUXV2 ? (
               <>
                 <span className="text-muted-foreground/60">•</span>
-                <span>Queue position unknown</span>
+                <span>{t("queuePositionUnknown")}</span>
               </>
             ) : null}
 
@@ -433,7 +436,7 @@ function KidsHoldCard({
                 <span className="text-muted-foreground/60">•</span>
                 <span className="flex items-center gap-1">
                   <CalendarDays className="h-4 w-4" />
-                  Pick up by {expiration}
+                  {t("pickUpBy", { date: expiration })}
                 </span>
               </>
             ) : null}
@@ -448,7 +451,7 @@ function KidsHoldCard({
                 className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2 text-sm font-bold hover:bg-muted/50 disabled:opacity-50"
               >
                 <MapPin className="h-4 w-4" />
-                Change pickup
+                {t("changePickup")}
               </button>
             ) : null}
 
@@ -460,7 +463,7 @@ function KidsHoldCard({
                 className="inline-flex items-center gap-2 rounded-2xl bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-50"
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                Resume
+                {t("resume")}
               </button>
             ) : null}
 
@@ -472,7 +475,7 @@ function KidsHoldCard({
                 className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2 text-sm font-bold hover:bg-muted/50 disabled:opacity-50"
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="h-4 w-4" />}
-                Pause
+                {t("pause")}
               </button>
             ) : null}
 
@@ -483,7 +486,7 @@ function KidsHoldCard({
               className="inline-flex items-center gap-2 rounded-2xl border border-red-300 bg-card px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-              Cancel
+              {t("cancel")}
             </button>
           </div>
         </div>

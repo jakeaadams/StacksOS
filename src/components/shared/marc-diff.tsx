@@ -246,7 +246,7 @@ function fieldsEqual(field1: MarcField, field2: MarcField): boolean {
   for (let i = 0; i < field1.subfields.length; i++) {
     const sf1 = field1.subfields[i];
     const sf2 = field2.subfields[i];
-    if (sf1.code !== sf2.code || sf1.value !== sf2.value) return false;
+    if (sf1!.code !== sf2!.code || sf1!.value !== sf2!.value) return false;
   }
 
   return true;

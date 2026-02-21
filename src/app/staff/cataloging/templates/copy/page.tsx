@@ -325,8 +325,8 @@ export default function CopyTemplatesPage() {
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-3">
             <div className="space-y-2">
-              <Label>Organization</Label>
-              <Select value={String(orgId)} onValueChange={(v) => setOrgId(parseInt(v, 10))}>
+              <Label htmlFor="organization">Organization</Label>
+              <Select id="organization" value={String(orgId)} onValueChange={(v) => setOrgId(parseInt(v, 10))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select org" />
                 </SelectTrigger>
@@ -341,7 +341,7 @@ export default function CopyTemplatesPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Circulation modifiers</Label>
+              <Label htmlFor="circulation-modifiers">Circulation modifiers</Label>
               <div className="text-sm text-muted-foreground">
                 {circModifiers.length > 0
                   ? `${circModifiers.length} available`
@@ -356,7 +356,7 @@ export default function CopyTemplatesPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Quick tip</Label>
+              <Label htmlFor="quick-tip">Quick tip</Label>
               <div className="text-sm text-muted-foreground">
                 Use templates when adding new items to ensure consistent defaults.
               </div>
@@ -403,13 +403,13 @@ export default function CopyTemplatesPage() {
 
           <div className="grid gap-4 py-2 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
-              <Label>Name</Label>
-              <Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g., New Book Default" />
+              <Label htmlFor="name">Name</Label>
+              <Input id="name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g., New Book Default" />
             </div>
 
             <div className="space-y-2">
-              <Label>Owning library</Label>
-              <Select value={form.owningLib} onValueChange={(v) => setForm((p) => ({ ...p, owningLib: v }))}>
+              <Label htmlFor="owning-library">Owning library</Label>
+              <Select id="owning-library" value={form.owningLib} onValueChange={(v) => setForm((p) => ({ ...p, owningLib: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select org" /></SelectTrigger>
                 <SelectContent>
                   {orgs.map((o) => (
@@ -420,8 +420,8 @@ export default function CopyTemplatesPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
+              <Label htmlFor="status">Status</Label>
+              <Select id="status" value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
                 <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">(None)</SelectItem>
@@ -433,8 +433,8 @@ export default function CopyTemplatesPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Location</Label>
-              <Select value={form.location} onValueChange={(v) => setForm((p) => ({ ...p, location: v }))}>
+              <Label htmlFor="location">Location</Label>
+              <Select id="location" value={form.location} onValueChange={(v) => setForm((p) => ({ ...p, location: v }))}>
                 <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">(None)</SelectItem>
@@ -446,8 +446,8 @@ export default function CopyTemplatesPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Circ modifier</Label>
-              <Select value={form.circModifier} onValueChange={(v) => setForm((p) => ({ ...p, circModifier: v }))}>
+              <Label htmlFor="circ-modifier">Circ modifier</Label>
+              <Select id="circ-modifier" value={form.circModifier} onValueChange={(v) => setForm((p) => ({ ...p, circModifier: v }))}>
                 <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">(None)</SelectItem>
@@ -461,8 +461,8 @@ export default function CopyTemplatesPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Price</Label>
-              <Input
+              <Label htmlFor="price">Price</Label>
+              <Input id="price"
                 value={form.price}
                 onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))}
                 placeholder="Optional"

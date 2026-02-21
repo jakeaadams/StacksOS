@@ -743,8 +743,8 @@ export default function StatCategoriesPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label>Owner</Label>
-                <Select
+                <Label htmlFor="owner">Owner</Label>
+                <Select id="owner"
                   value={categoryForm.ownerId}
                   onValueChange={(v) => setCategoryForm((p) => ({ ...p, ownerId: v }))}
                 >
@@ -912,8 +912,8 @@ export default function StatCategoriesPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label>Owner</Label>
-                <Select value={entryForm.ownerId} onValueChange={(v) => setEntryForm((p) => ({ ...p, ownerId: v }))}>
+                <Label htmlFor="owner-2">Owner</Label>
+                <Select id="owner-2" value={entryForm.ownerId} onValueChange={(v) => setEntryForm((p) => ({ ...p, ownerId: v }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a library" />
                   </SelectTrigger>

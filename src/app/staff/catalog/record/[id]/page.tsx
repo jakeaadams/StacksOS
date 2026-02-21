@@ -4,7 +4,6 @@ import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -14,7 +13,6 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Copy,
   Edit,
   ExternalLink,
   ImageOff,
@@ -24,15 +22,12 @@ import {
   Package,
   Pencil,
   Plus,
-  Save,
   Trash2,
   X,
 } from "lucide-react";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { clientLogger } from "@/lib/client-logger";
 import {
-  DataTable,
-  DataTableColumnHeader,
   EmptyState,
   ErrorBoundary,
   LoadingSpinner,
@@ -668,7 +663,7 @@ function ItemsTab({
   const updateEditField = (copyId: number, field: keyof EditingRowState, value: string) => {
     setEditingState((prev) => ({
       ...prev,
-      [copyId]: { ...prev[copyId], [field]: value },
+      [copyId]: { ...prev[copyId]!, [field]: value },
     }));
   };
 
@@ -916,19 +911,19 @@ function ItemsTab({
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
-              <th className="w-10 px-3 py-2">
+              <th scope="col" className="w-10 px-3 py-2">
                 <Checkbox
                   checked={allSelected ? true : someSelected ? "indeterminate" : false}
                   onCheckedChange={toggleSelectAll}
                   aria-label="Select all items"
                 />
               </th>
-              <th className="px-3 py-2 text-left">Barcode</th>
-              <th className="px-3 py-2 text-left">Call Number</th>
-              <th className="px-3 py-2 text-left">Location</th>
-              <th className="px-3 py-2 text-left">Status</th>
-              <th className="px-3 py-2 text-left">Due Date</th>
-              <th className="w-24 px-3 py-2 text-right">Actions</th>
+              <th scope="col" className="px-3 py-2 text-left">Barcode</th>
+              <th scope="col" className="px-3 py-2 text-left">Call Number</th>
+              <th scope="col" className="px-3 py-2 text-left">Location</th>
+              <th scope="col" className="px-3 py-2 text-left">Status</th>
+              <th scope="col" className="px-3 py-2 text-left">Due Date</th>
+              <th scope="col" className="w-24 px-3 py-2 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -1022,7 +1017,7 @@ function ItemsTab({
                           <td className="px-3 py-2">
                             {isEditing ? (
                               <Input
-                                value={edit.callNumber}
+                                value={edit!.callNumber}
                                 onChange={(e) =>
                                   updateEditField(copy.id, "callNumber", e.target.value)
                                 }
@@ -1038,7 +1033,7 @@ function ItemsTab({
                           <td className="px-3 py-2">
                             {isEditing ? (
                               <Select
-                                value={edit.locationId}
+                                value={edit!.locationId}
                                 onValueChange={(val) => updateEditField(copy.id, "locationId", val)}
                                 disabled={isSaving}
                               >
@@ -1065,7 +1060,7 @@ function ItemsTab({
                           <td className="px-3 py-2">
                             {isEditing ? (
                               <Select
-                                value={edit.statusId}
+                                value={edit!.statusId}
                                 onValueChange={(val) => updateEditField(copy.id, "statusId", val)}
                                 disabled={isSaving}
                               >
@@ -1728,10 +1723,10 @@ export default function CatalogRecordPage() {
                                 <table className="w-full text-sm">
                                   <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                                     <tr>
-                                      <th className="px-3 py-2 text-left">Pos</th>
-                                      <th className="px-3 py-2 text-left">Label</th>
-                                      <th className="px-3 py-2 text-left">Value</th>
-                                      <th className="px-3 py-2 text-left">Meaning</th>
+                                      <th scope="col" className="px-3 py-2 text-left">Pos</th>
+                                      <th scope="col" className="px-3 py-2 text-left">Label</th>
+                                      <th scope="col" className="px-3 py-2 text-left">Value</th>
+                                      <th scope="col" className="px-3 py-2 text-left">Meaning</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -1767,10 +1762,10 @@ export default function CatalogRecordPage() {
                                 <table className="w-full text-sm">
                                   <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                                     <tr>
-                                      <th className="px-3 py-2 text-left">Pos</th>
-                                      <th className="px-3 py-2 text-left">Label</th>
-                                      <th className="px-3 py-2 text-left">Value</th>
-                                      <th className="px-3 py-2 text-left">Meaning</th>
+                                      <th scope="col" className="px-3 py-2 text-left">Pos</th>
+                                      <th scope="col" className="px-3 py-2 text-left">Label</th>
+                                      <th scope="col" className="px-3 py-2 text-left">Value</th>
+                                      <th scope="col" className="px-3 py-2 text-left">Meaning</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -1803,9 +1798,9 @@ export default function CatalogRecordPage() {
                             <table className="w-full text-sm">
                               <thead className="sticky top-0 bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                                 <tr>
-                                  <th className="px-3 py-2 text-left">Tag</th>
-                                  <th className="px-3 py-2 text-left">Ind</th>
-                                  <th className="px-3 py-2 text-left">Subfields</th>
+                                  <th scope="col" className="px-3 py-2 text-left">Tag</th>
+                                  <th scope="col" className="px-3 py-2 text-left">Ind</th>
+                                  <th scope="col" className="px-3 py-2 text-left">Subfields</th>
                                 </tr>
                               </thead>
                               <tbody>

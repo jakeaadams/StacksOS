@@ -54,7 +54,7 @@ export default function PolicyEditorsHubPage() {
                 <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-emerald-500/10 text-emerald-600">
                   <BookOpen className="h-6 w-6" />
                 </div>
-                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Go to Circulation policies">
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -77,7 +77,7 @@ export default function PolicyEditorsHubPage() {
                 <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-blue-500/10 text-blue-600">
                   <BookMarked className="h-6 w-6" />
                 </div>
-                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Go to Holds policies">
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -100,7 +100,7 @@ export default function PolicyEditorsHubPage() {
                 <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-rose-500/10 text-rose-600">
                   <DollarSign className="h-6 w-6" />
                 </div>
-                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Go to Fines and Fees settings">
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>

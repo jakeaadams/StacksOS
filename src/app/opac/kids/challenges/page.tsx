@@ -25,6 +25,7 @@ import {
   Target,
   Trophy,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 type Badge = {
   id: string;
@@ -58,6 +59,7 @@ function monthEndLabel(d: Date): string {
 }
 
 export default function KidsChallengesPage() {
+  const t = useTranslations("kidsChallenges");
   const router = useRouter();
   const { isLoggedIn } = usePatronSession();
 
@@ -330,7 +332,7 @@ export default function KidsChallengesPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-bold text-foreground">{c.title}</h3>
+                    <h2 className="font-bold text-foreground">{c.title}</h2>
                     {c.isCompleted ? (
                       <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
                         Completed
@@ -389,7 +391,7 @@ export default function KidsChallengesPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-bold text-foreground">{b.name}</h3>
+                    <h2 className="font-bold text-foreground">{b.name}</h2>
                     {b.isEarned ? (
                       <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
                         Earned

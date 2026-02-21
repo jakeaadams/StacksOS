@@ -187,7 +187,27 @@ export default function PatronRegisterPage() {
       }
 
       if (data.generated) {
-        setGenerated(data.generated);
+        const gen = { ...data.generated };
+        // If a credential token was returned, redeem it once to get the password
+        if (gen.credentialToken) {
+          try {
+            const credRes = await fetchWithAuth("/api/evergreen/patrons/credentials", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ token: gen.credentialToken }),
+            });
+            const credData = await credRes.json();
+            if (credRes.ok && credData.password) {
+              gen.password = credData.password;
+            }
+          } catch {
+            // If credential retrieval fails, the password is lost — staff
+            // must reset it manually.  This is safer than returning it inline.
+          }
+          delete gen.credentialToken;
+          delete gen.hasGeneratedPassword;
+        }
+        setGenerated(gen);
       }
 
       const createdBarcode = data?.patron?.barcode || barcode || data?.generated?.barcode || "";
@@ -236,24 +256,24 @@ export default function PatronRegisterPage() {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>First Name *</Label>
-                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} onBlur={checkDuplicates} />
+                <Label htmlFor="first-name">First Name *</Label>
+                <Input id="first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} onBlur={checkDuplicates} />
               </div>
               <div className="space-y-2">
-                <Label>Last Name *</Label>
-                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} onBlur={checkDuplicates} />
+                <Label htmlFor="last-name">Last Name *</Label>
+                <Input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} onBlur={checkDuplicates} />
               </div>
               <div className="space-y-2">
-                <Label>Email</Label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Phone</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <Label htmlFor="phone">Phone</Label>
+                <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Barcode {barcodeIsRequired ? "*" : "(optional)"}</Label>
-                <Input
+                <Label htmlFor="barcode-barcodeisrequired-optional">Barcode {barcodeIsRequired ? "*" : "(optional)"}</Label>
+                <Input id="barcode-barcodeisrequired-optional"
                   value={barcode}
                   onChange={(e) => setBarcode(e.target.value)}
                   placeholder={
@@ -264,12 +284,12 @@ export default function PatronRegisterPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Expiration Date</Label>
-                <Input type="date" value={expireDate} onChange={(e) => setExpireDate(e.target.value)} />
+                <Label htmlFor="expiration-date">Expiration Date</Label>
+                <Input id="expiration-date" type="date" value={expireDate} onChange={(e) => setExpireDate(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Patron Group *</Label>
-                <Select value={profile} onValueChange={setProfile}>
+                <Label htmlFor="patron-group">Patron Group *</Label>
+                <Select id="patron-group" value={profile} onValueChange={setProfile}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select group" />
                   </SelectTrigger>
@@ -283,8 +303,8 @@ export default function PatronRegisterPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Home Library</Label>
-                <Select value={homeLibrary} onValueChange={setHomeLibrary}>
+                <Label htmlFor="home-library">Home Library</Label>
+                <Select id="home-library" value={homeLibrary} onValueChange={setHomeLibrary}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select library" />
                   </SelectTrigger>
@@ -302,40 +322,40 @@ export default function PatronRegisterPage() {
                 <p className="text-sm font-medium">Credentials</p>
               </div>
               <div className="space-y-2">
-                <Label>Username (optional)</Label>
-                <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Leave blank to auto-generate" />
+                <Label htmlFor="username">Username (optional)</Label>
+                <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Leave blank to auto-generate" />
               </div>
               <div className="space-y-2">
-                <Label>PIN / Password (optional)</Label>
-                <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Leave blank to auto-generate" />
+                <Label htmlFor="pin-password">PIN / Password (optional)</Label>
+                <Input id="pin-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Leave blank to auto-generate" />
               </div>
 
               <div className="md:col-span-2 border-t pt-4">
                 <p className="text-sm font-medium">Address</p>
               </div>
               <div className="md:col-span-2 space-y-2">
-                <Label>Street *</Label>
-                <Input value={street1} onChange={(e) => setStreet1(e.target.value)} />
+                <Label htmlFor="street">Street *</Label>
+                <Input id="street" value={street1} onChange={(e) => setStreet1(e.target.value)} />
               </div>
               <div className="md:col-span-2 space-y-2">
-                <Label>Street 2</Label>
-                <Input value={street2} onChange={(e) => setStreet2(e.target.value)} />
+                <Label htmlFor="street-2">Street 2</Label>
+                <Input id="street-2" value={street2} onChange={(e) => setStreet2(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>City *</Label>
-                <Input value={city} onChange={(e) => setCity(e.target.value)} />
+                <Label htmlFor="city">City *</Label>
+                <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>State</Label>
-                <Input value={state} onChange={(e) => setState(e.target.value)} />
+                <Label htmlFor="state">State</Label>
+                <Input id="state" value={state} onChange={(e) => setState(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Postal Code *</Label>
-                <Input value={zip} onChange={(e) => setZip(e.target.value)} />
+                <Label htmlFor="postal-code">Postal Code *</Label>
+                <Input id="postal-code" value={zip} onChange={(e) => setZip(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Country *</Label>
-                <Input value={country} onChange={(e) => setCountry(e.target.value)} />
+                <Label htmlFor="country">Country *</Label>
+                <Input id="country" value={country} onChange={(e) => setCountry(e.target.value)} />
               </div>
 
               <div className="md:col-span-2">

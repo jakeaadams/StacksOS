@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -8,6 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
+  const t = useTranslations("privacyPage");
   return (
     <div className="min-h-screen bg-muted/30">
       <section className="bg-card border-b border-border py-12">

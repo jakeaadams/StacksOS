@@ -17,6 +17,7 @@ import {
   Smartphone,
   MonitorPlay,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 const formatIcons: Record<string, React.ElementType> = {
   book: BookOpen,
@@ -26,6 +27,7 @@ const formatIcons: Record<string, React.ElementType> = {
 };
 
 export default function CheckoutsPage() {
+  const t = useTranslations("checkoutsPage");
   const router = useRouter();
   const { 
     isLoggedIn, 

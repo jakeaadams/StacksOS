@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck, FileText, AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export const metadata: Metadata = {
   title: "Terms of Use",
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default function OpacTermsPage() {
+  const t = useTranslations("termsPage");
   return (
     <div className="min-h-screen bg-muted/30">
       <section className="border-b border-border bg-card py-12">

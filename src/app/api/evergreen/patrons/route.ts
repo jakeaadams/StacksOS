@@ -17,6 +17,7 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { storeCredential } from "@/lib/credential-store";
 import { z } from "zod";
 
 
@@ -596,10 +597,27 @@ export async function POST(req: NextRequest) {
       details: { barcode, generated },
     });
 
-    return successResponse({
+    // SECURITY: Generated passwords are never returned in the response body.
+    // Instead, a one-time credential token is issued that the client must
+    // redeem via POST /api/evergreen/patrons/credentials to retrieve the
+    // password exactly once.
+    const hasCredentials = Object.keys(generated).length > 0;
+    const safeGenerated: Record<string, string | boolean> = {};
+    if (generated.barcode) safeGenerated.barcode = generated.barcode;
+    if (generated.username) safeGenerated.username = generated.username;
+    if (generated.password) {
+      safeGenerated.credentialToken = storeCredential(generated.password);
+      safeGenerated.hasGeneratedPassword = true;
+    }
+
+    const resp = successResponse({
       patron: normalized,
-      ...(Object.keys(generated).length > 0 ? { generated } : {}),
+      ...(hasCredentials ? { generated: safeGenerated } : {}),
     });
+    if (hasCredentials) {
+      resp.headers.set("x-credential-warning", "true");
+    }
+    return resp;
   } catch (error) {
     return serverErrorResponse(error, "Patrons POST", req);
   }

@@ -63,7 +63,7 @@ export async function GET(
       if (subjectMatches) {
         subjects = subjectMatches.map(m => {
           const match = m.match(/<subfield code="a">([^<]+)<\/subfield>/);
-          return match ? match[1].replace(/\.$/, "") : "";
+          return match ? match[1]!.replace(/\.$/, "") : "";
         }).filter(Boolean);
       }
 
@@ -72,26 +72,26 @@ export async function GET(
       if (genreMatches) {
         genres = genreMatches.map(m => {
           const match = m.match(/<subfield code="a">([^<]+)<\/subfield>/);
-          return match ? match[1].replace(/\.$/, "") : "";
+          return match ? match[1]!.replace(/\.$/, "") : "";
         }).filter(Boolean);
       }
 
       // Extract 490/830 (series)
       const seriesMatch = marcXml.match(/<datafield tag="(?:490|830)"[^>]*>[\s\S]*?<subfield code="a">([^<]+)<\/subfield>/);
       if (seriesMatch) {
-        series = seriesMatch[1].replace(/[;,.]$/, "").trim();
+        series = seriesMatch[1]!.replace(/[;,.]$/, "").trim();
       }
 
       // Extract 520 (summary)
       const summaryMatch = marcXml.match(/<datafield tag="520"[^>]*>[\s\S]*?<subfield code="a">([^<]+)<\/subfield>/);
       if (summaryMatch) {
-        summary = summaryMatch[1];
+        summary = summaryMatch[1]!;
       }
 
       // Extract 505 (contents)
       const contentsMatch = marcXml.match(/<datafield tag="505"[^>]*>[\s\S]*?<subfield code="a">([^<]+)<\/subfield>/);
       if (contentsMatch) {
-        contents = contentsMatch[1].split(/\s*--\s*/).filter(Boolean);
+        contents = contentsMatch[1]!.split(/\s*--\s*/).filter(Boolean);
       }
 
       // Extract 500 (notes)
@@ -99,20 +99,20 @@ export async function GET(
       if (noteMatches) {
         notes = noteMatches.map(m => {
           const match = m.match(/<subfield code="a">([^<]+)<\/subfield>/);
-          return match ? match[1] : "";
+          return match ? match[1]! : "";
         }).filter(Boolean);
       }
 
       // Extract 521 (target audience)
       const audienceMatch = marcXml.match(/<datafield tag="521"[^>]*>[\s\S]*?<subfield code="a">([^<]+)<\/subfield>/);
       if (audienceMatch) {
-        targetAudience = audienceMatch[1];
+        targetAudience = audienceMatch[1]!;
       }
 
       // Extract 008 position 35-37 (language)
       const controlMatch = marcXml.match(/<controlfield tag="008">([^<]+)<\/controlfield>/);
-      if (controlMatch && controlMatch[1].length >= 38) {
-        language = controlMatch[1].substring(35, 38);
+      if (controlMatch && controlMatch[1]!.length >= 38) {
+        language = controlMatch[1]!.substring(35, 38);
       }
     }
 
@@ -212,8 +212,8 @@ export async function GET(
       const leaderMatch = marcXml.match(/<leader>([^<]+)<\/leader>/);
       if (leaderMatch) {
         const leader = leaderMatch[1];
-        const typeCode = leader.charAt(6);
-        const bibLevel = leader.charAt(7);
+        const typeCode = leader!.charAt(6);
+        const bibLevel = leader!.charAt(7);
         
         if (typeCode === "a" && bibLevel === "s") format = "Serial";
         else if (typeCode === "e" || typeCode === "f") format = "Map";
@@ -229,9 +229,9 @@ export async function GET(
       const field007Match = marcXml.match(/<controlfield tag="007">([^<]+)<\/controlfield>/);
       if (field007Match) {
         const f007 = field007Match[1];
-        if (f007.startsWith("v")) format = "DVD/Video";
-        else if (f007.startsWith("s")) format = "CD/Audio";
-        else if (f007.startsWith("c") && f007.charAt(1) === "r") format = "eBook";
+        if (f007!.startsWith("v")) format = "DVD/Video";
+        else if (f007!.startsWith("s")) format = "CD/Audio";
+        else if (f007!.startsWith("c") && f007!.charAt(1) === "r") format = "eBook";
       }
     }
 

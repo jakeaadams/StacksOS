@@ -15,7 +15,6 @@ import {
   Search,
   Users,
   ArrowLeft,
-  ExternalLink,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -25,9 +24,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import type { LibraryEvent, EventType } from "@/lib/events-data";
+import type { LibraryEvent } from "@/lib/events-data";
+import { useTranslations } from "next-intl";
 
 type ViewMode = "list" | "week" | "month";
 
@@ -71,14 +71,15 @@ function formatEventDate(dateStr: string): {
 }
 
 function EventCard({ event }: { event: LibraryEvent }) {
+  const t = useTranslations("eventsPage");
   const dateInfo = formatEventDate(event.date);
 
   const handleRegister = () => {
     if (event.registrationUrl) {
       window.open(event.registrationUrl, "_blank", "noopener,noreferrer");
     } else {
-      toast.info("Registration coming soon", {
-        description: "Online registration for this event will be available shortly.",
+      toast.info(t("registrationComingSoon"), {
+        description: t("registrationComingSoonDesc"),
       });
     }
   };
@@ -127,7 +128,7 @@ function EventCard({ event }: { event: LibraryEvent }) {
           {event.spotsAvailable !== undefined && (
             <span className="inline-flex items-center gap-1">
               <Users className="h-4 w-4" />
-              {event.spotsAvailable} of {event.capacity} spots left
+              {t("spotsLeft", { available: event.spotsAvailable ?? 0, capacity: event.capacity ?? 0 })}
             </span>
           )}
         </div>
@@ -160,6 +161,7 @@ function EventCard({ event }: { event: LibraryEvent }) {
 }
 
 function WeekView({ events }: { events: LibraryEvent[] }) {
+  const t = useTranslations("eventsPage");
   // Group events by date for the next 7 days
   const today = new Date();
   const days: { date: string; label: string; events: LibraryEvent[] }[] = [];
@@ -174,7 +176,7 @@ function WeekView({ events }: { events: LibraryEvent[] }) {
       day: "numeric",
     });
     days.push({
-      date: dateStr,
+      date: dateStr!,
       label,
       events: events.filter((e) => e.date === dateStr),
     });
@@ -292,6 +294,7 @@ export default function EventsPage() {
     notFound();
   }
 
+  const t = useTranslations("eventsPage");
   const { library } = useLibrary();
   const [events, setEvents] = useState<LibraryEvent[]>([]);
   const [branches, setBranches] = useState<string[]>([]);
@@ -356,10 +359,10 @@ export default function EventsPage() {
             <div className="p-2 bg-white/10 rounded-lg">
               <CalendarDays className="h-8 w-8" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold">Events & Programs</h1>
+            <h1 className="text-3xl md:text-4xl font-bold">{t("title")}</h1>
           </div>
           <p className="text-primary-100 text-lg max-w-2xl">
-            Discover storytimes, book clubs, workshops, author visits, and more at{" "}
+            {t("discoverEvents")}{" "}
             {library?.name || "your library"}.
           </p>
         </div>
@@ -373,10 +376,10 @@ export default function EventsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search events..."
+              placeholder={t("searchPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              aria-label="Search events"
+              aria-label={t("searchEvents")}
               className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg bg-background
                        text-foreground placeholder:text-muted-foreground
                        focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -387,15 +390,15 @@ export default function EventsPage() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground font-medium">Filters:</span>
+              <span className="text-sm text-muted-foreground font-medium">{t("filters")}:</span>
             </div>
 
             <Select value={filterBranch} onValueChange={setFilterBranch}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Branches" />
+                <SelectValue placeholder={t("allBranches")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Branches</SelectItem>
+                <SelectItem value="all">{t("allBranches")}</SelectItem>
                 {branches.map((b) => (
                   <SelectItem key={b} value={b}>
                     {b}
@@ -406,10 +409,10 @@ export default function EventsPage() {
 
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Types" />
+                <SelectValue placeholder={t("allTypes")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="all">{t("allTypes")}</SelectItem>
                 {types.map((t) => (
                   <SelectItem key={t} value={t}>
                     {t}
@@ -428,15 +431,15 @@ export default function EventsPage() {
             <TabsList>
               <TabsTrigger value="list" className="gap-1.5">
                 <List className="h-4 w-4" />
-                <span className="hidden sm:inline">List</span>
+                <span className="hidden sm:inline">{t("list")}</span>
               </TabsTrigger>
               <TabsTrigger value="week" className="gap-1.5">
                 <CalendarDays className="h-4 w-4" />
-                <span className="hidden sm:inline">Week</span>
+                <span className="hidden sm:inline">{t("week")}</span>
               </TabsTrigger>
               <TabsTrigger value="month" className="gap-1.5">
                 <Calendar className="h-4 w-4" />
-                <span className="hidden sm:inline">Month</span>
+                <span className="hidden sm:inline">{t("month")}</span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -462,11 +465,11 @@ export default function EventsPage() {
         ) : filteredEvents.length === 0 ? (
           <div className="text-center py-16">
             <CalendarDays className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">No events found</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-2">{t("noEventsFound")}</h2>
             <p className="text-muted-foreground">
               {searchTerm || filterBranch !== "all" || filterType !== "all"
-                ? "Try adjusting your filters or search term."
-                : "Check back soon for upcoming events and programs."}
+                ? t("tryAdjustingFilters")
+                : t("checkBackSoon")}
             </p>
           </div>
         ) : (
@@ -486,7 +489,7 @@ export default function EventsPage() {
         {/* Results count */}
         {!isLoading && filteredEvents.length > 0 && (
           <p className="mt-6 text-sm text-muted-foreground text-center">
-            Showing {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
+            {t("showingEvents", { count: filteredEvents.length })}
           </p>
         )}
       </div>

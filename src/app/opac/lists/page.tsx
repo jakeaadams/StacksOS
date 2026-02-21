@@ -19,6 +19,7 @@ import {
   Sparkles,
   TrendingUp,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 type StaffPick = {
   id: number;
@@ -85,6 +86,7 @@ function CuratedLinkCard({
 }
 
 export default function OpacListsPage() {
+  const t = useTranslations("opacListsPage");
   const { isLoggedIn } = usePatronSession();
   const browseEnabled = featureFlags.opacBrowseV2;
 
@@ -113,7 +115,7 @@ export default function OpacListsPage() {
       if (cancelled) return;
 
       if (!picksRes.ok && !listsRes.ok) {
-        setError("Could not load curated lists. Please try again.");
+        setError(t("loadError"));
         setPicks([]);
         setPublicLists([]);
         setLoading(false);
@@ -139,7 +141,7 @@ export default function OpacListsPage() {
     })().catch((e) => {
       if (cancelled) return;
       clientLogger.error("Failed to load OPAC lists:", e);
-      setError("Could not load curated lists.");
+      setError(t("loadError"));
       setLoading(false);
     });
 
@@ -155,12 +157,12 @@ export default function OpacListsPage() {
           <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Library className="h-8 w-8 text-primary-600" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-4">Curated lists are disabled</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-4">{t("listsDisabled")}</h1>
           <p className="text-muted-foreground mb-6">
             Browse experiences are behind an experimental feature flag.
           </p>
           <Button asChild className="rounded-xl">
-            <Link href="/opac/search">Search the catalog</Link>
+            <Link href="/opac/search">{t("searchCatalog")}</Link>
           </Button>
         </div>
       </div>
@@ -172,7 +174,7 @@ export default function OpacListsPage() {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Curated lists</h1>
+            <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
             <p className="mt-2 text-muted-foreground max-w-2xl">
               Browse staff picks and shareable lists curated by your library community.
             </p>
@@ -195,22 +197,22 @@ export default function OpacListsPage() {
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <CuratedLinkCard
             href="/opac/new-titles"
-            title="New titles"
-            description="Fresh arrivals and recent additions."
+            title={t("newTitles")}
+            description={t("newTitlesDesc")}
             icon={Sparkles}
             accent="bg-violet-500/10 text-violet-600"
           />
           <CuratedLinkCard
             href="/opac/search?sort=popularity"
-            title="Popular right now"
-            description="Most requested and trending items."
+            title={t("popularNow")}
+            description={t("popularNowDesc")}
             icon={TrendingUp}
             accent="bg-emerald-500/10 text-emerald-600"
           />
           <CuratedLinkCard
             href="/opac/browse"
-            title="Browse categories"
-            description="Explore by subject, format, and more."
+            title={t("browseCategories")}
+            description={t("browseCategoriesDesc")}
             icon={Library}
             accent="bg-sky-500/10 text-sky-600"
           />
@@ -230,7 +232,7 @@ export default function OpacListsPage() {
         <section className="mt-10">
           <div className="flex items-end justify-between gap-4 flex-wrap">
             <div>
-              <h2 className="text-xl font-semibold text-foreground">Staff picks</h2>
+              <h2 className="text-xl font-semibold text-foreground">{t("staffPicks")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Hand-picked recommendations from your library staff.
               </p>
@@ -281,7 +283,7 @@ export default function OpacListsPage() {
         <section className="mt-12">
           <div className="flex items-end justify-between gap-4 flex-wrap">
             <div>
-              <h2 className="text-xl font-semibold text-foreground">Public lists</h2>
+              <h2 className="text-xl font-semibold text-foreground">{t("publicLists")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Shareable lists published from Evergreen.
               </p>
@@ -320,7 +322,7 @@ export default function OpacListsPage() {
                     <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
                   </div>
                   <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-                    {typeof l.itemCount === "number" ? <span>{l.itemCount} items</span> : null}
+                    {typeof l.itemCount === "number" ? <span>{l.itemCount} {t("items")}</span> : null}
                     {l.ownerName ? <span className="truncate">• {l.ownerName}</span> : null}
                   </div>
                 </Link>

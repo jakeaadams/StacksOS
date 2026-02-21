@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getEContentProviders, type EContentProvider } from "@/lib/econtent-providers";
+import { useTranslations } from "next-intl";
 
 const TYPE_LABELS: Record<string, { label: string; icon: React.ElementType }> = {
   ebook: { label: "eBooks", icon: BookOpen },
@@ -119,6 +120,7 @@ export default function DigitalLibraryPage() {
     notFound();
   }
 
+  const t = useTranslations("digitalPage");
   const router = useRouter();
   const { library } = useLibrary();
   const providers = getEContentProviders();
@@ -149,7 +151,7 @@ export default function DigitalLibraryPage() {
             <div className="p-2 bg-white/10 rounded-lg">
               <Smartphone className="h-8 w-8" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold">Digital Library</h1>
+            <h1 className="text-3xl md:text-4xl font-bold">{t("title")}</h1>
           </div>
           <p className="text-white/90 text-lg max-w-2xl mb-6">
             Free eBooks, audiobooks, movies, and more -- all you need is your{" "}
@@ -163,8 +165,8 @@ export default function DigitalLibraryPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search for eBooks & digital content..."
-                aria-label="Search digital content"
+                placeholder={t("searchPlaceholder")}
+                aria-label={t("searchDigitalContent")}
                 className="w-full pl-5 pr-14 py-3.5 rounded-full text-foreground placeholder:text-muted-foreground
                          bg-white shadow-lg focus:outline-none focus:ring-4 focus:ring-white/30"
               />
@@ -172,7 +174,7 @@ export default function DigitalLibraryPage() {
                 type="submit"
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-primary-600 text-white
                          rounded-full hover:bg-primary-700 transition-colors"
-                aria-label="Search digital library"
+                aria-label={t("searchDigitalLibrary")}
               >
                 <Search className="h-5 w-5" />
               </button>
@@ -205,7 +207,7 @@ export default function DigitalLibraryPage() {
               <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                 <Wifi className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground">Always Available</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground">{t("alwaysAvailable")}</h2>
             </div>
             <p className="text-muted-foreground mb-6 max-w-2xl">
               No waiting, no holds. These titles are available to borrow instantly, anytime. Many
@@ -216,21 +218,21 @@ export default function DigitalLibraryPage() {
             <div className="grid sm:grid-cols-3 gap-4 mb-6">
               <div className="bg-white dark:bg-card rounded-lg p-4 border border-green-200 dark:border-green-800/50">
                 <BookOpen className="h-6 w-6 text-green-600 dark:text-green-400 mb-2" />
-                <h3 className="font-semibold text-foreground">eBooks</h3>
+                <h3 className="font-semibold text-foreground">{t("ebooks")}</h3>
                 <p className="text-sm text-muted-foreground">
                   Thousands of titles across fiction, nonfiction, romance, mystery, and more.
                 </p>
               </div>
               <div className="bg-white dark:bg-card rounded-lg p-4 border border-green-200 dark:border-green-800/50">
                 <Headphones className="h-6 w-6 text-green-600 dark:text-green-400 mb-2" />
-                <h3 className="font-semibold text-foreground">eAudiobooks</h3>
+                <h3 className="font-semibold text-foreground">{t("eaudiobooks")}</h3>
                 <p className="text-sm text-muted-foreground">
                   Listen on the go with instantly available audiobooks on any device.
                 </p>
               </div>
               <div className="bg-white dark:bg-card rounded-lg p-4 border border-green-200 dark:border-green-800/50">
                 <MonitorPlay className="h-6 w-6 text-green-600 dark:text-green-400 mb-2" />
-                <h3 className="font-semibold text-foreground">Streaming Video</h3>
+                <h3 className="font-semibold text-foreground">{t("streamingVideo")}</h3>
                 <p className="text-sm text-muted-foreground">
                   Documentaries, indie films, and educational content available to stream now.
                 </p>
@@ -291,7 +293,7 @@ export default function DigitalLibraryPage() {
                 </Link>
               </Button>
               <Button variant="outline" asChild>
-                <Link href="/opac/help">Help & FAQs</Link>
+                <Link href="/opac/help">{t("helpFaq")}</Link>
               </Button>
             </div>
           </div>

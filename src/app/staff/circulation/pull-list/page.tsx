@@ -223,12 +223,12 @@ export default function PullListPage() {
       '<table style="margin-top: 16px;">' +
       "<thead>" +
       "<tr>" +
-      "<th>Call Number</th>" +
-      "<th>Title / Author</th>" +
-      "<th>Barcode</th>" +
-      "<th>Location</th>" +
-      "<th>Pickup</th>" +
-      "<th>Requested</th>" +
+      "<th scope=\"col\">Call Number</th>" +
+      "<th scope=\"col\">Title / Author</th>" +
+      "<th scope=\"col\">Barcode</th>" +
+      "<th scope=\"col\">Location</th>" +
+      "<th scope=\"col\">Pickup</th>" +
+      "<th scope=\"col\">Requested</th>" +
       "</tr>" +
       "</thead>" +
       "<tbody>" +

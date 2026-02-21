@@ -20,6 +20,7 @@ import {
   Clock,
   Star,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface HistoryItem {
   id: number;
@@ -45,6 +46,7 @@ interface ReadingStats {
 }
 
 export default function ReadingHistoryPage() {
+  const t = useTranslations("historyPage");
   const router = useRouter();
   const { isLoggedIn } = usePatronSession();
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -234,7 +236,7 @@ export default function ReadingHistoryPage() {
                   type="text"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Search your history..."
+                  placeholder={t("searchHistory")}
                   className="w-full pl-14 pr-4 py-2 border border-border rounded-lg
                            focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
@@ -287,7 +289,7 @@ export default function ReadingHistoryPage() {
           <div className="bg-card rounded-xl border border-border p-12 text-center">
             <History className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">
-              No reading history yet
+              {t("noHistory")} yet
             </h2>
             <p className="text-muted-foreground mb-6">
               {filterYear || searchQuery

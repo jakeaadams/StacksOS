@@ -97,7 +97,7 @@ export default function RoutingPage() {
           <h2 style="margin:0 0 8px 0;">Serial Routing Slip</h2>
           <div style="margin:0 0 16px 0; color:#555;">Stream: ${streamId || "—"}</div>
           <table style="border-collapse:collapse; width:100%; max-width:560px;">
-            <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #333;">Pos</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #333;">User</th></tr></thead>
+            <thead><tr><th scope="col" style="text-align:left;padding:6px 8px;border-bottom:2px solid #333;">Pos</th><th scope="col" style="text-align:left;padding:6px 8px;border-bottom:2px solid #333;">User</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
           <script>window.print();</script>

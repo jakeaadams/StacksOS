@@ -407,8 +407,8 @@ export default function AllocationsPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Funding Source *</Label>
-              <Select value={allocFundingSourceId} onValueChange={setAllocFundingSourceId}>
+              <Label htmlFor="funding-source">Funding Source *</Label>
+              <Select id="funding-source" value={allocFundingSourceId} onValueChange={setAllocFundingSourceId}>
                 <SelectTrigger><SelectValue placeholder="Select funding source" /></SelectTrigger>
                 <SelectContent>
                   {fundingSources.map((source) => (
@@ -423,8 +423,8 @@ export default function AllocationsPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label>Fund *</Label>
-              <Select value={allocFundId} onValueChange={setAllocFundId}>
+              <Label htmlFor="fund">Fund *</Label>
+              <Select id="fund" value={allocFundId} onValueChange={setAllocFundId}>
                 <SelectTrigger><SelectValue placeholder="Select fund" /></SelectTrigger>
                 <SelectContent>
                   {funds.map((fund) => (
@@ -436,12 +436,12 @@ export default function AllocationsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Amount *</Label>
-              <Input type="number" step="0.01" min="0" value={allocAmount} onChange={(e) => setAllocAmount(e.target.value)} placeholder="0.00" />
+              <Label htmlFor="amount">Amount *</Label>
+              <Input id="amount" type="number" step="0.01" min="0" value={allocAmount} onChange={(e) => setAllocAmount(e.target.value)} placeholder="0.00" />
             </div>
             <div className="space-y-2">
-              <Label>Note (optional)</Label>
-              <Textarea value={allocNote} onChange={(e) => setAllocNote(e.target.value)} placeholder="e.g., FY2024 initial allocation" rows={2} />
+              <Label htmlFor="note">Note (optional)</Label>
+              <Textarea id="note" value={allocNote} onChange={(e) => setAllocNote(e.target.value)} placeholder="e.g., FY2024 initial allocation" rows={2} />
             </div>
           </div>
           <DialogFooter>
@@ -459,8 +459,8 @@ export default function AllocationsPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Source Fund *</Label>
-              <Select value={transferSourceFundId} onValueChange={setTransferSourceFundId}>
+              <Label htmlFor="source-fund">Source Fund *</Label>
+              <Select id="source-fund" value={transferSourceFundId} onValueChange={setTransferSourceFundId}>
                 <SelectTrigger><SelectValue placeholder="Select source fund" /></SelectTrigger>
                 <SelectContent>
                   {funds.map((fund) => (
@@ -475,8 +475,8 @@ export default function AllocationsPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label>Destination Fund *</Label>
-              <Select value={transferDestFundId} onValueChange={setTransferDestFundId}>
+              <Label htmlFor="destination-fund">Destination Fund *</Label>
+              <Select id="destination-fund" value={transferDestFundId} onValueChange={setTransferDestFundId}>
                 <SelectTrigger><SelectValue placeholder="Select destination fund" /></SelectTrigger>
                 <SelectContent>
                   {funds.filter((f) => String(f.id) !== transferSourceFundId).map((fund) => (
@@ -488,12 +488,12 @@ export default function AllocationsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Amount *</Label>
-              <Input type="number" step="0.01" min="0" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} placeholder="0.00" />
+              <Label htmlFor="amount-2">Amount *</Label>
+              <Input id="amount-2" type="number" step="0.01" min="0" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} placeholder="0.00" />
             </div>
             <div className="space-y-2">
-              <Label>Note (optional)</Label>
-              <Textarea value={transferNote} onChange={(e) => setTransferNote(e.target.value)} placeholder="e.g., Budget reallocation" rows={2} />
+              <Label htmlFor="note-2">Note (optional)</Label>
+              <Textarea id="note-2" value={transferNote} onChange={(e) => setTransferNote(e.target.value)} placeholder="e.g., Budget reallocation" rows={2} />
             </div>
           </div>
           <DialogFooter>

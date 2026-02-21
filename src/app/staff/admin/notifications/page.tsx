@@ -257,8 +257,8 @@ export default function NotificationsAdminPage() {
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Channel</Label>
-              <Select value={channel} onValueChange={(v) => setChannel(v as Channel)}>
+              <Label htmlFor="channel">Channel</Label>
+              <Select id="channel" value={channel} onValueChange={(v) => setChannel(v as Channel)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="email">Email</SelectItem>
@@ -267,8 +267,8 @@ export default function NotificationsAdminPage() {
               </Select>
             </div>
             <div>
-              <Label>Notice type</Label>
-              <Select value={noticeType} onValueChange={setNoticeType}>
+              <Label htmlFor="notice-type">Notice type</Label>
+              <Select id="notice-type" value={noticeType} onValueChange={setNoticeType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {NOTICE_TYPES.map((t) => (
@@ -401,17 +401,17 @@ export default function NotificationsAdminPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-3">
                 <div>
-                  <Label>Subject (optional)</Label>
-                  <Input value={subjectTemplate} onChange={(e) => setSubjectTemplate(e.target.value)} placeholder={channel === "email" ? "{{library.name}} notice" : "(not used)"} />
+                  <Label htmlFor="subject">Subject (optional)</Label>
+                  <Input id="subject" value={subjectTemplate} onChange={(e) => setSubjectTemplate(e.target.value)} placeholder={channel === "email" ? "{{library.name}} notice" : "(not used)"} />
                 </div>
                 <div>
-                  <Label>{channel === "email" ? "HTML body" : "Message body"}</Label>
-                  <Textarea value={bodyTemplate} onChange={(e) => setBodyTemplate(e.target.value)} className="min-h-[220px] font-mono text-xs" />
+                  <Label htmlFor="channel-email-html-body-message-body">{channel === "email" ? "HTML body" : "Message body"}</Label>
+                  <Textarea id="channel-email-html-body-message-body" value={bodyTemplate} onChange={(e) => setBodyTemplate(e.target.value)} className="min-h-[220px] font-mono text-xs" />
                 </div>
                 {channel === "email" && (
                   <div>
-                    <Label>Text body (optional)</Label>
-                    <Textarea value={bodyTextTemplate} onChange={(e) => setBodyTextTemplate(e.target.value)} className="min-h-[120px] font-mono text-xs" />
+                    <Label htmlFor="text-body">Text body (optional)</Label>
+                    <Textarea id="text-body" value={bodyTextTemplate} onChange={(e) => setBodyTextTemplate(e.target.value)} className="min-h-[120px] font-mono text-xs" />
                   </div>
                 )}
 
@@ -427,8 +427,8 @@ export default function NotificationsAdminPage() {
 
               <div className="space-y-3">
                 <div>
-                  <Label>{channel === "email" ? "Test recipient email (optional)" : "Test recipient phone (required for SMS)"}</Label>
-                  <Input
+                  <Label htmlFor="channel-email-test-recipient-email-optional-test-recipient-phone-required-for-sms">{channel === "email" ? "Test recipient email (optional)" : "Test recipient phone (required for SMS)"}</Label>
+                  <Input id="channel-email-test-recipient-email-optional-test-recipient-phone-required-for-sms"
                     value={testTo}
                     onChange={(e) => setTestTo(e.target.value)}
                     placeholder={channel === "email" ? "(defaults to your staff email)" : "+15555551212"}

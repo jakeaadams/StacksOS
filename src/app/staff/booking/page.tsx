@@ -5,6 +5,7 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
 import {
 
   PageContainer,
@@ -84,6 +85,7 @@ function formatDate(dateStr: string) {
 
 export default function BookingPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [resources, setResources] = useState<Resource[]>([]);
   const [resourceTypes, setResourceTypes] = useState<ResourceType[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -331,7 +333,7 @@ export default function BookingPage() {
           resource_id: Number(resourceId),
           start_time: start,
           end_time: end,
-          pickup_lib: 1,
+          pickup_lib: user?.activeOrgId,
         }),
       });
       const data = await res.json();
@@ -348,6 +350,10 @@ export default function BookingPage() {
       setIsSaving(false);
     }
   };
+
+  if (!user?.activeOrgId) {
+    return <LoadingSpinner message="Loading organization..." />;
+  }
 
   return (
     <PageContainer>

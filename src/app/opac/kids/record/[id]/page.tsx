@@ -29,6 +29,7 @@ import {
   Film,
   AlertCircle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface BookDetail {
   id: number;
@@ -95,6 +96,7 @@ function transformBookDetail(data: any): BookDetail {
 }
 
 export default function KidsRecordDetailPage() {
+  const t = useTranslations("kidsRecordPage");
   const params = useParams();
   const router = useRouter();
   const recordId = params.id as string;
@@ -184,7 +186,7 @@ export default function KidsRecordDetailPage() {
       const res = await placeHold(parseInt(recordId), pickupLocationId);
       if (!res.success) {
         setHoldError({
-          message: res.message || "Could not place hold. Please try again.",
+          message: res.message || t("holdError"),
           nextSteps: res.details?.nextSteps,
           code: res.details?.code,
         });
@@ -197,7 +199,7 @@ export default function KidsRecordDetailPage() {
         setHoldSuccess(false);
       }, 2000);
     } catch (err: any) {
-      setHoldError({ message: err.message || "Could not place hold. Please try again." });
+      setHoldError({ message: err.message || t("holdError") });
     } finally {
       setHoldLoading(false);
     }
@@ -218,7 +220,7 @@ export default function KidsRecordDetailPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <LoadingSpinner message="Loading book details..." size="lg" />
+        <LoadingSpinner message={t("loadingBookDetails")} size="lg" />
       </div>
     );
   }
@@ -229,8 +231,8 @@ export default function KidsRecordDetailPage() {
         <div className="w-20 h-20 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
           <AlertCircle className="h-10 w-10 text-red-400" />
         </div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">Book Not Found</h2>
-        <p className="text-muted-foreground mb-6">We could not find this book.</p>
+        <h2 className="text-2xl font-bold text-foreground mb-2">{t("bookNotFound")}</h2>
+        <p className="text-muted-foreground mb-6">{t("bookNotFoundDesc")}</p>
         <Link
           href="/opac/kids"
           className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 
@@ -253,7 +255,7 @@ export default function KidsRecordDetailPage() {
         className="flex items-center gap-2 text-purple-600 hover:text-purple-700 mb-6"
       >
         <ChevronLeft className="h-5 w-5" />
-        <span className="font-medium">Back</span>
+        <span className="font-medium">{t("back")}</span>
       </button>
 
       {/* Main content */}
@@ -310,7 +312,7 @@ export default function KidsRecordDetailPage() {
               )}
               {book.series && (
                 <p className="text-sm text-purple-600 mt-1">
-                  Part of the <span className="font-medium">{book.series}</span> series
+                  {t("partOfSeries")} <span className="font-medium">{book.series}</span> {t("series")}
                 </p>
               )}
             </div>
@@ -325,9 +327,9 @@ export default function KidsRecordDetailPage() {
                         <Check className="h-6 w-6 text-green-600" />
                       </div>
                       <div>
-                        <p className="font-bold text-green-700 text-lg">Available!</p>
+                        <p className="font-bold text-green-700 text-lg">{t("available")}</p>
                         <p className="text-sm text-green-600">
-                          {totalAvailable} of {totalCopies} copies ready
+                          {t("copiesReady", { available: totalAvailable, total: totalCopies })}
                         </p>
                       </div>
                     </>
@@ -337,8 +339,8 @@ export default function KidsRecordDetailPage() {
                         <Clock className="h-6 w-6 text-orange-600" />
                       </div>
                       <div>
-                        <p className="font-bold text-orange-700 text-lg">All Checked Out</p>
-                        <p className="text-sm text-orange-600">Place a hold to get it next!</p>
+                        <p className="font-bold text-orange-700 text-lg">{t("allCheckedOut")}</p>
+                        <p className="text-sm text-orange-600">{t("placeHoldNext")}</p>
                       </div>
                     </>
                   )}
@@ -366,7 +368,7 @@ export default function KidsRecordDetailPage() {
                          }`}
               >
                 <Heart className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`} />
-                <span>{isFavorite ? "Saved!" : "Save"}</span>
+                <span>{isFavorite ? t("saved") : t("save")}</span>
               </button>
               
               <button type="button"
@@ -374,7 +376,7 @@ export default function KidsRecordDetailPage() {
                          text-muted-foreground hover:border-purple-200"
               >
                 <BookmarkPlus className="h-5 w-5" />
-                <span>Add to List</span>
+                <span>{t("addToList")}</span>
               </button>
               
               <button type="button"
@@ -382,7 +384,7 @@ export default function KidsRecordDetailPage() {
                          text-muted-foreground hover:border-purple-200"
               >
                 <Share2 className="h-5 w-5" />
-                <span>Share</span>
+                <span>{t("share")}</span>
               </button>
             </div>
 
@@ -400,7 +402,7 @@ export default function KidsRecordDetailPage() {
             {/* Subjects */}
             {book.subjects && book.subjects.length > 0 && (
               <div className="mb-6">
-                <h3 className="font-bold text-foreground mb-2">Topics</h3>
+                <h3 className="font-bold text-foreground mb-2">{t("topics")}</h3>
                 <div className="flex flex-wrap gap-2">
                   {book.subjects.slice(0, 8).map((subject, i) => (
                     <Link
@@ -469,8 +471,8 @@ export default function KidsRecordDetailPage() {
                                   : "bg-orange-100 text-orange-700"
                                 }`}>
                     {holding.available > 0 
-                      ? `${holding.available} available` 
-                      : "Checked out"
+                      ? t("holdingAvailable", { count: holding.available }) 
+                      : t("checkedOut")
                     }
                   </span>
                 </div>
@@ -504,13 +506,13 @@ export default function KidsRecordDetailPage() {
                 <div className="w-20 h-20 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
                   <Check className="h-10 w-10 text-green-600" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-2">Hold Placed!</h3>
-                <p className="text-muted-foreground">We will let you know when it is ready.</p>
+                <h3 className="text-xl font-bold text-foreground mb-2">{t("holdPlaced")}</h3>
+                <p className="text-muted-foreground">{t("holdPlacedDesc")}</p>
               </div>
             ) : (
               <>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-foreground">Place a Hold</h3>
+                  <h3 className="text-xl font-bold text-foreground">{t("placeAHold")}</h3>
                   <button type="button"
                     onClick={() => setShowHoldModal(false)}
                     className="p-2 text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted/50 rounded-full"
@@ -522,7 +524,7 @@ export default function KidsRecordDetailPage() {
 
                 {!isLoggedIn ? (
                   <div className="text-center py-4">
-                    <p className="text-muted-foreground mb-4">Please log in to place a hold!</p>
+                    <p className="text-muted-foreground mb-4">{t("loginToPlaceHold")}</p>
                     <Link
                       href={`/opac/login?redirect=/opac/kids/record/${recordId}`}
                       className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 
@@ -534,7 +536,7 @@ export default function KidsRecordDetailPage() {
                 ) : (
                   <>
                     <p className="text-muted-foreground mb-4">
-                      Choose where you want to pick up <strong>{book.title}</strong>:
+                      {t("choosePickup")} <strong>{book.title}</strong>:
                     </p>
 
                     {holdError ? (
@@ -576,7 +578,7 @@ export default function KidsRecordDetailPage() {
                     {holdLoading && (
                       <div className="flex items-center justify-center gap-2 text-purple-600">
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        <span>Placing hold...</span>
+                        <span>{t("placingHold")}</span>
                       </div>
                     )}
                   </>

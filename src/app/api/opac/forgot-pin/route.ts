@@ -12,17 +12,19 @@ import { checkRateLimit } from "@/lib/rate-limit";
 
 function maskEmail(email: string): string {
   if (!email || !email.includes("@")) return "your registered email";
-  const [localPart, domain] = email.split("@");
+  const parts = email.split("@");
+  const localPart = parts[0] ?? "";
+  const domain = parts[1] ?? "";
   const maskedLocal =
     localPart.length > 2
       ? localPart[0] +
         "*".repeat(Math.min(localPart.length - 2, 5)) +
-        localPart[localPart.length - 1]
+        localPart[localPart.length - 1]!
       : "**";
   const domainParts = domain.split(".");
   const maskedDomain =
-    domainParts[0].length > 2
-      ? domainParts[0][0] + "***" + domainParts[0][domainParts[0].length - 1]
+    domainParts[0]!.length > 2
+      ? domainParts[0]![0] + "***" + domainParts[0]![domainParts[0]!.length - 1]
       : "***";
   return maskedLocal + "@" + maskedDomain + "." + domainParts.slice(1).join(".");
 }

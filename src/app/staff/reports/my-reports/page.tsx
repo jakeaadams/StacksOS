@@ -515,8 +515,8 @@ export default function MyReportsPage() {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Report Type</Label>
-                <Select value={newReportKey} onValueChange={(value) => setNewReportKey(value as ReportKey)}>
+                <Label htmlFor="report-type">Report Type</Label>
+                <Select id="report-type" value={newReportKey} onValueChange={(value) => setNewReportKey(value as ReportKey)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -529,8 +529,8 @@ export default function MyReportsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Cadence</Label>
-                <Select value={newCadence} onValueChange={(value) => setNewCadence(value as Cadence)}>
+                <Label htmlFor="cadence">Cadence</Label>
+                <Select id="cadence" value={newCadence} onValueChange={(value) => setNewCadence(value as Cadence)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

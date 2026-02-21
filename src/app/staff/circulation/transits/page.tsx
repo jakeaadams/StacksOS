@@ -4,6 +4,7 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 import { clientLogger } from "@/lib/client-logger";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
 import {
   PageContainer,
   PageHeader,
@@ -76,6 +77,7 @@ interface DialogState {
 }
 
 export default function TransitsPage() {
+  const { user } = useAuth();
   const router = useRouter();
   const [transits, setTransits] = useState<Transit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,7 @@ export default function TransitsPage() {
   const fetchTransits = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetchWithAuth("/api/evergreen/transits?org_id=1&direction=incoming");
+      const response = await fetchWithAuth(`/api/evergreen/transits?org_id=${user?.activeOrgId}&direction=incoming`);
       const data = await response.json();
       if (data.ok && data.transits) {
         setTransits(data.transits);
@@ -392,6 +394,10 @@ export default function TransitsPage() {
     [handleReceive, handleException, handleAbort]
   );
 
+  if (!user?.activeOrgId) {
+    return <LoadingSpinner message="Loading organization..." />;
+  }
+
   return (
     <PageContainer>
       <PageHeader
@@ -490,15 +496,15 @@ export default function TransitsPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Item</Label>
+              <Label htmlFor="item">Item</Label>
               <div className="text-sm font-medium">{dialogState.transit?.title || "Unknown"}</div>
             </div>
             <div className="space-y-2">
-              <Label>Barcode</Label>
+              <Label htmlFor="barcode">Barcode</Label>
               <div className="font-mono text-sm">{dialogState.transit?.barcode || "N/A"}</div>
             </div>
             <div className="space-y-2">
-              <Label>From</Label>
+              <Label htmlFor="from">From</Label>
               <div className="text-sm">
                 {dialogState.transit?.sourceName || `Org ${dialogState.transit?.source}`}
               </div>
@@ -527,12 +533,12 @@ export default function TransitsPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Item</Label>
+              <Label htmlFor="item-2">Item</Label>
               <div className="text-sm font-medium">{dialogState.transit?.title || "Unknown"}</div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="exception-reason">Exception Reason *</Label>
-              <Select
+              <Select id="item-2"
                 value={dialogState.exceptionReason}
                 onValueChange={(value) =>
                   setDialogState((prev) => ({ ...prev, exceptionReason: value }))
@@ -585,7 +591,7 @@ export default function TransitsPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Item</Label>
+              <Label htmlFor="abort-reason">Item</Label>
               <div className="text-sm font-medium">{dialogState.transit?.title || "Unknown"}</div>
             </div>
             <div className="space-y-2">

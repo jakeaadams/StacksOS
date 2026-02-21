@@ -20,6 +20,7 @@ import {
   AlertCircle,
   ArrowLeft,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface PatronSettings {
   email?: string;
@@ -38,6 +39,7 @@ interface PatronSettings {
 }
 
 export default function AccountSettingsPage() {
+  const t = useTranslations("settingsPage");
   const router = useRouter();
   const { patron, isLoggedIn, isLoading: sessionLoading } = usePatronSession();
   
@@ -239,7 +241,7 @@ export default function AccountSettingsPage() {
             <div className="space-y-4">
               {/* Name (read-only) */}
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">Name</label>
+                <label htmlFor="name" className="block text-sm font-medium text-foreground/80 mb-1">Name</label>
                 <div className="px-4 py-3 bg-muted/30 rounded-lg text-foreground/80">
                   {patron?.firstName} {patron?.lastName}
                 </div>
@@ -250,7 +252,7 @@ export default function AccountSettingsPage() {
 
               {/* Card Number (read-only) */}
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">Library Card</label>
+                <label htmlFor="library-card" className="block text-sm font-medium text-foreground/80 mb-1">Library Card</label>
                 <div className="px-4 py-3 bg-muted/30 rounded-lg text-foreground/80 font-mono">
                   {patron?.cardNumber || ''}
                 </div>
@@ -258,10 +260,10 @@ export default function AccountSettingsPage() {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">Email Address</label>
+                <label htmlFor="email-address" className="block text-sm font-medium text-foreground/80 mb-1">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/70" />
-                  <input
+                  <input id="email-address"
                     type="email"
                     value={settings.email || ""}
                     onChange={(e) => setSettings({ ...settings, email: e.target.value })}
@@ -274,10 +276,10 @@ export default function AccountSettingsPage() {
 
               {/* Phone */}
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">Phone Number</label>
+                <label htmlFor="phone-number" className="block text-sm font-medium text-foreground/80 mb-1">Phone Number</label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/70" />
-                  <input
+                  <input id="phone-number"
                     type="tel"
                     value={settings.phone || ""}
                     onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
@@ -314,7 +316,7 @@ export default function AccountSettingsPage() {
               <div>
                 <h3 className="font-medium text-foreground mb-3">Hold Ready Notifications</h3>
                 <div className="space-y-3">
-                  <label className="flex items-center gap-3">
+                  <label htmlFor="email-me-when-holds-are-ready" className="flex items-center gap-3">
                     <input
                       type="checkbox"
                       checked={settings.holdNotifyEmail}
@@ -323,7 +325,7 @@ export default function AccountSettingsPage() {
                     />
                     <span className="text-foreground/80">Email me when holds are ready</span>
                   </label>
-                  <label className="flex items-center gap-3">
+                  <label htmlFor="call-me-when-holds-are-ready" className="flex items-center gap-3">
                     <input
                       type="checkbox"
                       checked={settings.holdNotifyPhone}
@@ -332,7 +334,7 @@ export default function AccountSettingsPage() {
                     />
                     <span className="text-foreground/80">Call me when holds are ready</span>
                   </label>
-                  <label className="flex items-center gap-3">
+                  <label htmlFor="text-me-when-holds-are-ready" className="flex items-center gap-3">
                     <input
                       type="checkbox"
                       checked={settings.holdNotifySms}
@@ -347,7 +349,7 @@ export default function AccountSettingsPage() {
               {/* Overdue notifications */}
               <div>
                 <h3 className="font-medium text-foreground mb-3">Overdue Reminders</h3>
-                <label className="flex items-center gap-3">
+                <label htmlFor="email-me-when-items-are-overdue" className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     checked={settings.overdueNotifyEmail}
@@ -409,9 +411,9 @@ export default function AccountSettingsPage() {
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground/80 mb-1">Current PIN</label>
+                    <label htmlFor="current-pin" className="block text-sm font-medium text-foreground/80 mb-1">Current PIN</label>
                     <div className="relative">
-                      <input
+                      <input id="current-pin"
                         type={showPins ? "text" : "password"}
                         value={currentPin}
                         onChange={(e) => setCurrentPin(e.target.value)}
@@ -422,8 +424,8 @@ export default function AccountSettingsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground/80 mb-1">New PIN</label>
-                    <input
+                    <label htmlFor="new-pin" className="block text-sm font-medium text-foreground/80 mb-1">New PIN</label>
+                    <input id="new-pin"
                       type={showPins ? "text" : "password"}
                       value={newPin}
                       onChange={(e) => setNewPin(e.target.value)}
@@ -433,8 +435,8 @@ export default function AccountSettingsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground/80 mb-1">Confirm New PIN</label>
-                    <input
+                    <label htmlFor="confirm-new-pin" className="block text-sm font-medium text-foreground/80 mb-1">Confirm New PIN</label>
+                    <input id="confirm-new-pin"
                       type={showPins ? "text" : "password"}
                       value={confirmPin}
                       onChange={(e) => setConfirmPin(e.target.value)}
@@ -443,7 +445,7 @@ export default function AccountSettingsPage() {
                     />
                   </div>
 
-                  <label className="flex items-center gap-2">
+                  <label htmlFor="show-pins" className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={showPins}
@@ -487,7 +489,7 @@ export default function AccountSettingsPage() {
                 Control whether your checkout history is saved.
               </p>
 
-              <label className="flex items-start gap-3">
+              <label htmlFor="keep-my-reading-history" className="flex items-start gap-3">
                 <input
                   type="checkbox"
                   checked={settings.keepHistory}
@@ -525,7 +527,7 @@ export default function AccountSettingsPage() {
               </p>
 
               <div className="space-y-4">
-                <label className="flex items-start gap-3">
+                <label htmlFor="enable-personalized-recommendations" className="flex items-start gap-3">
                   <input
                     type="checkbox"
                     checked={Boolean(settings.personalizedRecommendations)}
@@ -547,7 +549,7 @@ export default function AccountSettingsPage() {
                   </div>
                 </label>
 
-                <label className={`flex items-start gap-3 ${settings.personalizedRecommendations ? "" : "opacity-60"}`}>
+                <label htmlFor="use-my-reading-history-for-recommendations" className={`flex items-start gap-3 ${settings.personalizedRecommendations ? "" : "opacity-60"}`}>
                   <input
                     type="checkbox"
                     checked={Boolean(settings.readingHistoryPersonalization)}

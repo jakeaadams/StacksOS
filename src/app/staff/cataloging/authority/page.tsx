@@ -203,7 +203,7 @@ export default function AuthorityControlPage() {
                 {getTypeBadge(selectedAuthority.type)}
               </div>
               <div>
-                <label className="text-sm text-muted-foreground">Heading</label>
+                <label htmlFor="heading" className="text-sm text-muted-foreground">Heading</label>
                 <div className="text-lg font-medium">{selectedAuthority.heading}</div>
               </div>
               <div className="flex items-center gap-4 text-sm border-t pt-4">

@@ -194,7 +194,7 @@ export async function sendBatchNotices(notices: SendNoticeOptions[]): Promise<{
 
   for (let i = 0; i < notices.length; i++) {
     try {
-      await sendNotice(notices[i]);
+      await sendNotice(notices[i]!);
       results.sent++;
 
       // Add small delay between emails to avoid rate limiting
@@ -211,11 +211,11 @@ export async function sendBatchNotices(notices: SendNoticeOptions[]): Promise<{
       logger.error(
         {
           component: "email",
-          noticeType: notices[i].type,
-          patronId: notices[i].context.patron.id,
+          noticeType: notices[i]!.type,
+          patronId: notices[i]!.context.patron.id,
           error: error instanceof Error ? error.message : String(error),
         },
-        `Failed to send notice to patron ${notices[i].context.patron.id}`
+        `Failed to send notice to patron ${notices[i]!.context.patron.id}`
       );
     }
   }

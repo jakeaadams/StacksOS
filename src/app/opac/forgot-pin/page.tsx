@@ -15,10 +15,12 @@ import {
   HelpCircle,
   Mail,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 type Step = "request" | "success";
 
 export default function ForgotPinPage() {
+  const t = useTranslations("forgotPin");
   const { library } = useLibrary();
   const [step, setStep] = useState<Step>("request");
   const [identifier, setIdentifier] = useState("");
@@ -93,7 +95,7 @@ export default function ForgotPinPage() {
                 {error && (
                   <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                     <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-                    <p className="text-red-700 text-sm">{error}</p>
+                    <p id="forgot-pin-error" role="alert" className="text-red-700 text-sm">{error}</p>
                   </div>
                 )}
 
@@ -108,10 +110,12 @@ export default function ForgotPinPage() {
                       id="identifier"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder="Enter your card number"
+                      placeholder={t("cardNumberPlaceholder")}
                       className="w-full pl-14 pr-4 py-3 border border-border rounded-lg
                                focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
                                text-foreground placeholder:text-muted-foreground"
+                      aria-invalid={!!error}
+                      aria-describedby={error ? "forgot-pin-error" : undefined}
                       autoFocus
                     />
                   </div>
@@ -142,7 +146,7 @@ export default function ForgotPinPage() {
 
               {/* No email note */}
               <div className="mt-6 p-4 border border-amber-200 bg-amber-50 rounded-lg">
-                <h3 className="font-medium text-amber-800 text-sm">No email on file?</h3>
+                <h2 className="font-medium text-amber-800 text-sm">No email on file?</h2>
                 <p className="text-sm text-amber-700 mt-1">
                   If you don&apos;t have an email address on your account, 
                   please visit or call your local library branch to reset your PIN.

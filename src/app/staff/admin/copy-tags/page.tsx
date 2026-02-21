@@ -686,8 +686,8 @@ export default function CopyTagsPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label>Owner</Label>
-                <Select value={typeForm.ownerId} onValueChange={(v) => setTypeForm((p) => ({ ...p, ownerId: v }))}>
+                <Label htmlFor="owner">Owner</Label>
+                <Select id="owner" value={typeForm.ownerId} onValueChange={(v) => setTypeForm((p) => ({ ...p, ownerId: v }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a library" />
                   </SelectTrigger>
@@ -722,8 +722,8 @@ export default function CopyTagsPage() {
 
             <div className="grid gap-4 py-2">
               <div className="grid gap-2">
-                <Label>Tag type</Label>
-                <Select value={tagForm.tagType} onValueChange={(v) => setTagForm((p) => ({ ...p, tagType: v }))}>
+                <Label htmlFor="tag-type">Tag type</Label>
+                <Select id="tag-type" value={tagForm.tagType} onValueChange={(v) => setTagForm((p) => ({ ...p, tagType: v }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a tag type" />
                   </SelectTrigger>
@@ -760,8 +760,8 @@ export default function CopyTagsPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label>Owner</Label>
-                <Select value={tagForm.ownerId} onValueChange={(v) => setTagForm((p) => ({ ...p, ownerId: v }))}>
+                <Label htmlFor="owner-2">Owner</Label>
+                <Select id="owner-2" value={tagForm.ownerId} onValueChange={(v) => setTagForm((p) => ({ ...p, ownerId: v }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a library" />
                   </SelectTrigger>

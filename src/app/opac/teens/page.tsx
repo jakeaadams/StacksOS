@@ -26,6 +26,7 @@ import {
   Image as ImageIcon,
   Star,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface CategoryItem {
   icon: React.ElementType;
@@ -134,6 +135,7 @@ const browseCategories: CategoryItem[] = [
 ];
 
 export default function TeensHomePage() {
+  const t = useTranslations("teensPage");
   const { patron, isLoggedIn } = usePatronSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [trendingBooks, setTrendingBooks] = useState<FeaturedBook[]>([]);
@@ -195,15 +197,15 @@ export default function TeensHomePage() {
                 {patron.firstName?.[0]}
               </div>
               <span className="font-medium text-foreground">
-                Hey {patron.firstName}, ready to read?
+                {t("heyReady", { name: patron.firstName ?? "" })}
               </span>
             </div>
           )}
 
           <h1 className="text-4xl md:text-6xl font-extrabold mb-4 tracking-tight">
-            <span className="text-purple-700 dark:text-purple-300">Your Next</span>
+            <span className="text-purple-700 dark:text-purple-300">{t("yourNext")}</span>
             <br />
-            <span className="text-purple-700 dark:text-purple-300">Great Read</span>
+            <span className="text-purple-700 dark:text-purple-300">{t("greatRead")}</span>
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
@@ -218,8 +220,8 @@ export default function TeensHomePage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search YA books, graphic novels, manga..."
-                  aria-label="Search teen books"
+                  placeholder={t("searchPlaceholder")}
+                  aria-label={t("searchTeenBooks")}
                   className="w-full pl-6 pr-16 py-5 text-xl rounded-full border-2 border-indigo-200 text-foreground placeholder:text-muted-foreground/70 bg-card focus:outline-none focus:border-indigo-400"
                 />
                 <button
@@ -241,7 +243,7 @@ export default function TeensHomePage() {
             <h2 className="text-2xl md:text-3xl font-extrabold text-foreground mb-2 tracking-tight">
               Browse by Genre
             </h2>
-            <p className="text-muted-foreground">Find your vibe.</p>
+            <p className="text-muted-foreground">{t("findYourVibe")}</p>
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-11 gap-3 md:gap-4">
@@ -304,7 +306,7 @@ export default function TeensHomePage() {
           ) : (
             <div className="text-center py-12 bg-card rounded-2xl">
               <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
-              <p className="text-muted-foreground">Search for books to get started!</p>
+              <p className="text-muted-foreground">{t("searchToGetStarted")}</p>
             </div>
           )}
         </div>
@@ -349,7 +351,7 @@ export default function TeensHomePage() {
           ) : (
             <div className="text-center py-12 bg-card rounded-2xl">
               <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
-              <p className="text-muted-foreground">Check back for new releases!</p>
+              <p className="text-muted-foreground">{t("checkBackNewReleases")}</p>
             </div>
           )}
         </div>

@@ -39,7 +39,7 @@ function loadIdl(): IdlMap {
   while ((classMatch = classRegex.exec(xml)) !== null) {
     const classId = classMatch[1];
     const classBody = classMatch[2];
-    const fieldsBlock = fieldsRegex.exec(classBody);
+    const fieldsBlock = fieldsRegex.exec(classBody!);
 
     if (!fieldsBlock) continue;
 
@@ -49,8 +49,8 @@ function loadIdl(): IdlMap {
     fieldRegex.lastIndex = 0;
 
     let fieldMatch: RegExpExecArray | null;
-    while ((fieldMatch = fieldRegex.exec(fieldsBlock[1])) !== null) {
-      fieldNames.push(fieldMatch[1]);
+    while ((fieldMatch = fieldRegex.exec(fieldsBlock[1]!)) !== null) {
+      fieldNames.push(fieldMatch[1]!);
     }
 
     if (fieldNames.length > 0) {
@@ -67,7 +67,7 @@ function loadIdl(): IdlMap {
         }
       });
 
-      map[classId] = { fields: fieldNames, fieldMap };
+      map[classId!] = { fields: fieldNames, fieldMap };
     }
   }
 

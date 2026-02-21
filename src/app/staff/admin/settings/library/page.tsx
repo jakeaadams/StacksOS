@@ -86,7 +86,7 @@ export default function LibrarySettingsPage() {
 
   useEffect(() => {
     if (!selectedOrgId && orgs.length > 0) {
-      setSelectedOrgId(orgs[0].id);
+      setSelectedOrgId(orgs[0]!.id);
     }
   }, [orgs, selectedOrgId]);
 
@@ -269,12 +269,12 @@ export default function LibrarySettingsPage() {
               checked={editValue === true || editValue === "t"}
               onCheckedChange={(checked) => setEditValue(checked)}
             />
-            <Label>{editValue ? "Enabled" : "Disabled"}</Label>
+            <Label htmlFor="editvalue-enabled-disabled">{editValue ? "Enabled" : "Disabled"}</Label>
           </div>
         );
       case "integer":
         return (
-          <Input
+          <Input id="editvalue-enabled-disabled"
             type="number"
             value={editValue ?? ""}
             onChange={(e) => setEditValue(parseInt(e.target.value, 10) || null)}
@@ -357,8 +357,8 @@ export default function LibrarySettingsPage() {
           <CardContent>
             <div className="flex gap-4 items-end">
               <div className="flex-1 max-w-xs">
-                <Label className="text-sm mb-2 block">Organization Unit</Label>
-                <Select
+                <Label htmlFor="organization-unit" className="text-sm mb-2 block">Organization Unit</Label>
+                <Select id="organization-unit"
                   value={selectedOrgId ? String(selectedOrgId) : ""}
                   onValueChange={(value) => setSelectedOrgId(parseInt(value, 10))}
                 >
@@ -375,10 +375,10 @@ export default function LibrarySettingsPage() {
                 </Select>
               </div>
               <div className="flex-1 max-w-sm">
-                <Label className="text-sm mb-2 block">Search Settings</Label>
+                <Label htmlFor="search-settings" className="text-sm mb-2 block">Search Settings</Label>
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
+                  <Input id="search-settings"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by name or description..."
@@ -498,7 +498,7 @@ export default function LibrarySettingsPage() {
               {editingSetting?.description || "No description available."}
             </div>
             <div className="space-y-2">
-              <Label>Value ({editingSetting?.datatype})</Label>
+              <Label htmlFor="value-editingsetting-datatype">Value ({editingSetting?.datatype})</Label>
               {renderValueEditor()}
             </div>
             <div className="text-xs text-muted-foreground">

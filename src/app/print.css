@@ -211,4 +211,117 @@
     font-size: 8pt;
     margin-top: 0.25rem;
   }
+
+  /* StacksOS Staff UI: hide app chrome */
+  .app-shell > .flex > aside,
+  .app-shell > .flex > [class*="sidebar"],
+  [data-sidebar],
+  [class*="top-nav"],
+  [class*="TopNav"],
+  [class*="command-palette"],
+  [class*="CommandPalette"],
+  [class*="keyboard-shortcuts"],
+  [class*="Toaster"],
+  [class*="sonner"],
+  [role="status"],
+  [role="alert"]:not(.print-alert) {
+    display: none !important;
+  }
+
+  /* Ensure main content fills the page */
+  .app-shell,
+  .app-shell > .flex,
+  main#main-content {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Page break helpers for circulation receipts */
+  .receipt-section {
+    page-break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+
+  .receipt-separator {
+    border-top: 1px dashed black;
+    margin: 0.75rem 0;
+  }
+
+  /* Hold slip: proper sizing for label printers */
+  @page hold-slip {
+    size: 4in 6in;
+    margin: 0.25in;
+  }
+
+  .hold-slip {
+    page: hold-slip;
+  }
+
+  /* Transit slip */
+  @page transit-slip {
+    size: 4in 6in;
+    margin: 0.25in;
+  }
+
+  .transit-slip {
+    page: transit-slip;
+  }
+
+  /* Clean typography for printed content */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  /* Hide interactive elements */
+  input, select, textarea,
+  [contenteditable],
+  .pagination,
+  .tab-list,
+  [role="tablist"] {
+    display: none !important;
+  }
+
+  /* Checkout receipt: compact due date table */
+  .checkout-receipt .due-date-col {
+    font-weight: bold;
+    white-space: nowrap;
+  }
+
+  /* Ensure images print */
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
+  }
+
+  /* Badge / status indicators: make visible in B&W */
+  [class*="badge"],
+  [class*="Badge"] {
+    border: 1px solid #333 !important;
+    background: transparent !important;
+    color: #000 !important;
+    font-weight: bold;
+  }
+
 }

@@ -7,6 +7,7 @@ import {
   PageContent,
   DataTable,
   EmptyState,
+  ConfirmDialog,
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -82,6 +83,7 @@ export default function InvoicesPage() {
   const [entrySplits, setEntrySplits] = useState<Array<{ fundId: string; amount: string }>>([]);
   const [savingEntry, setSavingEntry] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
 
   const [splitEditorOpen, setSplitEditorOpen] = useState(false);
   const [splitEditorEntryId, setSplitEditorEntryId] = useState<number | null>(null);
@@ -288,8 +290,16 @@ export default function InvoicesPage() {
 
   const closeInvoice = async () => {
     if (!selectedInvoiceId) return;
-    const ok = window.confirm("Close this invoice? This sets close_date in Evergreen.");
-    if (!ok) return;
+    setConfirmDialog({
+      open: true,
+      title: "Close Invoice",
+      description: "Close this invoice? This sets close_date in Evergreen.",
+      onConfirm: () => doCloseInvoice(),
+    });
+  };
+
+  const doCloseInvoice = async () => {
+    if (!selectedInvoiceId) return;
     setClosing(true);
     try {
       const res = await fetchWithAuth("/api/evergreen/acquisitions/invoices/close", {
@@ -326,8 +336,8 @@ export default function InvoicesPage() {
 
             <div className="grid gap-3">
               <div>
-                <Label>Provider</Label>
-                <Select value={providerId} onValueChange={setProviderId}>
+                <Label htmlFor="provider">Provider</Label>
+                <Select id="provider" value={providerId} onValueChange={setProviderId}>
                   <SelectTrigger><SelectValue placeholder="Select provider" /></SelectTrigger>
                   <SelectContent>
                     {vendors.map((v: any) => (
@@ -338,8 +348,8 @@ export default function InvoicesPage() {
               </div>
 
               <div>
-                <Label>Receive method</Label>
-                <Select value={recvMethod} onValueChange={setRecvMethod}>
+                <Label htmlFor="receive-method">Receive method</Label>
+                <Select id="receive-method" value={recvMethod} onValueChange={setRecvMethod}>
                   <SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger>
                   <SelectContent>
                     {methods.map((m: any) => (
@@ -350,13 +360,13 @@ export default function InvoicesPage() {
               </div>
 
               <div>
-                <Label>Vendor invoice ID</Label>
-                <Input value={invIdent} onChange={(e) => setInvIdent(e.target.value)} placeholder="e.g. INV-12345" />
+                <Label htmlFor="vendor-invoice-id">Vendor invoice ID</Label>
+                <Input id="vendor-invoice-id" value={invIdent} onChange={(e) => setInvIdent(e.target.value)} placeholder="e.g. INV-12345" />
               </div>
 
               <div>
-                <Label>Note (optional)</Label>
-                <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
+                <Label htmlFor="note">Note (optional)</Label>
+                <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
               </div>
             </div>
 
@@ -388,25 +398,25 @@ export default function InvoicesPage() {
                   </CardHeader>
                   <CardContent className="grid gap-3 md:grid-cols-4">
                     <div className="md:col-span-2">
-                      <Label>Purchase order ID</Label>
-                      <Input value={entryPoId} onChange={(e) => setEntryPoId(e.target.value)} placeholder="PO id" />
+                      <Label htmlFor="purchase-order-id">Purchase order ID</Label>
+                      <Input id="purchase-order-id" value={entryPoId} onChange={(e) => setEntryPoId(e.target.value)} placeholder="PO id" />
                     </div>
                     <div>
-                      <Label>Item count</Label>
-                      <Input value={entryCount} onChange={(e) => setEntryCount(e.target.value)} placeholder="1" />
+                      <Label htmlFor="item-count">Item count</Label>
+                      <Input id="item-count" value={entryCount} onChange={(e) => setEntryCount(e.target.value)} placeholder="1" />
                     </div>
                     <div>
-                      <Label>Cost billed (optional)</Label>
-                      <Input value={entryCost} onChange={(e) => setEntryCost(e.target.value)} placeholder="0.00" />
+                      <Label htmlFor="cost-billed">Cost billed (optional)</Label>
+                      <Input id="cost-billed" value={entryCost} onChange={(e) => setEntryCost(e.target.value)} placeholder="0.00" />
                     </div>
                     <div className="md:col-span-4">
-                      <Label>Note (optional)</Label>
-                      <Input value={entryNote} onChange={(e) => setEntryNote(e.target.value)} placeholder="Optional" />
+                      <Label htmlFor="note-2">Note (optional)</Label>
+                      <Input id="note-2" value={entryNote} onChange={(e) => setEntryNote(e.target.value)} placeholder="Optional" />
                     </div>
 
                     <div className="md:col-span-4">
                       <div className="flex items-center justify-between">
-                        <Label className="flex items-center gap-2">
+                        <Label htmlFor="fund-splits" className="flex items-center gap-2">
                           <Split className="h-4 w-4 text-muted-foreground" />
                           Fund splits (optional)
                         </Label>
@@ -430,8 +440,8 @@ export default function InvoicesPage() {
                           {entrySplits.map((s, idx) => (
                             <div key={idx} className="grid gap-2 grid-cols-12 items-end">
                               <div className="col-span-7">
-                                <Label className="text-xs">Fund</Label>
-                                <Select
+                                <Label htmlFor="fund" className="text-xs">Fund</Label>
+                                <Select id="fund"
                                   value={s.fundId}
                                   onValueChange={(v) =>
                                     setEntrySplits((prev) =>
@@ -450,8 +460,8 @@ export default function InvoicesPage() {
                                 </Select>
                               </div>
                               <div className="col-span-4">
-                                <Label className="text-xs">Amount</Label>
-                                <Input
+                                <Label htmlFor="amount" className="text-xs">Amount</Label>
+                                <Input id="amount"
                                   value={s.amount}
                                   onChange={(e) =>
                                     setEntrySplits((prev) =>
@@ -585,8 +595,8 @@ export default function InvoicesPage() {
               {splitEditorSplits.map((s, idx) => (
                 <div key={idx} className="grid gap-2 grid-cols-12 items-end">
                   <div className="col-span-7">
-                    <Label className="text-xs">Fund</Label>
-                    <Select
+                    <Label htmlFor="fund-2" className="text-xs">Fund</Label>
+                    <Select id="fund-2"
                       value={s.fundId}
                       onValueChange={(v) =>
                         setSplitEditorSplits((prev) =>
@@ -605,8 +615,8 @@ export default function InvoicesPage() {
                     </Select>
                   </div>
                   <div className="col-span-4">
-                    <Label className="text-xs">Amount</Label>
-                    <Input
+                    <Label htmlFor="amount-2" className="text-xs">Amount</Label>
+                    <Input id="amount-2"
                       value={s.amount}
                       onChange={(e) =>
                         setSplitEditorSplits((prev) =>
@@ -689,6 +699,13 @@ export default function InvoicesPage() {
           </CardContent>
         </Card>
       </PageContent>
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((s) => ({ ...s, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </PageContainer>
   );
 }

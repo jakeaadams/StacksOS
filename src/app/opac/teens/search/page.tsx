@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTranslations } from "next-intl";
 
 interface SearchResult {
   id: number;
@@ -63,6 +64,7 @@ function transformResults(records: any[]): SearchResult[] {
 }
 
 function TeensSearchContent() {
+  const t = useTranslations("teensSearchPage");
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -169,8 +171,8 @@ function TeensSearchContent() {
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search YA books, graphic novels, manga..."
-              aria-label="Search teen books"
+              placeholder={t("searchPlaceholder")}
+              aria-label={t("searchTeenBooks")}
               className="w-full pl-5 pr-14 py-4 text-lg rounded-full border-2 border-indigo-200 text-foreground placeholder:text-muted-foreground/70 bg-card focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
             />
             <button
@@ -187,10 +189,10 @@ function TeensSearchContent() {
           <div>
             {totalResults > 0 && (
               <p className="text-muted-foreground">
-                Found <span className="font-bold text-indigo-600">{totalResults}</span> books
+                {t("foundBooks", { count: totalResults })}
                 {query && (
                   <>
-                    {` for "`}
+                    {` ${t("forQuery")} "`}
                     <span className="font-medium">{query}</span>
                     {`"`}
                   </>
@@ -201,7 +203,7 @@ function TeensSearchContent() {
 
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Sort:</span>
+              <span className="text-sm text-muted-foreground">{t("sort")}:</span>
               <Select
                 value={sort}
                 onValueChange={(next) => {
@@ -211,8 +213,8 @@ function TeensSearchContent() {
                   });
                 }}
               >
-                <SelectTrigger className="w-[140px]" aria-label="Sort results">
-                  <SelectValue placeholder="Sort by" />
+                <SelectTrigger className="w-[140px]" aria-label={t("sortResults")}>
+                  <SelectValue placeholder={t("sortBy")} />
                 </SelectTrigger>
                 <SelectContent>
                   {SORT_OPTIONS.map((opt) => (
@@ -230,14 +232,14 @@ function TeensSearchContent() {
               className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-colors ${showFilters ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-border text-muted-foreground hover:border-indigo-200"}`}
             >
               <Filter className="h-4 w-4" />
-              <span>Filters</span>
+              <span>{t("filters")}</span>
             </button>
 
             <div className="flex bg-card rounded-xl border-2 border-border overflow-hidden">
               <button
                 type="button"
                 onClick={() => setViewMode("grid")}
-                aria-label="Grid view"
+                aria-label={t("gridView")}
                 className={`p-2 ${viewMode === "grid" ? "bg-indigo-100 text-indigo-700" : "text-muted-foreground"}`}
               >
                 <Grid className="h-5 w-5" />
@@ -245,7 +247,7 @@ function TeensSearchContent() {
               <button
                 type="button"
                 onClick={() => setViewMode("list")}
-                aria-label="List view"
+                aria-label={t("listView")}
                 className={`p-2 ${viewMode === "list" ? "bg-indigo-100 text-indigo-700" : "text-muted-foreground"}`}
               >
                 <LayoutList className="h-5 w-5" />
@@ -259,31 +261,31 @@ function TeensSearchContent() {
           <div className="mt-4 p-4 bg-card rounded-2xl border-2 border-indigo-100 shadow-sm">
             <div className="flex flex-wrap gap-4">
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">Format</label>
+                <label htmlFor="format" className="block text-sm font-medium text-foreground/80 mb-1">{t("format")}</label>
                 <Select
                   value={format || "all"}
                   onValueChange={(val) =>
                     updateSearchParams({ format: val === "all" ? null : val })
                   }
                 >
-                  <SelectTrigger className="w-[160px]" aria-label="Filter by format">
-                    <SelectValue placeholder="All Formats" />
+                  <SelectTrigger className="w-[160px]" aria-label={t("filterByFormat")}>
+                    <SelectValue placeholder={t("allFormats")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Formats</SelectItem>
-                    <SelectItem value="book">Books</SelectItem>
-                    <SelectItem value="ebook">eBooks</SelectItem>
-                    <SelectItem value="audiobook">Audiobooks</SelectItem>
-                    <SelectItem value="dvd">DVDs</SelectItem>
+                    <SelectItem value="all">{t("allFormats")}</SelectItem>
+                    <SelectItem value="book">{t("books")}</SelectItem>
+                    <SelectItem value="ebook">{t("ebooks")}</SelectItem>
+                    <SelectItem value="audiobook">{t("audiobooks")}</SelectItem>
+                    <SelectItem value="dvd">{t("dvds")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                <label htmlFor="availability" className="block text-sm font-medium text-foreground/80 mb-1">
                   Availability
                 </label>
-                <Select
+                <Select id="availability"
                   value={availableOnly ? "available" : "all"}
                   onValueChange={(val) =>
                     updateSearchParams({
@@ -291,12 +293,12 @@ function TeensSearchContent() {
                     })
                   }
                 >
-                  <SelectTrigger className="w-[160px]" aria-label="Filter by availability">
+                  <SelectTrigger className="w-[160px]" aria-label={t("filterByAvailability")}>
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="available">Available Now</SelectItem>
+                    <SelectItem value="all">{t("all")}</SelectItem>
+                    <SelectItem value="available">{t("availableNow")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -316,7 +318,7 @@ function TeensSearchContent() {
       {/* Results */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20">
-          <LoadingSpinner message="Searching..." size="lg" />
+          <LoadingSpinner message={t("searching")} size="lg" />
         </div>
       ) : results.length > 0 ? (
         <>
@@ -345,7 +347,7 @@ function TeensSearchContent() {
                 <ChevronLeft className="h-4 w-4" /> Back
               </button>
               <span className="text-muted-foreground">
-                Page <span className="font-bold text-indigo-600">{page}</span> of {totalPages}
+                {t("pageOf", { page, totalPages })}
               </span>
               <button
                 type="button"
@@ -363,8 +365,8 @@ function TeensSearchContent() {
           <div className="w-20 h-20 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center">
             <Search className="h-10 w-10 text-indigo-300" />
           </div>
-          <h3 className="text-xl font-bold text-foreground mb-2">No Books Found</h3>
-          <p className="text-muted-foreground mb-6">Try searching for something else!</p>
+          <h3 className="text-xl font-bold text-foreground mb-2">{t("noBooksFound")}</h3>
+          <p className="text-muted-foreground mb-6">{t("trySearching")}</p>
           <Link
             href="/opac/teens"
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full font-medium hover:from-purple-700 hover:to-indigo-700"
@@ -377,8 +379,8 @@ function TeensSearchContent() {
           <div className="w-20 h-20 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center">
             <BookOpen className="h-10 w-10 text-indigo-300" />
           </div>
-          <h3 className="text-xl font-bold text-foreground mb-2">Ready to Search?</h3>
-          <p className="text-muted-foreground">Type what you want to find above!</p>
+          <h3 className="text-xl font-bold text-foreground mb-2">{t("readyToSearch")}</h3>
+          <p className="text-muted-foreground">{t("typeToFind")}</p>
         </div>
       )}
     </div>
@@ -386,6 +388,7 @@ function TeensSearchContent() {
 }
 
 function TeensSearchResultCard({ book }: { book: SearchResult }) {
+  const t = useTranslations("teensSearchPage");
   const [imageError, setImageError] = useState(false);
   const isAvailable = book.availableCopies > 0;
 
@@ -410,7 +413,7 @@ function TeensSearchResultCard({ book }: { book: SearchResult }) {
         <div
           className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold shadow-sm ${isAvailable ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}
         >
-          {isAvailable ? "Available" : "On Hold"}
+          {isAvailable ? t("available") : t("onHold")}
         </div>
       </div>
 
@@ -427,6 +430,7 @@ function TeensSearchResultCard({ book }: { book: SearchResult }) {
 }
 
 function TeensSearchResultListItem({ book }: { book: SearchResult }) {
+  const t = useTranslations("teensSearchPage");
   const [imageError, setImageError] = useState(false);
   const isAvailable = book.availableCopies > 0;
 
@@ -462,7 +466,7 @@ function TeensSearchResultListItem({ book }: { book: SearchResult }) {
           <span
             className={`px-2 py-1 rounded-full text-xs font-bold ${isAvailable ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}
           >
-            {isAvailable ? "Available" : "On Hold"}
+            {isAvailable ? t("available") : t("onHold")}
           </span>
           {book.format && (
             <span className="px-2 py-1 bg-muted/50 text-muted-foreground rounded-full text-xs">

@@ -37,6 +37,7 @@ import {
   ArrowRight,
   Medal,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface CategoryItem {
   icon: React.ElementType;
@@ -102,6 +103,7 @@ const browseCategories: CategoryItem[] = [
 ];
 
 export default function KidsHomePage() {
+  const t = useTranslations("kidsPage");
   const { patron, isLoggedIn } = usePatronSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [featuredBooks, setFeaturedBooks] = useState<FeaturedBook[]>([]);

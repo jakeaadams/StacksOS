@@ -73,9 +73,9 @@ const SWAP_PAIRS = [
 function commonSwaps(word: string): Set<string> {
   const results = new Set<string>();
   for (const [from, to] of SWAP_PAIRS) {
-    const idx = word.indexOf(from);
+    const idx = word.indexOf(from!);
     if (idx >= 0) {
-      results.add(word.slice(0, idx) + to + word.slice(idx + from.length));
+      results.add(word.slice(0, idx) + to + word.slice(idx + from!.length));
     }
   }
   // Remove doubled letters
@@ -91,15 +91,15 @@ function generateCandidates(query: string): string[] {
 
   // For single-word queries, generate edits directly
   if (words.length === 1) {
-    const edits = generateEdits(words[0]);
-    const swaps = commonSwaps(words[0]);
+    const edits = generateEdits(words[0]!);
+    const swaps = commonSwaps(words[0]!);
     for (const e of edits) candidates.add(e);
     for (const s of swaps) candidates.add(s);
   } else {
     // For multi-word queries, try editing each word independently
     for (let wi = 0; wi < words.length; wi++) {
-      const edits = generateEdits(words[wi]);
-      const swaps = commonSwaps(words[wi]);
+      const edits = generateEdits(words[wi]!);
+      const swaps = commonSwaps(words[wi]!);
       const allVariations = new Set([...edits, ...swaps]);
 
       for (const variation of allVariations) {

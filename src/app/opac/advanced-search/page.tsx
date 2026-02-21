@@ -14,6 +14,7 @@ import {
   Plus,
   ArrowLeft,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface SearchField {
   id: string;
@@ -22,36 +23,36 @@ interface SearchField {
   operator: "AND" | "OR" | "NOT";
 }
 
-const SEARCH_TYPES = [
-  { value: "keyword", label: "Keyword", icon: Search },
-  { value: "title", label: "Title", icon: BookOpen },
-  { value: "author", label: "Author", icon: User },
-  { value: "subject", label: "Subject", icon: Tag },
-  { value: "series", label: "Series", icon: BookOpen },
-  { value: "isbn", label: "ISBN", icon: Hash },
-];
+function getSEARCH_TYPES(t: (key: string) => string) { return [
+  { value: "keyword", label: t("keyword"), icon: Search },
+  { value: "title", label: t("titleField"), icon: BookOpen },
+  { value: "author", label: t("author"), icon: User },
+  { value: "subject", label: t("subject"), icon: Tag },
+  { value: "series", label: t("series"), icon: BookOpen },
+  { value: "isbn", label: t("isbnField"), icon: Hash },
+]; }
 
-const FORMATS = [
-  { value: "", label: "All Formats" },
-  { value: "book", label: "Books" },
-  { value: "large_print", label: "Large Print" },
-  { value: "ebook", label: "eBooks" },
-  { value: "audiobook", label: "Audiobooks" },
-  { value: "dvd", label: "DVDs" },
-  { value: "bluray", label: "Blu-ray" },
-  { value: "music", label: "Music CDs" },
-  { value: "magazine", label: "Magazines" },
-];
+function getFORMATS(t: (key: string) => string) { return [
+  { value: "", label: t("allFormats") },
+  { value: "book", label: t("books") },
+  { value: "large_print", label: t("largePrint") },
+  { value: "ebook", label: t("eBooks") },
+  { value: "audiobook", label: t("audiobooks") },
+  { value: "dvd", label: t("dvds") },
+  { value: "bluray", label: t("bluray") },
+  { value: "music", label: t("musicCDs") },
+  { value: "magazine", label: t("magazines") },
+]; }
 
-const AUDIENCES = [
-  { value: "", label: "All Audiences" },
-  { value: "adult", label: "Adult" },
-  { value: "young_adult", label: "Young Adult" },
-  { value: "juvenile", label: "Children" },
-];
+function getAUDIENCES(t: (key: string) => string) { return [
+  { value: "", label: t("allAudiences") },
+  { value: "adult", label: t("adult") },
+  { value: "young_adult", label: t("youngAdult") },
+  { value: "juvenile", label: t("children") },
+]; }
 
-const LANGUAGES = [
-  { value: "", label: "All Languages" },
+function getLANGUAGES(t: (key: string) => string) { return [
+  { value: "", label: t("allLanguages") },
   { value: "eng", label: "English" },
   { value: "spa", label: "Spanish" },
   { value: "fre", label: "French" },
@@ -62,9 +63,14 @@ const LANGUAGES = [
   { value: "vie", label: "Vietnamese" },
   { value: "rus", label: "Russian" },
   { value: "ara", label: "Arabic" },
-];
+]; }
 
 export default function AdvancedSearchPage() {
+  const t = useTranslations("advancedSearch");
+  const SEARCH_TYPES = getSEARCH_TYPES(t);
+  const FORMATS = getFORMATS(t);
+  const AUDIENCES = getAUDIENCES(t);
+  const LANGUAGES = getLANGUAGES(t);
   const router = useRouter();
   
   const [searchFields, setSearchFields] = useState<SearchField[]>([
@@ -245,10 +251,10 @@ export default function AdvancedSearchPage() {
             <div className="grid md:grid-cols-2 gap-4">
               {/* Format */}
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                <label htmlFor="format" className="block text-sm font-medium text-foreground/80 mb-1">
                   Format
                 </label>
-                <select
+                <select id="format"
                   value={filters.format}
                   onChange={(e) => setFilters({ ...filters, format: e.target.value })}
                   className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none 
@@ -264,10 +270,10 @@ export default function AdvancedSearchPage() {
 
               {/* Audience */}
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                <label htmlFor="audience" className="block text-sm font-medium text-foreground/80 mb-1">
                   Audience
                 </label>
-                <select
+                <select id="audience"
                   value={filters.audience}
                   onChange={(e) => setFilters({ ...filters, audience: e.target.value })}
                   className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none 
@@ -283,10 +289,10 @@ export default function AdvancedSearchPage() {
 
               {/* Language */}
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                <label htmlFor="language" className="block text-sm font-medium text-foreground/80 mb-1">
                   Language
                 </label>
-                <select
+                <select id="language"
                   value={filters.language}
                   onChange={(e) => setFilters({ ...filters, language: e.target.value })}
                   className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none 
@@ -302,11 +308,11 @@ export default function AdvancedSearchPage() {
 
               {/* Publication Year */}
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                <label htmlFor="publication-year" className="block text-sm font-medium text-foreground/80 mb-1">
                   Publication Year
                 </label>
                 <div className="flex items-center gap-2">
-                  <input
+                  <input id="publication-year"
                     type="number"
                     value={filters.yearFrom}
                     onChange={(e) => setFilters({ ...filters, yearFrom: e.target.value })}
@@ -332,7 +338,7 @@ export default function AdvancedSearchPage() {
             </div>
 
             {/* Available only checkbox */}
-            <label className="flex items-center gap-2 mt-4 cursor-pointer">
+            <label htmlFor="show-only-items-currently-available" className="flex items-center gap-2 mt-4 cursor-pointer">
               <input
                 type="checkbox"
                 checked={filters.availableOnly}

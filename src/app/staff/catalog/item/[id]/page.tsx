@@ -610,16 +610,16 @@ export default function ItemDetailPage() {
               {isEditing ? (
                 <>
                   <div className="space-y-2">
-                    <Label>Barcode</Label>
-                    <Input 
+                    <Label htmlFor="barcode">Barcode</Label>
+                    <Input id="barcode" 
                       value={editBarcode} 
                       onChange={(e) => setEditBarcode(e.target.value)}
                       className="font-mono"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Price</Label>
-                    <Input 
+                    <Label htmlFor="price">Price</Label>
+                    <Input id="price" 
                       type="number"
                       step="0.01"
                       value={editPrice} 
@@ -628,16 +628,16 @@ export default function ItemDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Alert Message</Label>
-                    <Input 
+                    <Label htmlFor="alert-message">Alert Message</Label>
+                    <Input id="alert-message" 
                       value={editAlertMessage} 
                       onChange={(e) => setEditAlertMessage(e.target.value)}
                       placeholder="Optional alert for staff"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Circ Modifier</Label>
-                    <Select value={editCircModifier || "none"} onValueChange={(value) => setEditCircModifier(value === "none" ? "" : value)}>
+                    <Label htmlFor="circ-modifier">Circ Modifier</Label>
+                    <Select id="circ-modifier" value={editCircModifier || "none"} onValueChange={(value) => setEditCircModifier(value === "none" ? "" : value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select circ modifier" />
                       </SelectTrigger>
@@ -653,8 +653,8 @@ export default function ItemDetailPage() {
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>Loan Duration</Label>
-                      <Select value={editLoanDuration} onValueChange={setEditLoanDuration}>
+                      <Label htmlFor="loan-duration">Loan Duration</Label>
+                      <Select id="loan-duration" value={editLoanDuration} onValueChange={setEditLoanDuration}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -666,8 +666,8 @@ export default function ItemDetailPage() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Fine Level</Label>
-                      <Select value={editFineLevel} onValueChange={setEditFineLevel}>
+                      <Label htmlFor="fine-level">Fine Level</Label>
+                      <Select id="fine-level" value={editFineLevel} onValueChange={setEditFineLevel}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -680,8 +680,8 @@ export default function ItemDetailPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Floating Group</Label>
-                    <Select value={editFloatingGroupId} onValueChange={setEditFloatingGroupId}>
+                    <Label htmlFor="floating-group">Floating Group</Label>
+                    <Select id="floating-group" value={editFloatingGroupId} onValueChange={setEditFloatingGroupId}>
                       <SelectTrigger>
                         <SelectValue placeholder="No floating group" />
                       </SelectTrigger>
@@ -700,8 +700,8 @@ export default function ItemDetailPage() {
                       <div className="text-sm font-medium">Copy Stat Categories</div>
                       {copyStatCategories.map((cat) => (
                         <div key={cat.id} className="space-y-2">
-                          <Label>{cat.name}</Label>
-                          <Select
+                          <Label htmlFor="cat-name">{cat.name}</Label>
+                          <Select id="cat-name"
                             value={editStatEntries[cat.id] ? String(editStatEntries[cat.id]) : "none"}
                             onValueChange={(value) => {
                               setEditStatEntries((prev) => {
@@ -739,16 +739,16 @@ export default function ItemDetailPage() {
                   )}
                   <Separator />
                   <div className="flex items-center justify-between">
-                    <Label>Holdable</Label>
-                    <Switch checked={editHoldable} onCheckedChange={setEditHoldable} />
+                    <Label htmlFor="holdable">Holdable</Label>
+                    <Switch id="holdable" checked={editHoldable} onCheckedChange={setEditHoldable} />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>Circulates</Label>
-                    <Switch checked={editCirculate} onCheckedChange={setEditCirculate} />
+                    <Label htmlFor="circulates">Circulates</Label>
+                    <Switch id="circulates" checked={editCirculate} onCheckedChange={setEditCirculate} />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>OPAC Visible</Label>
-                    <Switch checked={editOpacVisible} onCheckedChange={setEditOpacVisible} />
+                    <Label htmlFor="opac-visible">OPAC Visible</Label>
+                    <Switch id="opac-visible" checked={editOpacVisible} onCheckedChange={setEditOpacVisible} />
                   </div>
                 </>
               ) : (

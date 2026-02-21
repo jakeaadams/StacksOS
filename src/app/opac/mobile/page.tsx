@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ArrowLeft, Smartphone, Search, CreditCard, Bell } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function OpacMobilePage() {
+  const t = useTranslations("mobilePage");
   return (
     <div className="min-h-screen bg-muted/30">
       <section className="border-b border-border bg-card py-12">

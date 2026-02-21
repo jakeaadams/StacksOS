@@ -36,8 +36,24 @@ import {
   Hash,
   Loader2,
   ChevronRight,
+  ShoppingCart,
+  Receipt,
+  AlertCircle,
+  Edit3,
+  Share2,
+  KeyRound,
+  Building,
+  Database,
+  Sliders,
+  Moon,
+  Sun,
+  ScanBarcode,
+  Keyboard,
+  FolderOpen,
+  Truck,
 } from "lucide-react";
 import Image from "next/image";
+import { useTheme } from "next-themes";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -109,6 +125,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const [results, setResults] = useState<SearchResults>({ patrons: [], catalog: [], items: [] });
   const debouncedQuery = useDebounce(searchQuery, DEBOUNCE_DELAY_MS);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const { theme, setTheme } = useTheme();
 
   const runCommand = useCallback(
     (command: () => void) => {
@@ -442,6 +459,38 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 <span>Search Catalog</span>
                 <CommandShortcut>F5</CommandShortcut>
               </CommandItem>
+              <CommandItem onSelect={() => {
+                onOpenChange(false);
+                setTimeout(() => {
+                  const el = document.querySelector('[data-barcode-input]') as HTMLInputElement
+                    || document.querySelector('input[name="barcode"]') as HTMLInputElement;
+                  if (el) { el.focus(); el.select(); }
+                }, 100);
+              }}>
+                <ScanBarcode className="mr-2 h-4 w-4 text-violet-600" />
+                <span>Scan Barcode</span>
+              </CommandItem>
+              <CommandItem onSelect={() => {
+                setTheme(theme === "dark" ? "light" : "dark");
+                onOpenChange(false);
+              }}>
+                {theme === "dark" ? (
+                  <Sun className="mr-2 h-4 w-4 text-amber-500" />
+                ) : (
+                  <Moon className="mr-2 h-4 w-4 text-indigo-500" />
+                )}
+                <span>Toggle Dark Mode</span>
+              </CommandItem>
+              <CommandItem onSelect={() => {
+                onOpenChange(false);
+                setTimeout(() => {
+                  document.dispatchEvent(new KeyboardEvent("keydown", { key: "/", metaKey: true, bubbles: true }));
+                }, 100);
+              }}>
+                <Keyboard className="mr-2 h-4 w-4 text-slate-500" />
+                <span>View Keyboard Shortcuts</span>
+                <CommandShortcut>{"\u2318/"}</CommandShortcut>
+              </CommandItem>
             </CommandGroup>
 
             <CommandSeparator />
@@ -454,6 +503,10 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               <CommandItem onSelect={() => runCommand(() => router.push("/staff/circulation/holds-management"))}>
                 <Bookmark className="mr-2 h-4 w-4" />
                 <span>Manage Holds</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/circulation/transits"))}>
+                <Truck className="mr-2 h-4 w-4" />
+                <span>Transits</span>
               </CommandItem>
               <CommandItem onSelect={() => runCommand(() => router.push("/staff/circulation/in-house"))}>
                 <Library className="mr-2 h-4 w-4" />
@@ -472,13 +525,25 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <CommandSeparator />
 
             <CommandGroup heading="Cataloging">
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/catalog"))}>
+                <Search className="mr-2 h-4 w-4" />
+                <span>Search Catalog</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/cataloging/marc-editor"))}>
+                <Edit3 className="mr-2 h-4 w-4" />
+                <span>MARC Editor</span>
+              </CommandItem>
               <CommandItem onSelect={() => runCommand(() => router.push("/staff/catalog/create"))}>
                 <FileText className="mr-2 h-4 w-4" />
                 <span>Create New Record</span>
               </CommandItem>
               <CommandItem onSelect={() => runCommand(() => router.push("/staff/cataloging/z3950"))}>
                 <Globe className="mr-2 h-4 w-4" />
-                <span>Import from Z39.50</span>
+                <span>Import Records (Z39.50)</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/cataloging/authority"))}>
+                <Share2 className="mr-2 h-4 w-4" />
+                <span>Authorities</span>
               </CommandItem>
               <CommandItem onSelect={() => runCommand(() => router.push("/staff/catalog/item-status"))}>
                 <Tag className="mr-2 h-4 w-4" />
@@ -488,14 +553,81 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
             <CommandSeparator />
 
-            <CommandGroup heading="Reports & Admin">
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/reports"))}>
-                <BarChart3 className="mr-2 h-4 w-4" />
-                <span>Reports Dashboard</span>
+            <CommandGroup heading="Patrons">
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/patrons"))}>
+                <Search className="mr-2 h-4 w-4" />
+                <span>Search Patrons</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/patrons/register"))}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                <span>Register Patron</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/patrons/groups"))}>
+                <Users className="mr-2 h-4 w-4" />
+                <span>Patron Groups</span>
+              </CommandItem>
+            </CommandGroup>
+
+            <CommandSeparator />
+
+            <CommandGroup heading="Acquisitions">
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/acquisitions/orders"))}>
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                <span>Purchase Orders</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/acquisitions/invoices"))}>
+                <Receipt className="mr-2 h-4 w-4" />
+                <span>Invoices</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/acquisitions/claims"))}>
+                <AlertCircle className="mr-2 h-4 w-4" />
+                <span>Claims</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/acquisitions/funds"))}>
+                <CreditCard className="mr-2 h-4 w-4" />
+                <span>Funds</span>
+              </CommandItem>
+            </CommandGroup>
+
+            <CommandSeparator />
+
+            <CommandGroup heading="Admin">
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/admin/settings"))}>
+                <Sliders className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/admin/users"))}>
+                <Users className="mr-2 h-4 w-4" />
+                <span>Users</span>
               </CommandItem>
               <CommandItem onSelect={() => runCommand(() => router.push("/staff/admin"))}>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Administration</span>
+                <Building className="mr-2 h-4 w-4" />
+                <span>Locations</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/admin/permissions"))}>
+                <KeyRound className="mr-2 h-4 w-4" />
+                <span>Permissions</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/admin/policy-inspector"))}>
+                <Database className="mr-2 h-4 w-4" />
+                <span>Org Units</span>
+              </CommandItem>
+            </CommandGroup>
+
+            <CommandSeparator />
+
+            <CommandGroup heading="Reports">
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/reports"))}>
+                <BarChart3 className="mr-2 h-4 w-4" />
+                <span>Run Reports</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/reports/my-reports"))}>
+                <FolderOpen className="mr-2 h-4 w-4" />
+                <span>Saved Reports</span>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => router.push("/staff/reports/templates"))}>
+                <FileText className="mr-2 h-4 w-4" />
+                <span>Report Templates</span>
               </CommandItem>
             </CommandGroup>
           </>

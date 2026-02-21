@@ -12,8 +12,10 @@ import {
   Calendar,
   Receipt,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function FinesPage() {
+  const t = useTranslations("finesPage");
   const router = useRouter();
   const { 
     isLoggedIn, 

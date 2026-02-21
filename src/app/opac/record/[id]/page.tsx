@@ -32,6 +32,7 @@ import {
   Check,
   Heart,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface CopyInfo {
   id: number;
@@ -119,6 +120,7 @@ const formatIcons: Record<string, React.ElementType> = {
 };
 
 export default function RecordDetailPage() {
+  const t = useTranslations("recordPage");
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -183,9 +185,9 @@ export default function RecordDetailPage() {
 
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error("Record not found");
+          throw new Error(t("recordNotFound"));
         }
-        throw new Error("Failed to load record details");
+        throw new Error(t("errorLoading"));
       }
 
       const data = await response.json();
@@ -299,7 +301,7 @@ export default function RecordDetailPage() {
         pickupLocations.some((l) => l.id === patron.defaultPickupLocation)
           ? patron.defaultPickupLocation
           : null) ??
-        pickupLocations[0].id;
+        pickupLocations[0]!.id;
 
       setSelectedPickupLocation(preferred);
     }
@@ -403,7 +405,7 @@ export default function RecordDetailPage() {
         <div className="text-center">
           <AlertCircle className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-foreground mb-2">
-            {error || "Record not found"}
+            {error || t("recordNotFound")}
           </h2>
           <Link href="/opac" className="text-primary-600 hover:text-primary-700 font-medium">
             Return to catalog
@@ -551,7 +553,7 @@ export default function RecordDetailPage() {
             {/* Reading level info */}
             {(record.lexileLevel || record.arLevel) && (
               <div className="mt-4 bg-card rounded-xl shadow-sm border border-border p-4">
-                <h3 className="font-semibold text-foreground mb-3">Reading Level</h3>
+                <h3 className="font-semibold text-foreground mb-3">{t("readingLevel")}</h3>
                 <div className="space-y-2">
                   {record.lexileLevel && (
                     <div className="flex justify-between">
@@ -616,7 +618,7 @@ export default function RecordDetailPage() {
                   <div className="flex items-start gap-2">
                     <Building className="h-4 w-4 text-muted-foreground/70 mt-0.5" />
                     <div>
-                      <span className="text-muted-foreground">Publisher</span>
+                      <span className="text-muted-foreground">{t("publisher")}</span>
                       <p className="text-foreground">{record.publisher}</p>
                     </div>
                   </div>
@@ -625,7 +627,7 @@ export default function RecordDetailPage() {
                   <div className="flex items-start gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground/70 mt-0.5" />
                     <div>
-                      <span className="text-muted-foreground">Publication Date</span>
+                      <span className="text-muted-foreground">{t("publicationDate")}</span>
                       <p className="text-foreground">{record.publicationDate}</p>
                     </div>
                   </div>
@@ -634,7 +636,7 @@ export default function RecordDetailPage() {
                   <div className="flex items-start gap-2">
                     <BookOpen className="h-4 w-4 text-muted-foreground/70 mt-0.5" />
                     <div>
-                      <span className="text-muted-foreground">ISBN</span>
+                      <span className="text-muted-foreground">{t("isbn")}</span>
                       <p className="text-foreground">{record.isbn}</p>
                     </div>
                   </div>
@@ -681,7 +683,7 @@ export default function RecordDetailPage() {
             {/* Subjects */}
             {record.subjects && record.subjects.length > 0 && (
               <div className="bg-card rounded-xl shadow-sm border border-border p-6">
-                <h2 className="text-lg font-semibold text-foreground mb-3">Subjects</h2>
+                <h2 className="text-lg font-semibold text-foreground mb-3">{t("subjects")}</h2>
                 <div className="flex flex-wrap gap-2">
                   {record.subjects.map((subject, i) => (
                     <Link
@@ -707,11 +709,11 @@ export default function RecordDetailPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="text-left py-2 font-medium text-muted-foreground">Location</th>
-                      <th className="text-left py-2 font-medium text-muted-foreground">
+                      <th scope="col" className="text-left py-2 font-medium text-muted-foreground">{t("location")}</th>
+                      <th scope="col" className="text-left py-2 font-medium text-muted-foreground">
                         Call Number
                       </th>
-                      <th className="text-left py-2 font-medium text-muted-foreground">Status</th>
+                      <th scope="col" className="text-left py-2 font-medium text-muted-foreground">{t("status")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -836,10 +838,10 @@ export default function RecordDetailPage() {
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-medium text-foreground/80 mb-2">
+              <label htmlFor="pickup-location" className="block text-sm font-medium text-foreground/80 mb-2">
                 Pickup Location
               </label>
-              <select
+              <select id="pickup-location"
                 value={selectedPickupLocation || ""}
                 onChange={(e) => setSelectedPickupLocation(parseInt(e.target.value))}
                 className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none 

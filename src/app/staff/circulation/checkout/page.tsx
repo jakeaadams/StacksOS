@@ -145,7 +145,7 @@ function buildReceiptHtml(params: {
     "</div>",
     "<h2>Items</h2>",
     "<table>",
-    "<thead><tr><th>Barcode</th><th>Title</th><th>Call #</th><th>Due</th><th class=\"right\">Status</th></tr></thead>",
+    `<thead><tr><th scope="col">Barcode</th><th scope="col">Title</th><th scope="col">Call #</th><th scope="col">Due</th><th scope="col" class="right">Status</th></tr></thead>`,
     `<tbody>${rows || "<tr><td colspan=\"5\" class=\"muted\">No items.</td></tr>"}</tbody>`,
     "</table>",
     "<div class=\"muted\" style=\"margin-top:16px\">Questions? Ask your library staff.</div>",

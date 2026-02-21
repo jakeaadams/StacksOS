@@ -24,6 +24,7 @@ import {
   Smartphone,
   MonitorPlay,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 const formatIcons: Record<string, React.ElementType> = {
   book: BookOpen,
@@ -33,6 +34,7 @@ const formatIcons: Record<string, React.ElementType> = {
 };
 
 export default function HoldsPage() {
+  const t = useTranslations("holdsPage");
   const router = useRouter();
   const { library } = useLibrary();
   const { 
@@ -320,10 +322,10 @@ export default function HoldsPage() {
               {pickupHold.title}
             </p>
 
-            <label className="block text-sm font-medium text-foreground/80 mb-2">
+            <label htmlFor="new-pickup-location" className="block text-sm font-medium text-foreground/80 mb-2">
               New pickup location
             </label>
-            <select
+            <select id="new-pickup-location"
               value={pickupLocationId || ""}
               onChange={(e) => setPickupLocationId(parseInt(e.target.value, 10) || null)}
               className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -377,6 +379,7 @@ function HoldCard({
   onChangePickup?: () => void;
   isLoading: boolean;
 }) {
+  const t = useTranslations("holdsPage");
   const Icon = formatIcons[hold.format] || BookOpen;
 
   const statusColors: Record<string, string> = {
@@ -387,10 +390,10 @@ function HoldCard({
   };
 
   const statusLabels: Record<string, string> = {
-    ready: "Ready for Pickup",
-    in_transit: "In Transit",
+    ready: t("readyForPickup"),
+    in_transit: t("inTransit"),
     pending: "Waiting",
-    suspended: "Suspended",
+    suspended: t("suspended"),
   };
 
   return (

@@ -23,6 +23,7 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface ListItem {
   id: number | string;
@@ -55,6 +56,7 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 export default function MyListsPage() {
+  const t = useTranslations("listsPage");
   const router = useRouter();
   const { isLoggedIn, isLoading: sessionLoading } = usePatronSession();
   const enabled = featureFlags.opacLists;
@@ -130,7 +132,7 @@ export default function MyListsPage() {
 
   useEffect(() => {
     if (lists.length > 0 && !selectedList) {
-      void selectList(lists[0]);
+      void selectList(lists[0]!);
     }
   }, [lists, selectedList, selectList]);
 
@@ -399,7 +401,7 @@ export default function MyListsPage() {
                   })}
                   {lists.length === 0 && (
                     <div className="p-6 text-center text-muted-foreground">
-                      No lists yet
+                      {t("noLists")}
                     </div>
                   )}
                 </div>
@@ -592,10 +594,10 @@ export default function MyListsPage() {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label htmlFor="list-name" className="block text-sm font-medium text-foreground/80 mb-2">
                   List Name *
                 </label>
-                <input
+                <input id="list-name"
                   type="text"
                   value={newListName}
                   onChange={(e) => setNewListName(e.target.value)}
@@ -606,10 +608,10 @@ export default function MyListsPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label htmlFor="description" className="block text-sm font-medium text-foreground/80 mb-2">
                   Description
                 </label>
-                <textarea
+                <textarea id="description"
                   value={newListDescription}
                   onChange={(e) => setNewListDescription(e.target.value)}
                   placeholder="What is this list for?"
@@ -620,12 +622,12 @@ export default function MyListsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label htmlFor="visibility" className="block text-sm font-medium text-foreground/80 mb-2">
                   Visibility
                 </label>
                 <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
+                  <label htmlFor="private" className="flex items-center gap-2 cursor-pointer">
+         id="visibility"            <input
                       type="radio"
                       name="visibility"
                       value="private"
@@ -636,8 +638,8 @@ export default function MyListsPage() {
                     <Lock className="h-4 w-4 text-muted-foreground" />
                     Private
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
+                  <label htmlFor="public" className="flex items-center gap-2 cursor-pointer">
+          id="private"           <input
                       type="radio"
                       name="visibility"
                       value="public"
@@ -672,7 +674,7 @@ export default function MyListsPage() {
                 {actionLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  "Create List"
+                  t("createList")
                 )}
               </button>
             </div>
@@ -688,10 +690,10 @@ export default function MyListsPage() {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label htmlFor="list-name-2" className="block text-sm font-medium text-foreground/80 mb-2">
                   List Name *
                 </label>
-                <input
+                <input id="list-name-2"
                   type="text"
                   value={newListName}
                   onChange={(e) => setNewListName(e.target.value)}
@@ -701,10 +703,10 @@ export default function MyListsPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label htmlFor="description-2" className="block text-sm font-medium text-foreground/80 mb-2">
                   Description
                 </label>
-                <textarea
+                <textarea id="description-2"
                   value={newListDescription}
                   onChange={(e) => setNewListDescription(e.target.value)}
                   rows={3}
@@ -714,12 +716,12 @@ export default function MyListsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label htmlFor="visibility-2" className="block text-sm font-medium text-foreground/80 mb-2">
                   Visibility
                 </label>
                 <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
+                  <label htmlFor="private-2" className="flex items-center gap-2 cursor-pointer">
+       id="visibility-2"              <input
                       type="radio"
                       name="edit-visibility"
                       value="private"
@@ -730,8 +732,8 @@ export default function MyListsPage() {
                     <Lock className="h-4 w-4 text-muted-foreground" />
                     Private
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
+                  <label htmlFor="public-2" className="flex items-center gap-2 cursor-pointer">
+        id="private-2"             <input
                       type="radio"
                       name="edit-visibility"
                       value="public"

@@ -17,8 +17,10 @@ import {
   Sparkles,
   Star,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function KidsCheckoutsPage() {
+  const t = useTranslations("kidsCheckoutsPage");
   const router = useRouter();
   const gate = useKidsParentGate();
   const {
@@ -51,9 +53,9 @@ export default function KidsCheckoutsPage() {
   const currentItems = useMemo(() => checkouts.filter((c) => !c.isOverdue), [checkouts]);
 
   const handleRenew = async (checkoutId: number) => {
-    const ok = await gate.requestUnlock({ reason: "Renew a checked out item" });
+    const ok = await gate.requestUnlock({ reason: t("renewReason") });
     if (!ok) {
-      setMessage({ type: "error", text: "Parent/guardian PIN required." });
+      setMessage({ type: "error", text: t("parentPinRequired") });
       setTimeout(() => setMessage(null), 4000);
       return;
     }
@@ -68,9 +70,9 @@ export default function KidsCheckoutsPage() {
   };
 
   const handleRenewAll = async () => {
-    const ok = await gate.requestUnlock({ reason: "Renew all checked out items" });
+    const ok = await gate.requestUnlock({ reason: t("renewAllReason") });
     if (!ok) {
-      setMessage({ type: "error", text: "Parent/guardian PIN required." });
+      setMessage({ type: "error", text: t("parentPinRequired") });
       setTimeout(() => setMessage(null), 4000);
       return;
     }
@@ -82,7 +84,7 @@ export default function KidsCheckoutsPage() {
     setMessage({
       type: result.success ? "success" : "error",
       text: result.success
-        ? `Renewed ${result.renewed} item${result.renewed === 1 ? "" : "s"}!`
+        ? t("renewedItems", { count: result.renewed })
         : `Renewed ${result.renewed}, couldn’t renew ${result.failed}.`,
     });
     setRenewAllLoading(false);
@@ -128,8 +130,8 @@ export default function KidsCheckoutsPage() {
           <ChevronLeft className="h-6 w-6" />
         </button>
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-foreground truncate">Checked Out Books</h1>
-          <p className="text-sm text-muted-foreground">{checkouts.length} book{checkouts.length === 1 ? "" : "s"}</p>
+          <h1 className="text-2xl font-bold text-foreground truncate">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("booksCount", { count: checkouts.length })}</p>
         </div>
         {checkouts.length > 0 ? (
           <button
@@ -170,7 +172,7 @@ export default function KidsCheckoutsPage() {
           <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100">
             <BookOpen className="h-7 w-7 text-purple-600" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">No books checked out</h2>
+          <h2 className="text-xl font-bold text-foreground">{t("noCheckouts")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">Let’s find something awesome to read!</p>
           <div className="mt-6 flex items-center justify-center gap-3">
             <Link
@@ -194,7 +196,7 @@ export default function KidsCheckoutsPage() {
             <section>
               <h2 className="text-lg font-bold text-red-700 mb-3 flex items-center gap-2">
                 <AlertCircle className="h-5 w-5" />
-                Overdue ({overdueItems.length})
+                {t("overdue", { count: overdueItems.length })}
               </h2>
               <div className="space-y-3">
                 {overdueItems.map((checkout) => (
@@ -213,7 +215,7 @@ export default function KidsCheckoutsPage() {
           {currentItems.length > 0 ? (
             <section>
               {overdueItems.length > 0 ? (
-                <h2 className="text-lg font-bold text-foreground/80 mb-3">Not overdue ({currentItems.length})</h2>
+                <h2 className="text-lg font-bold text-foreground/80 mb-3">{t("notOverdue", { count: currentItems.length })}</h2>
               ) : null}
               <div className="space-y-3">
                 {currentItems.map((checkout) => (
@@ -245,14 +247,15 @@ function KidsCheckoutCard({
   onLogReading: () => void;
   isRenewing: boolean;
 }) {
+  const t = useTranslations("kidsCheckoutsPage");
   const canRenew = checkout.renewalsRemaining === null ? true : checkout.renewalsRemaining > 0;
   const dueDate = formatMaybeDate(checkout.dueDate);
   const renewalsLabel =
     typeof checkout.renewalsRemaining === "number"
       ? checkout.renewalsRemaining === 0
-        ? "No renewals left"
-        : `${checkout.renewalsRemaining} renewal${checkout.renewalsRemaining === 1 ? "" : "s"} left`
-      : "Renewals unknown";
+        ? t("noRenewalsLeft")
+        : t("renewalsLeft", { count: checkout.renewalsRemaining })
+      : t("renewalsUnknown");
 
   return (
     <div
@@ -286,7 +289,7 @@ function KidsCheckoutCard({
 
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
             <span className={`font-medium ${checkout.isOverdue ? "text-red-700" : "text-muted-foreground"}`}>
-              {checkout.isOverdue ? `Overdue — ${dueDate}` : `Due ${dueDate}`}
+              {checkout.isOverdue ? t("overdueDate", { date: dueDate }) : t("dueDate", { date: dueDate })}
             </span>
             <span className="text-muted-foreground/60">•</span>
             <span className="text-muted-foreground">{renewalsLabel}</span>

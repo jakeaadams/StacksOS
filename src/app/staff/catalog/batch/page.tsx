@@ -312,7 +312,7 @@ export default function MarcBatchEditPage() {
   const [subfieldValue, setSubfieldValue] = useState("");
 
   const operation = BATCH_OPERATIONS.find((op) => op.id === selectedOp) || BATCH_OPERATIONS[0];
-  const isWriteOperation = operation.mode === "write";
+  const isWriteOperation = operation!.mode === "write";
 
   if (!enabled) {
     return (
@@ -593,7 +593,7 @@ export default function MarcBatchEditPage() {
                 </Select>
 
                 <div className="rounded-lg bg-muted/30 p-3 text-sm text-muted-foreground">
-                  {operation.description}
+                  {operation!.description}
                 </div>
 
                 {isWriteOperation && (
@@ -604,8 +604,8 @@ export default function MarcBatchEditPage() {
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>Tag</Label>
-                        <Input
+                        <Label htmlFor="tag">Tag</Label>
+                        <Input id="tag"
                           value={targetTag}
                           onChange={(e) => setTargetTag(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
                           placeholder="650"
@@ -616,8 +616,8 @@ export default function MarcBatchEditPage() {
                       {selectedOp === "add_field" && Number.parseInt(targetTag || "0", 10) >= 10 ? (
                         <>
                           <div className="space-y-2">
-                            <Label>Indicator 1</Label>
-                            <Input
+                            <Label htmlFor="indicator-1">Indicator 1</Label>
+                            <Input id="indicator-1"
                               value={ind1}
                               onChange={(e) => setInd1((e.target.value || " ").slice(0, 1))}
                               maxLength={1}
@@ -626,8 +626,8 @@ export default function MarcBatchEditPage() {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>Indicator 2</Label>
-                            <Input
+                            <Label htmlFor="indicator-2">Indicator 2</Label>
+                            <Input id="indicator-2"
                               value={ind2}
                               onChange={(e) => setInd2((e.target.value || " ").slice(0, 1))}
                               maxLength={1}
@@ -641,8 +641,8 @@ export default function MarcBatchEditPage() {
                       {(selectedOp === "add_field" && Number.parseInt(targetTag || "0", 10) >= 10) ||
                       selectedOp === "replace_subfield" ? (
                         <div className="space-y-2">
-                          <Label>Subfield Code</Label>
-                          <Input
+                          <Label htmlFor="subfield-code">Subfield Code</Label>
+                          <Input id="subfield-code"
                             value={subfieldCode}
                             onChange={(e) => setSubfieldCode(e.target.value.replace(/[^a-z0-9]/gi, "").slice(0, 1))}
                             maxLength={1}
@@ -655,8 +655,8 @@ export default function MarcBatchEditPage() {
 
                     {selectedOp === "add_field" ? (
                       <div className="space-y-2">
-                        <Label>{Number.parseInt(targetTag || "0", 10) < 10 ? "Control Field Value" : "Subfield Value"}</Label>
-                        <Input
+                        <Label htmlFor="number-parseint-targettag-0-10">{Number.parseInt(targetTag || "0", 10) < 10 ? "Control Field Value" : "Subfield Value"}</Label>
+                        <Input id="number-parseint-targettag-0-10"
                           value={subfieldValue}
                           onChange={(e) => setSubfieldValue(e.target.value)}
                           placeholder={Number.parseInt(targetTag || "0", 10) < 10 ? "Control value" : "Subfield value"}
@@ -666,8 +666,8 @@ export default function MarcBatchEditPage() {
 
                     {selectedOp === "replace_subfield" ? (
                       <div className="space-y-2">
-                        <Label>Replacement Value</Label>
-                        <Input
+                        <Label htmlFor="replacement-value">Replacement Value</Label>
+                        <Input id="replacement-value"
                           value={subfieldValue}
                           onChange={(e) => setSubfieldValue(e.target.value)}
                           placeholder="New subfield value"

@@ -21,6 +21,7 @@ import {
   Sparkles,
   Gift,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface RecentBook {
   id: number;
@@ -32,6 +33,7 @@ interface RecentBook {
 }
 
 export default function KidsAccountPage() {
+  const t = useTranslations("kidsAccountPage");
   const router = useRouter();
   const { patron, isLoggedIn, checkouts, holds, fetchCheckouts, fetchHolds } = usePatronSession();
   const [recentBooks, setRecentBooks] = useState<RecentBook[]>([]);
@@ -145,8 +147,8 @@ export default function KidsAccountPage() {
             {patron?.firstName?.[0] || "🌟"}
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Hi {patron?.firstName}!</h1>
-            <p className="text-white/90">Here is what is happening with your reading!</p>
+            <h1 className="text-2xl font-bold">{t("hi", { name: patron?.firstName ?? "" })}</h1>
+            <p className="text-white/90">{t("whatsHappening")}</p>
           </div>
         </div>
 
@@ -157,21 +159,21 @@ export default function KidsAccountPage() {
               <Flame className="h-5 w-5 text-orange-300" />
               <span className="text-2xl font-bold">{safeStats.currentStreak}</span>
             </div>
-            <p className="text-xs text-white/80">Day Streak</p>
+            <p className="text-xs text-white/80">{t("dayStreak")}</p>
           </div>
           <div className="bg-card/10 rounded-2xl p-3 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <BookOpen className="h-5 w-5 text-blue-300" />
               <span className="text-2xl font-bold">{safeStats.booksThisMonth}</span>
             </div>
-            <p className="text-xs text-white/80">Books This Month</p>
+            <p className="text-xs text-white/80">{t("booksThisMonth")}</p>
           </div>
           <div className="bg-card/10 rounded-2xl p-3 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Trophy className="h-5 w-5 text-yellow-300" />
               <span className="text-2xl font-bold">{safeStats.totalBadges}</span>
             </div>
-            <p className="text-xs text-white/80">Badges</p>
+            <p className="text-xs text-white/80">{t("badges")}</p>
           </div>
         </div>
       </div>
@@ -186,9 +188,9 @@ export default function KidsAccountPage() {
               </div>
               <div className="flex-1">
                 <p className="font-medium text-red-700">
-                  {overdueCount} book{overdueCount > 1 ? "s" : ""} overdue!
+                  {t("booksOverdue", { count: overdueCount })}
                 </p>
-                <p className="text-sm text-red-600">Please return them soon</p>
+                <p className="text-sm text-red-600">{t("returnSoon")}</p>
               </div>
               <Link
                 href="/opac/kids/account/checkouts"
@@ -206,9 +208,9 @@ export default function KidsAccountPage() {
               </div>
               <div className="flex-1">
                 <p className="font-medium text-green-700">
-                  {readyHoldsCount} book{readyHoldsCount > 1 ? "s" : ""} ready to pick up!
+                  {t("booksReady", { count: readyHoldsCount })}
                 </p>
-                <p className="text-sm text-green-600">Go get them at the library</p>
+                <p className="text-sm text-green-600">{t("goGetThem")}</p>
               </div>
               <Link
                 href="/opac/kids/account/holds"
@@ -232,8 +234,8 @@ export default function KidsAccountPage() {
             <BookOpen className="h-6 w-6 text-green-600" />
           </div>
           <div>
-            <p className="font-bold text-green-800">Log Reading</p>
-            <p className="text-sm text-green-600">Record what you read</p>
+            <p className="font-bold text-green-800">{t("logReading")}</p>
+            <p className="text-sm text-green-600">{t("recordReading")}</p>
           </div>
         </Link>
 
@@ -246,8 +248,8 @@ export default function KidsAccountPage() {
             <Trophy className="h-6 w-6 text-purple-600" />
           </div>
           <div>
-            <p className="font-bold text-purple-800">Challenges</p>
-            <p className="text-sm text-purple-600">Earn badges and prizes</p>
+            <p className="font-bold text-purple-800">{t("challenges")}</p>
+            <p className="text-sm text-purple-600">{t("earnBadges")}</p>
           </div>
         </Link>
       </div>
@@ -277,7 +279,7 @@ export default function KidsAccountPage() {
         ) : (
           <div className="text-center py-8 bg-card rounded-2xl">
             <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
-            <p className="text-muted-foreground mb-4">No books checked out yet!</p>
+            <p className="text-muted-foreground mb-4">{t("noBooksYet")}</p>
             <Link
               href="/opac/kids"
               className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 
@@ -292,32 +294,32 @@ export default function KidsAccountPage() {
 
       {/* Menu items */}
       <section>
-        <h2 className="text-lg font-bold text-foreground mb-4">My Stuff</h2>
+        <h2 className="text-lg font-bold text-foreground mb-4">{t("myStuff")}</h2>
         <div className="bg-card rounded-2xl shadow-sm overflow-hidden divide-y divide-border/50">
           <MenuLink
             href="/opac/kids/account/checkouts"
             icon={BookOpen}
-            label="Checked Out Books"
+            label={t("checkedOutBooks")}
             count={checkouts?.length || 0}
             color="text-blue-500"
           />
           <MenuLink
             href="/opac/kids/account/holds"
             icon={Clock}
-            label="Books on Hold"
+            label={t("booksOnHold")}
             count={holds?.length || 0}
             color="text-orange-500"
           />
           <MenuLink
             href="/opac/kids/account/reading-log"
             icon={CalendarDays}
-            label="Reading Log"
+            label={t("readingLog")}
             color="text-green-500"
           />
           <MenuLink
             href="/opac/kids/challenges"
             icon={Star}
-            label="Badges & Achievements"
+            label={t("badgesAchievements")}
             color="text-yellow-500"
           />
         </div>

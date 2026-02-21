@@ -406,7 +406,7 @@ export default function StaffDashboard() {
 
     const next = [...ordered];
     const [moved] = next.splice(index, 1);
-    next.splice(targetIndex, 0, moved);
+    next.splice(targetIndex, 0, moved!);
     reorderWidgets(next);
   };
 

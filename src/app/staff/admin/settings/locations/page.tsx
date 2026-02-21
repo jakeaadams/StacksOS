@@ -134,7 +134,7 @@ export default function CopyLocationsPage() {
 
   useEffect(() => {
     if (!formData.owningLib && orgs.length > 0) {
-      setFormData((prev) => ({ ...prev, owningLib: orgs[0].id }));
+      setFormData((prev) => ({ ...prev, owningLib: orgs[0]!.id }));
     }
   }, [orgs, formData.owningLib]);
 
@@ -142,7 +142,7 @@ export default function CopyLocationsPage() {
     setEditingLocation(null);
     setFormData({
       ...DEFAULT_FORM_DATA,
-      owningLib: orgs.length > 0 ? orgs[0].id : null,
+      owningLib: orgs.length > 0 ? orgs[0]!.id : null,
     });
     setIsFormOpen(true);
   };
@@ -623,10 +623,10 @@ export default function CopyLocationsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
-                  <Label className="text-sm">OPAC Visible</Label>
+                  <Label htmlFor="opac-visible" className="text-sm">OPAC Visible</Label>
                   <p className="text-xs text-muted-foreground">Show in public catalog</p>
                 </div>
-                <Switch
+                <Switch id="opac-visible"
                   checked={formData.opacVisible}
                   onCheckedChange={(checked) =>
                     setFormData((prev) => ({ ...prev, opacVisible: checked }))
@@ -636,10 +636,10 @@ export default function CopyLocationsPage() {
 
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
-                  <Label className="text-sm">Holdable</Label>
+                  <Label htmlFor="holdable" className="text-sm">Holdable</Label>
                   <p className="text-xs text-muted-foreground">Allow holds on items</p>
                 </div>
-                <Switch
+                <Switch id="holdable"
                   checked={formData.holdable}
                   onCheckedChange={(checked) =>
                     setFormData((prev) => ({ ...prev, holdable: checked }))
@@ -649,10 +649,10 @@ export default function CopyLocationsPage() {
 
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
-                  <Label className="text-sm">Circulates</Label>
+                  <Label htmlFor="circulates" className="text-sm">Circulates</Label>
                   <p className="text-xs text-muted-foreground">Items can be checked out</p>
                 </div>
-                <Switch
+                <Switch id="circulates"
                   checked={formData.circulate}
                   onCheckedChange={(checked) =>
                     setFormData((prev) => ({ ...prev, circulate: checked }))
@@ -662,10 +662,10 @@ export default function CopyLocationsPage() {
 
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
-                  <Label className="text-sm">Check-in Alert</Label>
+                  <Label htmlFor="check-in-alert" className="text-sm">Check-in Alert</Label>
                   <p className="text-xs text-muted-foreground">Alert on check-in</p>
                 </div>
-                <Switch
+                <Switch id="check-in-alert"
                   checked={formData.checkInAlert}
                   onCheckedChange={(checked) =>
                     setFormData((prev) => ({ ...prev, checkInAlert: checked }))
@@ -676,10 +676,10 @@ export default function CopyLocationsPage() {
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
-                <Label className="text-sm">Hold Verify</Label>
+                <Label htmlFor="hold-verify" className="text-sm">Hold Verify</Label>
                 <p className="text-xs text-muted-foreground">Require verification for holds</p>
               </div>
-              <Switch
+              <Switch id="hold-verify"
                 checked={formData.holdVerify}
                 onCheckedChange={(checked) =>
                   setFormData((prev) => ({ ...prev, holdVerify: checked }))

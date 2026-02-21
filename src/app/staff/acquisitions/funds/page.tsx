@@ -130,13 +130,13 @@ export default function FundsPage() {
 
   useEffect(() => {
     if (!formData.org && orgs.length > 0) {
-      setFormData((prev) => ({ ...prev, org: orgs[0].id }));
+      setFormData((prev) => ({ ...prev, org: orgs[0]!.id }));
     }
   }, [orgs, formData.org]);
 
   const handleOpenCreate = () => {
     setEditingFund(null);
-    setFormData({ ...DEFAULT_FORM_DATA, org: orgs.length > 0 ? orgs[0].id : null });
+    setFormData({ ...DEFAULT_FORM_DATA, org: orgs.length > 0 ? orgs[0]!.id : null });
     setIsFormOpen(true);
   };
 
@@ -491,17 +491,17 @@ export default function FundsPage() {
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
-                <Label className="text-sm">Rollover</Label>
+                <Label htmlFor="rollover" className="text-sm">Rollover</Label>
                 <p className="text-xs text-muted-foreground">Carry unused balance to next year</p>
               </div>
-              <Switch checked={formData.rollover} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, rollover: checked }))} />
+              <Switch id="rollover" checked={formData.rollover} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, rollover: checked }))} />
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
-                <Label className="text-sm">Propagate</Label>
+                <Label htmlFor="propagate" className="text-sm">Propagate</Label>
                 <p className="text-xs text-muted-foreground">Apply to descendant org units</p>
               </div>
-              <Switch checked={formData.propagate} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, propagate: checked }))} />
+              <Switch id="propagate" checked={formData.propagate} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, propagate: checked }))} />
             </div>
           </div>
           <DialogFooter>

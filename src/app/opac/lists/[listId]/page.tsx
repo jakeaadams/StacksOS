@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { featureFlags } from "@/lib/feature-flags";
 import { ArrowLeft, Library, Loader2, Share2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 type PublicListDetail = {
   list: {
@@ -30,6 +31,7 @@ type PublicListDetail = {
 };
 
 export default function PublicListPage() {
+  const t = useTranslations("sharedList");
   const params = useParams<{ listId: string }>();
   const listId = params.listId;
   const enabled = featureFlags.opacBrowseV2;
@@ -57,7 +59,7 @@ export default function PublicListPage() {
       if (cancelled) return;
 
       if (!res.ok || (json as any)?.ok === false) {
-        setError((json as any)?.error || "List not found");
+        setError((json as any)?.error || t("listNotFound"));
         setData(null);
         setIsLoading(false);
         return;

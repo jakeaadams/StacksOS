@@ -20,7 +20,7 @@ interface RecommendationCluster {
 export function RecommendedForYou({ isLoggedIn }: RecommendedForYouProps) {
   const [recommendations, setRecommendations] = useState<RecommendationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPersonalized, setIsPersonalized] = useState(false);
+  const [_isPersonalized, setIsPersonalized] = useState(false);
   const [disabledReason, setDisabledReason] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 

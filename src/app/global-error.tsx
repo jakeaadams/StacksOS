@@ -63,7 +63,7 @@ export default function GlobalError({
               <p
                 style={{
                   fontSize: "0.75rem",
-                  color: "#999",
+                  color: "#666",
                   fontFamily: "monospace",
                   marginBottom: "1.5rem",
                 }}

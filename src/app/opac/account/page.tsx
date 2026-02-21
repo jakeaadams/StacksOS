@@ -26,6 +26,7 @@ import {
   Phone,
 	  CreditCard,
 	} from "lucide-react";
+import { useTranslations } from "next-intl";
 
 type QuickStatCardProps = {
   title: string;
@@ -70,6 +71,7 @@ function QuickStatCard({
 }
 
 export default function AccountDashboard() {
+  const t = useTranslations("accountDashboard");
   const router = useRouter();
   const { 
     patron, 
@@ -187,7 +189,7 @@ export default function AccountDashboard() {
         {/* Quick stats */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <QuickStatCard
-            title="Items Checked Out"
+            title={t("itemsCheckedOut")}
             value={checkouts.length}
             icon={BookOpen}
             href="/opac/account/checkouts"
@@ -211,7 +213,7 @@ export default function AccountDashboard() {
           />
           {featureFlags.opacLists ? (
             <QuickStatCard
-              title="Saved Lists"
+              title={t("savedLists")}
               value={listsCount === null ? "—" : listsCount}
               icon={Heart}
               href="/opac/account/lists"

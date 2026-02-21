@@ -155,7 +155,7 @@ export async function patronPhotosDelete(request: NextRequest): Promise<Response
       (() => {
         const filename = searchParams.get("filename") || "";
         const match = filename.match(/^patron-(\\d+)-/);
-        return match ? parseInt(match[1], 10) : null;
+        return match ? parseInt(match[1]!, 10) : null;
       })();
 
     if (!patronId) return errorResponse("Missing or invalid patronId", 400);

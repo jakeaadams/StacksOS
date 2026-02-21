@@ -24,12 +24,12 @@ function parseAcceptLanguage(header: string): SupportedLocale {
   // Parse Accept-Language header and find the first supported locale
   const parts = header.split(",");
   for (const part of parts) {
-    const lang = part.split(";")[0].trim().toLowerCase();
+    const lang = part!.split(";")[0]!.trim().toLowerCase();
     // Check exact match first (e.g. "es")
     if (isSupported(lang)) return lang;
     // Check language prefix (e.g. "es-MX" -> "es")
     const prefix = lang.split("-")[0];
-    if (isSupported(prefix)) return prefix;
+    if (isSupported(prefix!)) return prefix;
   }
   return DEFAULT_LOCALE;
 }

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { AccessibilityControls } from "@/components/opac/accessibility-controls";
+import { useTranslations } from "next-intl";
 
 export const metadata = {
   title: "Accessibility",
 };
 
 export default function AccessibilityPage() {
+  const t = useTranslations("accessibilityPage");
   return (
     <div className="min-h-screen bg-muted/30">
       <section className="bg-card border-b border-border py-12">

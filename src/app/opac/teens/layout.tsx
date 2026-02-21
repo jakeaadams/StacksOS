@@ -11,14 +11,12 @@ import { cn } from "@/lib/utils";
 import {
   Search,
   Home,
-  BookOpen,
   Menu,
   X,
   Sparkles,
   LogIn,
   LogOut,
   Flame,
-  TrendingUp,
 } from "lucide-react";
 
 interface TeensLayoutProps {

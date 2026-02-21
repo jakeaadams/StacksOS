@@ -8,8 +8,8 @@ function parseArgs(argv: string[]): Args {
   const args: Args = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (!a.startsWith("--")) continue;
-    const key = a.slice(2);
+    if (!a!.startsWith("--")) continue;
+    const key = a!.slice(2);
     const next = argv[i + 1];
     if (!next || next.startsWith("--")) {
       args[key] = true;

@@ -26,7 +26,8 @@
       "@/*": [
         "./src/*"
       ]
-    }
+    },
+    "noUncheckedIndexedAccess": true
   },
   "include": [
     "next-env.d.ts",
@@ -40,7 +41,9 @@
     ".next-buildtest/types/**/*.ts",
     ".next-buildtest/dev/types/**/*.ts",
     ".next-ci/types/**/*.ts",
-    ".next-ci/dev/types/**/*.ts"
+    ".next-ci/dev/types/**/*.ts",
+    "/tmp/stacksos-build/types/**/*.ts",
+    "/tmp/stacksos-build/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

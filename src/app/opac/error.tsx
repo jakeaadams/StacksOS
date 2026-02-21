@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { clientLogger } from "@/lib/client-logger";
 import { AlertCircle, RefreshCw, Home } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function OPACError({
   error,
@@ -13,6 +14,8 @@ export default function OPACError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("errorPage");
+
   useEffect(() => {
     clientLogger.error("OPAC error:", error);
   }, [error]);
@@ -27,9 +30,9 @@ export default function OPACError({
         </div>
 
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold tracking-tight">Something went wrong</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{t("title")}</h2>
           <p className="text-muted-foreground">
-            We encountered an error loading this page. Please try again.
+            {t("message")}
           </p>
           {error.digest && (
             <p className="text-xs text-muted-foreground font-mono">Error ID: {error.digest}</p>
@@ -39,12 +42,12 @@ export default function OPACError({
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button onClick={reset}>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Try Again
+            {t("tryAgain")}
           </Button>
           <Button variant="outline" asChild>
             <Link href="/opac">
               <Home className="mr-2 h-4 w-4" />
-              Back to Catalog
+              {t("backToCatalog")}
             </Link>
           </Button>
         </div>

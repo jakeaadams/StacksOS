@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
       branches: getEventBranches(),
       types: getEventTypes(),
     });
-  } catch (error) {
+  } catch (_error) {
     return errorResponse("Failed to fetch events", 500);
   }
 }

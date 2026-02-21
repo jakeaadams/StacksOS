@@ -58,7 +58,7 @@ export default function PolicyInspectorPage() {
       return;
     }
     if (!orgId && orgs.length > 0) {
-      setOrgId(orgs[0].id);
+      setOrgId(orgs[0]!.id);
     }
   }, [orgId, orgs, user?.activeOrgId]);
 

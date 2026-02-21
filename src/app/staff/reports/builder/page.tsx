@@ -254,7 +254,7 @@ export default function ReportsBuilderPage() {
       description: reportDescription,
       templateId: selectedTemplate.id,
       parameters,
-      createdAt: new Date().toISOString().split("T")[0],
+      createdAt: new Date().toISOString().split("T")[0]!,
       category: selectedTemplate.category,
     };
 
@@ -446,7 +446,7 @@ export default function ReportsBuilderPage() {
                       >
                         <CardHeader className="p-3">
                           <div className="flex items-start justify-between">
-                            <div onClick={() => loadSavedReport(report)}>
+                            <div role="button" tabIndex={0} onClick={() => loadSavedReport(report)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); loadSavedReport(report); } }}>
                               <CardTitle className="text-sm font-medium">{report.name}</CardTitle>
                               {report.description && (
                                 <CardDescription className="text-xs">{report.description}</CardDescription>
@@ -583,7 +583,7 @@ export default function ReportsBuilderPage() {
                           <thead className="bg-muted">
                             <tr>
                               {result.columns.map((col) => (
-                                <th key={col} className="px-4 py-2 text-left font-medium border-b">
+                                <th scope="col" key={col} className="px-4 py-2 text-left font-medium border-b">
                                   {col}
                                 </th>
                               ))}

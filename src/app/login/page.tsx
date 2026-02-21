@@ -52,8 +52,8 @@ function getOrCreateDeviceId(): string {
       ? crypto.randomUUID().split("-")[0]
       : Math.random().toString(36).slice(2, 8);
 
-  localStorage.setItem(DEVICE_KEY, random);
-  return random;
+  localStorage.setItem(DEVICE_KEY, random!);
+  return random!;
 }
 
 export default function LoginPage() {

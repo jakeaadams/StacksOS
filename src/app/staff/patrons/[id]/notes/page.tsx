@@ -362,12 +362,12 @@ export default function PatronNotesPage() {
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Public</Label>
+                <Label htmlFor="public">Public</Label>
                 <p className="text-xs text-muted-foreground">
                   Visible to patron in their account
                 </p>
               </div>
-              <Switch
+              <Switch id="public"
                 checked={noteForm.public}
                 onCheckedChange={(checked) => setNoteForm({ ...noteForm, public: checked })}
               />

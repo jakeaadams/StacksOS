@@ -8,6 +8,9 @@ const distDir = process.env.NEXT_DIST_DIR?.trim() || ".next";
 const nextConfig: NextConfig = {
   distDir,
 
+  // Enable standalone output for Docker production builds
+  output: process.env.DOCKER_BUILD ? "standalone" : undefined,
+
   // Allow access from local network
   allowedDevOrigins: ["192.168.1.233", "192.168.1.232", "localhost"],
 

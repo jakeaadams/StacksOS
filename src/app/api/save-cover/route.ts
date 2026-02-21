@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       return successResponse({ success: false, message: "No custom cover found" });
     }
 
-    return successResponse({ success: true, coverUrl: result[0].cover_url, source: result[0].source });
+    return successResponse({ success: true, coverUrl: result[0]!.cover_url, source: result[0]!.source });
   } catch (error) {
     return serverErrorResponse(error, "Save cover GET", request);
   }

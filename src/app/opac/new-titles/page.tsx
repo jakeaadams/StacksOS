@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface NewTitle {
   id: number;
@@ -48,14 +49,14 @@ function transformResults(records: any[]): NewTitle[] {
   }));
 }
 
-const FORMAT_FILTERS = [
-  { value: "all", label: "All Formats", icon: Sparkles },
+function getFORMAT_FILTERS(t: (key: string) => string) { return [
+  { value: "all", label: t("allFormats"), icon: Sparkles },
   { value: "book", label: "Books", icon: BookOpen },
   { value: "ebook", label: "eBooks", icon: Smartphone },
   { value: "audiobook", label: "Audiobooks", icon: Headphones },
   { value: "dvd", label: "DVDs", icon: Film },
   { value: "music", label: "Music", icon: Music },
-];
+]; }
 
 const TIME_FILTERS = [
   { value: "7", label: "Past Week" },
@@ -65,6 +66,8 @@ const TIME_FILTERS = [
 ];
 
 export default function NewTitlesPage() {
+  const t = useTranslations("newTitles");
+  const FORMAT_FILTERS = getFORMAT_FILTERS(t);
   const enabled = featureFlags.opacBrowseV2;
   const [titles, setTitles] = useState<NewTitle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,7 +98,7 @@ export default function NewTitlesPage() {
       const daysAgo = parseInt(timeFilter);
       const sinceDate = new Date();
       sinceDate.setDate(sinceDate.getDate() - daysAgo);
-      params.set("since", sinceDate.toISOString().split("T")[0]);
+      params.set("since", sinceDate.toISOString().split("T")[0]!);
 
       const response = await fetchWithAuth(`/api/evergreen/catalog?${params}`);
 

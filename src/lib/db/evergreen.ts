@@ -53,7 +53,7 @@ export async function query<T = any>(text: string, params?: any[]): Promise<T[]>
 
 export async function querySingle<T = any>(text: string, params?: any[]): Promise<T | null> {
   const rows = await query<T>(text, params);
-  return rows.length > 0 ? rows[0] : null;
+  return rows.length > 0 ? rows[0]! : null;
 }
 
 export async function withTransaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {

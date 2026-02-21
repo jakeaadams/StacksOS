@@ -96,8 +96,8 @@ function extractFormatFromMARC(marcXml: string | null): string {
   const leaderMatch = marcXml.match(/<leader>([^<]+)<\/leader>/);
   if (leaderMatch) {
     const leader = leaderMatch[1];
-    const typeCode = leader.charAt(6);
-    const bibLevel = leader.charAt(7);
+    const typeCode = leader!.charAt(6);
+    const bibLevel = leader!.charAt(7);
 
     if (typeCode === "a" && bibLevel === "s") return "Serial";
     if (typeCode === "e" || typeCode === "f") return "Map";
@@ -113,9 +113,9 @@ function extractFormatFromMARC(marcXml: string | null): string {
   const field007Match = marcXml.match(/<controlfield tag="007">([^<]+)<\/controlfield>/);
   if (field007Match) {
     const f007 = field007Match[1];
-    if (f007.startsWith("v")) return "DVD";
-    if (f007.startsWith("s")) return "CD";
-    if (f007.startsWith("c") && f007.charAt(1) === "r") return "eBook";
+    if (f007!.startsWith("v")) return "DVD";
+    if (f007!.startsWith("s")) return "CD";
+    if (f007!.startsWith("c") && f007!.charAt(1) === "r") return "eBook";
   }
 
   return "Book";
@@ -128,7 +128,7 @@ function extractAudienceFromMARC(marcXml: string | null): string {
   // Check 521 field first (Target Audience Note)
   const audienceMatch = marcXml.match(/<datafield tag="521"[^>]*>[\s\S]*?<subfield code="a">([^<]+)<\/subfield>/);
   if (audienceMatch) {
-    const audience = audienceMatch[1].toLowerCase();
+    const audience = audienceMatch[1]!.toLowerCase();
     if (audience.includes("juvenile") || audience.includes("children") || audience.includes("ages 4") || audience.includes("ages 5") || audience.includes("ages 6") || audience.includes("ages 7") || audience.includes("ages 8")) {
       return "juvenile";
     }
@@ -139,8 +139,8 @@ function extractAudienceFromMARC(marcXml: string | null): string {
 
   // Check 008 position 22 (Target Audience)
   const controlMatch = marcXml.match(/<controlfield tag="008">([^<]+)<\/controlfield>/);
-  if (controlMatch && controlMatch[1].length >= 23) {
-    const audienceCode = controlMatch[1].charAt(22);
+  if (controlMatch && controlMatch[1]!.length >= 23) {
+    const audienceCode = controlMatch[1]!.charAt(22);
     switch (audienceCode) {
       case "a": // Preschool
       case "b": // Primary
@@ -221,8 +221,8 @@ function parseMultiParam(value: string | null): string[] {
 function extractLanguageFromMARC(marcXml: string | null): string | null {
   if (!marcXml) return null;
   const controlMatch = marcXml.match(/<controlfield tag="008">([^<]+)<\/controlfield>/);
-  if (controlMatch && controlMatch[1].length >= 38) {
-    const code = controlMatch[1].slice(35, 38).trim().toLowerCase();
+  if (controlMatch && controlMatch[1]!.length >= 38) {
+    const code = controlMatch[1]!.slice(35, 38).trim().toLowerCase();
     if (code && code !== "|||" && code !== "   ") return code;
   }
   return null;
@@ -255,7 +255,7 @@ async function mapWithConcurrency<T, R>(
       const current = nextIndex;
       nextIndex += 1;
       if (current >= items.length) break;
-      results[current] = await fn(items[current], current);
+      results[current] = await fn(items[current]!, current);
     }
   }
 

@@ -745,10 +745,10 @@ export default function CirculationPolicyEditorPage() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card p-4">
                       <div className="min-w-0">
-                        <Label className="text-sm">Active</Label>
+                        <Label htmlFor="active" className="text-sm">Active</Label>
                         <p className="text-xs text-muted-foreground">Inactive matchpoints are ignored by Evergreen.</p>
                       </div>
-                      <Switch
+                      <Switch id="active"
                         checked={draft.active}
                         onCheckedChange={(checked) => setDraft((prev) => ({ ...prev, active: checked }))}
                       />
@@ -756,8 +756,8 @@ export default function CirculationPolicyEditorPage() {
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>Org unit {editorMode === "create" ? "*" : ""}</Label>
-                        <Select
+                        <Label htmlFor="org-unit-editormode-create">Org unit {editorMode === "create" ? "*" : ""}</Label>
+                        <Select id="org-unit-editormode-create"
                           value={draft.orgUnit ? String(draft.orgUnit) : "__unset__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({ ...prev, orgUnit: v === "__unset__" ? null : parseInt(v, 10) }))
@@ -785,8 +785,8 @@ export default function CirculationPolicyEditorPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Patron group</Label>
-                        <Select
+                        <Label htmlFor="patron-group">Patron group</Label>
+                        <Select id="patron-group"
                           value={draft.grp ? String(draft.grp) : "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({ ...prev, grp: v === "__any__" ? null : parseInt(v, 10) }))
@@ -811,8 +811,8 @@ export default function CirculationPolicyEditorPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Circ modifier</Label>
-                        <Select
+                        <Label htmlFor="circ-modifier">Circ modifier</Label>
+                        <Select id="circ-modifier"
                           value={draft.circModifier ?? "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({ ...prev, circModifier: v === "__any__" ? null : v }))
@@ -838,8 +838,8 @@ export default function CirculationPolicyEditorPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Copy location</Label>
-                        <Select
+                        <Label htmlFor="copy-location">Copy location</Label>
+                        <Select id="copy-location"
                           value={draft.copyLocation ? String(draft.copyLocation) : "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({ ...prev, copyLocation: v === "__any__" ? null : parseInt(v, 10) }))
@@ -870,10 +870,10 @@ export default function CirculationPolicyEditorPage() {
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card p-4">
                         <div className="min-w-0">
-                          <Label className="text-sm">Circulate</Label>
+                          <Label htmlFor="circulate" className="text-sm">Circulate</Label>
                           <p className="text-xs text-muted-foreground">If disabled, Evergreen blocks checkout.</p>
                         </div>
-                        <Switch
+                        <Switch id="circulate"
                           checked={draft.circulate}
                           onCheckedChange={(checked) => setDraft((prev) => ({ ...prev, circulate: checked }))}
                         />
@@ -881,8 +881,8 @@ export default function CirculationPolicyEditorPage() {
 
                       <div className="grid gap-3 rounded-2xl border border-border/70 bg-card p-4">
                         <div className="flex items-center justify-between">
-                          <Label className="text-sm">Is renewal</Label>
-                          <Select
+                          <Label htmlFor="is-renewal" className="text-sm">Is renewal</Label>
+                          <Select id="is-renewal"
                             value={draft.isRenewal === null ? "any" : draft.isRenewal ? "yes" : "no"}
                             onValueChange={(v) =>
                               setDraft((prev) => ({
@@ -902,8 +902,8 @@ export default function CirculationPolicyEditorPage() {
                           </Select>
                         </div>
                         <div className="flex items-center justify-between">
-                          <Label className="text-sm">Reference</Label>
-                          <Select
+                          <Label htmlFor="reference" className="text-sm">Reference</Label>
+                          <Select id="reference"
                             value={draft.refFlag === null ? "any" : draft.refFlag ? "yes" : "no"}
                             onValueChange={(v) =>
                               setDraft((prev) => ({
@@ -927,8 +927,8 @@ export default function CirculationPolicyEditorPage() {
 
                     <div className="grid gap-4 sm:grid-cols-3">
                       <div className="space-y-2">
-                        <Label>Duration rule</Label>
-                        <Select
+                        <Label htmlFor="duration-rule">Duration rule</Label>
+                        <Select id="duration-rule"
                           value={draft.durationRule ? String(draft.durationRule) : "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({ ...prev, durationRule: v === "__any__" ? null : parseInt(v, 10) }))
@@ -950,8 +950,8 @@ export default function CirculationPolicyEditorPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Fine rule</Label>
-                        <Select
+                        <Label htmlFor="fine-rule">Fine rule</Label>
+                        <Select id="fine-rule"
                           value={draft.recurringFineRule ? String(draft.recurringFineRule) : "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({
@@ -976,8 +976,8 @@ export default function CirculationPolicyEditorPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Max fine rule</Label>
-                        <Select
+                        <Label htmlFor="max-fine-rule">Max fine rule</Label>
+                        <Select id="max-fine-rule"
                           value={draft.maxFineRule ? String(draft.maxFineRule) : "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({ ...prev, maxFineRule: v === "__any__" ? null : parseInt(v, 10) }))
@@ -1000,8 +1000,8 @@ export default function CirculationPolicyEditorPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Description</Label>
-                      <Textarea
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea id="description"
                         value={draft.description}
                         onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))}
                         placeholder="Optional notes (who/what this matchpoint is for)"

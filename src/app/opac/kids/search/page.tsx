@@ -18,6 +18,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/shared/loading-state";
+import { useTranslations } from "next-intl";
 
 interface SearchResult {
   id: number;
@@ -240,8 +241,8 @@ function KidsSearchContent() {
           <div className="mt-4 p-4 bg-card rounded-2xl border-2 border-purple-100 shadow-sm">
             <div className="flex flex-wrap gap-4">
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">Format</label>
-                <select
+                <label htmlFor="format" className="block text-sm font-medium text-foreground/80 mb-1">Format</label>
+                <select id="format"
                   value={format}
                   onChange={(e) => updateSearchParams({ format: e.target.value || null })}
                   className="px-3 py-2 rounded-lg border border-border focus:border-purple-400 focus:outline-none"
@@ -255,8 +256,8 @@ function KidsSearchContent() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">Availability</label>
-                <select
+                <label htmlFor="availability" className="block text-sm font-medium text-foreground/80 mb-1">Availability</label>
+                <select id="availability"
                   value={availableOnly ? "available" : ""}
                   onChange={(e) => updateSearchParams({ available: e.target.value === "available" ? "true" : null })}
                   className="px-3 py-2 rounded-lg border border-border focus:border-purple-400 focus:outline-none"
@@ -473,6 +474,7 @@ function KidsSearchResultListItem({ book }: { book: SearchResult }) {
 }
 
 export default function KidsSearchPage() {
+  const t = useTranslations("kidsSearch");
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center py-20">

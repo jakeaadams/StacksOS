@@ -17,6 +17,7 @@ import {
   Building2,
   BookOpen,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface LibraryLocation {
   id: number;
@@ -105,7 +106,7 @@ function transformOrgTree(tree: any): LibraryLocation[] {
 function isCurrentlyOpen(hours: LibraryLocation["hours"]): boolean {
   if (!hours) return false;
   const now = new Date();
-  const dayName = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1];
+  const dayName = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1] as string;
   const todayHours = hours[dayName];
   if (todayHours === "closed" || !todayHours) return false;
   // Simplified check - real implementation would parse times properly
@@ -129,6 +130,7 @@ function getDirectionsUrl(location: LibraryLocation): string {
 }
 
 export default function LocationsPage() {
+  const t = useTranslations("locationsPage");
   const [locations, setLocations] = useState<LibraryLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedLocation, setExpandedLocation] = useState<number | null>(null);
@@ -143,7 +145,7 @@ export default function LocationsPage() {
         const locs = transformOrgTree(data.tree || data);
         setLocations(locs);
         if (locs.length > 0) {
-          setExpandedLocation(locs[0].id);
+          setExpandedLocation(locs[0]!.id);
         }
       }
     } catch (error) {
@@ -253,7 +255,7 @@ export default function LocationsPage() {
                     <div className="flex items-center gap-4">
                       <span className={`px-3 py-1 rounded-full text-sm font-medium
                         ${isOpen ? "bg-green-100 text-green-700" : "bg-muted/50 text-muted-foreground"}`}>
-                        {isOpen ? "Open" : "Closed"}
+                        {isOpen ? "Open" : t("closed")}
                       </span>
                       {isExpanded ? (
                         <ChevronUp className="h-5 w-5 text-muted-foreground/70" />
@@ -316,7 +318,7 @@ export default function LocationsPage() {
                           <div>
                             <div className="flex items-center gap-2 mb-3">
                               <Clock className="h-5 w-5 text-muted-foreground/70" />
-                              <h3 className="font-medium text-foreground">Hours</h3>
+                              <h3 className="font-medium text-foreground">{t("hours")}</h3>
                             </div>
                             <div className="space-y-1">
                               {DAYS.map((day) => {
@@ -335,7 +337,7 @@ export default function LocationsPage() {
                                     </span>
                                     <span className={isToday ? "text-primary-700" : "text-foreground"}>
                                       {dayHours === "closed" || !dayHours
-                                        ? "Closed"
+                                        ? t("closed")
                                         : `${dayHours.open} - ${dayHours.close}`}
                                     </span>
                                   </div>

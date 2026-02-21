@@ -272,7 +272,7 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
     const groups: Record<string, SearchResult[]> = {};
     results.forEach(r => {
       if (!groups[r.type]) groups[r.type] = [];
-      groups[r.type].push(r);
+      groups[r.type]!.push(r);
     });
     return groups;
   }, [results]);

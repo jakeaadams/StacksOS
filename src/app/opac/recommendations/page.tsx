@@ -10,6 +10,7 @@ import { usePatronSession } from "@/hooks/use-patron-session";
 import { RecommendationCard, type RecommendationItem } from "@/components/opac/recommendation-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkles, TrendingUp, Star, BookOpen, ArrowLeft, Settings, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface RecommendationSection {
   title: string;
@@ -25,13 +26,14 @@ export default function RecommendationsPage() {
     notFound();
   }
 
+  const t = useTranslations("recommendationsPage");
   const router = useRouter();
   const { patron, isLoggedIn, isLoading: sessionLoading } = usePatronSession();
   const [personalized, setPersonalized] = useState<RecommendationItem[]>([]);
   const [trending, setTrending] = useState<RecommendationItem[]>([]);
   const [staffPicks, setStaffPicks] = useState<RecommendationItem[]>([]);
   const [genreRecs, setGenreRecs] = useState<RecommendationItem[]>([]);
-  const [isPersonalized, setIsPersonalized] = useState(false);
+  const [_isPersonalized, setIsPersonalized] = useState(false);
   const [disabledReason, setDisabledReason] = useState<string | null>(null);
   const [loadingStates, setLoadingStates] = useState({
     personalized: true,
@@ -168,7 +170,7 @@ export default function RecommendationsPage() {
               <ArrowLeft className="h-4 w-4" />
               Back to Catalog
             </Link>
-            <h1 className="text-2xl font-bold text-foreground">Recommendations</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
           </div>
         </div>
         <div className="max-w-2xl mx-auto px-4 py-16 text-center">
@@ -197,7 +199,7 @@ export default function RecommendationsPage() {
 
   const sections: RecommendationSection[] = [
     {
-      title: "Based on Your Recent Reads",
+      title: t("basedOnReads"),
       icon: BookOpen,
       iconColor: "text-blue-600",
       iconBg: "bg-blue-100",
@@ -205,7 +207,7 @@ export default function RecommendationsPage() {
       isLoading: loadingStates.personalized,
     },
     {
-      title: "Trending at Your Library",
+      title: t("trendingAtLibrary"),
       icon: TrendingUp,
       iconColor: "text-rose-600",
       iconBg: "bg-rose-100",
@@ -213,7 +215,7 @@ export default function RecommendationsPage() {
       isLoading: loadingStates.trending,
     },
     {
-      title: "Staff Picks for You",
+      title: t("staffPicksForYou"),
       icon: Star,
       iconColor: "text-purple-600",
       iconBg: "bg-purple-100",
@@ -221,7 +223,7 @@ export default function RecommendationsPage() {
       isLoading: loadingStates.staffPicks,
     },
     {
-      title: "New in Genres You Love",
+      title: t("newInGenres"),
       icon: Sparkles,
       iconColor: "text-amber-600",
       iconBg: "bg-amber-100",
@@ -260,7 +262,7 @@ export default function RecommendationsPage() {
             <Sparkles className="h-8 w-8" />
             <div>
               <h1 className="text-2xl md:text-3xl font-bold">
-                Recommendations for {patron?.firstName || "You"}
+                {t("recommendationsFor", { name: patron?.firstName || t("you") })}
               </h1>
               <p className="text-primary-100 mt-1">
                 Curated picks based on your reading history and library trends

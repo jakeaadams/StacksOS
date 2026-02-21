@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { fetchWithAuth } from "@/lib/client-fetch";
-import { PageContainer, PageHeader, PageContent, ErrorMessage, EmptyState, LoadingSpinner } from "@/components/shared";
+import { PageContainer, PageHeader, PageContent, ErrorMessage, EmptyState, LoadingSpinner, ConfirmDialog } from "@/components/shared";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,8 @@ export default function OpsAdminPage() {
   const [incidentMessage, setIncidentMessage] = useState("");
   const [incidentSeverity, setIncidentSeverity] = useState<"info" | "warning" | "error">("info");
   const [incidentEndsAt, setIncidentEndsAt] = useState<string>("");
+
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
 
   const [noteVersion, setNoteVersion] = useState("");
   const [noteTitle, setNoteTitle] = useState("");
@@ -85,8 +87,15 @@ export default function OpsAdminPage() {
   };
 
   const resolveIncident = async (id: number) => {
-    const ok = window.confirm("Resolve this incident banner?");
-    if (!ok) return;
+    setConfirmDialog({
+      open: true,
+      title: "Resolve Incident",
+      description: "Resolve this incident banner?",
+      onConfirm: () => doResolveIncident(id),
+    });
+  };
+
+  const doResolveIncident = async (id: number) => {
     setSaving(true);
     try {
       const res = await fetchWithAuth("/api/admin/incidents", {
@@ -154,8 +163,8 @@ export default function OpsAdminPage() {
               <CardContent className="space-y-4">
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
-                    <Label>Severity</Label>
-                    <Select value={incidentSeverity} onValueChange={(v) => setIncidentSeverity(v as any)}>
+                    <Label htmlFor="severity">Severity</Label>
+                    <Select id="severity" value={incidentSeverity} onValueChange={(v) => setIncidentSeverity(v as any)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="info">Info</SelectItem>
@@ -165,14 +174,14 @@ export default function OpsAdminPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label>Ends at (optional)</Label>
-                    <Input type="datetime-local" value={incidentEndsAt} onChange={(e) => setIncidentEndsAt(e.target.value)} />
+                    <Label htmlFor="ends-at">Ends at (optional)</Label>
+                    <Input id="ends-at" type="datetime-local" value={incidentEndsAt} onChange={(e) => setIncidentEndsAt(e.target.value)} />
                   </div>
                 </div>
 
                 <div>
-                  <Label>Message</Label>
-                  <Textarea value={incidentMessage} onChange={(e) => setIncidentMessage(e.target.value)} className="min-h-[100px]" placeholder="What is happening? What should staff/patrons do?" />
+                  <Label htmlFor="message">Message</Label>
+                  <Textarea id="message" value={incidentMessage} onChange={(e) => setIncidentMessage(e.target.value)} className="min-h-[100px]" placeholder="What is happening? What should staff/patrons do?" />
                 </div>
 
                 <div className="flex justify-end">
@@ -220,17 +229,17 @@ export default function OpsAdminPage() {
               <CardContent className="space-y-4">
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
-                    <Label>Version (optional)</Label>
-                    <Input value={noteVersion} onChange={(e) => setNoteVersion(e.target.value)} placeholder="0.1.0" />
+                    <Label htmlFor="version">Version (optional)</Label>
+                    <Input id="version" value={noteVersion} onChange={(e) => setNoteVersion(e.target.value)} placeholder="0.1.0" />
                   </div>
                   <div>
-                    <Label>Title</Label>
-                    <Input value={noteTitle} onChange={(e) => setNoteTitle(e.target.value)} placeholder="Improved circulation performance" />
+                    <Label htmlFor="title">Title</Label>
+                    <Input id="title" value={noteTitle} onChange={(e) => setNoteTitle(e.target.value)} placeholder="Improved circulation performance" />
                   </div>
                 </div>
                 <div>
-                  <Label>Body</Label>
-                  <Textarea value={noteBody} onChange={(e) => setNoteBody(e.target.value)} className="min-h-[140px]" placeholder="- What changed\n- What to watch\n- Any migration steps" />
+                  <Label htmlFor="body">Body</Label>
+                  <Textarea id="body" value={noteBody} onChange={(e) => setNoteBody(e.target.value)} className="min-h-[140px]" placeholder="- What changed\n- What to watch\n- Any migration steps" />
                 </div>
                 <div className="flex justify-end">
                   <Button onClick={addRelease} disabled={saving}>
@@ -262,6 +271,13 @@ export default function OpsAdminPage() {
           </>
         )}
       </PageContent>
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((s) => ({ ...s, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </PageContainer>
   );
 }

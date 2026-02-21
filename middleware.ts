@@ -33,7 +33,7 @@ function ipToInt(ip: string): number | null {
   if (parts.length !== 4) return null;
   const nums = parts.map((p) => Number(p));
   if (nums.some((n) => !Number.isFinite(n) || n < 0 || n > 255)) return null;
-  return ((nums[0] << 24) >>> 0) + (nums[1] << 16) + (nums[2] << 8) + nums[3];
+  const [a, b, c, d] = nums; return ((a! << 24) >>> 0) + (b! << 16) + (c! << 8) + d!;
 }
 
 function ipInCidr(ip: string, cidr: string): boolean {
@@ -80,7 +80,9 @@ function addSecurityHeaders(request: NextRequest, response: NextResponse, nonce:
   const scriptSrc = isProd
     ? `script-src 'self' 'nonce-${nonce}'${strictScripts ? "" : " 'unsafe-inline'"}; `
     : `script-src 'self' 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval'; `;
-  const styleSrc = `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'; `;
+  const styleSrc = isProd && strictScripts
+    ? `style-src 'self' 'nonce-${nonce}'; `
+    : `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'; `;
   const connectSrc = isProd ? "connect-src 'self'; " : "connect-src 'self' ws: wss:; ";
   response.headers.set(
     "Content-Security-Policy",

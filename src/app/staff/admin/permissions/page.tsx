@@ -923,8 +923,8 @@ export default function PermissionsInspectorPage() {
                     </div>
 
                     <div className="grid gap-2">
-                      <Label>Parent group</Label>
-                      <Select
+                      <Label htmlFor="parent-group">Parent group</Label>
+                      <Select id="parent-group"
                         value={groupDraft.parent ? String(groupDraft.parent) : "none"}
                         onValueChange={(v) =>
                           setGroupDraft((d) => ({ ...d, parent: v === "none" ? null : parseInt(v, 10) }))
@@ -1006,7 +1006,7 @@ export default function PermissionsInspectorPage() {
 
                   <div className="space-y-4">
                     <div className="grid gap-2">
-                      <Label>Group</Label>
+                      <Label htmlFor="group">Group</Label>
                       <div className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2 text-sm">
                         {selectedGroup?.name ? (
                           <div className="flex items-center justify-between gap-2">
@@ -1022,7 +1022,7 @@ export default function PermissionsInspectorPage() {
                     </div>
 
                     <div className="grid gap-2">
-                      <Label>Permission</Label>
+                      <Label htmlFor="permission">Permission</Label>
                       {mappingDialogMode === "edit" ? (
                         <div className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2 text-sm">
                           <div className="font-mono text-xs">{selectedPerm?.code || `perm #${mappingDraft.permId ?? "—"}`}</div>

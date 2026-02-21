@@ -8,6 +8,7 @@ import {
   PageContainer,
   PageHeader,
   PageContent,
+  ConfirmDialog,
 } from "@/components/shared";
 import {
   Card,
@@ -129,7 +130,7 @@ function SettingRow({ label, description, children }: SettingRowProps) {
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="space-y-0.5">
-        <Label className="text-sm font-medium">{label}</Label>
+        <Label htmlFor="label" className="text-sm font-medium">{label}</Label>
         {description && (
           <p className="text-xs text-muted-foreground">{description}</p>
         )}
@@ -149,6 +150,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [revokeConfirm, setRevokeConfirm] = useState<{ open: boolean; sessionId: string }>({ open: false, sessionId: "" });
 
   // Fetch workstations for the dropdown
   const { data: workstationData } = useApi<any>(
@@ -595,7 +597,7 @@ export default function SettingsPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="text-sm font-medium">Active sessions</Label>
+                  <Label htmlFor="active-sessions" className="text-sm font-medium">Active sessions</Label>
                   <p className="text-xs text-muted-foreground">Devices and browsers that have used this account recently.</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => void refetchSessions()}>
@@ -631,23 +633,7 @@ export default function SettingsPage() {
                         variant="outline"
                         size="sm"
                         disabled={!!s.revoked_at}
-                        onClick={async () => {
-                          const ok = window.confirm("Revoke this session? The device will be forced to log back in.");
-                          if (!ok) return;
-                          try {
-                            const resp = await fetchWithAuth("/api/security/sessions", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ sessionId: s.id }),
-                            });
-                            const json = await resp.json();
-                            if (!resp.ok || json.ok === false) throw new Error(json.error || "Revoke failed");
-                            toast.success("Session revoked");
-                            await refetchSessions();
-                          } catch (e) {
-                            toast.error(e instanceof Error ? e.message : "Revoke failed");
-                          }
-                        }}
+                        onClick={() => setRevokeConfirm({ open: true, sessionId: s.id })}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Revoke
@@ -698,6 +684,27 @@ export default function SettingsPage() {
           </div>
         )}
       </PageContent>
+      <ConfirmDialog
+        open={revokeConfirm.open}
+        onOpenChange={(open) => setRevokeConfirm((prev) => ({ ...prev, open }))}
+        title="Revoke session"
+        description="Revoke this session? The device will be forced to log back in."
+        onConfirm={async () => {
+          try {
+            const resp = await fetchWithAuth("/api/security/sessions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sessionId: revokeConfirm.sessionId }),
+            });
+            const json = await resp.json();
+            if (!resp.ok || json.ok === false) throw new Error(json.error || "Revoke failed");
+            toast.success("Session revoked");
+            await refetchSessions();
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Revoke failed");
+          }
+        }}
+      />
     </PageContainer>
   );
 }

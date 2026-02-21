@@ -321,31 +321,31 @@ function HoldingsContent() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Barcode</label>
+                  <label htmlFor="barcode" className="text-sm font-medium">Barcode</label>
                   <div className="font-mono">{selectedHolding.barcode}</div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Status</label>
+                  <label htmlFor="status" className="text-sm font-medium">Status</label>
                   <div>{getStatusBadge(selectedHolding.status)}</div>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium">Call Number</label>
+                <label htmlFor="call-number" className="text-sm font-medium">Call Number</label>
                 <div className="font-mono">{selectedHolding.callNumber}</div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Location</label>
+                  <label htmlFor="location" className="text-sm font-medium">Location</label>
                   <div>{selectedHolding.location || selectedHolding.circLib || "-"}</div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Circulation Count</label>
+                  <label htmlFor="circulation-count" className="text-sm font-medium">Circulation Count</label>
                   <div>{selectedHolding.circCount}</div>
                 </div>
               </div>
               {selectedHolding.price > 0 && (
                 <div>
-                  <label className="text-sm font-medium">Price</label>
+                  <label htmlFor="price" className="text-sm font-medium">Price</label>
                   <div>${selectedHolding.price.toFixed(2)}</div>
                 </div>
               )}

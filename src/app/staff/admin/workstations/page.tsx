@@ -36,7 +36,7 @@ export default function WorkstationsPage() {
 
   useEffect(() => {
     if (!selectedOrgId && orgs.length > 0) {
-      setSelectedOrgId(orgs[0].id);
+      setSelectedOrgId(orgs[0]!.id);
     }
   }, [orgs, selectedOrgId]);
 
@@ -171,8 +171,8 @@ export default function WorkstationsPage() {
           <CardContent className="space-y-4" ref={registerCardRef}>
             <div className="grid gap-4 sm:grid-cols-[1fr,200px,auto]">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Workstation Name</label>
-                <Input
+                <label htmlFor="workstation-name" className="text-sm font-medium">Workstation Name</label>
+                <Input id="workstation-name"
                   ref={nameInputRef}
                   value={newWorkstationName}
                   onChange={(e) => setNewWorkstationName(e.target.value)}
@@ -180,8 +180,8 @@ export default function WorkstationsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Organization</label>
-                <Select
+                <label htmlFor="organization" className="text-sm font-medium">Organization</label>
+                <Select id="organization"
                   value={selectedOrgId ? String(selectedOrgId) : ""}
                   onValueChange={(v) => setSelectedOrgId(parseInt(v, 10))}
                 >

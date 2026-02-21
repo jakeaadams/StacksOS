@@ -221,8 +221,8 @@ function getInitials(name: string): string {
   const trimmed = safe.trim();
   if (!trimmed) return "?";
   const parts = trimmed.split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
 }
 
 function getDateRangeParams(range: string): { startDate?: string; endDate?: string } {
@@ -436,10 +436,10 @@ function FilterBar({
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Activity Type Filter */}
           <div className="flex-1 min-w-[200px]">
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            <label htmlFor="activity-type" className="text-xs font-medium text-muted-foreground mb-1.5 block">
               Activity Type
             </label>
-            <Select value={activityType} onValueChange={(v) => onActivityTypeChange(v as ActivityType)}>
+            <Select id="activity-type" value={activityType} onValueChange={(v) => onActivityTypeChange(v as ActivityType)}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
@@ -461,10 +461,10 @@ function FilterBar({
 
           {/* Date Range Filter */}
           <div className="flex-1 min-w-[180px]">
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            <label htmlFor="date-range" className="text-xs font-medium text-muted-foreground mb-1.5 block">
               Date Range
             </label>
-            <Select value={dateRange} onValueChange={onDateRangeChange}>
+            <Select id="date-range" value={dateRange} onValueChange={onDateRangeChange}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select range" />
               </SelectTrigger>
@@ -483,12 +483,12 @@ function FilterBar({
 
           {/* User Search */}
           <div className="flex-[2] min-w-[250px]">
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            <label htmlFor="search-by-user" className="text-xs font-medium text-muted-foreground mb-1.5 block">
               Search by User
             </label>
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
+              <Input id="search-by-user"
                 placeholder="Search by name or barcode..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
@@ -502,6 +502,7 @@ function FilterBar({
             <Button
               variant="outline"
               size="icon"
+              aria-label="Refresh activity log"
               onClick={onRefresh}
               disabled={isRefreshing}
               className="h-10 w-10"
@@ -530,10 +531,10 @@ function ActivityStats({ activities, total }: ActivityStatsProps) {
     };
 
     activities.forEach((a) => {
-      if (a.type === "login") counts.logins++;
-      else if (a.type === "checkout" || a.type === "checkin") counts.circulation++;
-      else if (a.type === "hold") counts.holds++;
-      else if (a.type === "payment") counts.payments++;
+      if (a.type === "login") counts.logins!++;
+      else if (a.type === "checkout" || a.type === "checkin") counts.circulation!++;
+      else if (a.type === "hold") counts.holds!++;
+      else if (a.type === "payment") counts.payments!++;
     });
 
     return counts;
@@ -700,7 +701,7 @@ export default function ActivityLogPage() {
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
+        if (entries[0]!.isIntersecting && hasMore && !isLoading && !isLoadingMore) {
           setIsLoadingMore(true);
           setOffset((prev) => prev + pageSize);
         }

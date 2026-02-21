@@ -117,8 +117,8 @@ function parseTimeOfDay(raw: string): { hours: number; minutes: number } {
   const value = String(raw || "").trim();
   const match = /^(\d{1,2}):(\d{2})$/.exec(value);
   if (!match) return { hours: 8, minutes: 0 };
-  const hours = parseInt(match[1], 10);
-  const minutes = parseInt(match[2], 10);
+  const hours = parseInt(match[1]!, 10);
+  const minutes = parseInt(match[2]!, 10);
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return { hours: 8, minutes: 0 };
   if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return { hours: 8, minutes: 0 };
   return { hours, minutes };

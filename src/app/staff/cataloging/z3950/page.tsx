@@ -97,7 +97,7 @@ export default function Z3950Page() {
   useEffect(() => {
     if (!services.length) return;
     if (!selectedService || !services.some((s) => s.name === selectedService)) {
-      setSelectedService(services[0].name);
+      setSelectedService(services[0]!.name);
     }
   }, [selectedService, services]);
 
