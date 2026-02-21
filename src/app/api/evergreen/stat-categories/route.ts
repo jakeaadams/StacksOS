@@ -18,25 +18,25 @@ import { z } from "zod";
 
 type StatKind = "copy" | "patron";
 
-function boolToEg(value: any): "t" | "f" {
+function boolToEg(value: unknown): "t" | "f" {
   return value === true || value === "t" || value === 1 ? "t" : "f";
 }
 
-function toNumber(value: any): number | null {
+function toNumber(value: unknown): number | null {
   const num = typeof value === "number" ? value : Number(value);
   return Number.isFinite(num) ? num : null;
 }
 
-function toString(value: any): string {
+function toString(value: unknown): string {
   if (typeof value === "string") return value;
   return String(value ?? "");
 }
 
-function toBool(value: any): boolean {
+function toBool(value: unknown): boolean {
   return value === true || value === "t" || value === "true" || value === 1;
 }
 
-function normalizePermPayload(payload: any, perms: string[]): Record<string, boolean> | null {
+function normalizePermPayload(payload: unknown, perms: string[]): Record<string, boolean> | null {
   if (!payload) return null;
 
   if (Array.isArray(payload)) {
@@ -50,9 +50,9 @@ function normalizePermPayload(payload: any, perms: string[]): Record<string, boo
 
     if (payload.length > 0 && typeof payload[0] === "object") {
       const map: Record<string, boolean> = {};
-      payload.forEach((entry: any) => {
-        const key = entry.perm || entry.code || entry.name;
-        if (key) map[key] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
+      (payload as Record<string, unknown>[]).forEach((entry: Record<string, unknown>) => {
+        const key = String(entry.perm || entry.code || entry.name);
+        if (key) map[key as string] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
       });
       if (Object.keys(map).length > 0) return map;
     }
@@ -61,8 +61,8 @@ function normalizePermPayload(payload: any, perms: string[]): Record<string, boo
   if (typeof payload === "object") {
     const map: Record<string, boolean> = {};
     for (const perm of perms) {
-      if (perm in payload) {
-        map[perm] = Boolean(payload[perm]);
+      if (perm in (payload as Record<string, unknown>)) {
+        map[perm] = Boolean((payload as Record<string, unknown>)[perm]);
       }
     }
     if (Object.keys(map).length > 0) return map;
@@ -76,7 +76,7 @@ async function checkPerms(
   perms: string[],
   orgId?: number | null
 ): Promise<Record<string, boolean> | null> {
-  const attempts: any[][] = [];
+  const attempts: unknown[][] = [];
   attempts.push([authtoken, perms]);
   if (orgId) {
     attempts.push([authtoken, orgId, perms]);
@@ -100,7 +100,7 @@ async function checkPerms(
   return null;
 }
 
-function resolveKind(value: any): StatKind | null {
+function resolveKind(value: unknown): StatKind | null {
   return value === "copy" || value === "patron" ? value : null;
 }
 
@@ -218,7 +218,7 @@ export async function GET(req: NextRequest) {
     };
 
     // Prefer direct SQL to avoid high-latency or brittle flesh queries over OpenSRF.
-    let copyCategories: any[] = [];
+    let copyCategories: unknown[] = [];
     try {
       copyCategories = await sqlCopyCategories();
     } catch {
@@ -233,7 +233,7 @@ export async function GET(req: NextRequest) {
         { limit: 5000 },
       ]);
 
-      const copyEntries = Array.isArray(copyEntriesRes?.payload?.[0]) ? (copyEntriesRes.payload[0] as any[]) : [];
+      const copyEntries = Array.isArray(copyEntriesRes?.payload?.[0]) ? (copyEntriesRes.payload[0] as Record<string, unknown>[]) : [];
       const copyEntryCounts = new Map<number, number>();
       for (const e of copyEntries) {
         const statCatId = toNumber(e?.stat_cat);
@@ -241,9 +241,9 @@ export async function GET(req: NextRequest) {
         copyEntryCounts.set(statCatId, (copyEntryCounts.get(statCatId) || 0) + 1);
       }
 
-      const copyCatsRaw = Array.isArray(copyCatsRes?.payload?.[0]) ? (copyCatsRes.payload[0] as any[]) : [];
+      const copyCatsRaw = Array.isArray(copyCatsRes?.payload?.[0]) ? (copyCatsRes.payload[0] as Record<string, unknown>[]) : [];
       copyCategories = copyCatsRaw
-        .map((row: any) => {
+        .map((row: Record<string, unknown>) => {
           const id = toNumber(row?.id);
           if (id === null) return null;
           return {
@@ -258,10 +258,10 @@ export async function GET(req: NextRequest) {
           };
         })
         .filter(Boolean)
-        .sort((a: any, b: any) => String(a.name).localeCompare(String(b.name)));
+        .sort((a, b) => String((a as Record<string, unknown>)?.name ?? "").localeCompare(String((b as Record<string, unknown>)?.name ?? "")));
     }
 
-    let patronCategories: any[] = [];
+    let patronCategories: unknown[] = [];
     try {
       patronCategories = await sqlPatronCategories();
     } catch {
@@ -277,7 +277,7 @@ export async function GET(req: NextRequest) {
       ]);
 
       const patronEntries = Array.isArray(patronEntriesRes?.payload?.[0])
-        ? (patronEntriesRes.payload[0] as any[])
+        ? (patronEntriesRes.payload[0] as Record<string, unknown>[])
         : [];
 
       const patronEntryCounts = new Map<number, number>();
@@ -287,9 +287,9 @@ export async function GET(req: NextRequest) {
         patronEntryCounts.set(statCatId, (patronEntryCounts.get(statCatId) || 0) + 1);
       }
 
-      const patronCatsRaw = Array.isArray(patronCatsRes?.payload?.[0]) ? (patronCatsRes.payload[0] as any[]) : [];
+      const patronCatsRaw = Array.isArray(patronCatsRes?.payload?.[0]) ? (patronCatsRes.payload[0] as Record<string, unknown>[]) : [];
       patronCategories = patronCatsRaw
-        .map((row: any) => {
+        .map((row: Record<string, unknown>) => {
           const id = toNumber(row?.id);
           if (id === null) return null;
           return {
@@ -306,7 +306,7 @@ export async function GET(req: NextRequest) {
           };
         })
         .filter(Boolean)
-        .sort((a: any, b: any) => String(a.name).localeCompare(String(b.name)));
+        .sort((a, b) => String((a as Record<string, unknown>)?.name ?? "").localeCompare(String((b as Record<string, unknown>)?.name ?? "")));
     }
 
     return successResponse({
@@ -337,7 +337,7 @@ export async function POST(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const kind = resolveKind(body.kind);
     if (!kind) return errorResponse("Invalid kind", 400);
@@ -348,7 +348,7 @@ export async function POST(req: Request) {
 
     const classId = kind === "copy" ? "asc" : "actsc";
 
-    const payload: any = encodeFieldmapper(classId, {
+    const payload = encodeFieldmapper(classId, {
       name: body.name,
       owner: ownerId,
       opac_visible: boolToEg(body.opacVisible ?? false),
@@ -369,11 +369,11 @@ export async function POST(req: Request) {
       payload,
     ]);
     const resultRow = createResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as any)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to create stat category"), 400, resultRow);
     }
 
-    const id = typeof resultRow === "number" ? resultRow : toNumber((resultRow as any)?.id ?? resultRow);
+    const id = typeof resultRow === "number" ? resultRow : toNumber((resultRow as Record<string, unknown>)?.id ?? resultRow);
 
     return successResponse({ created: true, kind, id });
   } catch (error) {
@@ -399,7 +399,7 @@ export async function PUT(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const kind = resolveKind(body.kind);
     if (!kind) return errorResponse("Invalid kind", 400);
@@ -413,14 +413,14 @@ export async function PUT(req: Request) {
       [authtoken, body.id]
     );
     const existing = existingResponse?.payload?.[0];
-    if (!existing || isOpenSRFEvent(existing) || (existing as any)?.ilsevent) {
+    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(existing, "Stat category not found"), 404, existing);
     }
 
-    const ownerId = body.ownerId ?? result.orgId ?? actor?.ws_ou ?? actor?.home_ou ?? (existing as any)?.owner;
+    const ownerId = body.ownerId ?? result.orgId ?? actor?.ws_ou ?? actor?.home_ou ?? (existing as Record<string, unknown>)?.owner;
     if (!ownerId) return errorResponse("ownerId is required", 400);
 
-    const updateData: Record<string, any> = { ...(existing as any) };
+    const updateData: Record<string, unknown> = { ...(existing as Record<string, unknown>) };
     updateData.id = body.id;
     updateData.owner = ownerId;
     if (body.name !== undefined) updateData.name = body.name;
@@ -433,14 +433,14 @@ export async function PUT(req: Request) {
     }
 
     updateData.ischanged = 1;
-    const payload: any = encodeFieldmapper(classId, updateData);
+    const payload = encodeFieldmapper(classId, updateData);
 
     const updateResponse = await callOpenSRF("open-ils.pcrud", `open-ils.pcrud.update.${classId}`, [
       authtoken,
       payload,
     ]);
     const resultRow = updateResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as any)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to update stat category"), 400, resultRow);
     }
 
@@ -461,7 +461,7 @@ export async function DELETE(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const kind = resolveKind(body.kind);
     if (!kind) return errorResponse("Invalid kind", 400);
@@ -474,7 +474,7 @@ export async function DELETE(req: Request) {
       body.id,
     ]);
     const resultRow = delResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as any)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to delete stat category"), 400, resultRow);
     }
 

@@ -67,7 +67,8 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return errorResponse(error.message, error.status);
+      console.error("Route /api/opac/renew auth failed:", error);
+      return errorResponse("Authentication required", 401);
     }
     logger.error({ error: String(error) }, "Error renewing item");
     return serverErrorResponse(error, "Failed to renew item", req);

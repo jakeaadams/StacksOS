@@ -129,7 +129,8 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return unauthorizedResponse(error.message);
+      console.error("Route /api/opac/checkouts auth failed:", error);
+      return unauthorizedResponse();
     }
     return serverErrorResponse(error, "OPAC Checkouts GET", req);
   }

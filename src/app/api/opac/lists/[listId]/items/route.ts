@@ -57,7 +57,8 @@ export async function POST(
     return successResponse({ itemId: result });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return errorResponse(error.message, error.status);
+      console.error("Route /api/opac/lists/[listId]/items auth failed:", error);
+      return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(error, "OPAC Lists Add Item", req);
   }

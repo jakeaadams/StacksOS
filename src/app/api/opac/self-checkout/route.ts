@@ -150,10 +150,12 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     if (error instanceof SelfCheckoutAuthError) {
-      return errorResponse(error.message, error.status);
+      console.error("Route /api/opac/self-checkout auth failed:", error);
+      return errorResponse("Authentication required", 401);
     }
 
     // Best-effort audit event for unhandled failures (never blocks response).
+    console.error("Route /api/opac/self-checkout failed:", error);
     try {
       await logAuditEvent({
         action: "self_checkout.checkout",

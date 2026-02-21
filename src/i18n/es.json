@@ -1153,5 +1153,30 @@
     "choosePickup": "Elige donde quieres recoger",
     "partOfSeries": "Parte de la serie",
     "series": ""
+  },
+  "errorBoundary": {
+    "root": {
+      "title": "Algo salió mal",
+      "message": "Ocurrió un error inesperado. Nuestro equipo ha sido notificado.",
+      "tryAgain": "Intentar de Nuevo",
+      "goHome": "Ir al Inicio",
+      "persistMessage": "Si este problema persiste, comuníquese con el administrador del sistema."
+    },
+    "opacAccount": {
+      "title": "Error de Cuenta",
+      "message": "Algo salió mal al cargar su cuenta. Sus datos de cuenta están seguros. Intente de nuevo o comuníquese con el personal de la biblioteca para obtener ayuda."
+    },
+    "staffAdmin": {
+      "title": "Error de Administración",
+      "message": "Algo salió mal con la administración. Sus configuraciones y ajustes están seguros."
+    },
+    "staffReports": {
+      "title": "Error de Reportes",
+      "message": "Algo salió mal con los reportes. Sus plantillas de reportes guardadas y horarios están seguros."
+    },
+    "staffCataloging": {
+      "title": "Error de Catalogación",
+      "message": "Algo salió mal con la catalogación. Los cambios no guardados en registros MARC podrían necesitar ser reingresados."
+    }
   }
 }

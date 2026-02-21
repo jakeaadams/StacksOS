@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { ErrorState } from "@/components/shared/error-state";
 import { clientLogger } from "@/lib/client-logger";
+import { useTranslations } from "next-intl";
 
 export default function AdminError({
   error,
@@ -11,6 +12,8 @@ export default function AdminError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("errorBoundary.staffAdmin");
+
   useEffect(() => {
     clientLogger.error("Administration error:", error);
   }, [error]);
@@ -18,8 +21,8 @@ export default function AdminError({
   return (
     <div className="min-h-[60vh] flex items-center justify-center">
       <ErrorState
-        title="Administration Error"
-        message="Something went wrong with administration. Your settings and configurations are safe."
+        title={t("title")}
+        message={t("message")}
         error={error}
         onRetry={reset}
         showRetry

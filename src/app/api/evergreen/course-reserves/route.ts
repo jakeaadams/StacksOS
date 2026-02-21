@@ -15,17 +15,17 @@ import { getActorFromToken } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { z } from "zod";
 
-function toNumber(value: any): number | null {
+function toNumber(value: unknown): number | null {
   const num = typeof value === "number" ? value : Number(value);
   return Number.isFinite(num) ? num : null;
 }
 
-function toString(value: any): string {
+function toString(value: unknown): string {
   if (typeof value === "string") return value;
   return String(value ?? "");
 }
 
-function normalizePermPayload(payload: any, perms: string[]): Record<string, boolean> | null {
+function normalizePermPayload(payload: unknown, perms: string[]): Record<string, boolean> | null {
   if (!payload) return null;
 
   if (Array.isArray(payload)) {
@@ -39,9 +39,9 @@ function normalizePermPayload(payload: any, perms: string[]): Record<string, boo
 
     if (payload.length > 0 && typeof payload[0] === "object") {
       const map: Record<string, boolean> = {};
-      payload.forEach((entry: any) => {
-        const key = entry.perm || entry.code || entry.name;
-        if (key) map[key] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
+      (payload as Record<string, unknown>[]).forEach((entry: Record<string, unknown>) => {
+        const key = String(entry.perm || entry.code || entry.name);
+        if (key) map[key as string] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
       });
       if (Object.keys(map).length > 0) return map;
     }
@@ -50,8 +50,8 @@ function normalizePermPayload(payload: any, perms: string[]): Record<string, boo
   if (typeof payload === "object") {
     const map: Record<string, boolean> = {};
     for (const perm of perms) {
-      if (perm in payload) {
-        map[perm] = Boolean(payload[perm]);
+      if (perm in (payload as Record<string, unknown>)) {
+        map[perm] = Boolean((payload as Record<string, unknown>)[perm]);
       }
     }
     if (Object.keys(map).length > 0) return map;
@@ -65,7 +65,7 @@ async function checkPerms(
   perms: string[],
   orgId?: number | null
 ): Promise<Record<string, boolean> | null> {
-  const attempts: any[][] = [];
+  const attempts: unknown[][] = [];
   attempts.push([authtoken, perms]);
   if (orgId) {
     attempts.push([authtoken, orgId, perms]);
@@ -126,7 +126,7 @@ export async function GET(req: NextRequest) {
       ]),
     ]);
 
-    const materialsRows = Array.isArray(materialsRes?.payload?.[0]) ? (materialsRes.payload[0] as any[]) : [];
+    const materialsRows = Array.isArray(materialsRes?.payload?.[0]) ? (materialsRes.payload[0] as Record<string, unknown>[]) : [];
     const materialsCount = new Map<number, number>();
     for (const m of materialsRows) {
       const courseId = toNumber(m?.course);
@@ -134,12 +134,12 @@ export async function GET(req: NextRequest) {
       materialsCount.set(courseId, (materialsCount.get(courseId) || 0) + 1);
     }
 
-    const coursesRaw = Array.isArray(coursesRes?.payload?.[0]) ? (coursesRes.payload[0] as any[]) : [];
-    const termsRaw = Array.isArray(termsRes?.payload?.[0]) ? (termsRes.payload[0] as any[]) : [];
+    const coursesRaw = Array.isArray(coursesRes?.payload?.[0]) ? (coursesRes.payload[0] as Record<string, unknown>[]) : [];
+    const termsRaw = Array.isArray(termsRes?.payload?.[0]) ? (termsRes.payload[0] as Record<string, unknown>[]) : [];
 
     const courses = coursesRaw
-      .map((row: any) => {
-        const owningObj = row?.owning_lib && typeof row.owning_lib === "object" ? row.owning_lib : null;
+      .map((row: Record<string, unknown>) => {
+        const owningObj = row?.owning_lib && typeof row.owning_lib === "object" ? (row.owning_lib as Record<string, unknown>) : null;
         const owningLibId = owningObj ? toNumber(owningObj.id) : toNumber(row?.owning_lib);
         const id = toNumber(row?.id);
         if (!id) return null;
@@ -157,8 +157,8 @@ export async function GET(req: NextRequest) {
       .filter(Boolean);
 
     const terms = termsRaw
-      .map((row: any) => {
-        const owningObj = row?.owning_lib && typeof row.owning_lib === "object" ? row.owning_lib : null;
+      .map((row: Record<string, unknown>) => {
+        const owningObj = row?.owning_lib && typeof row.owning_lib === "object" ? (row.owning_lib as Record<string, unknown>) : null;
         const owningLibId = owningObj ? toNumber(owningObj.id) : toNumber(row?.owning_lib);
         const id = toNumber(row?.id);
         if (!id) return null;
@@ -201,7 +201,7 @@ export async function POST(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const { authtoken } = await requirePermissions(["MANAGE_RESERVES"]);
 
@@ -222,18 +222,18 @@ export async function POST(req: Request) {
             end_date: body.endDate || null,
           };
 
-    const payload: any = encodeFieldmapper(classId, { ...payloadData, isnew: 1, ischanged: 1 });
+    const payload = encodeFieldmapper(classId, { ...payloadData, isnew: 1, ischanged: 1 });
 
     const createResponse = await callOpenSRF("open-ils.pcrud", `open-ils.pcrud.create.${classId}`, [
       authtoken,
       payload,
     ]);
     const resultRow = createResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as any)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to create record"), 400, resultRow);
     }
 
-    const id = typeof resultRow === "number" ? resultRow : toNumber((resultRow as any)?.id ?? resultRow);
+    const id = typeof resultRow === "number" ? resultRow : toNumber((resultRow as Record<string, unknown>)?.id ?? resultRow);
 
     return successResponse({ created: true, entity: body.entity, id });
   } catch (error) {
@@ -259,7 +259,7 @@ export async function PUT(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const { authtoken } = await requirePermissions(["MANAGE_RESERVES"]);
     const classId = body.entity === "course" ? "acmc" : "acmt";
@@ -270,11 +270,11 @@ export async function PUT(req: Request) {
       [authtoken, body.id]
     );
     const existing = existingResponse?.payload?.[0];
-    if (!existing || isOpenSRFEvent(existing) || (existing as any)?.ilsevent) {
+    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(existing, "Record not found"), 404, existing);
     }
 
-    const updateData: Record<string, any> = { ...(existing as any) };
+    const updateData: Record<string, unknown> = { ...(existing as Record<string, unknown>) };
     updateData.id = body.id;
     if (body.name !== undefined) updateData.name = body.name;
     if (body.owningLibId !== undefined) updateData.owning_lib = body.owningLibId;
@@ -289,14 +289,14 @@ export async function PUT(req: Request) {
     }
 
     updateData.ischanged = 1;
-    const payload: any = encodeFieldmapper(classId, updateData);
+    const payload = encodeFieldmapper(classId, updateData);
 
     const updateResponse = await callOpenSRF("open-ils.pcrud", `open-ils.pcrud.update.${classId}`, [
       authtoken,
       payload,
     ]);
     const resultRow = updateResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as any)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to update record"), 400, resultRow);
     }
 
@@ -317,7 +317,7 @@ export async function DELETE(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const { authtoken } = await requirePermissions(["MANAGE_RESERVES"]);
     const classId = body.entity === "course" ? "acmc" : "acmt";
@@ -327,7 +327,7 @@ export async function DELETE(req: Request) {
       body.id,
     ]);
     const resultRow = delResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as any)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to delete record"), 400, resultRow);
     }
 

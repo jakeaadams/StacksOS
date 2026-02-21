@@ -52,7 +52,8 @@ export async function GET(req: NextRequest) {
     return successResponse({ lists });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return errorResponse(error.message, error.status);
+      console.error("Route /api/opac/lists GET auth failed:", error);
+      return errorResponse("Authentication required", 401);
     }
     logger.error({ error: String(error) }, "Error fetching lists");
     return serverErrorResponse(error, "Failed to fetch lists", req);
@@ -109,7 +110,8 @@ export async function POST(req: NextRequest) {
     return successResponse({ list: newList });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return errorResponse(error.message, error.status);
+      console.error("Route /api/opac/lists POST auth failed:", error);
+      return errorResponse("Authentication required", 401);
     }
     logger.error({ error: String(error) }, "Error creating list");
     return serverErrorResponse(error, "Failed to create list", req);

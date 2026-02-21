@@ -64,7 +64,8 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return unauthorizedResponse(error.message);
+      console.error("Route /api/opac/messages GET auth failed:", error);
+      return unauthorizedResponse();
     }
     logger.error({ error: String(error) }, "Error fetching patron messages");
     return serverErrorResponse(error, "Failed to fetch messages", req);
@@ -149,7 +150,8 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return unauthorizedResponse(error.message);
+      console.error("Route /api/opac/messages POST auth failed:", error);
+      return unauthorizedResponse();
     }
     logger.error({ error: String(error) }, "Error processing message action");
     return serverErrorResponse(error, "Failed to process message action", req);

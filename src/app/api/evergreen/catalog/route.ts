@@ -271,8 +271,8 @@ function parseCopyCountsLocationSummary(
   const availability = { total: 0, available: 0 };
   if (!Array.isArray(raw)) {
     if (raw && typeof raw === "object" && locationFilter === null) {
-      const countRaw = (raw as any).total ?? (raw as any).count ?? (raw as any).copy_count ?? 0;
-      const availRaw = (raw as any).available ?? (raw as any).available_count ?? 0;
+      const countRaw = (raw as Record<string, unknown>).total ?? (raw as Record<string, unknown>).count ?? (raw as Record<string, unknown>).copy_count ?? 0;
+      const availRaw = (raw as Record<string, unknown>).available ?? (raw as Record<string, unknown>).available_count ?? 0;
       const countParsed = typeof countRaw === "number" ? countRaw : parseInt(String(countRaw ?? ""), 10);
       const availParsed = typeof availRaw === "number" ? availRaw : parseInt(String(availRaw ?? ""), 10);
       return {
@@ -289,21 +289,21 @@ function parseCopyCountsLocationSummary(
     let available: number | null = null;
 
     if (entry && typeof entry === "object" && !Array.isArray(entry)) {
-      const orgRaw = (entry as any).org_unit ?? (entry as any).orgId ?? (entry as any).org_id ?? (entry as any).org;
+      const orgRaw = (entry as Record<string, unknown>).org_unit ?? (entry as Record<string, unknown>).orgId ?? (entry as Record<string, unknown>).org_id ?? (entry as Record<string, unknown>).org;
       const orgParsed = typeof orgRaw === "number" ? orgRaw : parseInt(String(orgRaw ?? ""), 10);
       orgId = Number.isFinite(orgParsed) ? orgParsed : null;
 
       const countRaw =
-        (entry as any).count ??
-        (entry as any).total ??
-        (entry as any).copy_count ??
-        (entry as any).copies ??
-        (entry as any).total_count;
+        (entry as Record<string, unknown>).count ??
+        (entry as Record<string, unknown>).total ??
+        (entry as Record<string, unknown>).copy_count ??
+        (entry as Record<string, unknown>).copies ??
+        (entry as Record<string, unknown>).total_count;
       const availRaw =
-        (entry as any).available ??
-        (entry as any).available_count ??
-        (entry as any).avail ??
-        (entry as any).count_available;
+        (entry as Record<string, unknown>).available ??
+        (entry as Record<string, unknown>).available_count ??
+        (entry as Record<string, unknown>).avail ??
+        (entry as Record<string, unknown>).count_available;
 
       const countParsed = typeof countRaw === "number" ? countRaw : parseInt(String(countRaw ?? ""), 10);
       const availParsed = typeof availRaw === "number" ? availRaw : parseInt(String(availRaw ?? ""), 10);
@@ -318,9 +318,9 @@ function parseCopyCountsLocationSummary(
       for (let i = entry.length - 1; i >= 0; i -= 1) {
         const v = entry[i];
         if (v && typeof v === "object" && !Array.isArray(v)) {
-          const values = Object.values(v as any);
+          const values = Object.values(v as Record<string, unknown>);
           if (values.some((x) => typeof x === "number")) {
-            statusMap = v as any;
+            statusMap = v as Record<string, unknown>;
             break;
           }
         }
@@ -334,10 +334,10 @@ function parseCopyCountsLocationSummary(
         total = totalCount;
 
         const avail =
-          typeof (statusMap as any)["0"] === "number"
-            ? (statusMap as any)["0"]
-            : typeof (statusMap as any)[0] === "number"
-              ? (statusMap as any)[0]
+          typeof (statusMap as Record<string, unknown>)["0"] === "number"
+            ? (statusMap as Record<string, unknown>)["0"] as number
+            : typeof (statusMap as Record<string, unknown>)[0] === "number"
+              ? (statusMap as Record<string, unknown>)[0] as number
               : 0;
         available = avail;
       }
@@ -440,7 +440,8 @@ export async function GET(req: NextRequest) {
         "open-ils.search.asset.copy_location.retrieve.all",
         []
       );
-      const locations = (locResponse?.payload || []).filter((loc: any) => !loc.ilsevent).map((loc: any) => ({
+      const locations = (locResponse?.payload || [])// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Evergreen location data
+      .filter((loc: Record<string, any>) => !loc.ilsevent).map((loc: Record<string, any>) => ({
         id: loc.id,
         name: loc.name,
         owningLib: loc.owning_lib,
@@ -513,7 +514,8 @@ export async function GET(req: NextRequest) {
       const fleshed = fleshedResponse?.payload?.[0];
       const fleshedCopies = Array.isArray(fleshed) ? fleshed : [];
 
-      const holdings = fleshedCopies.map((copy: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fleshed copy data
+      const holdings = fleshedCopies.map((copy: Record<string, any>) => {
         const statusObj = copy.status && typeof copy.status === "object" ? copy.status : null;
         const locObj = copy.location && typeof copy.location === "object" ? copy.location : null;
         const circObj =
@@ -620,7 +622,7 @@ export async function GET(req: NextRequest) {
 
     // Build search options
     // If local facet filters are active, over-fetch from Evergreen and apply our own pagination after filtering.
-    const searchOpts: any = {
+    const searchOpts: Record<string, unknown> = {
       limit: hasLocalFilters
         ? Math.min(500, Math.max(limit * 10, offset + limit * 5))
         : limit * 2,
@@ -652,8 +654,8 @@ export async function GET(req: NextRequest) {
 
     if (results && Array.isArray(results.ids)) {
       const candidateIds = results.ids
-        .map((idArray: any) => (Array.isArray(idArray) ? idArray[0] : idArray))
-        .map((id: any) => (typeof id === "number" ? id : parseInt(String(id ?? ""), 10)))
+        .map((idArray: unknown) => (Array.isArray(idArray) ? idArray[0] : idArray))
+        .map((id: unknown) => (typeof id === "number" ? id : parseInt(String(id ?? ""), 10)))
         .filter((id: number) => Number.isFinite(id) && id > 0);
 
       const processed = await mapWithConcurrency(candidateIds, 6, async (id) => {
@@ -730,7 +732,7 @@ export async function GET(req: NextRequest) {
         }
       });
 
-      const filtered = processed.filter(Boolean) as any[];
+      const filtered = processed.filter(Boolean) as Record<string, unknown>[];
 
       for (const r of filtered) {
         const format = String(r.format || "");
@@ -760,14 +762,14 @@ export async function GET(req: NextRequest) {
         if (rate.allowed) {
           try {
             const candidates = bibRecords.slice(0, Math.min(40, bibRecords.length)).map((r) => ({
-              id: r.id,
-              title: r.title,
-              author: r.author,
-              format: r.format,
-              audience: r.audience,
-              pubdate: r.pubdate,
-              publisher: r.publisher,
-              isbn: r.isbn,
+              id: r.id as number,
+              title: r.title as string,
+              author: r.author as string | undefined,
+              format: r.format as string | undefined,
+              audience: r.audience as string | undefined,
+              pubdate: r.pubdate as string | undefined,
+              publisher: r.publisher as string | undefined,
+              isbn: r.isbn as string | undefined,
             }));
 
             const prompt = buildSemanticRerankPrompt({
@@ -788,18 +790,18 @@ export async function GET(req: NextRequest) {
               promptVersion: prompt.version,
             });
 
-            const ranked = Array.isArray((out.data as any)?.ranked) ? (out.data as any).ranked : [];
+            const ranked = Array.isArray((out.data as Record<string, unknown>)?.ranked) ? ((out.data as Record<string, unknown>).ranked as Record<string, unknown>[]) : [];
             const order = new Map<number, { score: number; reason: string }>();
             for (const entry of ranked) {
               if (!entry || typeof entry.id !== "number") continue;
-              order.set(entry.id, { score: entry.score, reason: entry.reason });
+              order.set(entry.id as number, { score: entry.score as number, reason: entry.reason as string });
             }
 
             if (order.size > 0) {
               rankingMode = "hybrid";
               bibRecords.sort((a, b) => {
-                const ra = order.get(a.id);
-                const rb = order.get(b.id);
+                const ra = order.get(a.id as number);
+                const rb = order.get(b.id as number);
                 if (ra && rb) return rb.score - ra.score;
                 if (ra && !rb) return -1;
                 if (!ra && rb) return 1;
@@ -807,9 +809,9 @@ export async function GET(req: NextRequest) {
               });
 
               for (const r of bibRecords) {
-                const meta = order.get(r.id);
+                const meta = order.get(r.id as number);
                 if (meta) {
-                  (r as any).ranking = {
+                  (r as Record<string, unknown>).ranking = {
                     mode: "hybrid",
                     semanticScore: meta.score,
                     semanticReason: meta.reason,
@@ -889,7 +891,7 @@ export async function POST(req: NextRequest) {
         })
         .passthrough()
     );
-    if (bodyParsed instanceof Response) return bodyParsed as any;
+    if (bodyParsed instanceof Response) return bodyParsed;
 
     const { action, marcXml, simplified } = bodyParsed;
 

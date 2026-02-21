@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { ErrorState } from "@/components/shared/error-state";
 import { clientLogger } from "@/lib/client-logger";
+import { useTranslations } from "next-intl";
 
 export default function AccountError({
   error,
@@ -11,6 +12,8 @@ export default function AccountError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("errorBoundary.opacAccount");
+
   useEffect(() => {
     clientLogger.error("OPAC account error:", error);
   }, [error]);
@@ -18,8 +21,8 @@ export default function AccountError({
   return (
     <div className="min-h-[60vh] flex items-center justify-center">
       <ErrorState
-        title="Account Error"
-        message="Something went wrong loading your account. Your account data is safe. Please try again or contact library staff for assistance."
+        title={t("title")}
+        message={t("message")}
         error={error}
         onRetry={reset}
         showRetry

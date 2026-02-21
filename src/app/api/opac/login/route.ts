@@ -92,7 +92,9 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: cookieSecure,
         sameSite: "lax",
-        maxAge: rememberMe ? 60 * 60 * 24 * 7 : 60 * 60 * 8,
+        // Library-safe session durations: patrons often use shared public terminals,
+        // so we cap "remember me" at 24h and default sessions at 2h.
+        maxAge: rememberMe ? 60 * 60 * 24 : 60 * 60 * 2,
       });
 
       const userResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [

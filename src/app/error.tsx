@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { clientLogger } from "@/lib/client-logger";
 import { AlertTriangle, Home, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function Error({
   error,
@@ -13,6 +14,8 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("errorBoundary.root");
+
   useEffect(() => {
     // Log the error to an error reporting service
     clientLogger.error("Application error:", error);
@@ -28,9 +31,9 @@ export default function Error({
         </div>
         
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Something went wrong</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground">
-            An unexpected error occurred. Our team has been notified.
+            {t("message")}
           </p>
           {error.digest && (
             <p className="text-xs text-muted-foreground font-mono">
@@ -42,18 +45,18 @@ export default function Error({
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button onClick={reset}>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Try Again
+            {t("tryAgain")}
           </Button>
           <Button variant="outline" asChild>
             <Link href="/">
               <Home className="mr-2 h-4 w-4" />
-              Go Home
+              {t("goHome")}
             </Link>
           </Button>
         </div>
 
         <p className="text-sm text-muted-foreground">
-          If this problem persists, please contact your system administrator.
+          {t("persistMessage")}
         </p>
       </div>
     </div>

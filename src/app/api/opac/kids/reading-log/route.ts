@@ -33,7 +33,8 @@ export async function GET(req: NextRequest) {
     return successResponse({ entries });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return errorResponse(error.message, error.status);
+      console.error("Route /api/opac/kids/reading-log GET auth failed:", error);
+      return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(error, "Kids reading log GET", req);
   }
@@ -68,7 +69,8 @@ export async function POST(req: NextRequest) {
     return successResponse({ entry });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return errorResponse(error.message, error.status);
+      console.error("Route /api/opac/kids/reading-log POST auth failed:", error);
+      return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(error, "Kids reading log POST", req);
   }
@@ -91,7 +93,8 @@ export async function DELETE(req: NextRequest) {
     return successResponse({ deleted: true, id });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return errorResponse(error.message, error.status);
+      console.error("Route /api/opac/kids/reading-log DELETE auth failed:", error);
+      return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(error, "Kids reading log DELETE", req);
   }

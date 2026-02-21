@@ -1153,5 +1153,30 @@
     "choosePickup": "Choose where you want to pick up",
     "partOfSeries": "Part of the",
     "series": "series"
+  },
+  "errorBoundary": {
+    "root": {
+      "title": "Something went wrong",
+      "message": "An unexpected error occurred. Our team has been notified.",
+      "tryAgain": "Try Again",
+      "goHome": "Go Home",
+      "persistMessage": "If this problem persists, please contact your system administrator."
+    },
+    "opacAccount": {
+      "title": "Account Error",
+      "message": "Something went wrong loading your account. Your account data is safe. Please try again or contact library staff for assistance."
+    },
+    "staffAdmin": {
+      "title": "Administration Error",
+      "message": "Something went wrong with administration. Your settings and configurations are safe."
+    },
+    "staffReports": {
+      "title": "Reports Error",
+      "message": "Something went wrong with reports. Your saved report templates and schedules are safe."
+    },
+    "staffCataloging": {
+      "title": "Cataloging Error",
+      "message": "Something went wrong with cataloging. Any unsaved MARC record changes may need to be re-entered."
+    }
   }
 }

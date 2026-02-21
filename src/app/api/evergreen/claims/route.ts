@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
       // Derive a durable list by querying circulations with stop_fines=CLAIMSRETURNED for this patron.
       // Prefer *open* circulations (checkin_time IS NULL), since the Claims Returned staff workflow
       // is about managing currently-claimed items.
-      let claimsReturned: any[] = [];
+      let claimsReturned: unknown[] = [];
       try {
         const claimsCircsResponse = await callOpenSRF(
           "open-ils.pcrud",
@@ -124,7 +124,7 @@ export async function GET(req: NextRequest) {
         const fallbackCircs = fallbackResponse?.payload?.[0];
         const allCircs = Array.isArray(fallbackCircs) ? fallbackCircs : [];
         claimsReturned = allCircs.filter(
-          (c: any) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED"
+          (c: Record<string, unknown>) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED"
         );
       }
 
@@ -152,11 +152,11 @@ export async function GET(req: NextRequest) {
           const copy = copyResponse?.payload?.[0];
 
           let title = "Unknown";
-          const rawCallNumber = (copy as any)?.call_number;
+          const rawCallNumber = (copy as Record<string, unknown>)?.call_number;
           if (rawCallNumber) {
             const cnId =
               typeof rawCallNumber === "object"
-                ? fmNumber(rawCallNumber, "id", 4) ?? (rawCallNumber as any).id
+                ? fmNumber(rawCallNumber, "id", 4) ?? (rawCallNumber as Record<string, unknown>).id
                 : rawCallNumber;
             const cnResponse = await callOpenSRF(
               "open-ils.search",
@@ -164,7 +164,7 @@ export async function GET(req: NextRequest) {
               [cnId]
             );
             const cn = cnResponse?.payload?.[0];
-            const recordId = (cn as any)?.record;
+            const recordId = (cn as Record<string, unknown>)?.record;
             if (recordId) {
               const bibResponse = await callOpenSRF(
                 "open-ils.search",
@@ -178,7 +178,7 @@ export async function GET(req: NextRequest) {
           detailedClaims.push({
             circId: circIdVal,
             copyId,
-            barcode: (copy as any)?.barcode || null,
+            barcode: (copy as Record<string, unknown>)?.barcode || null,
             title,
             claimDate,
             dueDate,
@@ -198,9 +198,9 @@ export async function GET(req: NextRequest) {
       );
       const allBills = billsResponse?.payload?.[0] || [];
       const claimBills = (Array.isArray(allBills) ? allBills : []).filter(
-        (bill: any) =>
-          bill.billing_type?.toLowerCase().includes("claim") ||
-          bill.billing_type?.toLowerCase().includes("lost")
+        (bill: Record<string, unknown>) =>
+          (bill.billing_type as string | undefined)?.toLowerCase().includes("claim") ||
+          (bill.billing_type as string | undefined)?.toLowerCase().includes("lost")
       );
 
       return successResponse({
@@ -214,7 +214,7 @@ export async function GET(req: NextRequest) {
         },
         relatedBills: claimBills,
         totalBillsOwed: claimBills.reduce(
-          (sum: number, b: any) => sum + parseFloat(b.balance_owed || 0),
+          (sum: number, b: Record<string, unknown>) => sum + parseFloat(String(b.balance_owed || 0)),
           0
         ),
       });
@@ -235,7 +235,7 @@ export async function GET(req: NextRequest) {
         return notFoundResponse("Circulation not found");
       }
 
-      const stopFines = fmString(circ, "stop_fines", 19) || (circ as any).stop_fines || null;
+      const stopFines = fmString(circ, "stop_fines", 19) || (circ as Record<string, unknown>).stop_fines || null;
       const isClaimsReturned = stopFines === "CLAIMSRETURNED";
 
       const billsResponse = await callOpenSRF(
@@ -248,12 +248,12 @@ export async function GET(req: NextRequest) {
       return successResponse({
         circulation: {
           id: cid,
-          patronId: fmNumber(circ, "usr", 22) ?? (circ as any).usr ?? null,
-          copyId: fmNumber(circ, "target_copy", 21) ?? (circ as any).target_copy ?? null,
-          dueDate: fmString(circ, "due_date", 6) ?? (circ as any).due_date ?? null,
+          patronId: fmNumber(circ, "usr", 22) ?? (circ as Record<string, unknown>).usr ?? null,
+          copyId: fmNumber(circ, "target_copy", 21) ?? (circ as Record<string, unknown>).target_copy ?? null,
+          dueDate: fmString(circ, "due_date", 6) ?? (circ as Record<string, unknown>).due_date ?? null,
           stopFines,
           stopFinesTime:
-            fmString(circ, "stop_fines_time", 20) ?? (circ as any).stop_fines_time ?? null,
+            fmString(circ, "stop_fines_time", 20) ?? (circ as Record<string, unknown>).stop_fines_time ?? null,
           isClaimsReturned,
         },
         bills: Array.isArray(bills) ? bills : [],
@@ -275,7 +275,7 @@ export async function GET(req: NextRequest) {
 
       const circs = circResponse?.payload?.[0] || [];
       const claimsReturnedCircs = (Array.isArray(circs) ? circs : []).filter(
-        (c: any) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED"
+        (c: Record<string, unknown>) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED"
       );
 
       return successResponse({
@@ -288,7 +288,7 @@ export async function GET(req: NextRequest) {
           isLost: copy.status === 3,
           isDamaged: copy.status === 14,
         },
-        claimsReturnedHistory: claimsReturnedCircs.map((c: any) => ({
+        claimsReturnedHistory: claimsReturnedCircs.map((c: Record<string, unknown>) => ({
           circId: fmNumber(c, "id", 10) ?? null,
           patronId: fmNumber(c, "usr", 22) ?? null,
           claimDate: fmString(c, "stop_fines_time", 20) ?? null,
@@ -313,7 +313,7 @@ export async function POST(req: NextRequest) {
 
       const audit = async (
         status: "success" | "failure",
-        details?: Record<string, any>,
+        details?: Record<string, unknown>,
         error?: string
       ) =>
         logAuditEvent({
@@ -346,7 +346,7 @@ export async function POST(req: NextRequest) {
           return notFoundResponse("Circulation not found");
         }
 
-        const circPatronId = fmNumber(circ, "usr", 22) ?? (circ as any).usr ?? null;
+        const circPatronId: number | null = fmNumber(circ, "usr", 22) ?? (typeof (circ as Record<string, unknown>).usr === "number" ? (circ as Record<string, unknown>).usr as number : null);
 
         // Some Evergreen installs require the copy barcode in the claims-returned payload.
         // Prefer the request-provided copyBarcode (best for audits/QA), otherwise derive it
@@ -357,10 +357,10 @@ export async function POST(req: NextRequest) {
         if (!resolvedCopyBarcode) {
           const rawCopyId =
             fmNumber(circ, "target_copy", 21) ??
-            (circ as any).target_copy ??
-            (circ as any).targetCopy ??
-            (circ as any).copy ??
-            (circ as any).target;
+            (circ as Record<string, unknown>).target_copy ??
+            (circ as Record<string, unknown>).targetCopy ??
+            (circ as Record<string, unknown>).copy ??
+            (circ as Record<string, unknown>).target;
           const copyId = toInt(rawCopyId);
           if (copyId) {
             try {
@@ -370,8 +370,8 @@ export async function POST(req: NextRequest) {
                 [copyId]
               );
               const copy = copyResponse?.payload?.[0];
-              if (copy && !copy.ilsevent && typeof (copy as any).barcode === "string" && (copy as any).barcode.trim()) {
-                resolvedCopyBarcode = (copy as any).barcode.trim();
+              if (copy && !copy.ilsevent && typeof (copy as Record<string, unknown>).barcode === "string" && ((copy as Record<string, unknown>).barcode as string).trim()) {
+                resolvedCopyBarcode = ((copy as Record<string, unknown>).barcode as string).trim();
               }
             } catch {
               // ignore
@@ -395,7 +395,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        const payload: Record<string, any> = { barcode: resolvedCopyBarcode };
+        const payload: Record<string, unknown> = { barcode: resolvedCopyBarcode };
         if (claimDate) payload.backdate = claimDate;
 
         const claimResponse = await callOpenSRF(
@@ -412,7 +412,7 @@ export async function POST(req: NextRequest) {
           let effectiveStopFines: string | null = null;
           try {
             const copy = await getCopyByBarcode(resolvedCopyBarcode);
-            const copyId = fmNumber(copy, "id", 4) ?? (copy as any)?.id;
+            const copyId = fmNumber(copy, "id", 4) ?? ((copy as Record<string, unknown>)?.id as number);
             if (copyId) {
               const openCircResponse = await callOpenSRF(
                 "open-ils.pcrud",
@@ -448,13 +448,13 @@ export async function POST(req: NextRequest) {
           let fineAdjustment = null;
           if (claimDate) {
             const voidedFines = (Array.isArray(bills) ? bills : []).filter(
-              (b: any) => b.voided === "t" || b.voided === true
+              (b: Record<string, unknown>) => b.voided === "t" || b.voided === true
             );
             fineAdjustment = {
               backdatedTo: claimDate,
               finesVoided: voidedFines.length,
               amountVoided: voidedFines.reduce(
-                (sum: number, b: any) => sum + parseFloat(b.amount || 0),
+                (sum: number, b: Record<string, unknown>) => sum + parseFloat(String(b.amount || 0)),
                 0
               ),
             };
@@ -566,7 +566,7 @@ export async function POST(req: NextRequest) {
           let finesVoided = 0;
 
           if (Array.isArray(bills) && bills.length > 0) {
-            const billIds = bills.map((b: any) => b.id).filter(Boolean);
+            const billIds = bills.map((b: Record<string, unknown>) => b.id).filter(Boolean);
             if (billIds.length > 0) {
               await callOpenSRF("open-ils.circ", "open-ils.circ.money.billing.void", [
                 authtoken,
@@ -608,7 +608,7 @@ export async function POST(req: NextRequest) {
 
         const { resolution, voidFines } = body;
 
-        const checkinPayload: Record<string, any> = { copy_barcode: copyBarcode, noop: false };
+        const checkinPayload: Record<string, unknown> = { copy_barcode: copyBarcode, noop: false };
 
         let checkinResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.checkin", [
           authtoken,
@@ -652,8 +652,8 @@ export async function POST(req: NextRequest) {
 
               if (Array.isArray(bills) && bills.length > 0) {
                 const unpaidBillIds = bills
-                  .filter((b: any) => parseFloat(b.balance_owed || 0) > 0)
-                  .map((b: any) => b.id)
+                  .filter((b: Record<string, unknown>) => parseFloat(String(b.balance_owed || 0)) > 0)
+                  .map((b: Record<string, unknown>) => b.id)
                   .filter(Boolean);
 
                 if (unpaidBillIds.length > 0) {
@@ -700,8 +700,8 @@ export async function POST(req: NextRequest) {
         }
 
         const unpaidBillIds = bills
-          .filter((b: any) => parseFloat(b.balance_owed || 0) > 0)
-          .map((b: any) => b.id)
+          .filter((b: Record<string, unknown>) => parseFloat(String(b.balance_owed || 0)) > 0)
+          .map((b: Record<string, unknown>) => b.id)
           .filter(Boolean);
 
         if (unpaidBillIds.length === 0) {
@@ -723,8 +723,8 @@ export async function POST(req: NextRequest) {
 
         if (isSuccessResult(voidResult)) {
           const totalVoided = bills
-            .filter((b: any) => unpaidBillIds.includes(b.id))
-            .reduce((sum: number, b: any) => sum + parseFloat(b.amount || 0), 0);
+            .filter((b: Record<string, unknown>) => unpaidBillIds.includes(b.id as number))
+            .reduce((sum: number, b: Record<string, unknown>) => sum + parseFloat(String(b.amount || 0)), 0);
 
           await audit("success", { circId: cid, finesVoided: unpaidBillIds.length, totalVoided });
 

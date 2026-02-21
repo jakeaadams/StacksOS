@@ -96,7 +96,8 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return errorResponse(error.message, error.status);
+      console.error("Route /api/opac/fines GET auth failed:", error);
+      return errorResponse("Authentication required", 401);
     }
     logger.error({ error: String(error) }, "Error fetching fines");
     return serverErrorResponse(error, "Failed to fetch fines", req);
@@ -149,7 +150,8 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return errorResponse(error.message, error.status);
+      console.error("Route /api/opac/fines POST auth failed:", error);
+      return errorResponse("Authentication required", 401);
     }
     logger.error({ error: String(error) }, "Error processing payment");
     return serverErrorResponse(error, "Failed to process payment", req);

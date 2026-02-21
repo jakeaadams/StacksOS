@@ -136,7 +136,8 @@ export async function POST(req: NextRequest) {
       ({ patronToken, patronId, user } = await requirePatronSession());
     } catch (error) {
       if (error instanceof PatronAuthError) {
-        return unauthorizedResponse(error.message);
+        console.error("Route /api/opac/reviews auth failed:", error);
+        return unauthorizedResponse();
       }
       throw error;
     }
@@ -209,7 +210,8 @@ export async function PUT(req: NextRequest) {
       ({ patronId: _patronId } = await requirePatronSession());
     } catch (error) {
       if (error instanceof PatronAuthError) {
-        return unauthorizedResponse(error.message);
+        console.error("Route /api/opac/reviews auth failed:", error);
+        return unauthorizedResponse();
       }
       throw error;
     }
@@ -262,7 +264,8 @@ export async function DELETE(req: NextRequest) {
       ({ patronId } = await requirePatronSession());
     } catch (error) {
       if (error instanceof PatronAuthError) {
-        return unauthorizedResponse(error.message);
+        console.error("Route /api/opac/reviews auth failed:", error);
+        return unauthorizedResponse();
       }
       throw error;
     }

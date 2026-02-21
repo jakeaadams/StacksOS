@@ -15,21 +15,21 @@ import { getActorFromToken } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { z } from "zod";
 
-function boolToEg(value: any): "t" | "f" {
+function boolToEg(value: unknown): "t" | "f" {
   return value === true || value === "t" || value === 1 ? "t" : "f";
 }
 
-function toNumber(value: any): number | null {
+function toNumber(value: unknown): number | null {
   const num = typeof value === "number" ? value : Number(value);
   return Number.isFinite(num) ? num : null;
 }
 
-function toString(value: any): string {
+function toString(value: unknown): string {
   if (typeof value === "string") return value;
   return String(value ?? "");
 }
 
-function normalizePermPayload(payload: any, perms: string[]): Record<string, boolean> | null {
+function normalizePermPayload(payload: unknown, perms: string[]): Record<string, boolean> | null {
   if (!payload) return null;
 
   if (Array.isArray(payload)) {
@@ -43,9 +43,9 @@ function normalizePermPayload(payload: any, perms: string[]): Record<string, boo
 
     if (payload.length > 0 && typeof payload[0] === "object") {
       const map: Record<string, boolean> = {};
-      payload.forEach((entry: any) => {
-        const key = entry.perm || entry.code || entry.name;
-        if (key) map[key] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
+      (payload as Record<string, unknown>[]).forEach((entry: Record<string, unknown>) => {
+        const key = String(entry.perm || entry.code || entry.name);
+        if (key) map[key as string] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
       });
       if (Object.keys(map).length > 0) return map;
     }
@@ -54,8 +54,8 @@ function normalizePermPayload(payload: any, perms: string[]): Record<string, boo
   if (typeof payload === "object") {
     const map: Record<string, boolean> = {};
     for (const perm of perms) {
-      if (perm in payload) {
-        map[perm] = Boolean(payload[perm]);
+      if (perm in (payload as Record<string, unknown>)) {
+        map[perm] = Boolean((payload as Record<string, unknown>)[perm]);
       }
     }
     if (Object.keys(map).length > 0) return map;
@@ -69,7 +69,7 @@ async function checkPerms(
   perms: string[],
   orgId?: number | null
 ): Promise<Record<string, boolean> | null> {
-  const attempts: any[][] = [];
+  const attempts: unknown[][] = [];
   attempts.push([authtoken, perms]);
   if (orgId) {
     attempts.push([authtoken, orgId, perms]);
@@ -117,11 +117,11 @@ export async function GET(req: NextRequest) {
       },
     ]);
 
-    const rows = Array.isArray(response?.payload?.[0]) ? (response?.payload?.[0] as any[]) : [];
+    const rows = Array.isArray(response?.payload?.[0]) ? (response?.payload?.[0] as Record<string, unknown>[]) : [];
     const tags = rows
-      .map((row: any) => {
-        const tagTypeObj = row?.tag_type && typeof row.tag_type === "object" ? row.tag_type : null;
-        const ownerObj = row?.owner && typeof row.owner === "object" ? row.owner : null;
+      .map((row: Record<string, unknown>) => {
+        const tagTypeObj = row?.tag_type && typeof row.tag_type === "object" ? (row.tag_type as Record<string, unknown>) : null;
+        const ownerObj = row?.owner && typeof row.owner === "object" ? (row.owner as Record<string, unknown>) : null;
 
         const tagTypeCode = tagTypeObj ? toString(tagTypeObj.code).trim() : toString(row?.tag_type).trim();
         const tagTypeLabel = tagTypeObj
@@ -143,7 +143,7 @@ export async function GET(req: NextRequest) {
           url: toString(row?.url || "").trim() || null,
         };
       })
-      .filter((t: any) => typeof t.id === "number" && t.id > 0 && t.label.length > 0);
+      .filter((t: { id: number | null; label: string }) => typeof t.id === "number" && t.id > 0 && t.label.length > 0);
 
     return successResponse({
       tags,
@@ -172,12 +172,12 @@ export async function POST(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const ownerId = body.ownerId ?? result.orgId ?? actor?.ws_ou ?? actor?.home_ou;
     if (!ownerId) return errorResponse("ownerId is required", 400);
 
-    const payload: any = encodeFieldmapper("acpt", {
+    const payload = encodeFieldmapper("acpt", {
       tag_type: body.tagType,
       label: body.label,
       value: body.value,
@@ -195,11 +195,11 @@ export async function POST(req: Request) {
     ]);
 
     const resultRow = createResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as any)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to create tag"), 400, resultRow);
     }
 
-    const id = typeof resultRow === "number" ? resultRow : toNumber((resultRow as any)?.id ?? resultRow);
+    const id = typeof resultRow === "number" ? resultRow : toNumber((resultRow as Record<string, unknown>)?.id ?? resultRow);
 
     return successResponse({ created: true, id });
   } catch (error) {
@@ -225,7 +225,7 @@ export async function PUT(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const id = body.id;
 
@@ -234,14 +234,14 @@ export async function PUT(req: Request) {
       id,
     ]);
     const existing = existingResponse?.payload?.[0];
-    if (!existing || isOpenSRFEvent(existing) || (existing as any)?.ilsevent) {
+    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(existing, "Tag not found"), 404, existing);
     }
 
-    const ownerId = body.ownerId ?? result.orgId ?? actor?.ws_ou ?? actor?.home_ou ?? (existing as any)?.owner;
+    const ownerId = body.ownerId ?? result.orgId ?? actor?.ws_ou ?? actor?.home_ou ?? (existing as Record<string, unknown>)?.owner;
     if (!ownerId) return errorResponse("ownerId is required", 400);
 
-    const updateData: Record<string, any> = { ...(existing as any) };
+    const updateData: Record<string, unknown> = { ...(existing as Record<string, unknown>) };
     updateData.id = id;
     if (body.tagType !== undefined) updateData.tag_type = body.tagType;
     if (body.label !== undefined) updateData.label = body.label;
@@ -252,14 +252,14 @@ export async function PUT(req: Request) {
     if (body.url !== undefined) updateData.url = body.url || null;
     updateData.ischanged = 1;
 
-    const payload: any = encodeFieldmapper("acpt", updateData);
+    const payload = encodeFieldmapper("acpt", updateData);
 
     const updateResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.update.acpt", [
       authtoken,
       payload,
     ]);
     const resultRow = updateResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as any)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to update tag"), 400, resultRow);
     }
 
@@ -280,7 +280,7 @@ export async function DELETE(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const id = body.id;
 
@@ -289,7 +289,7 @@ export async function DELETE(req: Request) {
       id,
     ]);
     const resultRow = delResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as any)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to delete tag"), 400, resultRow);
     }
 

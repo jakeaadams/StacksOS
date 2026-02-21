@@ -307,6 +307,7 @@ export async function POST(req: NextRequest) {
     return successResponse({ sent: true, channel: noticeChannel, recipient: noticeChannel === "email" ? patron.email : undefined, notificationEventId, deliveryId });
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("Route /api/evergreen/notices failed:", error);
 
     await logAuditEvent({
       action: "notice.sent",

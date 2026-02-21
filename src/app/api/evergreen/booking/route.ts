@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       const ownerParam = searchParams.get("owner") || searchParams.get("org_id");
       const owner =
         (ownerParam ? parseInt(ownerParam, 10) : NaN) ||
-        Number((actor as any)?.ws_ou ?? (actor as any)?.home_ou ?? 1) ||
+        Number((actor as Record<string, unknown>)?.ws_ou ?? (actor as Record<string, unknown>)?.home_ou ?? 1) ||
         1;
       // Prefer PCrud over open-ils.booking helpers: PCrud returns stable results
       // even when booking helper methods are unavailable or partially configured.
@@ -33,14 +33,14 @@ export async function GET(req: NextRequest) {
         { owner },
         { limit: 50, order_by: { brsrc: "id DESC" } },
       ]);
-      const rows = Array.isArray(pcrud?.payload?.[0]) ? (pcrud.payload[0] as any[]) : [];
+      const rows = Array.isArray(pcrud?.payload?.[0]) ? (pcrud.payload[0] as Record<string, unknown>[]) : [];
       if (rows.length > 0) {
         return successResponse({
-          resources: rows.map((r: any) => ({
+          resources: rows.map((r: Record<string, unknown>) => ({
             id: r.id,
             barcode: r.barcode ?? null,
-            type: typeof r.type === "object" ? r.type.id : r.type,
-            owner: typeof r.owner === "object" ? r.owner.id : r.owner,
+            type: typeof r.type === "object" ? (r.type as Record<string, unknown>).id : r.type,
+            owner: typeof r.owner === "object" ? (r.owner as Record<string, unknown>).id : r.owner,
             overbook: r.overbook,
           })),
         });
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
 
           if (Array.isArray(resources)) {
             return successResponse({
-              resources: resources.map((r: any) => ({
+              resources: resources.map((r: Record<string, unknown>) => ({
                 id: r.id,
                 barcode: r.barcode ?? null,
                 type: r.type,
@@ -88,18 +88,18 @@ export async function GET(req: NextRequest) {
       const ownerParam = searchParams.get("owner") || searchParams.get("org_id");
       const owner =
         (ownerParam ? parseInt(ownerParam, 10) : NaN) ||
-        Number((actor as any)?.ws_ou ?? (actor as any)?.home_ou ?? 1) ||
+        Number((actor as Record<string, unknown>)?.ws_ou ?? (actor as Record<string, unknown>)?.home_ou ?? 1) ||
         1;
       const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.brt.atomic", [
         authtoken,
         { owner },
         { limit: 200, order_by: { brt: "name" } },
       ]);
-      const rows = Array.isArray(response?.payload?.[0]) ? (response.payload[0] as any[]) : [];
-      const types = rows.map((t: any) => ({
+      const rows = Array.isArray(response?.payload?.[0]) ? (response.payload[0] as Record<string, unknown>[]) : [];
+      const types = rows.map((t: Record<string, unknown>) => ({
         id: t.id,
         name: t.name,
-        owner: typeof t.owner === "object" ? t.owner.id : t.owner,
+        owner: typeof t.owner === "object" ? (t.owner as Record<string, unknown>).id : t.owner,
         catalog_item: t.catalog_item,
         transferable: t.transferable,
       }));
@@ -112,30 +112,30 @@ export async function GET(req: NextRequest) {
       const pickupLibParam = searchParams.get("pickup_lib") || searchParams.get("org_id");
       const pickupLib =
         (pickupLibParam ? parseInt(pickupLibParam, 10) : NaN) ||
-        Number((actor as any)?.ws_ou ?? (actor as any)?.home_ou ?? 1) ||
+        Number((actor as Record<string, unknown>)?.ws_ou ?? (actor as Record<string, unknown>)?.home_ou ?? 1) ||
         1;
       const pcrud = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.bresv.atomic", [
         authtoken,
         { pickup_lib: pickupLib },
         { limit: 50, order_by: { bresv: "id DESC" } },
       ]);
-      const rows = Array.isArray(pcrud?.payload?.[0]) ? (pcrud.payload[0] as any[]) : [];
+      const rows = Array.isArray(pcrud?.payload?.[0]) ? (pcrud.payload[0] as Record<string, unknown>[]) : [];
       if (rows.length > 0) {
         return successResponse({
-          reservations: rows.map((r: any) => ({
+          reservations: rows.map((r: Record<string, unknown>) => ({
             id: r.id,
-            usr: typeof r.usr === "object" ? r.usr.id : r.usr,
-            target_resource: typeof r.target_resource === "object" ? r.target_resource.id : r.target_resource,
+            usr: typeof r.usr === "object" ? (r.usr as Record<string, unknown>).id : r.usr,
+            target_resource: typeof r.target_resource === "object" ? (r.target_resource as Record<string, unknown>).id : r.target_resource,
             target_resource_type:
-              typeof r.target_resource_type === "object" ? r.target_resource_type.id : r.target_resource_type,
-            current_resource: typeof r.current_resource === "object" ? r.current_resource.id : r.current_resource,
+              typeof r.target_resource_type === "object" ? (r.target_resource_type as Record<string, unknown>).id : r.target_resource_type,
+            current_resource: typeof r.current_resource === "object" ? (r.current_resource as Record<string, unknown>).id : r.current_resource,
             start_time: r.start_time,
             end_time: r.end_time,
             pickup_time: r.pickup_time,
             return_time: r.return_time,
             capture_time: r.capture_time,
             cancel_time: r.cancel_time,
-            pickup_lib: typeof r.pickup_lib === "object" ? r.pickup_lib.id : r.pickup_lib,
+            pickup_lib: typeof r.pickup_lib === "object" ? (r.pickup_lib as Record<string, unknown>).id : r.pickup_lib,
           })),
         });
       }
@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
 
           if (Array.isArray(reservations)) {
             return successResponse({
-              reservations: reservations.map((r: any) => ({
+              reservations: reservations.map((r: Record<string, unknown>) => ({
                 id: r.id,
                 usr: r.usr,
                 target_resource: r.target_resource,
@@ -292,14 +292,14 @@ export async function POST(req: NextRequest) {
         { owner, name: typeName },
         { limit: 1 },
       ]);
-      const typeRows = Array.isArray(typeSearch?.payload?.[0]) ? (typeSearch.payload[0] as any[]) : [];
+      const typeRows = Array.isArray(typeSearch?.payload?.[0]) ? (typeSearch.payload[0] as Record<string, unknown>[]) : [];
       const existingType = typeRows[0];
 
       let resourceTypeId: number | null = null;
       if (existingType?.id) {
         resourceTypeId = Number(existingType.id) || null;
       } else {
-        const payload: any = encodeFieldmapper("brt", {
+        const payload = encodeFieldmapper("brt", {
           name: typeName,
           owner,
           fine_amount: 0,
@@ -315,9 +315,9 @@ export async function POST(req: NextRequest) {
         resourceTypeId =
           typeof result === "number"
             ? result
-            : typeof (result as any)?.id === "number"
-              ? (result as any).id
-              : parseInt(String((result as any)?.id ?? result ?? ""), 10);
+            : typeof (result as Record<string, unknown>)?.id === "number"
+              ? (result as Record<string, unknown>).id as number
+              : parseInt(String((result as Record<string, unknown>)?.id ?? result ?? ""), 10);
       }
 
       if (!resourceTypeId || !Number.isFinite(resourceTypeId)) {
@@ -330,14 +330,14 @@ export async function POST(req: NextRequest) {
         { owner, barcode },
         { limit: 1 },
       ]);
-      const resourceRows = Array.isArray(resourceSearch?.payload?.[0]) ? (resourceSearch.payload[0] as any[]) : [];
+      const resourceRows = Array.isArray(resourceSearch?.payload?.[0]) ? (resourceSearch.payload[0] as Record<string, unknown>[]) : [];
       const existingResource = resourceRows[0];
 
       let resourceId: number | null = null;
       if (existingResource?.id) {
         resourceId = Number(existingResource.id) || null;
       } else {
-        const payload: any = encodeFieldmapper("brsrc", {
+        const payload = encodeFieldmapper("brsrc", {
           owner,
           type: resourceTypeId,
           overbook: "f",
@@ -354,9 +354,9 @@ export async function POST(req: NextRequest) {
         resourceId =
           typeof result === "number"
             ? result
-            : typeof (result as any)?.id === "number"
-              ? (result as any).id
-              : parseInt(String((result as any)?.id ?? result ?? ""), 10);
+            : typeof (result as Record<string, unknown>)?.id === "number"
+              ? (result as Record<string, unknown>).id as number
+              : parseInt(String((result as Record<string, unknown>)?.id ?? result ?? ""), 10);
       }
 
       if (!resourceId || !Number.isFinite(resourceId)) {

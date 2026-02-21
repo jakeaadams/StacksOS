@@ -17,21 +17,22 @@ import { getActorFromToken } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { z } from "zod";
 
-function toNumber(value: any): number {
+function toNumber(value: unknown): number {
   const num = typeof value === "number" ? value : Number(value);
   return Number.isFinite(num) ? num : 0;
 }
 
-function toString(value: any): string {
+function toString(value: unknown): string {
   if (typeof value === "string") return value;
   if (value && typeof value === "object") {
-    if (typeof (value as any).name === "string") return (value as any).name;
-    if (typeof (value as any).label === "string") return (value as any).label;
+    const v = value as Record<string, unknown>;
+    if (typeof v.name === "string") return v.name;
+    if (typeof v.label === "string") return v.label;
   }
   return String(value ?? "");
 }
 
-function normalizePermPayload(payload: any, perms: string[]): Record<string, boolean> | null {
+function normalizePermPayload(payload: unknown, perms: string[]): Record<string, boolean> | null {
   if (!payload) return null;
 
   if (Array.isArray(payload)) {
@@ -45,9 +46,9 @@ function normalizePermPayload(payload: any, perms: string[]): Record<string, boo
 
     if (payload.length > 0 && typeof payload[0] === "object") {
       const map: Record<string, boolean> = {};
-      payload.forEach((entry: any) => {
-        const key = entry.perm || entry.code || entry.name;
-        if (key) map[key] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
+      (payload as Record<string, unknown>[]).forEach((entry: Record<string, unknown>) => {
+        const key = String(entry.perm || entry.code || entry.name);
+        if (key) map[key as string] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
       });
       if (Object.keys(map).length > 0) return map;
     }
@@ -56,8 +57,8 @@ function normalizePermPayload(payload: any, perms: string[]): Record<string, boo
   if (typeof payload === "object") {
     const map: Record<string, boolean> = {};
     for (const perm of perms) {
-      if (perm in payload) {
-        map[perm] = Boolean(payload[perm]);
+      if (perm in (payload as Record<string, unknown>)) {
+        map[perm] = Boolean((payload as Record<string, unknown>)[perm]);
       }
     }
     if (Object.keys(map).length > 0) return map;
@@ -67,7 +68,7 @@ function normalizePermPayload(payload: any, perms: string[]): Record<string, boo
 }
 
 async function checkPerms(authtoken: string, perms: string[], orgId?: number): Promise<Record<string, boolean> | null> {
-  const attempts: any[][] = [];
+  const attempts: unknown[][] = [];
   attempts.push([authtoken, perms]);
   if (orgId) {
     attempts.push([authtoken, orgId, perms]);
@@ -91,7 +92,7 @@ async function checkPerms(authtoken: string, perms: string[], orgId?: number): P
   return null;
 }
 
-function boolToEg(value: any): "t" | "f" {
+function boolToEg(value: unknown): "t" | "f" {
   return value === true || value === "t" || value === 1 ? "t" : "f";
 }
 
@@ -108,7 +109,7 @@ export async function GET(req: Request) {
     const rows = Array.isArray(raw) ? raw : [];
 
     const statuses = rows
-      .map((s: any) => ({
+      .map((s: Record<string, unknown>) => ({
         // Evergreen returns fieldmapper objects for ccs with values in __p.
         // Index order for ccs (config.copy_status):
         // [holdable, id, name, opac_visible, copy_active, restrict_copy_delete, is_available, hopeless_prone]
@@ -122,8 +123,8 @@ export async function GET(req: Request) {
         hopelessProne: fmBoolean(s, "hopeless_prone", 7) ?? fmBoolean(s, "hopeless_prone") ?? false,
       }))
       // Include core status id=0 ("Available").
-      .filter((s: any) => Number.isFinite(s.id) && s.id >= 0 && s.name.trim().length > 0)
-      .sort((a: any, b: any) => a.id - b.id);
+      .filter((s: { id: number; name: string }) => Number.isFinite(s.id) && s.id >= 0 && s.name.trim().length > 0)
+      .sort((a: { id: number }, b: { id: number }) => a.id - b.id);
 
     return successResponse({
       statuses,
@@ -157,11 +158,11 @@ export async function POST(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const name = body.name;
 
-    const payload: any = encodeFieldmapper("ccs", {
+    const payload = encodeFieldmapper("ccs", {
       name,
       holdable: boolToEg(body.holdable ?? true),
       opac_visible: boolToEg(body.opacVisible ?? body.opac_visible ?? true),
@@ -170,8 +171,8 @@ export async function POST(req: Request) {
       restrict_copy_delete: boolToEg(body.restrictCopyDelete ?? body.restrict_copy_delete ?? false),
       hopeless_prone: boolToEg(body.hopelessProne ?? body.hopeless_prone ?? false),
     });
-    payload._isnew = true;
-    payload._ischanged = true;
+    (payload as Record<string, unknown>)._isnew = true;
+    (payload as Record<string, unknown>)._ischanged = true;
 
     const createResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.ccs", [
       authtoken,
@@ -179,15 +180,15 @@ export async function POST(req: Request) {
     ]);
 
     const result = createResponse?.payload?.[0];
-    if (!result || isOpenSRFEvent(result) || (result as any)?.ilsevent) {
+    if (!result || isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to create copy status"), 400, result);
     }
 
     return successResponse({
       created: true,
-      id: typeof result === "number" ? result : toNumber((result as any)?.id ?? result),
+      id: typeof result === "number" ? result : toNumber((result as Record<string, unknown>)?.id ?? result),
       orgId,
-      actorId: (actor as any)?.id,
+      actorId: (actor as Record<string, unknown>)?.id,
     });
   } catch (error) {
     return serverErrorResponse(error, "POST /api/evergreen/copy-statuses", req);
@@ -218,7 +219,7 @@ export async function PUT(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const id = body.id;
 
@@ -229,7 +230,7 @@ export async function PUT(req: Request) {
 
     const existingResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.ccs", [authtoken, id]);
     const existing = existingResponse?.payload?.[0];
-    if (!existing || (existing as any)?.ilsevent) {
+    if (!existing || (existing as Record<string, unknown>)?.ilsevent) {
       return errorResponse("Status not found", 404);
     }
     const nameRaw = body.name !== undefined ? String(body.name).trim() : undefined;
@@ -237,7 +238,7 @@ export async function PUT(req: Request) {
       return errorResponse("name cannot be empty", 400);
     }
 
-    const updateData: Record<string, any> = { ...(existing as any) };
+    const updateData: Record<string, unknown> = { ...(existing as Record<string, unknown>) };
     updateData.id = id;
     if (nameRaw !== undefined) updateData.name = nameRaw;
 
@@ -258,9 +259,9 @@ export async function PUT(req: Request) {
       updateData.hopeless_prone = boolToEg(body.hopelessProne ?? body.hopeless_prone);
     }
 
-    const payload: any = encodeFieldmapper("ccs", updateData);
-    payload._isnew = false;
-    payload._ischanged = true;
+    const payload = encodeFieldmapper("ccs", updateData);
+    (payload as Record<string, unknown>)._isnew = false;
+    (payload as Record<string, unknown>)._ischanged = true;
 
     const updateResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.update.ccs", [
       authtoken,
@@ -268,7 +269,7 @@ export async function PUT(req: Request) {
     ]);
 
     const result = updateResponse?.payload?.[0];
-    if (!result || isOpenSRFEvent(result) || (result as any)?.ilsevent) {
+    if (!result || isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to update copy status"), 400, result);
     }
 
@@ -290,7 +291,7 @@ export async function DELETE(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const id = body.id;
 
@@ -301,7 +302,7 @@ export async function DELETE(req: Request) {
 
     const delResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.ccs", [authtoken, id]);
     const result = delResponse?.payload?.[0];
-    if (!result || isOpenSRFEvent(result) || (result as any)?.ilsevent) {
+    if (!result || isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to delete copy status"), 400, result);
     }
 

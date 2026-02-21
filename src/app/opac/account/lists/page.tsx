@@ -627,7 +627,8 @@ export default function MyListsPage() {
                 </label>
                 <div className="flex gap-4">
                   <label htmlFor="private" className="flex items-center gap-2 cursor-pointer">
-         id="visibility"            <input
+                    <input
+                      id="visibility"
                       type="radio"
                       name="visibility"
                       value="private"
@@ -639,7 +640,8 @@ export default function MyListsPage() {
                     Private
                   </label>
                   <label htmlFor="public" className="flex items-center gap-2 cursor-pointer">
-          id="private"           <input
+                    <input
+                      id="private"
                       type="radio"
                       name="visibility"
                       value="public"
@@ -721,7 +723,8 @@ export default function MyListsPage() {
                 </label>
                 <div className="flex gap-4">
                   <label htmlFor="private-2" className="flex items-center gap-2 cursor-pointer">
-       id="visibility-2"              <input
+                    <input
+                      id="visibility-2"
                       type="radio"
                       name="edit-visibility"
                       value="private"
@@ -733,7 +736,8 @@ export default function MyListsPage() {
                     Private
                   </label>
                   <label htmlFor="public-2" className="flex items-center gap-2 cursor-pointer">
-        id="private-2"             <input
+                    <input
+                      id="private-2"
                       type="radio"
                       name="edit-visibility"
                       value="public"

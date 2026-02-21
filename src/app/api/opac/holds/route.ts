@@ -295,7 +295,8 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return unauthorizedResponse(error.message);
+      console.error("Route /api/opac/holds GET auth failed:", error);
+      return unauthorizedResponse();
     }
     return serverErrorResponse(error, "OPAC Holds GET", req);
   }
@@ -353,7 +354,8 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return unauthorizedResponse(error.message);
+      console.error("Route /api/opac/holds POST auth failed:", error);
+      return unauthorizedResponse();
     }
     return serverErrorResponse(error, "OPAC Holds POST", req);
   }
@@ -389,7 +391,8 @@ export async function DELETE(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return unauthorizedResponse(error.message);
+      console.error("Route /api/opac/holds DELETE auth failed:", error);
+      return unauthorizedResponse();
     }
     return serverErrorResponse(error, "OPAC Holds DELETE", req);
   }
@@ -459,7 +462,8 @@ export async function PATCH(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return unauthorizedResponse(error.message);
+      console.error("Route /api/opac/holds PATCH auth failed:", error);
+      return unauthorizedResponse();
     }
     return serverErrorResponse(error, "OPAC Holds PATCH", req);
   }

@@ -189,7 +189,8 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      return errorResponse(error.message, error.status);
+      console.error("Route /api/opac/history auth failed:", error);
+      return errorResponse("Authentication required", 401);
     }
     logger.error({ error: String(error) }, "Error fetching history");
     return serverErrorResponse(error, "Failed to fetch reading history", req);

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { ErrorState } from "@/components/shared/error-state";
 import { clientLogger } from "@/lib/client-logger";
+import { useTranslations } from "next-intl";
 
 export default function ReportsError({
   error,
@@ -11,6 +12,8 @@ export default function ReportsError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("errorBoundary.staffReports");
+
   useEffect(() => {
     clientLogger.error("Reports error:", error);
   }, [error]);
@@ -18,8 +21,8 @@ export default function ReportsError({
   return (
     <div className="min-h-[60vh] flex items-center justify-center">
       <ErrorState
-        title="Reports Error"
-        message="Something went wrong with reports. Your saved report templates and schedules are safe."
+        title={t("title")}
+        message={t("message")}
         error={error}
         onRetry={reset}
         showRetry

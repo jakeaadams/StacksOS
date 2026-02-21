@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
     logger.debug({ requestId: getRequestMeta(req).requestId, route: "api.evergreen.patrons", query, searchType }, "Patrons search");
 
     const fleshFields = ["card", "home_ou", "profile"];
-    const searchOu = Number((actor as any)?.ws_ou ?? (actor as any)?.home_ou ?? 1) || 1;
+    const searchOu = Number((actor as Record<string, unknown>)?.ws_ou ?? (actor as Record<string, unknown>)?.home_ou ?? 1) || 1;
     const offset = parseInt(searchParams.get("offset") || "0");
 
     if (searchType === "barcode") {
@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
 
         const results = Array.isArray(searchResponse?.payload) ? searchResponse.payload : [];
         const patrons = results
-          .filter((p: any) => p && !p.ilsevent)
+          .filter((p: Record<string, unknown>) => p && !((p as Record<string, unknown>).ilsevent))
           .map(formatPatron);
 
         return successResponse({ count: patrons.length, patrons });
@@ -144,7 +144,7 @@ export async function GET(req: NextRequest) {
         const parts = q.split(/\s+/).filter(Boolean);
         const qOr = (v: string) => ({ "~*": v });
 
-        const orConditions: any[] = [
+        const orConditions: Record<string, unknown>[] = [
           { usrname: qOr(q) },
           { first_given_name: qOr(q) },
           { family_name: qOr(q) },
@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
           orConditions.push({ family_name: qOr(part) });
         }
 
-        const baseFilter: any = {
+        const baseFilter: Record<string, unknown> = {
           deleted: "f",
           "-or": orConditions,
         };
@@ -187,8 +187,8 @@ export async function GET(req: NextRequest) {
 
         const results = Array.isArray(pcrudResponse?.payload?.[0]) ? pcrudResponse.payload[0] : [];
         const patrons = results
-          .filter((p: any) => p && !p.ilsevent)
-          .map((p: any) => normalizePatron(p));
+          .filter((p: Record<string, unknown>) => p && !((p as Record<string, unknown>).ilsevent))
+          .map((p: Record<string, unknown>) => normalizePatron(p as Record<string, any>));
 
         return successResponse({ count: patrons.length, patrons });
       }
@@ -200,7 +200,8 @@ export async function GET(req: NextRequest) {
   }
 }
 
-function formatPatron(patron: any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fieldmapper objects with __p positional arrays
+function formatPatron(patron: Record<string, any>) {
   const card = patron.card?.__p || patron.card || {};
   const profile = patron.profile?.__p || patron.profile || {};
 
@@ -218,7 +219,8 @@ function formatPatron(patron: any) {
   };
 }
 
-function extractCard(patron: any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fieldmapper data
+function extractCard(patron: Record<string, any>) {
   const cards = patron.card || patron.cards || patron.__p?.[1];
   const card = Array.isArray(cards) ? cards[0] : cards;
   if (!card) return null;
@@ -240,7 +242,8 @@ function extractCard(patron: any) {
   };
 }
 
-function normalizePatron(patron: any, fallbackBarcode?: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fieldmapper data
+function normalizePatron(patron: Record<string, any>, fallbackBarcode?: string) {
   const card = extractCard(patron);
   const rawId = patron.id ?? patron.__p?.[0];
   const parsedId = typeof rawId === "number" ? rawId : parseInt(String(rawId || ""), 10);
@@ -296,7 +299,8 @@ async function getDefaultProfileId(_authtoken: string): Promise<number> {
   const tree = groupsResponse?.payload?.[0];
   const candidates: Array<{ id: number; name: string }> = [];
 
-  const walk = (node: any) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- recursive org tree traversal
+  const walk = (node: Record<string, any>) => {
     if (!node) return;
     const name = node.name ?? node[2];
     const id = node.id ?? node[0];
@@ -424,7 +428,7 @@ export async function POST(req: NextRequest) {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
     const { ip, userAgent, requestId } = getRequestMeta(req);
     const body = await parseJsonBodyWithSchema(req, z.object({}).passthrough());
-    if (body instanceof NextResponse) return body as any;
+    if (body instanceof NextResponse) return body;
 
     const missing = requireFields(body, ["firstName", "lastName"]);
     if (missing) return missing;
@@ -629,7 +633,7 @@ export async function PUT(req: NextRequest) {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
     const { ip, userAgent, requestId } = getRequestMeta(req);
     const body = await parseJsonBodyWithSchema(req, z.object({}).passthrough());
-    if (body instanceof NextResponse) return body as any;
+    if (body instanceof NextResponse) return body;
 
     const patronId = parseInt(String(body.id || body.patronId || ""), 10);
     if (!Number.isFinite(patronId)) {
@@ -644,15 +648,15 @@ export async function PUT(req: NextRequest) {
 
     const toLinkId = (value: unknown): number | null => {
       if (!value || typeof value !== "object") return null;
-      const raw = (value as any).id;
+      const raw = (value as Record<string, unknown>).id;
       if (typeof raw === "number" && Number.isFinite(raw)) return raw;
       const parsed = parseInt(String(raw ?? ""), 10);
       return Number.isFinite(parsed) ? parsed : null;
     };
 
-    const toFieldmapperObject = (value: unknown): any | null => {
+    const toFieldmapperObject = (value: unknown): Record<string, unknown> | null => {
       if (!value || typeof value !== "object") return null;
-      const classId = (value as any).__class;
+      const classId = (value as Record<string, unknown>).__class;
       if (typeof classId !== "string" || !classId.trim()) return null;
       return encodeFieldmapper(classId, value as Record<string, any>);
     };
@@ -678,21 +682,21 @@ export async function PUT(req: NextRequest) {
     // (at least for many installs). If we send `[]`, Evergreen can accept the call but
     // silently drop unrelated field updates (email/profile/etc). Preserve the existing
     // collections and only mutate them when explicitly requested.
-    updates.cards = Array.isArray((currentPatron as any).cards)
-      ? (currentPatron as any).cards
-          .map((c: any) => toFieldmapperObject(c))
+    updates.cards = Array.isArray((currentPatron as Record<string, unknown>).cards)
+      ? ((currentPatron as Record<string, unknown>).cards as unknown[])
+          .map((c: unknown) => toFieldmapperObject(c))
           .filter(Boolean)
       : [];
-    updates.addresses = Array.isArray((currentPatron as any).addresses)
-      ? (currentPatron as any).addresses
-          .map((a: any) => toFieldmapperObject(a))
+    updates.addresses = Array.isArray((currentPatron as Record<string, unknown>).addresses)
+      ? ((currentPatron as Record<string, unknown>).addresses as unknown[])
+          .map((a: unknown) => toFieldmapperObject(a))
           .filter(Boolean)
       : [];
 
     // These are optional collections, but Evergreen expects arrayrefs (not null).
-    updates.waiver_entries = Array.isArray((currentPatron as any).waiver_entries) ? (currentPatron as any).waiver_entries : [];
-    updates.survey_responses = Array.isArray((currentPatron as any).survey_responses) ? (currentPatron as any).survey_responses : [];
-    updates.stat_cat_entries = Array.isArray((currentPatron as any).stat_cat_entries) ? (currentPatron as any).stat_cat_entries : [];
+    updates.waiver_entries = Array.isArray((currentPatron as Record<string, unknown>).waiver_entries) ? (currentPatron as Record<string, unknown>).waiver_entries : [];
+    updates.survey_responses = Array.isArray((currentPatron as Record<string, unknown>).survey_responses) ? (currentPatron as Record<string, unknown>).survey_responses : [];
+    updates.stat_cat_entries = Array.isArray((currentPatron as Record<string, unknown>).stat_cat_entries) ? (currentPatron as Record<string, unknown>).stat_cat_entries : [];
 
     // Basic fields
     if (body.firstName !== undefined || body.first_given_name !== undefined) {
@@ -758,7 +762,7 @@ export async function PUT(req: NextRequest) {
     );
 
     const result = response?.payload?.[0];
-    const lastEvent = (result as any)?.last_event;
+    const lastEvent = (result as Record<string, unknown>)?.last_event;
     if (!result || isOpenSRFEvent(result) || result.ilsevent || isOpenSRFEvent(lastEvent)) {
       return errorResponse(
         getErrorMessage(result, "Patron update failed"),
@@ -817,7 +821,7 @@ export async function PATCH(req: NextRequest) {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
     const { ip, userAgent, requestId } = getRequestMeta(req);
     const body = await parseJsonBodyWithSchema(req, z.object({}).passthrough());
-    if (body instanceof NextResponse) return body as any;
+    if (body instanceof NextResponse) return body;
 
     const action = body.action;
     const patronId = parseInt(String(body.patronId || body.patron_id || ""), 10);
@@ -992,7 +996,8 @@ export async function PATCH(req: NextRequest) {
       );
 
       const notes = response?.payload?.[0] || [];
-      const formattedNotes = (Array.isArray(notes) ? notes : []).map((n: any) => ({
+      const formattedNotes = (Array.isArray(notes) ? notes : [])// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fieldmapper
+      .map((n: Record<string, any>) => ({
         id: n.id || n.__p?.[0],
         title: n.title || n.__p?.[1] || "Note",
         value: n.value || n.__p?.[2] || "",
@@ -1011,7 +1016,8 @@ export async function PATCH(req: NextRequest) {
       );
 
       const types = response?.payload?.[0] || [];
-      const formattedTypes = (Array.isArray(types) ? types : []).map((t: any) => ({
+      const formattedTypes = (Array.isArray(types) ? types : [])// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fieldmapper
+      .map((t: Record<string, any>) => ({
         id: t.id || t.__p?.[0],
         name: t.name || t.__p?.[1] || "Unknown",
         label: t.label || t.__p?.[2] || t.name || "Unknown",
