@@ -38,7 +38,7 @@ export default function LibraryHoursPage() {
         dow4: { open: null, close: null, note: null },
         dow5: { open: null, close: null, note: null },
         dow6: { open: null, close: null, note: null },
-      }) as any,
+      }) as unknown,
     []
   );
 

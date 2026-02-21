@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { query } from "@/lib/db/evergreen";
+import { z } from "zod";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -28,18 +29,18 @@ export async function GET(req: NextRequest) {
       const holds = holdsResponse?.payload?.[0];
       const list = Array.isArray(holds) ? holds : [];
 
-      const available = list.filter((h: any) => {
+      const available = list.filter((h) => {
         const pickup = h?.pickup_lib;
         const shelf = h?.current_shelf_lib;
         return pickup != null && shelf != null && String(pickup) === String(shelf);
       }).length;
 
-      const inTransit = list.filter((h: any) => {
+      const inTransit = list.filter((h) => {
         const transit = h?.transit;
         if (!transit) return false;
         if (typeof transit !== "object") return true;
-        const cancelTime = (transit as any).cancel_time ?? (transit as any).cancelTime;
-        const destRecv = (transit as any).dest_recv_time ?? (transit as any).destRecvTime;
+        const cancelTime = (transit as Record<string, unknown>).cancel_time ?? (transit as Record<string, unknown>).cancelTime;
+        const destRecv = (transit as Record<string, unknown>).dest_recv_time ?? (transit as Record<string, unknown>).destRecvTime;
         return !cancelTime && !destRecv;
       }).length;
 
@@ -59,7 +60,7 @@ export async function GET(req: NextRequest) {
         const items = response?.payload?.[0];
         return Array.isArray(items) ? items.length : 0;
       } catch (error) {
-        if ((error as any)?.code === "OSRF_METHOD_NOT_FOUND") {
+        if ((error as Record<string, unknown>)?.code === "OSRF_METHOD_NOT_FOUND") {
           logger.info(
             { component: "evergreen.reports", method: "open-ils.circ.overdue_items_by_circ_lib" },
             "Overdue reporting method not available on this Evergreen install"
@@ -157,7 +158,7 @@ export async function GET(req: NextRequest) {
 
         // Get details for each overdue item
         const overdueDetails = await Promise.all(
-          items.slice(0, 50).map(async (circ: any) => {
+          items.slice(0, 50).map(async (circ) => {
             try {
               const copyId = circ.target_copy || circ.copy;
               if (!copyId) return null;
@@ -188,7 +189,7 @@ export async function GET(req: NextRequest) {
           count: items.length,
         });
       } catch (error) {
-        if ((error as any)?.code === "OSRF_METHOD_NOT_FOUND") {
+        if ((error as Record<string, unknown>)?.code === "OSRF_METHOD_NOT_FOUND") {
           return successResponse({
             overdue: [],
             count: 0,

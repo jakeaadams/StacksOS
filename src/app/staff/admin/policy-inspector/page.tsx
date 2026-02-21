@@ -135,11 +135,11 @@ export default function PolicyInspectorPage() {
   );
 
   const apiError = error instanceof ApiError ? error : null;
-  const missingPerms = Array.isArray((apiError?.details as any)?.missing)
-    ? ((apiError?.details as any).missing as string[])
+  const missingPerms = Array.isArray((apiError?.details as Record<string, unknown>)?.missing)
+    ? ((apiError?.details as Record<string, unknown>).missing as string[])
     : [];
-  const requestId = typeof (apiError?.details as any)?.requestId === "string"
-    ? ((apiError?.details as any).requestId as string)
+  const requestId = typeof (apiError?.details as Record<string, unknown>)?.requestId === "string"
+    ? ((apiError?.details as Record<string, unknown>).requestId as string)
     : null;
 
   return (

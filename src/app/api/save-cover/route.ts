@@ -4,6 +4,7 @@ import { query, ensureCustomTables } from "@/lib/db/evergreen";
 import { logAuditEvent } from "@/lib/audit";
 import { errorResponse, getRequestMeta, successResponse, serverErrorResponse } from "@/lib/api";
 import { parsePositiveInt } from "@/lib/upload-utils";
+import { z } from "zod";
 
 function isAllowedCoverUrl(raw: string): boolean {
   const value = raw.trim();
@@ -18,6 +19,12 @@ function isAllowedCoverUrl(raw: string): boolean {
   }
 }
 
+const saveCoverSchema = z.object({
+  recordId: z.coerce.number().int().positive(),
+  coverUrl: z.string().trim().min(1).max(2048),
+  source: z.string().trim().max(256).optional(),
+}).passthrough();
+
 export async function POST(request: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(request);
 
@@ -25,7 +32,7 @@ export async function POST(request: NextRequest) {
     // Require staff authentication
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
 
-    const body = (await request.json().catch(() => null)) as any;
+    const body = saveCoverSchema.safeParse(await request.json().catch(() => null)).data as any;
     const recordId = parsePositiveInt(body?.recordId);
     const coverUrl = String(body?.coverUrl || "").trim();
     const source = String(body?.source || "").trim();

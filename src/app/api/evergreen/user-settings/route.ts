@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     const rawSettings = response?.payload?.[0];
 
     // Normalize response - Evergreen returns object with key -> value
-    const settings: Record<string, any> = {};
+    const settings: Record<string, unknown> = {};
 
     if (rawSettings && typeof rawSettings === "object" && !isOpenSRFEvent(rawSettings)) {
       for (const key of requestedKeys) {
@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
  * Saves user settings to Evergreen
  *
  * Body:
- *   - settings: Record<string, any> - key-value pairs to save
+ *   - settings: Record<string, unknown> - key-value pairs to save
  */
 export async function POST(req: NextRequest) {
   const meta = getRequestMeta(req);
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("User ID not found in session", 400);
     }
 
-    const bodyResult = await parseJsonBody<{ settings?: Record<string, any> }>(req);
+    const bodyResult = await parseJsonBody<{ settings?: Record<string, unknown> }>(req);
 
     // Check if parseJsonBody returned an error response
     if (bodyResult instanceof NextResponse) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { callOpenSRF } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { z } from "zod";
 
 /**
  * Spellcheck / "Did you mean?" API

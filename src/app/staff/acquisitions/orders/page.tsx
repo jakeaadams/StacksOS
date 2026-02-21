@@ -146,7 +146,7 @@ export default function PurchaseOrdersPage() {
               </SelectTrigger>
               <SelectContent>
                 {vendors.length > 0 ? (
-                  vendors.map((vendor) => (
+                  vendors.map((vendor: any) => (
                     <SelectItem key={vendor.id} value={String(vendor.id)}>
                       {vendor.name}
                     </SelectItem>

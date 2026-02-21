@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
+import { z } from "zod";
 
 /**
  * OPAC Patron Messages
@@ -16,6 +17,11 @@ import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
  * 
  * Uses Evergreen open-ils.actor service for message operations
  */
+
+const messagesPostSchema = z.object({
+  action: z.enum(["mark_read", "mark_unread", "delete"]),
+  messageIds: z.array(z.coerce.number().int().positive()).min(1),
+});
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,7 +39,7 @@ export async function GET(req: NextRequest) {
     const rawMessages = Array.isArray(messagesData) ? messagesData : [];
 
     // Transform messages to our format
-    const messages = rawMessages.map((msg: Record<string, unknown>) => ({
+    const messages = rawMessages.map((msg) => ({
       id: msg.id,
       title: msg.title || "Library Message",
       content: msg.message || msg.content || "",
@@ -50,12 +56,12 @@ export async function GET(req: NextRequest) {
 
     // Filter out deleted messages and sort by date (newest first)
     const activeMessages = messages
-      .filter((m: any) => !m.isDeleted)
+      .filter((m) => !m.isDeleted)
       .sort((a: any, b: any) => 
         new Date(b.createDate).getTime() - new Date(a.createDate).getTime()
       );
 
-    const unreadCount = activeMessages.filter((m: any) => !m.isRead).length;
+    const unreadCount = activeMessages.filter((m) => !m.isRead).length;
 
     return successResponse({
       messages: activeMessages,
@@ -76,7 +82,7 @@ export async function POST(req: NextRequest) {
   try {
     const { patronToken } = await requirePatronSession();
 
-    const { action, messageIds } = await req.json();
+    const { action, messageIds } = messagesPostSchema.parse(await req.json());
 
     if (!action) {
       return errorResponse("Action is required", 400);

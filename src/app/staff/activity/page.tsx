@@ -102,7 +102,7 @@ interface ActivityItem {
   targetLabel?: string;
   timestamp: string;
   status: "success" | "warning" | "error" | "info";
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, any>;
 }
 
 interface ApiActivityResponse {
@@ -273,7 +273,7 @@ function toActivityItem(activity: ApiActivity): ActivityItem {
     targetId: activity.target?.id != null ? String(activity.target.id) : undefined,
     targetLabel: activity.target?.label || undefined,
     timestamp: activity.timestamp,
-    metadata: activity.details as Record<string, unknown>,
+    metadata: activity.details as Record<string, any>,
   };
 
   if (activity.type === "login") {
@@ -444,7 +444,7 @@ function FilterBar({
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                {activityTypeOptions.map((type) => {
+                {activityTypeOptions.map((type: any) => {
                   const TypeIcon = type.icon;
                   return (
                     <SelectItem key={type.value} value={type.value}>
@@ -469,7 +469,7 @@ function FilterBar({
                 <SelectValue placeholder="Select range" />
               </SelectTrigger>
               <SelectContent>
-                {DATE_RANGES.map((range) => (
+                {DATE_RANGES.map((range: any) => (
                   <SelectItem key={range.value} value={range.value}>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4" />
@@ -530,7 +530,7 @@ function ActivityStats({ activities, total }: ActivityStatsProps) {
       payments: 0,
     };
 
-    activities.forEach((a) => {
+    activities.forEach((a: any) => {
       if (a.type === "login") counts.logins!++;
       else if (a.type === "checkout" || a.type === "checkin") counts.circulation!++;
       else if (a.type === "hold") counts.holds!++;
@@ -652,7 +652,7 @@ export default function ActivityLogPage() {
         ? data.activities.flatMap((a) => {
             try {
               return [toActivityItem(a)];
-            } catch (_error) {
+            } catch (_error: any) {
               return [];
             }
           })
@@ -672,7 +672,7 @@ export default function ActivityLogPage() {
 
   const activityTypeOptions = useMemo<ActivityTypeOption[]>(() => {
     if (patronChangeSupported) return ACTIVITY_TYPES;
-    return ACTIVITY_TYPES.filter((t) => t.value !== "patron_change");
+    return ACTIVITY_TYPES.filter((t: any) => t.value !== "patron_change");
   }, [patronChangeSupported]);
 
   // If Evergreen doesn't support patron-change activity, keep the UI safe.
@@ -730,7 +730,7 @@ export default function ActivityLogPage() {
   const filteredActivities = useMemo(() => {
     const q = (debouncedSearch || "").trim().toLowerCase();
     if (!q) return allActivities;
-    return allActivities.filter((a) => {
+    return allActivities.filter((a: any) => {
       const haystack = [
         a.userName,
         a.description,
@@ -773,7 +773,7 @@ export default function ActivityLogPage() {
           {activityType !== "all" && (
             <Badge variant="outline" className="rounded-full">
               <Filter className="h-3 w-3 mr-1" />
-              {activityTypeOptions.find((t) => t.value === activityType)?.label}
+              {activityTypeOptions.find((t: any) => t.value === activityType)?.label}
             </Badge>
           )}
         </div>
@@ -860,7 +860,7 @@ export default function ActivityLogPage() {
                 )}
 
                 {/* Activity List */}
-                {filteredActivities.map((activity) => (
+                {filteredActivities.map((activity: any) => (
                   <ActivityCard key={activity.id} activity={activity} />
                 ))}
 

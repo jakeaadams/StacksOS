@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 import { successResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { getRedisClient, redisEnabled } from "@/lib/redis";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 

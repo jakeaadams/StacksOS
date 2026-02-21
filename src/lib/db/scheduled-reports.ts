@@ -181,7 +181,7 @@ export async function listScheduledReportSchedules(): Promise<ScheduledReportSch
     `
   );
 
-  return rows.map((r: any) => ({
+  return rows.map((r) => ({
     id: r.id,
     name: r.name,
     report_key: r.report_key,
@@ -366,7 +366,7 @@ export async function listScheduledReportRuns(scheduleId: number, limit = 50): P
     [scheduleId, limit]
   );
 
-  return rows.map((r: any) => ({
+  return rows.map((r) => ({
     id: r.id,
     schedule_id: r.schedule_id,
     status: r.status,

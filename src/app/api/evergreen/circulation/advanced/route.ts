@@ -15,6 +15,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { withIdempotency } from "@/lib/idempotency";
+import { z } from "zod";
 
 /**
  * Advanced Circulation Features API
@@ -54,13 +55,17 @@ function toInt(value: unknown): number | null {
 }
 
 // POST - Execute advanced circulation operations
+const advancedCircPostSchema = z.object({
+  action: z.string().trim().min(1),
+}).passthrough();
+
 export async function POST(req: NextRequest) {
   return withIdempotency(req, "api.evergreen.circulation.advanced.POST", async () => {
     const { ip, userAgent, requestId } = getRequestMeta(req);
 
     try {
-      const body = await req.json();
-      const { action } = body;
+      const body = advancedCircPostSchema.parse(await req.json());
+      const { action } = body as Record<string, any>;
 
       if (!action) {
         return errorResponse("Action required", 400);
@@ -70,7 +75,7 @@ export async function POST(req: NextRequest) {
 
       const audit = async (
         status: "success" | "failure",
-        details?: Record<string, any>,
+        details?: Record<string, unknown>,
         error?: string
       ) =>
         logAuditEvent({
@@ -108,7 +113,7 @@ export async function POST(req: NextRequest) {
             [authtoken, { circ_id: circId }]
           );
 
-          const result = longOverdueResponse?.payload?.[0];
+          const result = longOverdueResponse?.payload?.[0] as any;
 
           if (isSuccessResult(result) || (result && !result.ilsevent)) {
             // Fetch any bills created
@@ -118,9 +123,8 @@ export async function POST(req: NextRequest) {
               [authtoken, circId]
             );
 
-            const bills = billsResponse?.payload?.[0] || [];
-            const longOverdueBills = (Array.isArray(bills) ? bills : []).filter(
-              (b: any) =>
+            const bills = billsResponse?.payload?.[0] as any || [];
+            const longOverdueBills = (Array.isArray(bills) ? bills : []).filter((b: any) =>
                 b.billing_type?.toLowerCase().includes("long") ||
                 b.billing_type?.toLowerCase().includes("overdue") ||
                 b.billing_type?.toLowerCase().includes("replacement")
@@ -133,8 +137,7 @@ export async function POST(req: NextRequest) {
                 action: "mark_long_overdue",
                 circId,
                 bills: longOverdueBills,
-                totalBilled: longOverdueBills.reduce(
-                  (sum: number, b: any) => sum + parseFloat(b.amount || 0),
+                totalBilled: longOverdueBills.reduce((sum: number, b) => sum + parseFloat(b.amount || 0),
                   0
                 ),
               },
@@ -152,7 +155,7 @@ export async function POST(req: NextRequest) {
          * Processes multiple items as long overdue based on criteria
          */
         case "process_long_overdue_batch": {
-          const { daysOverdue, orgId, limit } = body;
+          const { daysOverdue, orgId, limit } = body as Record<string, any>;
 
           if (!daysOverdue || daysOverdue < 1) {
             return errorResponse("daysOverdue required (minimum 1)", 400);
@@ -173,7 +176,7 @@ export async function POST(req: NextRequest) {
             [authtoken, targetOrgId, cutoffDateStr, maxItems]
           );
 
-          const overdueCircs = overdueResponse?.payload?.[0] || [];
+          const overdueCircs = overdueResponse?.payload?.[0] as any || [];
 
           if (!Array.isArray(overdueCircs) || overdueCircs.length === 0) {
             return successResponse({
@@ -198,7 +201,7 @@ export async function POST(req: NextRequest) {
                 [authtoken, { circ_id: cid }]
               );
 
-              const markResult = markResponse?.payload?.[0];
+              const markResult = markResponse?.payload?.[0] as any;
 
               if (isSuccessResult(markResult) || (markResult && !markResult.ilsevent)) {
                 results.push({ circId: cid, success: true });
@@ -210,7 +213,7 @@ export async function POST(req: NextRequest) {
                   error: getErrorMessage(markResult, "Failed"),
                 });
               }
-            } catch (err) {
+            } catch (err: any) {
               results.push({ circId: cid, success: false, error: String(err) });
             }
           }
@@ -236,7 +239,7 @@ export async function POST(req: NextRequest) {
          * Checks in a long overdue item with billing adjustments
          */
         case "checkin_long_overdue": {
-          const { copyBarcode, voidFines, adjustBilling } = body;
+          const { copyBarcode, voidFines, adjustBilling } = body as Record<string, any>;
 
           if (!copyBarcode) {
             return errorResponse("copyBarcode required", 400);
@@ -255,7 +258,7 @@ export async function POST(req: NextRequest) {
             ]
           );
 
-          const result = checkinResponse?.payload?.[0];
+          const result = checkinResponse?.payload?.[0] as any;
 
           if (isSuccessResult(result) || result?.payload) {
             const response: Record<string, unknown> = {
@@ -275,12 +278,11 @@ export async function POST(req: NextRequest) {
                 [authtoken, circId]
               );
 
-              const bills = billsResponse?.payload?.[0] || [];
+              const bills = billsResponse?.payload?.[0] as any || [];
               response.currentBills = bills;
 
               // Void long overdue processing fees if item is returned
-              const longOverdueBills = (Array.isArray(bills) ? bills : []).filter(
-                (b: any) =>
+              const longOverdueBills = (Array.isArray(bills) ? bills : []).filter((b: any) =>
                   b.billing_type?.toLowerCase().includes("long") &&
                   b.billing_type?.toLowerCase().includes("overdue")
               );
@@ -380,10 +382,10 @@ export async function POST(req: NextRequest) {
               "open-ils.actor.user.transactions.have_balance",
               [authtoken, subId]
             );
-            const bills = billsResponse?.payload?.[0] || [];
+            const bills = billsResponse?.payload?.[0] as any || [];
             const billCount = Array.isArray(bills) ? bills.length : 0;
             const billTotal = Array.isArray(bills)
-              ? bills.reduce((sum: number, b: any) => sum + parseFloat(b.balance_owed || 0), 0)
+              ? bills.reduce((sum: number, b) => sum + parseFloat(b.balance_owed || 0), 0)
               : 0;
 
             subordinates.push({
@@ -472,7 +474,7 @@ export async function POST(req: NextRequest) {
                 [authtoken, leadPatronId, [subId]]
               );
 
-              const mergeResult = mergeResponse?.payload?.[0];
+              const mergeResult = mergeResponse?.payload?.[0] as any;
 
               if (isSuccessResult(mergeResult) || mergeResult === 1) {
                 results.push({ subordinateId: subId, success: true });
@@ -483,12 +485,12 @@ export async function POST(req: NextRequest) {
                   error: getErrorMessage(mergeResult, "Merge failed"),
                 });
               }
-            } catch (err) {
+            } catch (err: any) {
               results.push({ subordinateId: subId, success: false, error: String(err) });
             }
           }
 
-          const successCount = results.filter((r) => r.success).length;
+          const successCount = results.filter((r: any) => r.success).length;
 
           await audit("success", {
             leadPatronId,
@@ -514,7 +516,7 @@ export async function POST(req: NextRequest) {
          * Uploads a batch of offline transactions for later processing
          */
         case "offline_upload": {
-          const { sessionName, transactions } = body;
+          const { sessionName, transactions } = body as Record<string, any>;
 
           if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
             return errorResponse("transactions array required", 400);
@@ -535,7 +537,7 @@ export async function POST(req: NextRequest) {
             ]
           );
 
-          const sessionResult = sessionResponse?.payload?.[0];
+          const sessionResult = sessionResponse?.payload?.[0] as any;
 
           if (isOpenSRFEvent(sessionResult) || sessionResult?.ilsevent) {
             const message = getErrorMessage(sessionResult, "Failed to create offline session");
@@ -559,7 +561,7 @@ export async function POST(req: NextRequest) {
                 [authtoken, sessionId, txn]
               );
 
-              const uploadResult = uploadResponse?.payload?.[0];
+              const uploadResult = uploadResponse?.payload?.[0] as any;
 
               if (isSuccessResult(uploadResult) || (uploadResult && !uploadResult.ilsevent)) {
                 uploadCount++;
@@ -569,7 +571,7 @@ export async function POST(req: NextRequest) {
                   error: getErrorMessage(uploadResult, "Upload failed"),
                 });
               }
-            } catch (err) {
+            } catch (err: any) {
               uploadErrors.push({ index: i, error: String(err) });
             }
           }
@@ -610,7 +612,7 @@ export async function POST(req: NextRequest) {
             [authtoken, sessionId]
           );
 
-          const executeResult = executeResponse?.payload?.[0];
+          const executeResult = executeResponse?.payload?.[0] as any;
 
           if (isOpenSRFEvent(executeResult) || executeResult?.ilsevent) {
             const message = getErrorMessage(executeResult, "Failed to execute offline session");
@@ -659,7 +661,7 @@ export async function POST(req: NextRequest) {
                 [authtoken, { copy_barcode: barcode }]
               );
 
-              const renewResult = renewResponse?.payload?.[0];
+              const renewResult = renewResponse?.payload?.[0] as any;
 
               if (
                 renewResult?.ilsevent === 0 ||
@@ -678,12 +680,12 @@ export async function POST(req: NextRequest) {
                   error: getErrorMessage(renewResult, "Renewal failed"),
                 });
               }
-            } catch (err) {
+            } catch (err: any) {
               results.push({ barcode, success: false, error: String(err) });
             }
           }
 
-          const successCount = results.filter((r) => r.success).length;
+          const successCount = results.filter((r: any) => r.success).length;
 
           await audit("success", {
             patronId,
@@ -735,7 +737,7 @@ export async function POST(req: NextRequest) {
                 [authtoken, checkinParams]
               );
 
-              const checkinResult = checkinResponse?.payload?.[0];
+              const checkinResult = checkinResponse?.payload?.[0] as any;
 
               if (
                 checkinResult?.ilsevent === 0 ||
@@ -761,14 +763,14 @@ export async function POST(req: NextRequest) {
                   error: getErrorMessage(checkinResult, "Checkin failed"),
                 });
               }
-            } catch (err) {
+            } catch (err: any) {
               results.push({ barcode, success: false, error: String(err) });
             }
           }
 
-          const successCount = results.filter((r) => r.success).length;
-          const holdsCaptured = results.filter((r) => r.holdCaptured).length;
-          const transits = results.filter((r) => r.transitTo).length;
+          const successCount = results.filter((r: any) => r.success).length;
+          const holdsCaptured = results.filter((r: any) => r.holdCaptured).length;
+          const transits = results.filter((r: any) => r.transitTo).length;
 
           await audit("success", {
             totalItems: itemBarcodes.length,
@@ -796,7 +798,7 @@ export async function POST(req: NextRequest) {
             400
           );
       }
-    } catch (error) {
+    } catch (error: any) {
       return serverErrorResponse(error, "Advanced Circulation POST", req);
     }
   });
@@ -829,7 +831,7 @@ export async function GET(req: NextRequest) {
           [authtoken, orgId, cutoffDateStr, limit]
         );
 
-        const overdueCircs = overdueResponse?.payload?.[0] || [];
+        const overdueCircs = overdueResponse?.payload?.[0] as any || [];
 
         const items = (Array.isArray(overdueCircs) ? overdueCircs : []).map((circ: any) => ({
           circId: circ.id || circ.__p?.[0],
@@ -864,7 +866,7 @@ export async function GET(req: NextRequest) {
             [authtoken, orgId]
           );
 
-          const sessions = sessionsResponse?.payload?.[0] || [];
+          const sessions = sessionsResponse?.payload?.[0] as any || [];
 
           const formattedSessions = (Array.isArray(sessions) ? sessions : []).map((s: any) => ({
             id: s.id || s.__p?.[0],
@@ -888,7 +890,7 @@ export async function GET(req: NextRequest) {
           [authtoken, sessionId]
         );
 
-        const session = sessionResponse?.payload?.[0];
+        const session = sessionResponse?.payload?.[0] as any;
 
         if (!session || session.ilsevent) {
           return notFoundResponse("Session not found");
@@ -901,7 +903,7 @@ export async function GET(req: NextRequest) {
           [authtoken, sessionId]
         );
 
-        const transactions = txnResponse?.payload?.[0] || [];
+        const transactions = txnResponse?.payload?.[0] as any || [];
 
         return successResponse({
           type: "offline_session",
@@ -977,7 +979,7 @@ export async function GET(req: NextRequest) {
           ],
         });
     }
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Advanced Circulation GET", req);
   }
 }

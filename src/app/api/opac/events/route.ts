@@ -57,6 +57,7 @@ import {
   getEventTypes,
   type EventType,
 } from "@/lib/events-data";
+import { z } from "zod";
 
 export async function GET(req: NextRequest) {
   try {

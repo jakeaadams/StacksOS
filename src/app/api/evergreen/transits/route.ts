@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { z } from "zod";
 
 interface TransitRecord {
   id: number;
@@ -37,6 +38,14 @@ function normalizeRows(payload: any): any[] {
 /**
  * GET - Fetch transits to/from a location
  */
+const transitsPostSchema = z.object({
+  action: z.string().trim().min(1),
+  transit_id: z.coerce.number().int().positive().optional(),
+  copy_barcode: z.string().trim().optional(),
+  reason: z.string().max(1024).optional(),
+  notes: z.string().max(2048).optional(),
+}).passthrough();
+
 export async function GET(req: NextRequest) {
   try {
     const authtoken = await requireAuthToken();
@@ -59,7 +68,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (Array.isArray(rawTransits)) {
-      const transits: TransitRecord[] = rawTransits.map((t: any) => ({
+      const transits: TransitRecord[] = rawTransits.map((t) => ({
         id: t.id,
         source: t.source,
         dest: t.dest,
@@ -86,7 +95,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     const rows = normalizeRows(pcrudResponse?.payload);
-    const transits: TransitRecord[] = rows.map((t: any) => ({
+    const transits: TransitRecord[] = rows.map((t) => ({
       id: t.id,
       source: t.source,
       dest: t.dest,
@@ -114,7 +123,7 @@ export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
-    const body = await req.json();
+    const body = transitsPostSchema.parse(await req.json());
     const { action, transit_id, copy_barcode, reason, notes } = body;
 
     if (!action) {
@@ -125,7 +134,7 @@ export async function POST(req: NextRequest) {
 
     const audit = async (
       status: "success" | "failure",
-      details?: Record<string, any>,
+      details?: Record<string, unknown>,
       error?: string
     ) => {
       await logAuditEvent({

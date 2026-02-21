@@ -7,8 +7,15 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
+import { z } from "zod";
 
 // GET /api/opac/fines - Get patron fines/fees
+const payFinesSchema = z.object({
+  transactionIds: z.array(z.coerce.number().int().positive()).min(1),
+  amount: z.union([z.number().positive(), z.string().min(1)]),
+  paymentType: z.string().optional(),
+});
+
 export async function GET(req: NextRequest) {
   try {
     const { patronToken, patronId } = await requirePatronSession();
@@ -81,9 +88,9 @@ export async function GET(req: NextRequest) {
     );
 
     // Calculate totals
-    const totalOwed = fines.reduce((sum, f) => sum + f.totalOwed, 0);
-    const totalPaid = fines.reduce((sum, f) => sum + f.totalPaid, 0);
-    const totalBalance = fines.reduce((sum, f) => sum + f.balance, 0);
+    const totalOwed = fines.reduce((sum: any, f: any) => sum + f.totalOwed, 0);
+    const totalPaid = fines.reduce((sum: any, f: any) => sum + f.totalPaid, 0);
+    const totalBalance = fines.reduce((sum: any, f: any) => sum + f.balance, 0);
 
     return successResponse({
       fines,
@@ -94,7 +101,7 @@ export async function GET(req: NextRequest) {
         count: fines.length,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof PatronAuthError) {
       console.error("Route /api/opac/fines GET auth failed:", error);
       return errorResponse("Authentication required", 401);
@@ -109,13 +116,13 @@ export async function POST(req: NextRequest) {
   try {
     const { patronToken, patronId } = await requirePatronSession();
 
-    const { transactionIds, amount, paymentType = "credit_card_payment" } = await req.json();
+    const { transactionIds, amount, paymentType = "credit_card_payment" } = payFinesSchema.parse(await req.json());
 
     if (!transactionIds || !Array.isArray(transactionIds) || transactionIds.length === 0) {
       return errorResponse("Transaction IDs required");
     }
 
-    if (!amount || amount <= 0) {
+    if (!amount || Number(amount) <= 0) {
       return errorResponse("Valid payment amount required");
     }
 
@@ -130,7 +137,7 @@ export async function POST(req: NextRequest) {
           userid: patronId,
           payments: transactionIds.map((id: number) => [
             id,
-            amount / transactionIds.length,
+            Number(amount) / transactionIds.length,
           ]),
           payment_type: paymentType,
         },
@@ -148,7 +155,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: "Payment recorded successfully",
     });
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof PatronAuthError) {
       console.error("Route /api/opac/fines POST auth failed:", error);
       return errorResponse("Authentication required", 401);

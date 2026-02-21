@@ -282,7 +282,7 @@ export function CatalogingCopilot({
       const raw = data.response?.suggestions;
       const list = Array.isArray(raw) ? raw : [];
       setSuggestions(
-        list.map((s: any) => ({
+        list.map((s) => ({
           id: String(s.id || `ai-${Math.random()}`),
           type: "enhance",
           field: s.type ? `AI:${String(s.type)}` : "AI",

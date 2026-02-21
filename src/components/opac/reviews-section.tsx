@@ -73,7 +73,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
         setReviews(data.reviews || []);
         setStats(data.stats);
       }
-    } catch (err) {
+    } catch (err: any) {
       clientLogger.error("Error fetching reviews:", err);
     } finally {
       setIsLoading(false);
@@ -117,8 +117,8 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
       setReviewTitle("");
       setReviewText("");
       fetchReviews();
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "An error occurred");
+    } catch (err: any) {
+      setSubmitError(err instanceof Error ? (err as any).message : "An error occurred");
     } finally {
       setIsSubmitting(false);
     }

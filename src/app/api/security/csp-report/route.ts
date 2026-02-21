@@ -3,6 +3,11 @@ import { NextRequest } from "next/server";
 import { getRequestMeta } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { z } from "zod";
+
+const cspReportSchema = z.object({
+  "csp-report": z.record(z.string(), z.unknown()).optional(),
+}).passthrough();
 
 export const runtime = "nodejs";
 
@@ -43,14 +48,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const payload = await req.json().catch(() => null);
-    const reportBody = (payload as any)?.["csp-report"] || (payload as any)?.body || payload;
+    const rawPayload: any = await req.json().catch(() => null);
+    const payload = rawPayload ? cspReportSchema.safeParse(rawPayload).data ?? rawPayload : null;
+    const reportBody = (payload as any)?.["csp-report"] || (payload as Record<string, any>)?.body || payload;
 
-    const documentUri = sanitizeUrl((reportBody as any)?.["document-uri"] ?? (reportBody as any)?.documentURI);
-    const blockedUri = toStringOrNull((reportBody as any)?.["blocked-uri"] ?? (reportBody as any)?.blockedURL);
+    const documentUri = sanitizeUrl((reportBody as any)?.["document-uri"] ?? (reportBody as Record<string, any>)?.documentURI);
+    const blockedUri = toStringOrNull((reportBody as any)?.["blocked-uri"] ?? (reportBody as Record<string, any>)?.blockedURL);
     const violatedDirective = toStringOrNull((reportBody as any)?.["violated-directive"]);
     const effectiveDirective = toStringOrNull((reportBody as any)?.["effective-directive"]);
-    const disposition = toStringOrNull((reportBody as any)?.disposition);
+    const disposition = toStringOrNull((reportBody as Record<string, any>)?.disposition);
     const statusCodeRaw = (reportBody as any)?.["status-code"];
     const statusCode = Number.isFinite(Number(statusCodeRaw)) ? Number(statusCodeRaw) : null;
 
@@ -58,7 +64,7 @@ export async function POST(req: NextRequest) {
     const sampleRaw =
       (reportBody as any)?.["script-sample"] ??
       (reportBody as any)?.["sample"] ??
-      (reportBody as any)?.sample;
+      (reportBody as Record<string, any>)?.sample;
     const sample = typeof sampleRaw === "string" ? sampleRaw.slice(0, 120) : null;
 
     logger.warn(
@@ -78,7 +84,7 @@ export async function POST(req: NextRequest) {
       },
       "CSP violation report"
     );
-  } catch (error) {
+  } catch (error: any) {
     logger.debug({ requestId, error: String(error) }, "Failed to parse CSP report (ignored)");
   }
 

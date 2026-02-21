@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { callOpenSRF, successResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 // GET /api/opac/public-lists - List public bookbags (shareable lists)
 export async function GET(req: NextRequest) {
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 200);
 
-    let bookbags: any[] = [];
+    let bookbags: Record<string, unknown>[] = [];
     try {
       const searchResponse = await callOpenSRF(
         "open-ils.actor",
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
         [null, null, "biblio", "pub"]
       );
       bookbags = searchResponse?.payload?.[0] || [];
-    } catch (error) {
+    } catch (error: any) {
       logger.info({ error: String(error) }, "Public lists not available - method not supported");
       return successResponse({ lists: [], message: "Public lists are not available on this Evergreen install." });
     }
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
       : [];
 
     return successResponse({ lists });
-  } catch (error) {
+  } catch (error: any) {
     logger.error({ error: String(error) }, "Error fetching public lists");
     return successResponse({ lists: [], message: "Unable to fetch public lists" });
   }

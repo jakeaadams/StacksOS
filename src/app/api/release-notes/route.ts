@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   try {
     const { actor } = await requirePermissions(["ADMIN_CONFIG"]);
     const body = await parseJsonBodyWithSchema(req, CreateSchema);
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const created = await addReleaseNote({
       createdBy: actor?.id ?? null,

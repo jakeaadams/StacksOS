@@ -15,6 +15,7 @@ import type { NoticeType, NoticeContext } from "@/lib/email";
 import { getActiveTemplate, createNotificationEvent, createDelivery, markDeliveryAttempt } from "@/lib/db/notifications";
 import { renderTemplateString } from "@/lib/notifications/render";
 import { sendSms } from "@/lib/sms/provider";
+import { z } from "zod";
 
 
 interface PatronNoticePreferences {
@@ -99,7 +100,7 @@ async function getPatronPreferences(
     settingTypes,
   ]);
 
-  const settings = response?.payload?.[0] || {};
+  const settings = response?.payload?.[0] as any as any || {};
 
   return {
     patronId,
@@ -157,7 +158,7 @@ async function getLibraryInfo(authtoken: string, orgId: number) {
     orgId,
   ]);
 
-  const org = response?.payload?.[0];
+  const org = response?.payload?.[0] as any as any;
   if (!org || isOpenSRFEvent(org)) {
     return {
       name: "Library",
@@ -176,6 +177,21 @@ async function getLibraryInfo(authtoken: string, orgId: number) {
 }
 
 // GET - Retrieve patron notification preferences
+const noticesPostSchema = z.object({
+  patron_id: z.coerce.number().int().positive(),
+  notice_type: z.string().trim().min(1),
+  items: z.array(z.record(z.string(), z.unknown())).optional(),
+  holds: z.array(z.record(z.string(), z.unknown())).optional(),
+  bills: z.array(z.record(z.string(), z.unknown())).optional(),
+  expiration_date: z.string().optional(),
+  channel: z.enum(["email", "sms"]).optional(),
+}).passthrough();
+
+const noticesPatchSchema = z.object({
+  patron_id: z.coerce.number().int().positive(),
+  preferences: z.record(z.string(), z.unknown()),
+}).passthrough();
+
 export async function GET(req: NextRequest) {
   try {
     const { authtoken } = await requirePermissions(["VIEW_USER"]);
@@ -189,7 +205,7 @@ export async function GET(req: NextRequest) {
     const preferences = await getPatronPreferences(authtoken, patronId);
 
     return successResponse({ preferences });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Notices GET", req);
   }
 }
@@ -200,8 +216,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
-    const body = await req.json();
-    const { patron_id, notice_type, items, holds, bills, expiration_date, channel } = body;
+    const body = noticesPostSchema.parse(await req.json());
+    const { patron_id, notice_type, items, holds, bills, expiration_date, channel } = body as Record<string, any>;
     const noticeChannel = channel === "sms" ? "sms" : "email";
 
     if (!patron_id || !notice_type) {
@@ -217,7 +233,7 @@ export async function POST(req: NextRequest) {
       [authtoken, patron_id, ["card", "home_ou"]]
     );
 
-    const patron = patronResponse?.payload?.[0];
+    const patron = patronResponse?.payload?.[0] as any;
     if (!patron || isOpenSRFEvent(patron)) {
       return errorResponse("Patron not found", 404);
     }
@@ -281,8 +297,8 @@ export async function POST(req: NextRequest) {
       try {
         await sendSms({ to: phone, message });
         if (delId) await markDeliveryAttempt({ deliveryId: delId, status: "sent" });
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
+      } catch (e: any) {
+        const msg = e instanceof Error ? (e as Error).message : String(e);
         if (delId) await markDeliveryAttempt({ deliveryId: delId, status: "failed", error: msg });
         throw e;
       }
@@ -305,8 +321,8 @@ export async function POST(req: NextRequest) {
     });
 
     return successResponse({ sent: true, channel: noticeChannel, recipient: noticeChannel === "email" ? patron.email : undefined, notificationEventId, deliveryId });
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
+  } catch (error: any) {
+    const errorMsg = error instanceof Error ? (error as Error).message : String(error);
     console.error("Route /api/evergreen/notices failed:", error);
 
     await logAuditEvent({
@@ -328,8 +344,8 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
-    const body = await req.json();
-    const { patron_id, preferences } = body;
+    const body = noticesPatchSchema.parse(await req.json());
+    const { patron_id, preferences } = body as Record<string, any>;
 
     if (!patron_id || !preferences) {
       return errorResponse("patron_id and preferences required", 400);
@@ -350,7 +366,7 @@ export async function PATCH(req: NextRequest) {
     });
 
     return successResponse({ updated: true });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Notices PATCH", req);
   }
 }

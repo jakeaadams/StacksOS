@@ -10,16 +10,21 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { z } from "zod";
 
 
 /**
  * POST - Booking workflow actions: capture, pickup, return
  */
+const bookingActionsPostSchema = z.object({
+  action: z.string().trim().min(1),
+}).passthrough();
+
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
-    const body = await req.json();
+    const body = bookingActionsPostSchema.parse(await req.json());
     const { action } = body;
 
     if (!action) {
@@ -30,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     const audit = async (
       status: "success" | "failure",
-      details?: Record<string, any>,
+      details?: Record<string, unknown>,
       error?: string
     ) => {
       await logAuditEvent({
@@ -169,7 +174,7 @@ export async function POST(req: NextRequest) {
 
         if (Array.isArray(reservations)) {
           return successResponse({
-            reservations: reservations.map((r: any) => ({
+            reservations: reservations.map((r) => ({
               id: r.id,
               usr: r.usr,
               target_resource: r.target_resource,

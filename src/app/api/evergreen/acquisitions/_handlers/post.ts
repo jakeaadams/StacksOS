@@ -750,7 +750,7 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
       default:
         return errorResponse("Invalid action", 400);
     }
-  } catch (err: unknown) {
+  } catch (err: any) {
     if (err instanceof Error && err.name === "AuthenticationError") {
       return errorResponse("Authentication required", 401);
     }

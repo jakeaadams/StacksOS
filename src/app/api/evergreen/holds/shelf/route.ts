@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { differenceInDays, parseISO } from "date-fns";
+import { z } from "zod";
 
 interface ShelfHoldRaw {
   id?: number;
@@ -87,6 +88,11 @@ function mapShelfHold(item: ShelfHoldRaw): MappedShelfHold {
   };
 }
 
+const shelfPostSchema = z.object({
+  action: z.enum(["clear_expired"]),
+  orgId: z.coerce.number().int().positive().optional(),
+}).passthrough();
+
 export async function GET(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
@@ -147,7 +153,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
-    const body = await req.json();
+    const body = shelfPostSchema.parse(await req.json());
     const { action, orgId: bodyOrgId } = body;
 
     if (!action) {

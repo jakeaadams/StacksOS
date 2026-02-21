@@ -138,7 +138,7 @@ export function getPermissionsForAction(
   category: string,
   action: string
 ): readonly string[] | undefined {
-  const maps: Record<string, any> = {
+  const maps: Record<string, unknown> = {
     circulation: CIRCULATION_PERMS,
     claims: CLAIMS_PERMS,
     lost: LOST_PERMS,
@@ -154,7 +154,7 @@ export function getPermissionsForAction(
   const categoryMap = maps[category];
   if (!categoryMap) return undefined;
 
-  return categoryMap[action];
+  return (categoryMap as Record<string, readonly string[]>)[action];
 }
 
 /**

@@ -262,7 +262,7 @@ export async function GET(req: NextRequest) {
     });
 
     return successResponse({ orgId, ...result });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Calendars GET", req);
   }
 }
@@ -272,7 +272,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await parseJsonBodyWithSchema(req, UpdateSchema);
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const { action, orgId } = body;
 
@@ -388,7 +388,7 @@ export async function POST(req: NextRequest) {
     }
 
     return errorResponse("Invalid action", 400);
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Calendars POST", req);
   }
 }

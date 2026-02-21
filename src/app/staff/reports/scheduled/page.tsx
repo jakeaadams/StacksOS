@@ -76,13 +76,13 @@ function cadenceLabel(s: Schedule): string {
 }
 
 function reportLabel(key: Schedule["report_key"]): string {
-  return SCHEDULED_REPORT_DEFINITIONS.find((r) => r.key === key)?.label || key;
+  return SCHEDULED_REPORT_DEFINITIONS.find((r: any) => r.key === key)?.label || key;
 }
 
 function parseRecipients(value: string): string[] {
   return value
     .split(",")
-    .map((v) => v.trim())
+    .map((v: any) => v.trim())
     .filter(Boolean);
 }
 
@@ -188,8 +188,8 @@ export default function ScheduledReportsPage() {
       setCreateOpen(false);
       setEditing(null);
       await schedulesApi.refetch();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -204,8 +204,8 @@ export default function ScheduledReportsPage() {
       toast.success("Run complete", { description: `Run #${json.runId}` });
       setSelectedScheduleId(s.id);
       await Promise.all([schedulesApi.refetch(), runsApi.refetch()]);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Run failed");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Run failed");
     }
   };
 
@@ -219,8 +219,8 @@ export default function ScheduledReportsPage() {
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "Update failed");
       await schedulesApi.refetch();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Update failed");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Update failed");
     }
   };
 
@@ -241,8 +241,8 @@ export default function ScheduledReportsPage() {
       setDeleteTarget(null);
       setSelectedScheduleId(null);
       await schedulesApi.refetch();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Delete failed");
     } finally {
       setDeleting(false);
     }
@@ -458,13 +458,13 @@ export default function ScheduledReportsPage() {
               <Select id="report" value={form.reportKey} onValueChange={(v) => setForm((p) => ({ ...p, reportKey: v as any }))}>
                 <SelectTrigger><SelectValue placeholder="Select report" /></SelectTrigger>
                 <SelectContent>
-                  {SCHEDULED_REPORT_DEFINITIONS.map((r) => (
+                  {SCHEDULED_REPORT_DEFINITIONS.map((r: any) => (
                     <SelectItem key={r.key} value={r.key}>{r.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <div className="text-xs text-muted-foreground">
-                {SCHEDULED_REPORT_DEFINITIONS.find((r) => r.key === form.reportKey)?.description}
+                {SCHEDULED_REPORT_DEFINITIONS.find((r: any) => r.key === form.reportKey)?.description}
               </div>
             </div>
 
@@ -473,7 +473,7 @@ export default function ScheduledReportsPage() {
               <Select id="organization" value={form.orgId} onValueChange={(v) => setForm((p) => ({ ...p, orgId: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select org" /></SelectTrigger>
                 <SelectContent>
-                  {orgs.map((o) => (
+                  {orgs.map((o: any) => (
                     <SelectItem key={o.id} value={String(o.id)}>{o.shortname} — {o.name}</SelectItem>
                   ))}
                 </SelectContent>

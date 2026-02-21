@@ -855,7 +855,7 @@ export default function ReceivingPage() {
                   <SelectValue placeholder="Select a claim type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {claimTypes.map((ct) => (
+                  {claimTypes.map((ct: any) => (
                     <SelectItem key={ct.id} value={String(ct.id)}>
                       {ct.code}{ct.description ? ` — ${ct.description}` : ""}
                     </SelectItem>
@@ -895,7 +895,7 @@ export default function ReceivingPage() {
                   <SelectValue placeholder="Select a cancellation reason" />
                 </SelectTrigger>
                 <SelectContent>
-                  {cancelReasons.map((cr) => (
+                  {cancelReasons.map((cr: any) => (
                     <SelectItem key={cr.id} value={String(cr.id)}>
                       {cr.label}
                     </SelectItem>

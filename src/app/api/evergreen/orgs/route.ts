@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { callOpenSRF, serverErrorResponse, successResponse } from "@/lib/api";
+import { z } from "zod";
 
 export async function GET(req: NextRequest) {
   try {
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest) {
       "open-ils.actor.org_tree.retrieve"
     );
     return successResponse(response as any);
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Orgs API", req);
   }
 }

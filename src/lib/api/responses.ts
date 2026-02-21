@@ -16,7 +16,7 @@ import { ZodType } from "zod";
 /**
  * Return a success response with data
  */
-export function successResponse<T extends Record<string, any>>(data: T, message?: string) {
+export function successResponse<T extends Record<string, unknown>>(data: T, message?: string) {
   return NextResponse.json({
     ok: true,
     ...data,
@@ -39,10 +39,10 @@ export function okResponse(message: string) {
  * Return an error response
  */
 export function errorResponse(error: string, status: number = 400, details?: any) {
-  const body: any = { ok: false, error };
+  const body: Record<string, unknown> = { ok: false, error };
   if (details !== undefined) body.details = details;
-  const headers = (details && typeof details === "object" && (details as any).retryAfter)
-    ? { "retry-after": String((details as any).retryAfter) }
+  const headers = (details && typeof details === "object" && (details as Record<string, unknown>).retryAfter)
+    ? { "retry-after": String((details as Record<string, unknown>).retryAfter) }
     : undefined;
   return NextResponse.json(body, { status, headers });
 }
@@ -113,9 +113,9 @@ export function serverErrorResponse(error: unknown, context: string, req?: Reque
   }
 
   // Avoid importing PermissionError to prevent circular imports. Match by name.
-  if (error && typeof error === "object" && (error as any).name === "PermissionError") {
-    const message = String((error as any).message || "Permission denied");
-    const missing = Array.isArray((error as any).missing) ? (error as any).missing : [];
+  if (error && typeof error === "object" && (error as Record<string, unknown>).name === "PermissionError") {
+    const message = String((error as Record<string, unknown>).message || "Permission denied");
+    const missing = Array.isArray((error as Record<string, unknown>).missing) ? (error as Record<string, unknown>).missing : [];
     const requestId = getRequestId(req);
 
     logger.warn({ requestId, route: context, missing }, "Permission denied");
@@ -146,7 +146,7 @@ export function serverErrorResponse(error: unknown, context: string, req?: Reque
  */
 export function handleOpenSRFResult(
   result: any,
-  successData: Record<string, any>,
+  successData: Record<string, unknown>,
   errorFallback: string,
   successMessage?: string
 ): NextResponse {
@@ -204,7 +204,7 @@ export async function parseJsonBodyWithSchema<T>(
 /**
  * Require specific fields in request body
  */
-export function requireFields(body: Record<string, any>, fields: string[]): NextResponse | null {
+export function requireFields(body: Record<string, unknown>, fields: string[]): NextResponse | null {
   const missing = fields.filter((f) => body[f] === undefined || body[f] === null);
   if (missing.length > 0) {
     return errorResponse("Missing required fields: " + missing.join(", "), 400);

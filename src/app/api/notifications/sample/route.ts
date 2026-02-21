@@ -53,13 +53,13 @@ export async function GET(req: NextRequest) {
       patronBarcode,
       ["card", "home_ou"],
     ]);
-    const patron = patronRes?.payload?.[0];
+    const patron = patronRes?.payload?.[0] as any;
     if (!patron || patron.ilsevent) {
       return errorResponse("Demo patron not found", 404);
     }
 
     const orgRes = await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.retrieve", [authtoken, orgId]);
-    const org = orgRes?.payload?.[0];
+    const org = orgRes?.payload?.[0] as any;
 
     const context: NoticeContext = {
       patron: {
@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
     };
 
     return successResponse({ noticeType, context });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Notifications sample GET", req);
   }
 }

@@ -7,6 +7,7 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
+import { z } from "zod";
 
 // GET /api/opac/history - Get patron reading history
 export async function GET(req: NextRequest) {

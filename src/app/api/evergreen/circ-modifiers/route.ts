@@ -13,7 +13,7 @@ import {
 import { requirePermissions } from "@/lib/permissions";
 import { z } from "zod";
 
-function toString(value: any): string {
+function toString(value: unknown): string {
   return typeof value === "string" ? value : String(value ?? "");
 }
 
@@ -26,9 +26,9 @@ export async function GET(_req: NextRequest) {
       { order_by: { ccm: "code" }, limit: 500 },
     ]);
 
-    const rows = Array.isArray(response?.payload?.[0]) ? (response.payload[0] as any[]) : [];
+    const rows = Array.isArray(response?.payload?.[0]) ? (response.payload[0] as Record<string, unknown>[]) : [];
     const modifiers = rows
-      .map((row: any) => ({
+      .map((row) => ({
         code: toString(row?.code).trim(),
         name: toString(row?.name || row?.code).trim(),
         description: toString(row?.description || "").trim(),
@@ -36,7 +36,7 @@ export async function GET(_req: NextRequest) {
         magneticMedia: row?.magnetic_media === true || row?.magnetic_media === "t",
         avgWaitTime: row?.avg_wait_time ?? null,
       }))
-      .filter((m: any) => m.code.length > 0);
+      .filter((m) => m.code.length > 0);
 
     return successResponse({ modifiers });
   } catch (error) {
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const { authtoken } = await requirePermissions(["ADMIN_CIRC_MOD"]);
 
@@ -66,14 +66,14 @@ export async function POST(req: Request) {
     try {
       const existing = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.ccm", [authtoken, body.code]);
       const row = existing?.payload?.[0];
-      if (row && !isOpenSRFEvent(row) && !(row as any)?.ilsevent) {
+      if (row && !isOpenSRFEvent(row) && !(row as Record<string, unknown>)?.ilsevent) {
         return successResponse({ created: false, code: body.code });
       }
     } catch {
       // ignore and try to create
     }
 
-    const payload: any = encodeFieldmapper("ccm", {
+    const payload: unknown = encodeFieldmapper("ccm", {
       code: body.code,
       name: body.name,
       description: body.description,
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
 
     const createResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.ccm", [authtoken, payload]);
     const resultRow = createResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as any)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to create circ modifier"), 400, resultRow);
     }
 

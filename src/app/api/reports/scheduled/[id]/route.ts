@@ -74,7 +74,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
     if (!id) return errorResponse("Invalid schedule id", 400);
 
     const body = await parseJsonBodyWithSchema(req, UpdateSchema);
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const existing = await getScheduledReportSchedule(id);
     if (!existing) return errorResponse("Schedule not found", 404);

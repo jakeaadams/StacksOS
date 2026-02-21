@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
           const maxFines = Array.isArray(maxFinesRaw) ? maxFinesRaw : [];
 
           // Build policies from Evergreen config
-          const policies = durations.map((d: any) => ({
+          const policies = durations.map((d) => ({
             id: d.id,
             name: d.name,
             loanPeriodDays: d.normal
@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
           }));
 
           // Add fine rules
-          const fineRules = fines.map((f: any) => ({
+          const fineRules = fines.map((f) => ({
             id: f.id,
             name: f.name,
             fineAmount: parseFloat(String(f.normal ?? f.normal_amount ?? "0.10")),
@@ -170,14 +170,14 @@ export async function GET(req: NextRequest) {
               fineRules.length > 0
                 ? fineRules
                 : [{ id: 0, name: "Default Fine", fineAmount: 0.1, fineInterval: "1 day" }],
-            maxFines: maxFines.map((m: any) => ({
+            maxFines: maxFines.map((m) => ({
               id: m.id,
               name: m.name,
               maxAmount: parseFloat(m.amount || "25.00"),
             })),
           });
         } catch (error) {
-          const code = error && typeof error === "object" ? (error as any).code : undefined;
+          const code = error && typeof error === "object" ? (error as Record<string, unknown>).code : undefined;
           if (code === "OSRF_METHOD_NOT_FOUND") {
             logger.warn(
               { route: "api.evergreen.offline", type: "policies" },
@@ -232,7 +232,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const parsed = await parseJsonBodyWithSchema(req, offlineTransactionSchema);
-    if (parsed instanceof Response) return parsed as any;
+    if (parsed instanceof Response) return parsed;
     const { type, data } = parsed;
 
     const TYPE_PERMS: Record<string, string[]> = {
@@ -246,7 +246,7 @@ export async function POST(req: NextRequest) {
 
     const audit = async (
       status: "success" | "failure",
-      details?: Record<string, any>,
+      details?: Record<string, unknown>,
       error?: string
     ) => {
       await logAuditEvent({

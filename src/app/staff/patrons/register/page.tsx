@@ -126,7 +126,7 @@ export default function PatronRegisterPage() {
         email: p.email || "",
       }));
       setDuplicates(patrons);
-    } catch (_error) {
+    } catch (_error: any) {
       setDuplicates([]);
     }
   };
@@ -294,7 +294,7 @@ export default function PatronRegisterPage() {
                     <SelectValue placeholder="Select group" />
                   </SelectTrigger>
                   <SelectContent>
-                    {patronGroups.map((group) => (
+                    {patronGroups.map((group: any) => (
                       <SelectItem key={group.id} value={String(group.id)}>
                         {group.name}
                       </SelectItem>
@@ -309,7 +309,7 @@ export default function PatronRegisterPage() {
                     <SelectValue placeholder="Select library" />
                   </SelectTrigger>
                   <SelectContent>
-                    {orgs.map((org) => (
+                    {orgs.map((org: any) => (
                       <SelectItem key={org.id} value={String(org.id)}>
                         {org.name}
                       </SelectItem>

@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { z } from "zod";
 
 
 function normalizeSerialItem(i: any) {
@@ -37,6 +38,13 @@ function normalizeSerialItem(i: any) {
  * - routing: Get routing list for a stream (requires stream_id param)
  * - distributions: List distributions (currently not configured)
  */
+const serialsPostSchema = z.object({
+  action: z.string().trim().min(1),
+  item_id: z.coerce.number().int().positive().optional(),
+  item_ids: z.array(z.coerce.number().int().positive()).optional(),
+  claim_type: z.coerce.number().int().positive().optional(),
+}).passthrough();
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const action = searchParams.get("action") || "";
@@ -183,7 +191,7 @@ export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
-    const body = await req.json();
+    const body = serialsPostSchema.parse(await req.json());
     const action = body?.action;
 
     if (!action) {
@@ -192,7 +200,7 @@ export async function POST(req: NextRequest) {
 
     const { authtoken, actor } = await requirePermissions(["RECEIVE_SERIAL"]);
 
-    const audit = async (status: "success" | "failure", details?: Record<string, any>, error?: string) => {
+    const audit = async (status: "success" | "failure", details?: Record<string, unknown>, error?: string) => {
       await logAuditEvent({
         action: `serials.${action}`,
         status,

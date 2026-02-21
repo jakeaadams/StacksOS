@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
         [authtoken, barcode, ["card", "cards", "standing_penalties", "home_ou", "profile"]]
       );
 
-      const patron = patronResponse?.payload?.[0];
+      const patron = patronResponse?.payload?.[0] as any;
       if (patron && !patron.ilsevent) {
         const normalized = normalizePatron(patron, barcode);
         return successResponse({ patron: normalized });
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
     logger.debug({ requestId: getRequestMeta(req).requestId, route: "api.evergreen.patrons", query, searchType }, "Patrons search");
 
     const fleshFields = ["card", "home_ou", "profile"];
-    const searchOu = Number((actor as Record<string, unknown>)?.ws_ou ?? (actor as Record<string, unknown>)?.home_ou ?? 1) || 1;
+    const searchOu = Number((actor as Record<string, any>)?.ws_ou ?? (actor as Record<string, any>)?.home_ou ?? 1) || 1;
     const offset = parseInt(searchParams.get("offset") || "0");
 
     if (searchType === "barcode") {
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
         [authtoken, query, fleshFields]
       );
 
-      const patron = searchResponse?.payload?.[0];
+      const patron = searchResponse?.payload?.[0] as any;
       if (patron && !patron.ilsevent) {
         return successResponse({
           count: 1,
@@ -129,11 +129,11 @@ export async function GET(req: NextRequest) {
 
         const results = Array.isArray(searchResponse?.payload) ? searchResponse.payload : [];
         const patrons = results
-          .filter((p: Record<string, unknown>) => p && !((p as Record<string, unknown>).ilsevent))
+          .filter((p: any) => p && !((p as Record<string, any>).ilsevent))
           .map(formatPatron);
 
         return successResponse({ count: patrons.length, patrons });
-      } catch (err) {
+      } catch (err: any) {
         logger.warn(
           { requestId: getRequestMeta(req).requestId, route: "api.evergreen.patrons", error: String(err) },
           "Advanced patron search failed; falling back to pcrud actor.usr search"
@@ -144,7 +144,7 @@ export async function GET(req: NextRequest) {
         const parts = q.split(/\s+/).filter(Boolean);
         const qOr = (v: string) => ({ "~*": v });
 
-        const orConditions: Record<string, unknown>[] = [
+        const orConditions: Record<string, any>[] = [
           { usrname: qOr(q) },
           { first_given_name: qOr(q) },
           { family_name: qOr(q) },
@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
           orConditions.push({ family_name: qOr(part) });
         }
 
-        const baseFilter: Record<string, unknown> = {
+        const baseFilter: Record<string, any> = {
           deleted: "f",
           "-or": orConditions,
         };
@@ -187,15 +187,15 @@ export async function GET(req: NextRequest) {
 
         const results = Array.isArray(pcrudResponse?.payload?.[0]) ? pcrudResponse.payload[0] : [];
         const patrons = results
-          .filter((p: Record<string, unknown>) => p && !((p as Record<string, unknown>).ilsevent))
-          .map((p: Record<string, unknown>) => normalizePatron(p as Record<string, any>));
+          .filter((p: any) => p && !((p as Record<string, any>).ilsevent))
+          .map((p: any) => normalizePatron(p as Record<string, any>));
 
         return successResponse({ count: patrons.length, patrons });
       }
     }
 
     return successResponse({ count: 0, patrons: [] });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Patrons GET", req);
   }
 }
@@ -296,7 +296,7 @@ async function getDefaultProfileId(_authtoken: string): Promise<number> {
     "open-ils.actor",
     "open-ils.actor.groups.tree.retrieve"
   );
-  const tree = groupsResponse?.payload?.[0];
+  const tree = groupsResponse?.payload?.[0] as any;
   const candidates: Array<{ id: number; name: string }> = [];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- recursive org tree traversal
@@ -322,14 +322,14 @@ async function getDefaultProfileId(_authtoken: string): Promise<number> {
 
   if (candidates.length === 0) return 2;
 
-  const normalized = candidates.map((c) => ({
+  const normalized = candidates.map((c: any) => ({
     ...c,
     nameLower: c.name.toLowerCase(),
   }));
 
   const best =
-    normalized.find((c) => /\bpatrons?\b/.test(c.nameLower) && !c.nameLower.includes("api")) ||
-    normalized.find((c) => !c.nameLower.includes("api")) ||
+    normalized.find((c: any) => /\bpatrons?\b/.test(c.nameLower) && !c.nameLower.includes("api")) ||
+    normalized.find((c: any) => !c.nameLower.includes("api")) ||
     normalized[0];
 
   return best?.id ?? 2;
@@ -341,7 +341,7 @@ async function getDefaultPatronSettings(authtoken: string, homeOu: number) {
     "open-ils.actor.ou_setting.ancestor_default.batch",
     [homeOu, ["ui.patron.default_ident_type", "ui.patron.default_country"], authtoken]
   );
-  const settings = settingsResponse?.payload?.[0] || {};
+  const settings = settingsResponse?.payload?.[0] as any || {};
 
   const identTypeRaw = settings["ui.patron.default_ident_type"];
   const identType = Number.isFinite(parseInt(identTypeRaw, 10))
@@ -358,7 +358,7 @@ async function checkUsernameExists(authtoken: string, username: string): Promise
     "open-ils.actor.username.exists",
     [authtoken, username]
   );
-  const result = response?.payload?.[0];
+  const result = response?.payload?.[0] as any as any;
   if (isOpenSRFEvent(result)) {
     throw result;
   }
@@ -377,7 +377,7 @@ async function checkBarcodeExists(authtoken: string, barcode: string): Promise<b
     "open-ils.actor.barcode.exists",
     [authtoken, barcode]
   );
-  const result = response?.payload?.[0];
+  const result = response?.payload?.[0] as any as any;
   if (isOpenSRFEvent(result)) {
     throw result;
   }
@@ -459,8 +459,8 @@ export async function POST(req: NextRequest) {
 
     const addressInput =
       typeof body.address === "object" && body.address !== null
-        ? (body.address as Record<string, unknown>)
-        : ({} as Record<string, unknown>);
+        ? (body.address as Record<string, any>)
+        : ({} as Record<string, any>);
     const street1 = String(addressInput["street1"] || body.street1 || "").trim();
     const street2 = String(addressInput["street2"] || body.street2 || "").trim();
     const city = String(addressInput["city"] || body.city || "").trim();
@@ -577,7 +577,7 @@ export async function POST(req: NextRequest) {
       [authtoken, patron]
     );
 
-    const result = response?.payload?.[0];
+    const result = response?.payload?.[0] as any as any;
     if (!result || isOpenSRFEvent(result) || result.ilsevent) {
       return errorResponse(
         getErrorMessage(result, "Patron creation failed"),
@@ -622,7 +622,7 @@ export async function POST(req: NextRequest) {
       resp.headers.set("x-credential-warning", "true");
     }
     return resp;
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Patrons POST", req);
   }
 }
@@ -648,15 +648,15 @@ export async function PUT(req: NextRequest) {
 
     const toLinkId = (value: unknown): number | null => {
       if (!value || typeof value !== "object") return null;
-      const raw = (value as Record<string, unknown>).id;
+      const raw = (value as Record<string, any>).id;
       if (typeof raw === "number" && Number.isFinite(raw)) return raw;
       const parsed = parseInt(String(raw ?? ""), 10);
       return Number.isFinite(parsed) ? parsed : null;
     };
 
-    const toFieldmapperObject = (value: unknown): Record<string, unknown> | null => {
+    const toFieldmapperObject = (value: unknown): Record<string, any> | null => {
       if (!value || typeof value !== "object") return null;
-      const classId = (value as Record<string, unknown>).__class;
+      const classId = (value as Record<string, any>).__class;
       if (typeof classId !== "string" || !classId.trim()) return null;
       return encodeFieldmapper(classId, value as Record<string, any>);
     };
@@ -682,21 +682,21 @@ export async function PUT(req: NextRequest) {
     // (at least for many installs). If we send `[]`, Evergreen can accept the call but
     // silently drop unrelated field updates (email/profile/etc). Preserve the existing
     // collections and only mutate them when explicitly requested.
-    updates.cards = Array.isArray((currentPatron as Record<string, unknown>).cards)
-      ? ((currentPatron as Record<string, unknown>).cards as unknown[])
+    updates.cards = Array.isArray((currentPatron as Record<string, any>).cards)
+      ? ((currentPatron as Record<string, any>).cards as Record<string, any>[])
           .map((c: unknown) => toFieldmapperObject(c))
           .filter(Boolean)
       : [];
-    updates.addresses = Array.isArray((currentPatron as Record<string, unknown>).addresses)
-      ? ((currentPatron as Record<string, unknown>).addresses as unknown[])
+    updates.addresses = Array.isArray((currentPatron as Record<string, any>).addresses)
+      ? ((currentPatron as Record<string, any>).addresses as Record<string, any>[])
           .map((a: unknown) => toFieldmapperObject(a))
           .filter(Boolean)
       : [];
 
     // These are optional collections, but Evergreen expects arrayrefs (not null).
-    updates.waiver_entries = Array.isArray((currentPatron as Record<string, unknown>).waiver_entries) ? (currentPatron as Record<string, unknown>).waiver_entries : [];
-    updates.survey_responses = Array.isArray((currentPatron as Record<string, unknown>).survey_responses) ? (currentPatron as Record<string, unknown>).survey_responses : [];
-    updates.stat_cat_entries = Array.isArray((currentPatron as Record<string, unknown>).stat_cat_entries) ? (currentPatron as Record<string, unknown>).stat_cat_entries : [];
+    updates.waiver_entries = Array.isArray((currentPatron as Record<string, any>).waiver_entries) ? (currentPatron as Record<string, any>).waiver_entries : [];
+    updates.survey_responses = Array.isArray((currentPatron as Record<string, any>).survey_responses) ? (currentPatron as Record<string, any>).survey_responses : [];
+    updates.stat_cat_entries = Array.isArray((currentPatron as Record<string, any>).stat_cat_entries) ? (currentPatron as Record<string, any>).stat_cat_entries : [];
 
     // Basic fields
     if (body.firstName !== undefined || body.first_given_name !== undefined) {
@@ -761,8 +761,8 @@ export async function PUT(req: NextRequest) {
       [authtoken, patron]
     );
 
-    const result = response?.payload?.[0];
-    const lastEvent = (result as Record<string, unknown>)?.last_event;
+    const result = response?.payload?.[0] as any as any;
+    const lastEvent = (result as Record<string, any>)?.last_event;
     if (!result || isOpenSRFEvent(result) || result.ilsevent || isOpenSRFEvent(lastEvent)) {
       return errorResponse(
         getErrorMessage(result, "Patron update failed"),
@@ -772,7 +772,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const normalized = normalizePatron(result);
-    const mismatch = requestedUpdates.find((k) => {
+    const mismatch = requestedUpdates.find((k: any) => {
       if (k === "passwd") return false;
       if (k === "first_given_name") return normalized.first_given_name !== updates.first_given_name;
       if (k === "family_name") return normalized.family_name !== updates.family_name;
@@ -805,12 +805,12 @@ export async function PUT(req: NextRequest) {
       userAgent,
       requestId,
       details: {
-        updates: requestedUpdates.map((k) => (k === "passwd" ? "password" : k)),
+        updates: requestedUpdates.map((k: any) => (k === "passwd" ? "password" : k)),
       },
     });
 
     return successResponse({ patron: normalized });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Patrons PUT", req);
   }
 }
@@ -856,7 +856,7 @@ export async function PATCH(req: NextRequest) {
         [authtoken, penalty]
       );
 
-      const result = response?.payload?.[0];
+      const result = response?.payload?.[0] as any as any;
       if (isOpenSRFEvent(result) || result?.ilsevent) {
         return errorResponse(getErrorMessage(result, "Failed to add block"), 400, result);
       }
@@ -889,7 +889,7 @@ export async function PATCH(req: NextRequest) {
         [authtoken, penaltyId]
       );
 
-      const result = response?.payload?.[0];
+      const result = response?.payload?.[0] as any as any;
       if (isOpenSRFEvent(result) || result?.ilsevent) {
         return errorResponse(getErrorMessage(result, "Failed to remove block"), 400, result);
       }
@@ -935,7 +935,7 @@ export async function PATCH(req: NextRequest) {
         [authtoken, note]
       );
 
-      const result = response?.payload?.[0];
+      const result = response?.payload?.[0] as any as any;
       if (isOpenSRFEvent(result) || result?.ilsevent) {
         return errorResponse(getErrorMessage(result, "Failed to add note"), 400, result);
       }
@@ -968,7 +968,7 @@ export async function PATCH(req: NextRequest) {
         [authtoken, noteId]
       );
 
-      const result = response?.payload?.[0];
+      const result = response?.payload?.[0] as any as any;
       if (isOpenSRFEvent(result) || result?.ilsevent) {
         return errorResponse(getErrorMessage(result, "Failed to delete note"), 400, result);
       }
@@ -995,9 +995,9 @@ export async function PATCH(req: NextRequest) {
         [authtoken, { usr: patronId }]
       );
 
-      const notes = response?.payload?.[0] || [];
+      const notes = response?.payload?.[0] as any as any || [];
       const formattedNotes = (Array.isArray(notes) ? notes : [])// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fieldmapper
-      .map((n: Record<string, any>) => ({
+      .map((n: any) => ({
         id: n.id || n.__p?.[0],
         title: n.title || n.__p?.[1] || "Note",
         value: n.value || n.__p?.[2] || "",
@@ -1015,9 +1015,9 @@ export async function PATCH(req: NextRequest) {
         "open-ils.actor.standing_penalty.types.retrieve"
       );
 
-      const types = response?.payload?.[0] || [];
+      const types = response?.payload?.[0] as any as any || [];
       const formattedTypes = (Array.isArray(types) ? types : [])// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fieldmapper
-      .map((t: Record<string, any>) => ({
+      .map((t: any) => ({
         id: t.id || t.__p?.[0],
         name: t.name || t.__p?.[1] || "Unknown",
         label: t.label || t.__p?.[2] || t.name || "Unknown",
@@ -1029,7 +1029,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     return errorResponse("Invalid action", 400);
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Patrons PATCH", req);
   }
 }

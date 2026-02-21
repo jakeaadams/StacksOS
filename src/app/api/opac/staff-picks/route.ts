@@ -4,6 +4,7 @@ import {
   successResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 interface StaffPick {
   id: number;
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "10");
 
     // Try to fetch public bookbags - this may not be available in all Evergreen installs
-    let bookbags: any[] = [];
+    let bookbags: Record<string, any>[] = [];
     try {
       const searchResponse = await callOpenSRF(
         "open-ils.actor",
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
         [null, null, "biblio", "pub"]
       );
       bookbags = searchResponse?.payload?.[0] || [];
-    } catch (error) {
+    } catch (error: any) {
       // Method may not exist or may require auth - return empty picks
       logger.info({ error: String(error) }, "Staff picks not available - method not supported or not configured");
       return successResponse({ 
@@ -71,7 +72,7 @@ export async function GET(req: NextRequest) {
           [null, bag.id, { limit }]
         );
 
-        const items = itemsResponse?.payload?.[0];
+        const items = itemsResponse?.payload?.[0] as any;
         if (!Array.isArray(items)) continue;
 
         const bagName = bag.name || "Staff Picks";
@@ -89,7 +90,7 @@ export async function GET(req: NextRequest) {
               [recordId]
             );
 
-            const bib = bibResponse?.payload?.[0];
+            const bib = bibResponse?.payload?.[0] as any;
             if (!bib) continue;
 
             picks.push({
@@ -102,11 +103,11 @@ export async function GET(req: NextRequest) {
               staffBranch,
               review: item.notes || undefined,
             });
-          } catch (_error) {
+          } catch (_error: any) {
             // Skip individual item _errors
           }
         }
-      } catch (_error) {
+      } catch (_error: any) {
         // Skip bag _errors
       }
     }
@@ -115,7 +116,7 @@ export async function GET(req: NextRequest) {
       picks: picks.slice(0, limit),
       total: picks.length,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error({ error: String(error) }, "Error fetching staff picks");
     // Return empty picks on _error rather than failing
     return successResponse({ 

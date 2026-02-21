@@ -4,6 +4,7 @@ import {
   successResponse,
   serverErrorResponse,
 } from "@/lib/api";
+import { z } from "zod";
 
 /**
  * GET /api/evergreen/org-tree
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
 
     // Recursively flesh out the tree with addresses and hours
     const fleshNode = async (node: any): Promise<any> => {
-      const fleshed: any = {
+      const fleshed: Record<string, unknown> = {
         id: node.id,
         name: node.name,
         shortname: node.shortname,

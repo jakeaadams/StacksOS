@@ -46,7 +46,7 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
 
     if (payload.length > 0 && typeof payload[0] === "object") {
       const map: Record<string, boolean> = {};
-      (payload as Record<string, unknown>[]).forEach((entry: Record<string, unknown>) => {
+      (payload as Record<string, unknown>[]).forEach((entry) => {
         const key = String(entry.perm || entry.code || entry.name);
         if (key) map[key as string] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
       });
@@ -109,7 +109,7 @@ export async function GET(req: Request) {
     const rows = Array.isArray(raw) ? raw : [];
 
     const statuses = rows
-      .map((s: Record<string, unknown>) => ({
+      .map((s) => ({
         // Evergreen returns fieldmapper objects for ccs with values in __p.
         // Index order for ccs (config.copy_status):
         // [holdable, id, name, opac_visible, copy_active, restrict_copy_delete, is_available, hopeless_prone]

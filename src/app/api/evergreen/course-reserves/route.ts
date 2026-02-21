@@ -39,7 +39,7 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
 
     if (payload.length > 0 && typeof payload[0] === "object") {
       const map: Record<string, boolean> = {};
-      (payload as Record<string, unknown>[]).forEach((entry: Record<string, unknown>) => {
+      (payload as Record<string, unknown>[]).forEach((entry) => {
         const key = String(entry.perm || entry.code || entry.name);
         if (key) map[key as string] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
       });
@@ -138,7 +138,7 @@ export async function GET(req: NextRequest) {
     const termsRaw = Array.isArray(termsRes?.payload?.[0]) ? (termsRes.payload[0] as Record<string, unknown>[]) : [];
 
     const courses = coursesRaw
-      .map((row: Record<string, unknown>) => {
+      .map((row) => {
         const owningObj = row?.owning_lib && typeof row.owning_lib === "object" ? (row.owning_lib as Record<string, unknown>) : null;
         const owningLibId = owningObj ? toNumber(owningObj.id) : toNumber(row?.owning_lib);
         const id = toNumber(row?.id);
@@ -157,7 +157,7 @@ export async function GET(req: NextRequest) {
       .filter(Boolean);
 
     const terms = termsRaw
-      .map((row: Record<string, unknown>) => {
+      .map((row) => {
         const owningObj = row?.owning_lib && typeof row.owning_lib === "object" ? (row.owning_lib as Record<string, unknown>) : null;
         const owningLibId = owningObj ? toNumber(owningObj.id) : toNumber(row?.owning_lib);
         const id = toNumber(row?.id);
@@ -206,7 +206,7 @@ export async function POST(req: Request) {
     const { authtoken } = await requirePermissions(["MANAGE_RESERVES"]);
 
     const classId = body.entity === "course" ? "acmc" : "acmt";
-    const payloadData: Record<string, any> =
+    const payloadData: Record<string, unknown> =
       body.entity === "course"
         ? {
             name: body.name,

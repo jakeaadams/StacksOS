@@ -11,11 +11,16 @@ import { featureFlags } from "@/lib/feature-flags";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { z } from "zod";
 
 
 // ============================================================================
 // GET - Fetch circulation and hold policies
 // ============================================================================
+
+const policiesPostSchema = z.object({
+  action: z.string().trim().min(1),
+}).passthrough();
 
 export async function GET(req: NextRequest) {
   const { requestId } = getRequestMeta(req);
@@ -264,7 +269,7 @@ export async function GET(req: NextRequest) {
       default:
         return errorResponse("Invalid type parameter. Use: circ, hold, duration_rules, fine_rules, or max_fine_rules", 400);
     }
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Policies GET", req);
   }
 }
@@ -281,8 +286,8 @@ export async function POST(req: NextRequest) {
       return errorResponse("Policy editors are disabled", 403);
     }
 
-    const body = await req.json();
-    const { action, type, data } = body;
+    const body = policiesPostSchema.parse(await req.json());
+    const { action, type, data } = body as Record<string, any>;
 
     // Require admin permissions for modifications
     const { authtoken, actor } = await requirePermissions(["ADMIN_CIRC_MATRIX_MATCHPOINT"]);
@@ -357,7 +362,7 @@ export async function POST(req: NextRequest) {
             [authtoken, newPolicy]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -397,24 +402,24 @@ export async function POST(req: NextRequest) {
             [authtoken, data.id]
           );
 
-          const existing = fetchResponse?.payload?.[0];
+          const existing = fetchResponse?.payload?.[0] as any;
           if (!existing) {
             return errorResponse("Policy not found", 404);
           }
 
-          const getValue = (newVal: any, existingField: string, idx: number) => {
+          const getValue = (newVal: unknown, existingField: string, idx: number) => {
             if (newVal !== undefined) return newVal;
             return existing?.[existingField] ?? existing?.__p?.[idx];
           };
 
-          const getBoolValue = (newVal: any, existingField: string, idx: number) => {
+          const getBoolValue = (newVal: unknown, existingField: string, idx: number) => {
             if (newVal !== undefined) return newVal ? "t" : "f";
             const existingVal = existing?.[existingField] ?? existing?.__p?.[idx];
             if (existingVal === null || existingVal === undefined) return null;
             return existingVal === "t" || existingVal === true ? "t" : "f";
           };
 
-          const getTriBoolValue = (newVal: any, existingField: string, idx: number) => {
+          const getTriBoolValue = (newVal: unknown, existingField: string, idx: number) => {
             if (newVal === null) return null;
             if (newVal !== undefined) return newVal ? "t" : "f";
             const existingVal = existing?.[existingField] ?? existing?.__p?.[idx];
@@ -456,7 +461,7 @@ export async function POST(req: NextRequest) {
             [authtoken, updatePayload]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -495,7 +500,7 @@ export async function POST(req: NextRequest) {
             [authtoken, data.id]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -564,7 +569,7 @@ export async function POST(req: NextRequest) {
             [authtoken, newPolicy]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -604,24 +609,24 @@ export async function POST(req: NextRequest) {
             [authtoken, data.id]
           );
 
-          const existing = fetchResponse?.payload?.[0];
+          const existing = fetchResponse?.payload?.[0] as any;
           if (!existing) {
             return errorResponse("Policy not found", 404);
           }
 
-          const getValue = (newVal: any, existingField: string, idx: number) => {
+          const getValue = (newVal: unknown, existingField: string, idx: number) => {
             if (newVal !== undefined) return newVal;
             return existing?.[existingField] ?? existing?.__p?.[idx];
           };
 
-          const getBoolValue = (newVal: any, existingField: string, idx: number) => {
+          const getBoolValue = (newVal: unknown, existingField: string, idx: number) => {
             if (newVal !== undefined) return newVal ? "t" : "f";
             const existingVal = existing?.[existingField] ?? existing?.__p?.[idx];
             if (existingVal === null || existingVal === undefined) return null;
             return existingVal === "t" || existingVal === true ? "t" : "f";
           };
 
-          const getTriBoolValue = (newVal: any, existingField: string, idx: number) => {
+          const getTriBoolValue = (newVal: unknown, existingField: string, idx: number) => {
             if (newVal === null) return null;
             if (newVal !== undefined) return newVal ? "t" : "f";
             const existingVal = existing?.[existingField] ?? existing?.__p?.[idx];
@@ -665,7 +670,7 @@ export async function POST(req: NextRequest) {
             [authtoken, updatePayload]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -704,7 +709,7 @@ export async function POST(req: NextRequest) {
             [authtoken, data.id]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -738,7 +743,7 @@ export async function POST(req: NextRequest) {
       default:
         return errorResponse("Invalid type. Use: circ or hold", 400);
     }
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Policies POST", req);
   }
 }

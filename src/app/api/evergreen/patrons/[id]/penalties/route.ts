@@ -13,6 +13,7 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -85,6 +86,19 @@ function parsePenaltyPayload(p: Record<string, unknown>, penaltyTypes: PenaltyTy
  * GET /api/evergreen/patrons/[id]/penalties
  * Fetch all penalties for a patron and penalty types
  */
+const penaltyPostSchema = z.object({
+  penaltyType: z.coerce.number().int().positive().optional(),
+  standing_penalty: z.coerce.number().int().positive().optional(),
+  note: z.string().max(2048).optional(),
+  orgUnit: z.coerce.number().int().positive().optional(),
+  org_unit: z.coerce.number().int().positive().optional(),
+}).passthrough();
+
+const penaltyDeleteSchema = z.object({
+  penaltyId: z.coerce.number().int().positive().optional(),
+  penalty_id: z.coerce.number().int().positive().optional(),
+}).passthrough();
+
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { authtoken } = await requirePermissions(["VIEW_USER"]);
@@ -112,14 +126,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         "open-ils.actor.standing_penalty.types.retrieve"
       );
       const rawTypes = typesResponse?.payload?.[0];
-      penaltyTypes = (Array.isArray(rawTypes) ? rawTypes : []).map(
-        (t: Record<string, unknown>) => parsePenaltyTypePayload(t)
+      penaltyTypes = (Array.isArray(rawTypes) ? rawTypes : []).map((t) => parsePenaltyTypePayload(t)
       );
     }
 
     const rawPenalties = (patron as Record<string, unknown>).standing_penalties;
-    const penalties: PatronPenalty[] = (Array.isArray(rawPenalties) ? rawPenalties : []).map(
-      (p: Record<string, unknown>) => parsePenaltyPayload(p, penaltyTypes)
+    const penalties: PatronPenalty[] = (Array.isArray(rawPenalties) ? rawPenalties : []).map((p) => parsePenaltyPayload(p, penaltyTypes)
     );
 
     return successResponse({ 
@@ -146,10 +158,11 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       return errorResponse("Invalid patron ID", 400);
     }
 
-    const body = await parseJsonBody(req);
-    if (!body) {
+    const rawBody = await parseJsonBody(req);
+    if (!rawBody) {
       return errorResponse("Request body required", 400);
     }
+    const body = penaltyPostSchema.parse(rawBody);
 
     const penaltyType = parseInt(String(body.penaltyType || body.standing_penalty || ""), 10);
     const note = String(body.note || "").trim();
@@ -218,10 +231,11 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       return errorResponse("Invalid patron ID", 400);
     }
 
-    const body = await parseJsonBody(req);
-    if (!body) {
+    const rawBody = await parseJsonBody(req);
+    if (!rawBody) {
       return errorResponse("Request body required", 400);
     }
+    const body = penaltyDeleteSchema.parse(rawBody);
 
     const penaltyId = parseInt(String(body.penaltyId || body.penalty_id || ""), 10);
 

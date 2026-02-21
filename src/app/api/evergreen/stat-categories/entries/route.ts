@@ -16,17 +16,17 @@ import { z } from "zod";
 
 type StatKind = "copy" | "patron";
 
-function toNumber(value: any): number | null {
+function toNumber(value: unknown): number | null {
   const num = typeof value === "number" ? value : Number(value);
   return Number.isFinite(num) ? num : null;
 }
 
-function toString(value: any): string {
+function toString(value: unknown): string {
   if (typeof value === "string") return value;
   return String(value ?? "");
 }
 
-function resolveKind(value: any): StatKind | null {
+function resolveKind(value: unknown): StatKind | null {
   return value === "copy" || value === "patron" ? value : null;
 }
 
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
       },
     ]);
 
-    const rows = Array.isArray(response?.payload?.[0]) ? (response.payload[0] as any[]) : [];
+    const rows = Array.isArray(response?.payload?.[0]) ? (response.payload[0] as Record<string, unknown>[]) : [];
     const entries = rows
       .map((row: any) => {
         const ownerObj = row?.owner && typeof row.owner === "object" ? row.owner : null;
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
       .filter(Boolean);
 
     return successResponse({ kind, statCatId, entries, orgId });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "GET /api/evergreen/stat-categories/entries", req);
   }
 }
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const kind = resolveKind(body.kind);
     if (!kind) return errorResponse("Invalid kind", 400);
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
 
     const classId = classIdFor(kind);
 
-    const payload: any = encodeFieldmapper(classId, {
+    const payload: unknown = encodeFieldmapper(classId, {
       stat_cat: body.statCatId,
       value: body.value,
       owner: ownerId,
@@ -129,15 +129,15 @@ export async function POST(req: Request) {
       authtoken,
       payload,
     ]);
-    const resultRow = createResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as any)?.ilsevent) {
+    const resultRow = createResponse?.payload?.[0] as any;
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to create stat cat entry"), 400, resultRow);
     }
 
-    const id = typeof resultRow === "number" ? resultRow : toNumber((resultRow as any)?.id ?? resultRow);
+    const id = typeof resultRow === "number" ? resultRow : toNumber((resultRow as Record<string, unknown>)?.id ?? resultRow);
 
     return successResponse({ created: true, kind, id });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "POST /api/evergreen/stat-categories/entries", req);
   }
 }
@@ -155,7 +155,7 @@ export async function PUT(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const kind = resolveKind(body.kind);
     if (!kind) return errorResponse("Invalid kind", 400);
@@ -168,33 +168,33 @@ export async function PUT(req: Request) {
       `open-ils.pcrud.retrieve.${classId}`,
       [authtoken, body.id]
     );
-    const existing = existingResponse?.payload?.[0];
-    if (!existing || isOpenSRFEvent(existing) || (existing as any)?.ilsevent) {
+    const existing = existingResponse?.payload?.[0] as any;
+    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(existing, "Entry not found"), 404, existing);
     }
 
-    const ownerId = body.ownerId ?? result.orgId ?? actor?.ws_ou ?? actor?.home_ou ?? (existing as any)?.owner;
+    const ownerId = body.ownerId ?? result.orgId ?? actor?.ws_ou ?? actor?.home_ou ?? (existing as Record<string, unknown>)?.owner;
     if (!ownerId) return errorResponse("ownerId is required", 400);
 
-    const updateData: Record<string, any> = { ...(existing as any) };
+    const updateData: Record<string, unknown> = { ...(existing as Record<string, unknown>) };
     updateData.id = body.id;
     updateData.owner = ownerId;
     if (body.value !== undefined) updateData.value = body.value;
     updateData.ischanged = 1;
 
-    const payload: any = encodeFieldmapper(classId, updateData);
+    const payload: unknown = encodeFieldmapper(classId, updateData);
 
     const updateResponse = await callOpenSRF("open-ils.pcrud", `open-ils.pcrud.update.${classId}`, [
       authtoken,
       payload,
     ]);
-    const resultRow = updateResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as any)?.ilsevent) {
+    const resultRow = updateResponse?.payload?.[0] as any;
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to update entry"), 400, resultRow);
     }
 
     return successResponse({ updated: true, kind, id: body.id });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "PUT /api/evergreen/stat-categories/entries", req);
   }
 }
@@ -210,7 +210,7 @@ export async function DELETE(req: Request) {
         })
         .passthrough()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const kind = resolveKind(body.kind);
     if (!kind) return errorResponse("Invalid kind", 400);
@@ -222,13 +222,13 @@ export async function DELETE(req: Request) {
       authtoken,
       body.id,
     ]);
-    const resultRow = delResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as any)?.ilsevent) {
+    const resultRow = delResponse?.payload?.[0] as any;
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to delete entry"), 400, resultRow);
     }
 
     return successResponse({ deleted: true, kind, id: body.id });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "DELETE /api/evergreen/stat-categories/entries", req);
   }
 }

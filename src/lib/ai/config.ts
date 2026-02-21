@@ -36,7 +36,7 @@ export function loadAiConfig(): AiConfig {
     temperature:
       tenantAi?.temperature ??
       (process.env.STACKSOS_AI_TEMPERATURE ? Number(process.env.STACKSOS_AI_TEMPERATURE) : undefined),
-    safetyMode: tenantAi?.safetyMode || (process.env.STACKSOS_AI_SAFETY_MODE as any) || undefined,
+    safetyMode: tenantAi?.safetyMode || (process.env.STACKSOS_AI_SAFETY_MODE as unknown) || undefined,
     timeoutMs: process.env.STACKSOS_AI_TIMEOUT_MS ? Number(process.env.STACKSOS_AI_TIMEOUT_MS) : undefined,
     budgets: tenantAi?.budgets || undefined,
   };

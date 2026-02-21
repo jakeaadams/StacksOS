@@ -278,7 +278,7 @@ export default function CatalogImportPage() {
 
       xml += '</record>';
       return xml;
-    } catch (err) {
+    } catch (err: any) {
       clientLogger.error('Error converting MARC to XML:', err);
       return null;
     }
@@ -329,7 +329,7 @@ export default function CatalogImportPage() {
       if (records.length > 0) {
         return { isDuplicate: true, recordId: records[0]?.id };
       }
-    } catch (err) {
+    } catch (err: any) {
       clientLogger.error('Duplicate check failed:', err);
     }
 
@@ -408,7 +408,7 @@ export default function CatalogImportPage() {
       } catch (err: any) {
         results.push({
           success: false,
-          error: err?.message || 'Import failed',
+          error: (err instanceof Error ? err.message : String(err)) || 'Import failed',
         });
 
         setImportProgress(prev => prev ? {
@@ -488,7 +488,7 @@ export default function CatalogImportPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {sources.length > 0 ? (
-                    sources.map((s) => (
+                    sources.map((s: any) => (
                       <SelectItem key={s.id} value={s.source}>
                         {s.source}
                       </SelectItem>

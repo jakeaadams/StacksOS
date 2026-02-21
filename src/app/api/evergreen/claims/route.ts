@@ -19,6 +19,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { withIdempotency } from "@/lib/idempotency";
+import { z } from "zod";
 
 const ACTION_PERMS: Record<string, string[]> = {
   claims_returned: ["MARK_ITEM_CLAIMS_RETURNED"],
@@ -79,6 +80,21 @@ async function updateClaimCounts(
   return { claimsReturnedCount, claimsNeverCheckedOutCount };
 }
 
+const claimsPostSchema = z.object({
+  action: z.enum(["claims_returned", "claims_never_checked_out", "resolve_claim", "void_claim_fines"]),
+  circId: z.coerce.number().int().positive().optional(),
+  copyBarcode: z.string().trim().optional(),
+  claimDate: z.string().optional(),
+  patronId: z.coerce.number().int().positive().optional(),
+  note: z.string().max(2048).optional(),
+}).passthrough();
+
+const claimsPutSchema = z.object({
+  patronId: z.coerce.number().int().positive(),
+  claimsReturnedCount: z.coerce.number().int().min(0).optional(),
+  claimsNeverCheckedOutCount: z.coerce.number().int().min(0).optional(),
+}).passthrough();
+
 export async function GET(req: NextRequest) {
   try {
     const authtoken = await requireAuthToken();
@@ -95,7 +111,7 @@ export async function GET(req: NextRequest) {
       // Derive a durable list by querying circulations with stop_fines=CLAIMSRETURNED for this patron.
       // Prefer *open* circulations (checkin_time IS NULL), since the Claims Returned staff workflow
       // is about managing currently-claimed items.
-      let claimsReturned: unknown[] = [];
+      let claimsReturned: Record<string, unknown>[] = [];
       try {
         const claimsCircsResponse = await callOpenSRF(
           "open-ils.pcrud",
@@ -123,8 +139,7 @@ export async function GET(req: NextRequest) {
         );
         const fallbackCircs = fallbackResponse?.payload?.[0];
         const allCircs = Array.isArray(fallbackCircs) ? fallbackCircs : [];
-        claimsReturned = allCircs.filter(
-          (c: Record<string, unknown>) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED"
+        claimsReturned = allCircs.filter((c) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED"
         );
       }
 
@@ -197,8 +212,7 @@ export async function GET(req: NextRequest) {
         [authtoken, pid]
       );
       const allBills = billsResponse?.payload?.[0] || [];
-      const claimBills = (Array.isArray(allBills) ? allBills : []).filter(
-        (bill: Record<string, unknown>) =>
+      const claimBills = (Array.isArray(allBills) ? allBills : []).filter((bill) =>
           (bill.billing_type as string | undefined)?.toLowerCase().includes("claim") ||
           (bill.billing_type as string | undefined)?.toLowerCase().includes("lost")
       );
@@ -213,8 +227,7 @@ export async function GET(req: NextRequest) {
           claimsNeverCheckedOut: fmNumber(patron, "claims_never_checked_out_count", 17) || 0,
         },
         relatedBills: claimBills,
-        totalBillsOwed: claimBills.reduce(
-          (sum: number, b: Record<string, unknown>) => sum + parseFloat(String(b.balance_owed || 0)),
+        totalBillsOwed: claimBills.reduce((sum: number, b) => sum + parseFloat(String(b.balance_owed || 0)),
           0
         ),
       });
@@ -274,8 +287,7 @@ export async function GET(req: NextRequest) {
       );
 
       const circs = circResponse?.payload?.[0] || [];
-      const claimsReturnedCircs = (Array.isArray(circs) ? circs : []).filter(
-        (c: Record<string, unknown>) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED"
+      const claimsReturnedCircs = (Array.isArray(circs) ? circs : []).filter((c) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED"
       );
 
       return successResponse({
@@ -288,7 +300,7 @@ export async function GET(req: NextRequest) {
           isLost: copy.status === 3,
           isDamaged: copy.status === 14,
         },
-        claimsReturnedHistory: claimsReturnedCircs.map((c: Record<string, unknown>) => ({
+        claimsReturnedHistory: claimsReturnedCircs.map((c) => ({
           circId: fmNumber(c, "id", 10) ?? null,
           patronId: fmNumber(c, "usr", 22) ?? null,
           claimDate: fmString(c, "stop_fines_time", 20) ?? null,
@@ -307,7 +319,7 @@ export async function POST(req: NextRequest) {
     const { ip, userAgent, requestId } = getRequestMeta(req);
 
     try {
-      const body = await req.json();
+      const body = claimsPostSchema.parse(await req.json());
       const { action, circId, copyBarcode, claimDate, patronId, note } = body;
       const { authtoken, actor } = await requirePermissions(resolvePerms(action));
 
@@ -447,14 +459,12 @@ export async function POST(req: NextRequest) {
 
           let fineAdjustment = null;
           if (claimDate) {
-            const voidedFines = (Array.isArray(bills) ? bills : []).filter(
-              (b: Record<string, unknown>) => b.voided === "t" || b.voided === true
+            const voidedFines = (Array.isArray(bills) ? bills : []).filter((b) => b.voided === "t" || b.voided === true
             );
             fineAdjustment = {
               backdatedTo: claimDate,
               finesVoided: voidedFines.length,
-              amountVoided: voidedFines.reduce(
-                (sum: number, b: Record<string, unknown>) => sum + parseFloat(String(b.amount || 0)),
+              amountVoided: voidedFines.reduce((sum: number, b) => sum + parseFloat(String(b.amount || 0)),
                 0
               ),
             };
@@ -566,7 +576,7 @@ export async function POST(req: NextRequest) {
           let finesVoided = 0;
 
           if (Array.isArray(bills) && bills.length > 0) {
-            const billIds = bills.map((b: Record<string, unknown>) => b.id).filter(Boolean);
+            const billIds = bills.map((b) => b.id).filter(Boolean);
             if (billIds.length > 0) {
               await callOpenSRF("open-ils.circ", "open-ils.circ.money.billing.void", [
                 authtoken,
@@ -652,8 +662,8 @@ export async function POST(req: NextRequest) {
 
               if (Array.isArray(bills) && bills.length > 0) {
                 const unpaidBillIds = bills
-                  .filter((b: Record<string, unknown>) => parseFloat(String(b.balance_owed || 0)) > 0)
-                  .map((b: Record<string, unknown>) => b.id)
+                  .filter((b) => parseFloat(String(b.balance_owed || 0)) > 0)
+                  .map((b) => b.id)
                   .filter(Boolean);
 
                 if (unpaidBillIds.length > 0) {
@@ -700,8 +710,8 @@ export async function POST(req: NextRequest) {
         }
 
         const unpaidBillIds = bills
-          .filter((b: Record<string, unknown>) => parseFloat(String(b.balance_owed || 0)) > 0)
-          .map((b: Record<string, unknown>) => b.id)
+          .filter((b) => parseFloat(String(b.balance_owed || 0)) > 0)
+          .map((b) => b.id)
           .filter(Boolean);
 
         if (unpaidBillIds.length === 0) {
@@ -723,8 +733,8 @@ export async function POST(req: NextRequest) {
 
         if (isSuccessResult(voidResult)) {
           const totalVoided = bills
-            .filter((b: Record<string, unknown>) => unpaidBillIds.includes(b.id as number))
-            .reduce((sum: number, b: Record<string, unknown>) => sum + parseFloat(String(b.amount || 0)), 0);
+            .filter((b) => unpaidBillIds.includes(b.id as number))
+            .reduce((sum: number, b) => sum + parseFloat(String(b.amount || 0)), 0);
 
           await audit("success", { circId: cid, finesVoided: unpaidBillIds.length, totalVoided });
 
@@ -757,7 +767,7 @@ export async function PUT(req: NextRequest) {
     const { ip, userAgent, requestId } = getRequestMeta(req);
 
     try {
-      const body = await req.json();
+      const body = claimsPutSchema.parse(await req.json());
       const patronId = toInt(body.patronId);
       const claimsReturnedCount =
         body.claimsReturnedCount !== undefined ? toInt(body.claimsReturnedCount) : undefined;

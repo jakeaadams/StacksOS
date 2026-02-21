@@ -20,7 +20,7 @@ const NAME_KEYS_LOWER = new Set(
     "middle_name",
     "usrname",
     "username",
-  ].map((s) => s.toLowerCase())
+  ].map((s: any) => s.toLowerCase())
 );
 
 function redactValueForKey(key: string, value: unknown): unknown {
@@ -50,7 +50,7 @@ export function redactObject<T>(value: T): T {
   if (typeof value !== "object") return value;
 
   if (Array.isArray(value)) {
-    return value.map((v) => redactObject(v)) as any;
+    return value.map((v: any) => redactObject(v)) as any;
   }
 
   const out: Record<string, unknown> = {};

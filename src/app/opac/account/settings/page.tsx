@@ -76,7 +76,7 @@ export default function AccountSettingsPage() {
         const data = await response.json();
         setSettings((prev) => data.settings || prev);
       }
-    } catch (err) {
+    } catch (err: any) {
       clientLogger.error("Error fetching settings:", err);
     } finally {
       setIsLoading(false);
@@ -200,7 +200,7 @@ export default function AccountSettingsPage() {
               { id: "profile", label: "Profile", icon: User },
               { id: "notifications", label: "Notifications", icon: Bell },
               { id: "privacy", label: "Privacy & Security", icon: Shield },
-            ].map((tab) => (
+            ].map((tab: any) => (
               <button type="button"
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}

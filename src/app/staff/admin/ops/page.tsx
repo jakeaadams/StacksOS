@@ -43,8 +43,8 @@ export default function OpsAdminPage() {
       if (!nRes.ok || nJson.ok === false) throw new Error(nJson.error || "Failed to load release notes");
       setIncidents(Array.isArray(iJson.incidents) ? iJson.incidents : []);
       setNotes(Array.isArray(nJson.notes) ? nJson.notes : []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch (e: any) {
+      setError(e instanceof Error ? (e as Error).message : String(e));
       setIncidents([]);
       setNotes([]);
     } finally {
@@ -79,8 +79,8 @@ export default function OpsAdminPage() {
       setIncidentMessage("");
       setIncidentEndsAt("");
       await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Create failed");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Create failed");
     } finally {
       setSaving(false);
     }
@@ -107,8 +107,8 @@ export default function OpsAdminPage() {
       if (!res.ok || json.ok === false) throw new Error(json.error || "Resolve failed");
       toast.success("Incident resolved");
       await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Resolve failed");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Resolve failed");
     } finally {
       setSaving(false);
     }
@@ -133,8 +133,8 @@ export default function OpsAdminPage() {
       setNoteTitle("");
       setNoteBody("");
       await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Add failed");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Add failed");
     } finally {
       setSaving(false);
     }

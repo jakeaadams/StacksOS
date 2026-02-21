@@ -280,7 +280,7 @@ export function PlaceHoldDialog({
                   <SelectValue placeholder="Select pickup location" />
                 </SelectTrigger>
                 <SelectContent>
-                  {orgs.map((org) => (
+                  {orgs.map((org: any) => (
                     <SelectItem key={org.id} value={String(org.id)}>
                       {org.name}
                     </SelectItem>

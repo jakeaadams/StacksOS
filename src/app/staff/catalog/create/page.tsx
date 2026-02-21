@@ -88,7 +88,7 @@ function confidenceColor(c: string) {
 }
 
 function subfieldString(subfields: { code: string; value: string }[]) {
-  return subfields.map((sf) => `$${sf.code} ${sf.value}`).join(" ");
+  return subfields.map((sf: any) => `$${sf.code} ${sf.value}`).join(" ");
 }
 
 export default function CreateRecordPage() {

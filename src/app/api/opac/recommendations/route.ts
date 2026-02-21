@@ -3,6 +3,7 @@ import { callOpenSRF, successResponse, serverErrorResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { getOpacPrivacyPrefs } from "@/lib/db/opac";
 import { requirePatronSession } from "@/lib/opac-auth";
+import { z } from "zod";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
     }
 
     return await getPopularItems(limit);
-  } catch (error) {
+  } catch (error: any) {
     logger.error({ error: String(error) }, "Error fetching recommendations");
     return serverErrorResponse(error, "Failed to fetch recommendations", req);
   }
@@ -38,7 +39,7 @@ async function getPersonalizedRecommendations(
   type: string,
   limit: number
 ) {
-  const recommendations: any[] = [];
+  const recommendations: Record<string, unknown>[] = [];
   const seenBibIds = new Set<number>();
   const prefs = await getOpacPrivacyPrefs(patronId);
 
@@ -71,7 +72,7 @@ async function getPersonalizedRecommendations(
           "open-ils.actor.patron.settings.retrieve",
           [authtoken, patronId, ["history.circ.retention_start"]]
         );
-        const raw = settingsResponse?.payload?.[0] || {};
+        const raw = settingsResponse?.payload?.[0] as any || {};
         allowHistory = raw["history.circ.retention_start"] != null;
       } catch {
         allowHistory = false;
@@ -136,7 +137,7 @@ async function getPersonalizedRecommendations(
 
     // Top authors (reading history opt-in only)
     const topAuthors = Object.entries(authorCounts)
-      .sort((a, b) => b[1] - a[1])
+      .sort((a: any, b: any) => b[1] - a[1])
       .slice(0, 3)
       .map(([author]) => author);
 
@@ -214,7 +215,7 @@ async function getPersonalizedRecommendations(
         }
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     logger.error({ error: String(error) }, "Error building personalized recommendations");
   }
 
@@ -273,7 +274,7 @@ async function getBecauseYouReadItems(bibId: number, limit: number) {
 }
 
 async function getTrendingItems(limit: number) {
-  const recommendations: any[] = [];
+  const recommendations: Record<string, unknown>[] = [];
   try {
     const searchResponse = await callOpenSRF(
       "open-ils.search",
@@ -308,15 +309,15 @@ async function getTrendingItems(limit: number) {
         }
       }
     }
-    recommendations.sort((a, b) => (b.holdCount || 0) - (a.holdCount || 0));
-  } catch (error) {
+    recommendations.sort((a: any, b: any) => (b.holdCount || 0) - (a.holdCount || 0));
+  } catch (error: any) {
     logger.error({ error: String(error) }, "Error getting trending items");
   }
   return successResponse({ recommendations: recommendations.slice(0, limit), type: "trending" });
 }
 
 async function getSimilarItems(bibId: number, limit: number) {
-  const recommendations: any[] = [];
+  const recommendations: Record<string, unknown>[] = [];
   try {
     const modsResponse = await callOpenSRF(
       "open-ils.search",
@@ -367,7 +368,7 @@ async function getSimilarItems(bibId: number, limit: number) {
             /<datafield\s+tag="650"[\s\S]*?<subfield\s+code="a">([^<]+)<\/subfield>/g
           )
         )
-          .map((m) => String(m[1] || "").trim())
+          .map((m: any) => String(m[1] || "").trim())
           .filter(Boolean)
           .slice(0, 3);
 
@@ -399,7 +400,7 @@ async function getSimilarItems(bibId: number, limit: number) {
         /* best-effort */
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     logger.error({ error: String(error) }, "Error getting similar items");
   }
   return successResponse({ recommendations });
@@ -417,7 +418,7 @@ async function getPopularItems(limit: number) {
 }
 
 async function collectPopularItems(limit: number) {
-  const recommendations: any[] = [];
+  const recommendations: Record<string, unknown>[] = [];
   try {
     const searchResponse = await callOpenSRF(
       "open-ils.search",
@@ -438,7 +439,7 @@ async function collectPopularItems(limit: number) {
           });
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     logger.error({ error: String(error) }, "Error getting popular items");
   }
   return recommendations;

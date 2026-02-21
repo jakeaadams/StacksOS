@@ -300,7 +300,7 @@ export default function ItemDetailPage() {
       ]);
 
       const modifiers = Array.isArray(modsJson?.modifiers)
-        ? (modsJson.modifiers as any[])
+        ? (modsJson.modifiers as Record<string, unknown>[])
             .map((row) => ({
               code: String(row?.code || "").trim(),
               name: String(row?.name || row?.code || "").trim(),
@@ -311,7 +311,7 @@ export default function ItemDetailPage() {
         : [];
 
       const groups = Array.isArray(groupsJson?.groups)
-        ? (groupsJson.groups as any[])
+        ? (groupsJson.groups as Record<string, unknown>[])
             .map((row) => ({
               id: Number.parseInt(String(row?.id ?? ""), 10),
               name: String(row?.name || "").trim(),
@@ -320,11 +320,11 @@ export default function ItemDetailPage() {
         : [];
 
       const copyCatsRaw = Array.isArray(catsJson?.copyCategories)
-        ? (catsJson.copyCategories as any[])
+        ? (catsJson.copyCategories as Record<string, unknown>[])
         : [];
 
       const entryRequests = copyCatsRaw
-        .map((cat: any) => {
+        .map((cat) => {
           const id = Number.parseInt(String(cat?.id ?? ""), 10);
           if (!Number.isFinite(id) || id <= 0) return null;
           return fetchWithAuth(
@@ -341,7 +341,7 @@ export default function ItemDetailPage() {
 
       for (const result of entryResponses) {
         const entries = Array.isArray(result?.json?.entries)
-          ? (result.json.entries as any[])
+          ? (result.json.entries as Record<string, unknown>[])
               .map((entry) => ({
                 id: Number.parseInt(String(entry?.id ?? ""), 10),
                 value: String(entry?.value || "").trim(),
@@ -352,7 +352,7 @@ export default function ItemDetailPage() {
       }
 
       const categories: CopyStatCategoryOption[] = copyCatsRaw
-        .map((cat: any) => {
+        .map((cat) => {
           const id = Number.parseInt(String(cat?.id ?? ""), 10);
           const name = String(cat?.name || "").trim();
           if (!Number.isFinite(id) || id <= 0 || !name) return null;

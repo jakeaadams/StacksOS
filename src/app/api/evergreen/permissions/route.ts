@@ -10,10 +10,15 @@ import { logAuditEvent } from "@/lib/audit";
 import { featureFlags } from "@/lib/feature-flags";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 // ============================================================================
 // GET - Fetch permission groups and permissions
 // ============================================================================
+
+const permissionsPostSchema = z.object({
+  action: z.string().trim().min(1),
+}).passthrough();
 
 export async function GET(req: NextRequest) {
   const { requestId } = getRequestMeta(req);
@@ -153,7 +158,7 @@ export async function GET(req: NextRequest) {
       default:
         return errorResponse("Invalid type parameter. Use: groups, permissions, or group_perms", 400);
     }
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Permissions GET", req);
   }
 }
@@ -170,8 +175,8 @@ export async function POST(req: NextRequest) {
       return errorResponse("Permission editors are disabled", 403);
     }
 
-    const body = await req.json();
-    const { action, type, data } = body;
+    const body = permissionsPostSchema.parse(await req.json());
+    const { action, type, data } = body as Record<string, any>;
 
     // Require admin permissions for modifications
     const { authtoken, actor } = await requirePermissions(["GROUP_APPLICATION_PERM"]);
@@ -232,7 +237,7 @@ export async function POST(req: NextRequest) {
             [authtoken, newGroup]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -273,7 +278,7 @@ export async function POST(req: NextRequest) {
             [authtoken, data.id]
           );
 
-          const existing = fetchResponse?.payload?.[0];
+          const existing = fetchResponse?.payload?.[0] as any;
           if (!existing) {
             return errorResponse("Group not found", 404);
           }
@@ -298,7 +303,7 @@ export async function POST(req: NextRequest) {
             [authtoken, updatePayload]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -352,7 +357,7 @@ export async function POST(req: NextRequest) {
             [authtoken, newMapping]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -393,7 +398,7 @@ export async function POST(req: NextRequest) {
             [authtoken, data.id]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -433,7 +438,7 @@ export async function POST(req: NextRequest) {
             [authtoken, data.id]
           );
 
-          const existing = fetchResponse?.payload?.[0];
+          const existing = fetchResponse?.payload?.[0] as any;
           if (!existing) {
             return errorResponse("Permission mapping not found", 404);
           }
@@ -457,7 +462,7 @@ export async function POST(req: NextRequest) {
             [authtoken, updatePayload]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -491,7 +496,7 @@ export async function POST(req: NextRequest) {
       default:
         return errorResponse("Invalid type. Use: group or group_perm", 400);
     }
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Permissions POST", req);
   }
 }

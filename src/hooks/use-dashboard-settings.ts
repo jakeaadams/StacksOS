@@ -136,7 +136,7 @@ export function useDashboardSettings(): UseDashboardSettingsReturn {
     data: settingsData,
     isLoading,
     error: fetchError,
-  } = useApi<{ settings: Record<string, any> }>(
+  } = useApi<{ settings: Record<string, unknown> }>(
     `${SETTINGS_URL}?keys=${SETTINGS_KEY}`,
     { immediate: true }
   );

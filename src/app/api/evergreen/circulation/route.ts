@@ -97,13 +97,13 @@ function resolvePerms(action: string, body: any) {
   return ACTION_PERMS[action] || ["STAFF_LOGIN"];
 }
 
-function fmGet(value: any, key: string, index?: number) {
+function fmGet(value: unknown, key: string, index?: number) {
   if (!value || typeof value !== "object") return undefined;
 
-  const direct = (value as any)[key];
+  const direct = (value as Record<string, any>)[key];
   if (direct !== undefined) return direct;
 
-  const arr = (value as any).__p;
+  const arr = (value as Record<string, any>).__p;
   if (Array.isArray(arr) && typeof index === "number") {
     return arr[index];
   }
@@ -111,14 +111,14 @@ function fmGet(value: any, key: string, index?: number) {
   return undefined;
 }
 
-function fmNumber(value: any, key: string, index?: number): number | undefined {
+function fmNumber(value: unknown, key: string, index?: number): number | undefined {
   const raw = fmGet(value, key, index);
   if (typeof raw === "number") return raw;
   const parsed = parseInt(String(raw ?? ""), 10);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function fmString(value: any, key: string, index?: number): string | undefined {
+function fmString(value: unknown, key: string, index?: number): string | undefined {
   const raw = fmGet(value, key, index);
   if (raw === null || raw === undefined) return undefined;
   return typeof raw === "string" ? raw : String(raw);
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const bodyParsed = await parseJsonBodyWithSchema(req, circulationBodySchema);
-    if (bodyParsed instanceof Response) return bodyParsed as any;
+    if (bodyParsed instanceof Response) return bodyParsed;
     const body = bodyParsed;
     const {
       action,
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
       hold_type,
       override,
       overrideReason,
-    } = body;
+    } = body as Record<string, any>;
 
     const { authtoken, actor } = await requirePermissions(resolvePerms(action, body));
 
@@ -179,7 +179,7 @@ export async function POST(req: NextRequest) {
           [authtoken, { patron_barcode: patronBarcode, copy_barcode: itemBarcode }]
         );
 
-        const result = checkoutResponse?.payload?.[0];
+        const result = checkoutResponse?.payload?.[0] as any;
 
         if (result?.ilsevent === 0 || result?.payload?.circ) {
           const circ = result.payload?.circ || result.circ;
@@ -253,7 +253,7 @@ export async function POST(req: NextRequest) {
           [authtoken, { copy_barcode: itemBarcode, copy_id: copyId, override: Boolean(override) }]
         );
 
-        const result = checkinResponse?.payload?.[0];
+        const result = checkinResponse?.payload?.[0] as any;
 
         if (result?.ilsevent === 0 || result?.payload) {
           const resolvedBarcode =
@@ -265,7 +265,7 @@ export async function POST(req: NextRequest) {
           const itemInfo = resolvedBarcode
             ? await fetchItemDetailsByBarcode(resolvedBarcode)
             : { title: "Item", author: "", callNumber: "" };
-          const response: any = {
+          const response: Record<string, any> = {
             action: "checkin",
             copyBarcode: resolvedBarcode || null,
             status: "checked_in",
@@ -319,7 +319,7 @@ export async function POST(req: NextRequest) {
           [authtoken, { copy_barcode: itemBarcode, copy_id: copyId }]
         );
 
-        const result = renewResponse?.payload?.[0];
+        const result = renewResponse?.payload?.[0] as any;
 
         if (result?.ilsevent === 0 || result?.payload?.circ) {
           const circ = result.payload?.circ || result.circ;
@@ -353,7 +353,7 @@ export async function POST(req: NextRequest) {
           return errorResponse("patron_id, target_id, and pickup_lib required", 400);
         }
 
-        const params: any = {
+        const params: Record<string, any> = {
           patronid: patron_id,
           pickup_lib,
           hold_type: hold_type || "T",
@@ -365,7 +365,7 @@ export async function POST(req: NextRequest) {
           [authtoken, params, [target_id]]
         );
 
-        const raw = holdResponse?.payload?.[0];
+        const raw = holdResponse?.payload?.[0] as any;
         const result = Array.isArray(raw) ? raw[0] : raw;
 
         if (result && !result.ilsevent) {
@@ -395,7 +395,7 @@ export async function POST(req: NextRequest) {
           [authtoken, hold_id, 5, "Cancelled by staff"]
         );
 
-        const result = cancelResponse?.payload?.[0];
+        const result = cancelResponse?.payload?.[0] as any;
         if (isSuccessResult(result) || result === hold_id) {
           await audit("success", { hold_id });
           return successResponse({ action: "cancel_hold", hold_id });
@@ -417,7 +417,7 @@ export async function POST(req: NextRequest) {
           [authtoken, null, { id: hold_id, frozen: true }]
         );
 
-        const result = suspendResponse?.payload?.[0];
+        const result = suspendResponse?.payload?.[0] as any;
         if (isSuccessResult(result) || result === hold_id) {
           await audit("success", { hold_id });
           return successResponse({ action: "suspend_hold", hold_id });
@@ -439,7 +439,7 @@ export async function POST(req: NextRequest) {
           [authtoken, null, { id: hold_id, frozen: false }]
         );
 
-        const result = activateResponse?.payload?.[0];
+        const result = activateResponse?.payload?.[0] as any;
         if (isSuccessResult(result) || result === hold_id) {
           await audit("success", { hold_id });
           return successResponse({ action: "activate_hold", hold_id });
@@ -451,7 +451,7 @@ export async function POST(req: NextRequest) {
       }
 
       case "pay_bills": {
-        const { payments, payment_type } = body;
+        const { payments, payment_type } = body as Record<string, any>;
         if (!patron_id || !payments || payments.length === 0) {
           return errorResponse("patron_id and payments required", 400);
         }
@@ -466,10 +466,10 @@ export async function POST(req: NextRequest) {
           ]
         );
 
-        const result = payResponse?.payload?.[0];
+        const result = payResponse?.payload?.[0] as any;
         if (result && !result.ilsevent) {
           const total = Array.isArray(payments)
-            ? payments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
+            ? payments.reduce((sum: number, p) => sum + Number(p.amount || 0), 0)
             : 0;
           await audit("success", {
             patron_id,
@@ -502,7 +502,7 @@ export async function POST(req: NextRequest) {
           [authtoken, { copyid: copy.id, location, count: body.count || 1 }]
         );
 
-        const result = inHouseResponse?.payload?.[0];
+        const result = inHouseResponse?.payload?.[0] as any;
         if (isSuccessResult(result) || result) {
           const itemInfo = await fetchItemDetailsByBarcode(itemBarcode);
 
@@ -531,7 +531,7 @@ export async function POST(req: NextRequest) {
       default:
         return errorResponse("Invalid action", 400);
     }
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Circulation POST", req);
   }
 }
@@ -554,11 +554,11 @@ export async function GET(req: NextRequest) {
         [authtoken, parseInt(patronId)]
       );
 
-      const holds = holdsResponse?.payload?.[0];
+      const holds = holdsResponse?.payload?.[0] as any;
 
       if (Array.isArray(holds)) {
         const enrichedHolds = await Promise.all(
-          holds.map(async (hold: any) => {
+          holds.map(async (hold) => {
             let bibInfo = null;
             if (hold.target) {
               try {
@@ -568,7 +568,7 @@ export async function GET(req: NextRequest) {
                   [hold.hold_type === "T" ? hold.target : hold.current_copy]
                 );
                 bibInfo = bibResponse?.payload?.[0];
-              } catch (_error) {
+              } catch (_error: any) {
                 // Ignore bib fetch _errors
               }
             }
@@ -592,7 +592,7 @@ export async function GET(req: NextRequest) {
         [authtoken, parseInt(patronId)]
       );
 
-      const bills = billsResponse?.payload?.[0];
+      const bills = billsResponse?.payload?.[0] as any;
       return successResponse({ bills: Array.isArray(bills) ? bills : [] });
     }
 
@@ -604,7 +604,7 @@ export async function GET(req: NextRequest) {
         [authtoken, parseInt(orgId)]
       );
 
-      const holds = shelfResponse?.payload?.[0];
+      const holds = shelfResponse?.payload?.[0] as any;
       return successResponse({ holds: Array.isArray(holds) ? holds : [] });
     }
 
@@ -616,7 +616,7 @@ export async function GET(req: NextRequest) {
         [authtoken, parseInt(patronId)]
       );
 
-      const payload = checkoutsResponse?.payload?.[0];
+      const payload = checkoutsResponse?.payload?.[0] as any;
       const rows = Array.isArray(payload) ? payload : payload ? [payload] : [];
 
       const callNumberCache = new Map<number, string>();
@@ -633,7 +633,7 @@ export async function GET(req: NextRequest) {
             [callNumberId]
           );
 
-          const cn = cnResponse?.payload?.[0];
+          const cn = cnResponse?.payload?.[0] as any;
           const label = fmString(cn, "label", 7) || fmString(cn, "label", 13) || "";
           callNumberCache.set(callNumberId, label);
           return label;
@@ -644,9 +644,8 @@ export async function GET(req: NextRequest) {
       };
 
       const now = Date.now();
-      const out: any[] = [];
-      const overdue: any[] = [];
-
+      const out: Record<string, any>[] = [];
+      const overdue: Record<string, any>[] = [];
       for (const entry of rows) {
         const circ = entry?.circ;
         const copy = entry?.copy;
@@ -705,7 +704,7 @@ export async function GET(req: NextRequest) {
         [itemBarcode]
       );
 
-      const copy = copyResponse?.payload?.[0];
+      const copy = copyResponse?.payload?.[0] as any;
 
       if (copy && !copy.ilsevent) {
         return successResponse({
@@ -723,7 +722,7 @@ export async function GET(req: NextRequest) {
     }
 
     return errorResponse("Invalid request parameters", 400);
-  } catch (_error) {
+  } catch (_error: any) {
     return serverErrorResponse(_error, "Circulation GET", req);
   }
 }
@@ -747,7 +746,7 @@ async function fetchItemDetailsByBarcode(barcode: string) {
       "open-ils.search.asset.copy.find_by_barcode",
       [key]
     );
-    const copy = copyResponse?.payload?.[0];
+    const copy = copyResponse?.payload?.[0] as any;
 
     if (copy?.call_number) {
       const cnObj =
@@ -773,7 +772,7 @@ async function fetchItemDetailsByBarcode(barcode: string) {
           "open-ils.search.asset.call_number.retrieve",
           [cnId]
         );
-        const cn = cnResponse?.payload?.[0];
+        const cn = cnResponse?.payload?.[0] as any;
         callNumber = callNumber || cn?.label || "";
         if (recordId === null && cn?.record !== undefined && cn?.record !== null) {
           const n = Number.parseInt(String(cn.record), 10);
@@ -787,7 +786,7 @@ async function fetchItemDetailsByBarcode(barcode: string) {
           "open-ils.search.biblio.record.mods_slim.retrieve",
           [recordId]
         );
-        const bib = bibResponse?.payload?.[0];
+        const bib = bibResponse?.payload?.[0] as any;
         const value = { title: bib?.title || "Item", author: bib?.author || "", callNumber };
         itemDetailsCache.set(key, { value, expiresAt: now + ITEM_DETAILS_TTL_MS });
         if (itemDetailsCache.size > ITEM_DETAILS_MAX) pruneItemDetailsCache();

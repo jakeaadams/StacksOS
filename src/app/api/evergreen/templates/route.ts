@@ -46,7 +46,7 @@ interface HoldingsTemplate {
   classificationName: string | null;
 }
 
-function toBoolean(value: any, fallback: boolean): boolean {
+function toBoolean(value: unknown, fallback: boolean): boolean {
   if (value === true || value === "t" || value === 1) return true;
   if (value === false || value === "f" || value === 0) return false;
   return fallback;
@@ -102,11 +102,11 @@ export async function GET(req: NextRequest) {
       ]);
 
       const templatesRows = normalizeRows(response?.payload);
-      const templates: CopyTemplate[] = templatesRows.map((t: Record<string, unknown>) => {
-        const owningLibObj = t?.owning_lib as Record<string, unknown> | null;
-        const statusObj = t?.status as Record<string, unknown> | null;
-        const locationObj = t?.location as Record<string, unknown> | null;
-        const circModObj = t?.circ_modifier as Record<string, unknown> | null;
+      const templates: CopyTemplate[] = templatesRows.map((t: any) => {
+        const owningLibObj = t?.owning_lib as Record<string, any> | null;
+        const statusObj = t?.status as Record<string, any> | null;
+        const locationObj = t?.location as Record<string, any> | null;
+        const circModObj = t?.circ_modifier as Record<string, any> | null;
         
         return {
           id: t?.id as number ?? 0,
@@ -150,7 +150,7 @@ export async function GET(req: NextRequest) {
         ]),
       ]);
 
-      let circModsRows: any[] = [];
+      let circModsRows: Record<string, any>[] = [];
       try {
         const circModsRes = await callPcrud("open-ils.pcrud.search.ccm", [
           authtoken,
@@ -159,7 +159,7 @@ export async function GET(req: NextRequest) {
           { order_by: { ccm: "code" }, limit: 200 },
         ]);
         circModsRows = normalizeRows(circModsRes?.payload);
-      } catch (error) {
+      } catch (error: any) {
         logger.warn({ requestId, error: String(error) }, "Circ modifiers lookup failed; falling back to SQL");
         try {
           circModsRows = await query<any>(
@@ -170,24 +170,24 @@ export async function GET(req: NextRequest) {
               limit 200
             `
           );
-        } catch (inner) {
+        } catch (inner: any) {
           logger.warn({ requestId, error: String(inner) }, "Circ modifiers SQL fallback failed");
           circModsRows = [];
         }
       }
 
-      const statuses = normalizeRows(statusesRes?.payload).map((s: Record<string, unknown>) => ({
+      const statuses = normalizeRows(statusesRes?.payload).map((s: any) => ({
         id: s?.id as number ?? 0,
         name: s?.name as string ?? "",
       }));
 
-      const locations = normalizeRows(locationsRes?.payload).map((l: Record<string, unknown>) => ({
+      const locations = normalizeRows(locationsRes?.payload).map((l: any) => ({
         id: l?.id as number ?? 0,
         name: l?.name as string ?? "",
         owningLib: l?.owning_lib as number ?? 1,
       }));
 
-      const circModifiers = circModsRows.map((c: Record<string, unknown>) => ({
+      const circModifiers = circModsRows.map((c: any) => ({
         code: c?.code as string ?? "",
         name: c?.name as string ?? c?.code as string ?? "",
         description: c?.description as string ?? "",
@@ -208,7 +208,7 @@ export async function GET(req: NextRequest) {
         [authtoken, orgId, ["ui.staff.catalog.holdings_templates"]]
       );
 
-      const rawTemplates = settingsRes?.payload?.[0]?.["ui.staff.catalog.holdings_templates"];
+      const rawTemplates = (settingsRes?.payload?.[0] as any)?.["ui.staff.catalog.holdings_templates"];
       const parsedTemplates = rawTemplates 
         ? (typeof rawTemplates === "string" ? JSON.parse(rawTemplates) : rawTemplates)
         : [];
@@ -224,7 +224,7 @@ export async function GET(req: NextRequest) {
         ]
       );
 
-      const classifications = (classificationsRes?.payload?.[0] || []).map((c: Record<string, unknown>) => ({
+      const classifications = (classificationsRes?.payload?.[0] || []).map((c: any) => ({
         id: c?.id as number ?? 0,
         name: c?.name as string ?? "",
       }));
@@ -240,7 +240,7 @@ export async function GET(req: NextRequest) {
         ]
       );
 
-      const prefixes = (prefixesRes?.payload?.[0] || []).map((p: Record<string, unknown>) => ({
+      const prefixes = (prefixesRes?.payload?.[0] || []).map((p: any) => ({
         id: p?.id as number ?? 0,
         label: p?.label as string ?? "",
         owningLib: p?.owning_lib as number ?? 1,
@@ -257,7 +257,7 @@ export async function GET(req: NextRequest) {
         ]
       );
 
-      const suffixes = (suffixesRes?.payload?.[0] || []).map((s: Record<string, unknown>) => ({
+      const suffixes = (suffixesRes?.payload?.[0] || []).map((s: any) => ({
         id: s?.id as number ?? 0,
         label: s?.label as string ?? "",
         owningLib: s?.owning_lib as number ?? 1,
@@ -286,7 +286,7 @@ export async function GET(req: NextRequest) {
     } else {
       return errorResponse("Invalid type parameter. Must be 'copy' or 'holdings'.", 400);
     }
-  } catch (error) {
+  } catch (error: any) {
     logger.error({ requestId, error }, "Templates GET failed");
     return serverErrorResponse(error, "Templates GET", req);
   }
@@ -300,8 +300,8 @@ export async function POST(req: NextRequest) {
   const { requestId } = getRequestMeta(req);
 
   try {
-    const body = await req.json();
-    const { action, type, data } = body;
+    const body: any = await req.json();
+    const { action, type, data } = body as Record<string, any>;
 
     if (!action || !type || !data) {
       return errorResponse("Missing required fields: action, type, data", 400);
@@ -323,7 +323,7 @@ export async function POST(req: NextRequest) {
             return errorResponse("owningLib and name are required", 400);
           }
 
-          const payload: any = encodeFieldmapper("act", {
+          const payload: unknown = encodeFieldmapper("act", {
             owning_lib: data.owningLib,
             creator: actorId,
             editor: actorId,
@@ -349,13 +349,13 @@ export async function POST(req: NextRequest) {
             [authtoken, payload]
           );
 
-          const created = result?.payload?.[0];
+          const created = result?.payload?.[0] as any;
           const id =
             typeof created === "number"
               ? created
-              : typeof (created as any)?.id === "number"
-                ? (created as any).id
-                : parseInt(String((created as any)?.id ?? created ?? ""), 10);
+              : typeof (created as Record<string, any>)?.id === "number"
+                ? (created as Record<string, any>).id
+                : parseInt(String((created as Record<string, any>)?.id ?? created ?? ""), 10);
           if (Number.isFinite(id) && id > 0) {
             return successResponse({ id, message: "Template created" });
           }
@@ -398,7 +398,7 @@ export async function POST(req: NextRequest) {
           updateData.editor = actorId;
           updateData.ischanged = 1;
 
-          const payload: any = encodeFieldmapper("act", updateData);
+          const payload: unknown = encodeFieldmapper("act", updateData);
 
           // Update the template
           const result = await callOpenSRF(
@@ -441,7 +441,7 @@ export async function POST(req: NextRequest) {
       if (action === "create" || action === "update") {
         const settingsRes = await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.settings.retrieve",
           [authtoken, targetOrgId, ["ui.staff.catalog.holdings_templates"]]);
-        const rawTemplates = settingsRes?.payload?.[0]?.["ui.staff.catalog.holdings_templates"];
+        const rawTemplates = (settingsRes?.payload?.[0] as any)?.["ui.staff.catalog.holdings_templates"];
         const templates = rawTemplates ? (typeof rawTemplates === "string" ? JSON.parse(rawTemplates) : rawTemplates) : [];
         
         if (action === "create") {
@@ -475,7 +475,7 @@ export async function POST(req: NextRequest) {
         if (!data.id) return errorResponse("Template ID required", 400);
         const settingsRes = await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.settings.retrieve",
           [authtoken, targetOrgId, ["ui.staff.catalog.holdings_templates"]]);
-        const rawTemplates = settingsRes?.payload?.[0]?.["ui.staff.catalog.holdings_templates"];
+        const rawTemplates = (settingsRes?.payload?.[0] as any)?.["ui.staff.catalog.holdings_templates"];
         let templates = rawTemplates ? (typeof rawTemplates === "string" ? JSON.parse(rawTemplates) : rawTemplates) : [];
         templates = templates.filter((t: any) => t.id !== data.id);
         await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.settings.update",
@@ -487,7 +487,7 @@ export async function POST(req: NextRequest) {
     } else {
       return errorResponse("Invalid type. Must be 'copy' or 'holdings'.", 400);
     }
-  } catch (error) {
+  } catch (error: any) {
     logger.error({ requestId, error }, "Templates POST failed");
     return serverErrorResponse(error, "Templates POST", req);
   }

@@ -1,6 +1,7 @@
 import { successResponse, withErrorHandling } from "@/lib/api";
 import { getTenantConfig } from "@/lib/tenant/config";
 import { getActiveIncident } from "@/lib/db/support";
+import { z } from "zod";
 
 export const GET = withErrorHandling(async (_req: Request) => {
   const tenant = getTenantConfig();

@@ -12,6 +12,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { withIdempotency } from "@/lib/idempotency";
+import { z } from "zod";
 
 /**
  * Batch Cataloging Operations API
@@ -44,7 +45,7 @@ interface BatchResult {
   copyId?: number;
   barcode?: string;
   error?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 async function resolveCopyId(
@@ -74,12 +75,16 @@ async function resolveCopyId(
 }
 
 // POST - Execute batch operations
+const catalogBatchPostSchema = z.object({
+  action: z.string().trim().min(1),
+}).passthrough();
+
 export async function POST(req: NextRequest) {
   return withIdempotency(req, "api.evergreen.catalog.batch.POST", async () => {
     const { ip, userAgent, requestId } = getRequestMeta(req);
 
     try {
-      const body = await req.json();
+      const body = catalogBatchPostSchema.parse(await req.json());
       const { action, items, confirm } = body;
 
       if (!action) {
@@ -98,7 +103,7 @@ export async function POST(req: NextRequest) {
 
       const audit = async (
         status: "success" | "failure",
-        details?: Record<string, any>,
+        details?: Record<string, unknown>,
         error?: string
       ) =>
         logAuditEvent({
@@ -222,7 +227,7 @@ export async function POST(req: NextRequest) {
                 : copy.call_number;
 
               // Update the volume/call number
-              const volumeUpdate: Record<string, any> = {
+              const volumeUpdate: Record<string, unknown> = {
                 id: volumeId,
                 label: callNumber,
               };
@@ -421,7 +426,7 @@ export async function POST(req: NextRequest) {
             }
 
             try {
-              const updateFields: Record<string, any> = { id: copyId };
+              const updateFields: Record<string, unknown> = { id: copyId };
 
               if (targetOrgId) {
                 updateFields.circ_lib = targetOrgId;
@@ -629,7 +634,7 @@ export async function GET(req: NextRequest) {
         );
 
         const statuses = statusResponse?.payload?.[0] || [];
-        const formattedStatuses = (Array.isArray(statuses) ? statuses : []).map((s: any) => ({
+        const formattedStatuses = (Array.isArray(statuses) ? statuses : []).map((s) => ({
           id: s.id || s.__p?.[0],
           name: s.name || s.__p?.[1],
           holdable: s.holdable === "t" || s.__p?.[2] === "t",
@@ -651,7 +656,7 @@ export async function GET(req: NextRequest) {
         );
 
         const locations = locationResponse?.payload?.[0] || [];
-        const formattedLocations = (Array.isArray(locations) ? locations : []).map((l: any) => ({
+        const formattedLocations = (Array.isArray(locations) ? locations : []).map((l) => ({
           id: l.id || l.__p?.[0],
           name: l.name || l.__p?.[1],
           owningLib: l.owning_lib || l.__p?.[2],
@@ -672,7 +677,7 @@ export async function GET(req: NextRequest) {
         );
 
         const modifiers = modResponse?.payload?.[0] || [];
-        const formattedModifiers = (Array.isArray(modifiers) ? modifiers : []).map((m: any) => ({
+        const formattedModifiers = (Array.isArray(modifiers) ? modifiers : []).map((m) => ({
           code: m.code || m.__p?.[0],
           name: m.name || m.__p?.[1],
           description: m.description || m.__p?.[2],

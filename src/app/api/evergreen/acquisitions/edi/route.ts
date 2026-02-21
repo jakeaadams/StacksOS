@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 export type EDIMessageType = "ORDERS" | "ORDRSP" | "DESADV" | "INVOIC";
 
@@ -38,6 +39,10 @@ export interface EDIMessage {
   vendorMessageId?: string;
 }
 
+const ediPostSchema = z.object({
+  action: z.string().trim().min(1),
+}).passthrough();
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const action = searchParams.get("action");
@@ -58,7 +63,7 @@ export async function GET(req: NextRequest) {
           const response = await callOpenSRF("open-ils.acq", "open-ils.acq.edi_account.org.retrieve", [authtoken, orgId, { limit: 200 }]);
           const payload = response?.payload || [];
           const accountList = Array.isArray(payload?.[0]) ? payload[0] : payload;
-          accounts = (Array.isArray(accountList) ? accountList : []).map((acc: any) => ({
+          accounts = (Array.isArray(accountList) ? accountList : []).map((acc) => ({
             id: acc.id, label: acc.label || acc.name || "EDI Account " + acc.id, host: acc.host || "", username: acc.username || "",
             account: acc.account || "", vendorCode: acc.vendor_code || acc.vendorCode || "",
             vendorId: typeof acc.provider === "object" ? acc.provider?.id : acc.provider,
@@ -66,7 +71,7 @@ export async function GET(req: NextRequest) {
             owner: acc.owner || orgId, useHttp: acc.use_http === "t" || acc.use_http === true,
             provider: typeof acc.provider === "object" ? acc.provider?.id : acc.provider, path: acc.path || "",
           }));
-        } catch (error) { logger.warn({ route: "api.evergreen.acquisitions.edi", action, err: String(error) }, "EDI accounts lookup failed"); }
+        } catch (error: any) { logger.warn({ route: "api.evergreen.acquisitions.edi", action, err: String(error) }, "EDI accounts lookup failed"); }
         return successResponse({ accounts });
       }
       case "account": {
@@ -76,17 +81,17 @@ export async function GET(req: NextRequest) {
           const acc = response?.payload?.[0];
           if (!acc || acc.ilsevent) return errorResponse("EDI account not found", 404);
           return successResponse({ account: { id: acc.id, label: acc.label || "EDI Account " + acc.id, host: acc.host || "", username: acc.username || "", account: acc.account || "", vendorCode: acc.vendor_code || "", vendorId: typeof acc.provider === "object" ? acc.provider?.id : acc.provider, lastActivity: acc.last_activity || null, inDirectory: acc.in_dir || "", outDirectory: acc.out_dir || "", owner: acc.owner || orgId, useHttp: acc.use_http === "t", provider: typeof acc.provider === "object" ? acc.provider?.id : acc.provider, path: acc.path || "" } });
-        } catch (_error) { return errorResponse("Failed to retrieve EDI account", 500); }
+        } catch (_error: any) { return errorResponse("Failed to retrieve EDI account", 500); }
       }
       case "messages": {
-        const filters: Record<string, any> = {};
+        const filters: Record<string, unknown> = {};
         if (accountId) filters.account = parseInt(accountId, 10);
         let messages: EDIMessage[] = [];
         try {
           const response = await callOpenSRF("open-ils.acq", "open-ils.acq.edi_message.org.retrieve", [authtoken, orgId, { ...filters, limit, offset, order_by: { acqedim: "create_time DESC" } }]);
           const payload = response?.payload || [];
           const messageList = Array.isArray(payload?.[0]) ? payload[0] : payload;
-          messages = (Array.isArray(messageList) ? messageList : []).map((msg: any) => ({
+          messages = (Array.isArray(messageList) ? messageList : []).map((msg) => ({
             id: msg.id, accountId: typeof msg.account === "object" ? msg.account?.id : msg.account, messageType: msg.message_type || "ORDERS",
             direction: msg.direction || (msg.outgoing ? "outbound" : "inbound"), status: msg.status || (msg.error ? "error" : "processed"),
             content: msg.edi || msg.content, error: msg.error || null,
@@ -94,7 +99,7 @@ export async function GET(req: NextRequest) {
             invoiceId: typeof msg.invoice === "object" ? msg.invoice?.id : msg.invoice,
             createTime: msg.create_time, processTime: msg.process_time || msg.edit_time, vendorMessageId: msg.vendor_message_id || msg.remote_file,
           }));
-        } catch (error) { logger.warn({ route: "api.evergreen.acquisitions.edi", action, err: String(error) }, "EDI messages lookup failed"); }
+        } catch (error: any) { logger.warn({ route: "api.evergreen.acquisitions.edi", action, err: String(error) }, "EDI messages lookup failed"); }
         return successResponse({ messages, total: messages.length });
       }
       case "message_types": {
@@ -116,7 +121,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["ADMIN_ACQ_EDI_ACCOUNT"]);
-    const body = await req.json();
+    const body = ediPostSchema.parse(await req.json());
     const { action } = body;
     const orgId = actor?.ws_ou ?? actor?.home_ou;
     logger.debug({ route: "api.evergreen.acquisitions.edi", action }, "EDI POST");
@@ -132,12 +137,12 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to create EDI account", 400);
           return successResponse({ account: result, accountId: result?.id || result }, "EDI account created");
-        } catch (_error) { return errorResponse("Failed to create EDI account", 500); }
+        } catch (_error: any) { return errorResponse("Failed to create EDI account", 500); }
       }
       case "update_account": {
         const { id, label, host, username, password, account, vendorId, inDirectory, outDirectory, useHttp, path } = body;
         if (!id) return errorResponse("Account ID required", 400);
-        const updates: Record<string, any> = { id };
+        const updates: Record<string, unknown> = { id };
         if (label !== undefined) updates.label = label;
         if (host !== undefined) updates.host = host;
         if (username !== undefined) updates.username = username;
@@ -153,7 +158,7 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to update EDI account", 400);
           return successResponse({ updated: true, accountId: id }, "EDI account updated");
-        } catch (_error) { return errorResponse("Failed to update EDI account", 500); }
+        } catch (_error: any) { return errorResponse("Failed to update EDI account", 500); }
       }
       case "delete_account": {
         const { id } = body;
@@ -163,7 +168,7 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to delete EDI account", 400);
           return successResponse({ deleted: true, accountId: id }, "EDI account deleted");
-        } catch (_error) { return errorResponse("Failed to delete EDI account", 500); }
+        } catch (_error: any) { return errorResponse("Failed to delete EDI account", 500); }
       }
       case "send_order": {
         const { purchaseOrderId, accountId } = body;
@@ -174,7 +179,7 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to send EDI order", 400);
           return successResponse({ sent: true, purchaseOrderId, accountId }, "EDI order sent");
-        } catch (_error) { return errorResponse("Failed to send EDI order", 500); }
+        } catch (_error: any) { return errorResponse("Failed to send EDI order", 500); }
       }
       case "process_inbound": {
         const { accountId } = body;
@@ -185,7 +190,7 @@ export async function POST(req: NextRequest) {
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to process inbound EDI", 400);
           const processedCount = typeof result === "number" ? result : (result?.processed || 0);
           return successResponse({ processed: true, accountId, count: processedCount }, "Processed " + processedCount + " inbound EDI message(s)");
-        } catch (_error) { return errorResponse("Failed to process inbound EDI", 500); }
+        } catch (_error: any) { return errorResponse("Failed to process inbound EDI", 500); }
       }
       case "retry_message": {
         const { messageId } = body;
@@ -195,7 +200,7 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to retry EDI message", 400);
           return successResponse({ retried: true, messageId }, "EDI message queued for retry");
-        } catch (_error) { return errorResponse("Failed to retry EDI message", 500); }
+        } catch (_error: any) { return errorResponse("Failed to retry EDI message", 500); }
       }
       case "test_connection": {
         const { accountId } = body;
@@ -205,7 +210,7 @@ export async function POST(req: NextRequest) {
           const result = response?.payload?.[0];
           if (result?.ilsevent || result === false) return errorResponse(result?.textcode || "Connection test failed", 400);
           return successResponse({ success: true, accountId }, "Connection test successful");
-        } catch (_error) { return errorResponse("Connection test failed", 500); }
+        } catch (_error: any) { return errorResponse("Connection test failed", 500); }
       }
       default: return errorResponse("Invalid action", 400);
     }

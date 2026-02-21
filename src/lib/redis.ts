@@ -25,7 +25,7 @@ export async function getRedisClient(): Promise<Client | null> {
   const url = redisUrl();
   if (!url) return null;
 
-  const g = globalThis as any;
+  const g = globalThis as Record<string, unknown>;
 
   let client = g[GLOBAL_CLIENT_KEY] as Client | undefined;
   if (!client) {
@@ -55,7 +55,7 @@ export async function getRedisClient(): Promise<Client | null> {
     await connecting;
     g[GLOBAL_CONNECTING_KEY] = undefined;
     return client;
-  } catch (err) {
+  } catch (err: any) {
     logger.error({ error: String(err) }, "Failed to connect to Redis; continuing without it");
     return null;
   }

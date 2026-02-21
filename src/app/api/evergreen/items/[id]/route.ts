@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import { query } from "@/lib/db/evergreen";
 import { requirePermissions } from "@/lib/permissions";
+import { z } from "zod";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -21,6 +22,27 @@ interface RouteParams {
  * PATCH /api/evergreen/items/[id]
  * Update a copy (asset.copy / acp)
  */
+const itemPatchSchema = z.object({
+  barcode: z.string().trim().optional().nullable(),
+  alert_message: z.string().max(4096).optional().nullable(),
+  alertMessage: z.string().max(4096).optional().nullable(),
+  price: z.union([z.number(), z.string(), z.null()]).optional(),
+  holdable: z.boolean().optional(),
+  circulate: z.boolean().optional(),
+  opac_visible: z.boolean().optional(),
+  opacVisible: z.boolean().optional(),
+  circ_modifier: z.union([z.string(), z.null()]).optional(),
+  circModifier: z.union([z.string(), z.null()]).optional(),
+  loan_duration: z.union([z.coerce.number().int(), z.null()]).optional(),
+  loanDuration: z.union([z.coerce.number().int(), z.null()]).optional(),
+  fine_level: z.union([z.coerce.number().int(), z.null()]).optional(),
+  fineLevel: z.union([z.coerce.number().int(), z.null()]).optional(),
+  floating: z.union([z.coerce.number().int(), z.null()]).optional(),
+  floatingGroupId: z.union([z.coerce.number().int(), z.null()]).optional(),
+  stat_cat_entry_ids: z.array(z.coerce.number().int().positive()).optional(),
+  statCatEntryIds: z.array(z.coerce.number().int().positive()).optional(),
+}).passthrough();
+
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
     const { authtoken, actor } = await requirePermissions(["UPDATE_COPY"]);
@@ -31,8 +53,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return errorResponse("Invalid copy ID", 400);
     }
 
-    const body = await parseJsonBody<Record<string, unknown>>(req);
-    if (body instanceof Response) return body;
+    const rawBody = await parseJsonBody<Record<string, unknown>>(req);
+    if (rawBody instanceof Response) return rawBody;
+    const body = itemPatchSchema.parse(rawBody);
 
     const barcode =
       body.barcode !== undefined && body.barcode !== null
@@ -143,11 +166,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     ]);
 
     const existing = fetchResponse?.payload?.[0];
-    if (!existing || (existing as any)?.ilsevent) {
+    if (!existing || (existing as Record<string, unknown>)?.ilsevent) {
       return notFoundResponse("Item not found");
     }
 
-    const updateData: Record<string, any> = { ...(existing as any) };
+    const updateData: Record<string, unknown> = { ...(existing as Record<string, unknown>) };
 
     if (barcode !== undefined) updateData.barcode = barcode;
 
@@ -180,12 +203,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     // Keep required fields intact and record the editing user when possible.
     updateData.id = copyId;
-    if ((actor as any)?.id) {
-      updateData.editor = (actor as any).id;
+    if ((actor as Record<string, unknown>)?.id) {
+      updateData.editor = (actor as Record<string, unknown>).id;
     }
 
     updateData.ischanged = 1;
-    const payload: any = encodeFieldmapper("acp", updateData);
+    const payload: unknown = encodeFieldmapper("acp", updateData);
 
     const updateResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.update.acp", [
       authtoken,
@@ -193,7 +216,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     ]);
 
     const result = updateResponse?.payload?.[0];
-    if (isOpenSRFEvent(result) || (result as any)?.ilsevent) {
+    if (isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to update item"), 400, result);
     }
 
@@ -239,7 +262,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       );
 
       const currentMapsRaw = Array.isArray(currentMapsResponse?.payload?.[0])
-        ? (currentMapsResponse?.payload?.[0] as any[])
+        ? (currentMapsResponse?.payload?.[0] as Record<string, unknown>[])
         : [];
 
       const currentMaps = currentMapsRaw
@@ -274,7 +297,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
           [authtoken, mapId]
         );
         const deleteResult = deleteResponse?.payload?.[0];
-        if (isOpenSRFEvent(deleteResult) || (deleteResult as any)?.ilsevent) {
+        if (isOpenSRFEvent(deleteResult) || (deleteResult as Record<string, unknown>)?.ilsevent) {
           return errorResponse(
             getErrorMessage(deleteResult, "Failed to remove item stat category assignment"),
             400,
@@ -284,7 +307,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       }
 
       for (const entryId of toCreateEntryIds) {
-        const payload: any = encodeFieldmapper("ascecm", {
+        const payload: unknown = encodeFieldmapper("ascecm", {
           owning_copy: copyId,
           stat_cat_entry: entryId,
           isnew: 1,
@@ -297,7 +320,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
           [authtoken, payload]
         );
         const createResult = createResponse?.payload?.[0];
-        if (isOpenSRFEvent(createResult) || (createResult as any)?.ilsevent) {
+        if (isOpenSRFEvent(createResult) || (createResult as Record<string, unknown>)?.ilsevent) {
           return errorResponse(
             getErrorMessage(createResult, "Failed to add item stat category assignment"),
             400,

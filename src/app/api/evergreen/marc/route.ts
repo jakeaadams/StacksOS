@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
         );
       }
       const sources = Array.isArray(payload)
-        ? payload.map((source: any) => ({
+        ? payload.map((source) => ({
             id: source?.id,
             source: source?.source || source?.name || "",
           }))
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
   try {
     const body = await parseJsonBodyWithSchema(req, MarcImportSchema);
-    if (body instanceof NextResponse) return body as any;
+    if (body instanceof NextResponse) return body;
 
     const { authtoken, actor } = await requirePermissions(["CREATE_MARC"]);
 
@@ -156,7 +156,7 @@ export async function PUT(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
   try {
     const body = await parseJsonBodyWithSchema(req, MarcUpdateSchema);
-    if (body instanceof NextResponse) return body as any;
+    if (body instanceof NextResponse) return body;
 
     const { authtoken, actor } = await requirePermissions(["UPDATE_MARC"]);
 

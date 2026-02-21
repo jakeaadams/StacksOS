@@ -8,6 +8,7 @@ import {
 import { cookies } from "next/headers";
 import { getOpacPatronPrefs } from "@/lib/db/opac";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
+import { z } from "zod";
 
 /**
  * OPAC Session Check
@@ -71,7 +72,7 @@ export async function GET(req: NextRequest) {
             expireDate: patron.expire_date,
             checkoutCount: checkoutsResponse?.payload?.[0]?.out || 0,
             holdCount: holds.length,
-            readyHoldsCount: holds.filter((h: any) => h.shelf_time).length,
+            readyHoldsCount: holds.filter((h) => h.shelf_time).length,
             fineBalance: parseFloat(finesSummary?.balance_owed || "0"),
             defaultPickupLocation: prefs.defaultPickupLocation,
             defaultSearchLocation: prefs.defaultSearchLocation,

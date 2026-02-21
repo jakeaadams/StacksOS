@@ -48,9 +48,9 @@ export default function KidsAccountPage() {
   const loadData = useCallback(() => {
     // Transform checkouts to recent books
     const books = checkouts
-      .filter((checkout) => typeof checkout.recordId === "number" && checkout.recordId > 0)
+      .filter((checkout: any) => typeof checkout.recordId === "number" && checkout.recordId > 0)
       .slice(0, 4)
-      .map((checkout) => ({
+      .map((checkout: any) => ({
         id: checkout.recordId!,
         title: checkout.title,
         author: checkout.author,
@@ -80,7 +80,7 @@ export default function KidsAccountPage() {
     void (async () => {
       const res = await fetchWithAuth("/api/opac/kids/reading-log?limit=400");
       const data = await res.json().catch(() => ({}));
-      const raw = Array.isArray((data as any)?.entries) ? (data as any).entries : [];
+      const raw = Array.isArray((data as Record<string, any>)?.entries) ? (data as Record<string, any>).entries : [];
       const entries: KidsReadingLogEntry[] = raw
         .filter((e: any) => e && typeof e.id === "number")
         .map((e: any) => ({
@@ -93,7 +93,7 @@ export default function KidsAccountPage() {
         }));
 
       const stats = computeKidsReadingStats(entries);
-      const bookBadgeCount = [1, 5, 10, 25, 50, 100].filter((t) => stats.totalBooks >= t).length;
+      const bookBadgeCount = [1, 5, 10, 25, 50, 100].filter((t: any) => stats.totalBooks >= t).length;
       const streakBadgeCount = (stats.currentStreak >= 7 ? 1 : 0) + (stats.currentStreak >= 30 ? 1 : 0);
       const progress = computeBookBadgeProgress(stats.totalBooks);
 
@@ -128,8 +128,8 @@ export default function KidsAccountPage() {
     );
   }
 
-  const overdueCount = checkouts.filter((c) => c.isOverdue).length;
-  const readyHoldsCount = holds.filter((h) => h.status === "ready").length;
+  const overdueCount = checkouts.filter((c: any) => c.isOverdue).length;
+  const readyHoldsCount = holds.filter((h: any) => h.status === "ready").length;
 
   const safeStats = readingStats || {
     booksThisMonth: 0,
@@ -272,7 +272,7 @@ export default function KidsAccountPage() {
 
         {recentBooks.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {recentBooks.map((book) => (
+            {recentBooks.map((book: any) => (
               <BookCard key={book.id} book={book} />
             ))}
           </div>

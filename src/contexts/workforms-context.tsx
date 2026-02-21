@@ -26,7 +26,7 @@ const WorkformsContext = createContext<WorkformsContextValue | null>(null);
 const STORAGE_KEY = "stacksos_pinned_v2";
 const MAX_PINNED = 20;
 
-function safeParseJson(value: string | null): any | null {
+function safeParseJson(value: string | null): unknown | null {
   if (!value) return null;
   try {
     return JSON.parse(value);
@@ -43,7 +43,7 @@ export function WorkformsProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return;
     const raw = safeParseJson(localStorage.getItem(STORAGE_KEY));
     if (Array.isArray(raw)) {
-      setWorkforms(raw.filter((w: any) => w.key && w.type && w.id && w.title && w.href).slice(0, MAX_PINNED));
+      setWorkforms(raw.filter((w) => w.key && w.type && w.id && w.title && w.href).slice(0, MAX_PINNED));
     }
   }, []);
 

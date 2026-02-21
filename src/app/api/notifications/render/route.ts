@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   try {
     await requirePermissions(["STAFF_LOGIN"]);
     const body = await parseJsonBodyWithSchema(req, Schema);
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const subject = body.subjectTemplate ? renderTemplateString(body.subjectTemplate, body.context, { html: false }) : "";
     const html = renderTemplateString(body.bodyTemplate, body.context, { html: true });

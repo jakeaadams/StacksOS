@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchEvergreen } from "@/lib/api/evergreen-fetch";
 import { getEvergreenPool } from "@/lib/db/evergreen";
 import { cookies } from "next/headers";
+import { z } from "zod";
 
 const startTime = Date.now();
 
@@ -84,7 +85,7 @@ async function checkEvergreen(): Promise<HealthCheck> {
     }
 
     const json: unknown = await res.json();
-    const statusRaw = (json as any)?.status;
+    const statusRaw = (json as Record<string, unknown>)?.status;
     const status =
       typeof statusRaw === "number"
         ? statusRaw
@@ -92,7 +93,7 @@ async function checkEvergreen(): Promise<HealthCheck> {
           ? Number(statusRaw)
           : null;
 
-    const debugRaw = (json as any)?.debug;
+    const debugRaw = (json as Record<string, unknown>)?.debug;
     const debug = typeof debugRaw === "string" ? debugRaw : "";
     const methodNotFound =
       status === 404 &&

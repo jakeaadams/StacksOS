@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   const { ip, userAgent } = getRequestMeta(req);
   try {
     const body = await parseJsonBodyWithSchema(req, postSchema);
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
     const cookieStore = await cookies();

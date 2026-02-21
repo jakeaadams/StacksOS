@@ -4,6 +4,7 @@ import { errorResponse, getRequestMeta, successResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getRedisClient, redisEnabled, redisKey } from "@/lib/redis";
+import { z } from "zod";
 
 /**
  * Google Books API Integration
@@ -52,7 +53,7 @@ function getLocalBackoffUntilMs(): number {
 }
 
 function setLocalBackoffUntilMs(untilMs: number): void {
-  (globalThis as any)[GLOBAL_BACKOFF_KEY] = untilMs;
+  (globalThis as Record<string, unknown>)[GLOBAL_BACKOFF_KEY] = untilMs;
 }
 
 async function getBackoffUntilMs(): Promise<number> {
@@ -152,7 +153,7 @@ async function fetchGoogleBook(isbn: string): Promise<{
       rateLimited: false,
       retryAfterSeconds: null,
     };
-  } catch (error) {
+  } catch (error: any) {
     logger.error({ error: String(error), isbn }, "Error fetching Google Books data");
     return { data: null, rateLimited: false, retryAfterSeconds: null };
   }
@@ -256,7 +257,7 @@ export async function GET(request: NextRequest) {
   // Batch ISBNs (comma-separated)
   const isbns = searchParams.get("isbns");
   if (isbns) {
-    const isbnList = isbns.split(",").map((i) => i.trim().replace(/-/g, "")).filter(Boolean);
+    const isbnList = isbns.split(",").map((i: any) => i.trim().replace(/-/g, "")).filter(Boolean);
     
     // Limit to 20 ISBNs per request to avoid rate limiting
     const limitedList = isbnList.slice(0, 20);
@@ -290,7 +291,7 @@ export async function GET(request: NextRequest) {
 
       const result = await searchGoogleBooks(q, maxResults, startIndex);
       return successResponse({ query: q, ...result });
-    } catch (error) {
+    } catch (error: any) {
       logger.warn({ error: String(error), query: q }, "Google Books search failed");
       return errorResponse("Failed to search Google Books", 502);
     }

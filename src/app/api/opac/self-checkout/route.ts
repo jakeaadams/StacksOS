@@ -3,19 +3,25 @@ import { cookies } from "next/headers";
 import { callOpenSRF, errorResponse, getRequestMeta, successResponse, serverErrorResponse } from "@/lib/api";
 import { requireSelfCheckoutSession, SelfCheckoutAuthError } from "@/lib/self-checkout-auth";
 import { logAuditEvent } from "@/lib/audit";
+import { z } from "zod";
 
 /**
  * Self-Checkout Item Checkout
  * Handles item checkout for authenticated self-checkout patrons
  */
 
+const selfCheckoutPostSchema = z.object({
+  action: z.string().trim().min(1),
+}).passthrough();
+
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
     const { selfCheckoutToken: authtoken, patronId } = await requireSelfCheckoutSession();
-    const body = await req.json().catch(() => null);
-    const itemBarcode = String((body as any)?.itemBarcode || "").trim();
+    const rawBody = await req.json().catch(() => null);
+    const body = rawBody ? selfCheckoutPostSchema.safeParse(rawBody).data ?? rawBody : null;
+    const itemBarcode = String((body as Record<string, unknown>)?.itemBarcode || "").trim();
 
     if (!itemBarcode) {
       return errorResponse("Item barcode is required", 400);

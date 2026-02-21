@@ -9,8 +9,9 @@ import {
 } from "@/lib/api";
 import { getActorFromToken } from "@/lib/audit";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
-function normalizePermPayload(payload: any, perms: string[]): Record<string, boolean> | null {
+function normalizePermPayload(payload: unknown, perms: string[]): Record<string, boolean> | null {
   if (!payload) return null;
 
   if (Array.isArray(payload)) {
@@ -24,7 +25,7 @@ function normalizePermPayload(payload: any, perms: string[]): Record<string, boo
 
     if (payload.length > 0 && typeof payload[0] === "object") {
       const map: Record<string, boolean> = {};
-      payload.forEach((entry: any) => {
+      payload.forEach((entry) => {
         const key = entry.perm || entry.code || entry.name;
         if (key) map[key] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
       });
@@ -36,7 +37,7 @@ function normalizePermPayload(payload: any, perms: string[]): Record<string, boo
     const map: Record<string, boolean> = {};
     for (const perm of perms) {
       if (perm in payload) {
-        map[perm] = Boolean((payload as any)[perm]);
+        map[perm] = Boolean((payload as Record<string, unknown>)[perm]);
       }
     }
     if (Object.keys(map).length > 0) return map;
@@ -46,7 +47,7 @@ function normalizePermPayload(payload: any, perms: string[]): Record<string, boo
 }
 
 async function checkPerms(authtoken: string, perms: string[], orgId?: number): Promise<Record<string, boolean> | null> {
-  const attempts: any[][] = [];
+  const attempts: unknown[][] = [];
   attempts.push([authtoken, perms]);
   if (orgId) {
     attempts.push([authtoken, orgId, perms]);

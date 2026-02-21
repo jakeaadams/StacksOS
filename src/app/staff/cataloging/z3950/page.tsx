@@ -96,7 +96,7 @@ export default function Z3950Page() {
   // Auto-select first service when services load
   useEffect(() => {
     if (!services.length) return;
-    if (!selectedService || !services.some((s) => s.name === selectedService)) {
+    if (!selectedService || !services.some((s: any) => s.name === selectedService)) {
       setSelectedService(services[0]!.name);
     }
   }, [selectedService, services]);
@@ -153,7 +153,7 @@ export default function Z3950Page() {
       // Remove the imported record from results
       setSearchState((prev) => ({
         ...prev,
-        results: prev.results.filter((r) => r.id !== record.id),
+        results: prev.results.filter((r: any) => r.id !== record.id),
       }));
     } catch (err: any) {
       const errorMessage = err?.message || "Import failed";
@@ -208,7 +208,7 @@ export default function Z3950Page() {
         accessorKey: "service",
         header: "Source",
         cell: ({ row }) => {
-          const svc = services.find((s) => s.name === row.original.service);
+          const svc = services.find((s: any) => s.name === row.original.service);
           return (
             <div className="flex items-center gap-1.5">
               <Globe className="h-3.5 w-3.5 text-muted-foreground" />
@@ -437,7 +437,7 @@ export default function Z3950Page() {
                       <SelectValue placeholder="Select target" />
                     </SelectTrigger>
                     <SelectContent>
-                      {services.map((svc) => (
+                      {services.map((svc: any) => (
                         <SelectItem key={svc.name} value={svc.name}>
                           {svc.label}
                         </SelectItem>

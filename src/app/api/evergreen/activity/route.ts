@@ -38,38 +38,38 @@ interface Activity {
     id: number | string;
     label: string;
   };
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   workstation?: string;
 }
 
 // Helper to safely extract fieldmapper values
-function fmGet(value: any, key: string, index?: number): any {
+function fmGet(value: unknown, key: string, index?: number): any {
   if (!value || typeof value !== "object") return undefined;
-  const direct = (value as any)[key];
+  const direct = (value as Record<string, unknown>)[key];
   if (direct !== undefined) return direct;
-  const arr = (value as any).__p;
+  const arr = (value as Record<string, unknown>).__p;
   if (Array.isArray(arr) && typeof index === "number") {
     return arr[index];
   }
   return undefined;
 }
 
-function fmNumber(value: any, key: string, index?: number): number | undefined {
+function fmNumber(value: unknown, key: string, index?: number): number | undefined {
   const raw = fmGet(value, key, index);
   if (typeof raw === "number") return raw;
   const parsed = parseInt(String(raw ?? ""), 10);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function fmString(value: any, key: string, index?: number): string | undefined {
+function fmString(value: unknown, key: string, index?: number): string | undefined {
   const raw = fmGet(value, key, index);
   if (raw === null || raw === undefined) return undefined;
   return typeof raw === "string" ? raw : String(raw);
 }
 
 // Build date range filter for pcrud queries
-function buildDateFilter(startDate?: string, endDate?: string, fieldName: string = "event_time"): Record<string, any> {
-  const filter: Record<string, any> = {};
+function buildDateFilter(startDate?: string, endDate?: string, fieldName: string = "event_time"): Record<string, unknown> {
+  const filter: Record<string, unknown> = {};
 
   if (startDate && endDate) {
     filter[fieldName] = { "between": [startDate, endDate] };
@@ -125,7 +125,7 @@ async function fetchLoginActivities(
   startDate?: string,
   endDate?: string
 ): Promise<Activity[]> {
-  const filter: Record<string, any> = { id: { "!=" : null } };
+  const filter: Record<string, unknown> = { id: { "!=" : null } };
 
   if (userId) {
     filter.usr = userId;
@@ -165,7 +165,7 @@ async function fetchLoginActivities(
     }
 
     return results;
-  } catch (error) {
+  } catch (error: any) {
     logger.warn({ error: String(error) }, "Failed to fetch login activities");
     return [];
   }
@@ -181,7 +181,7 @@ async function fetchCirculationActivities(
   startDate?: string,
   endDate?: string
 ): Promise<Activity[]> {
-  const filter: Record<string, any> = { id: { "!=" : null } };
+  const filter: Record<string, unknown> = { id: { "!=" : null } };
 
   if (userId) {
     filter.usr = userId;
@@ -259,7 +259,7 @@ async function fetchCirculationActivities(
     }
 
     return results;
-  } catch (error) {
+  } catch (error: any) {
     logger.warn({ error: String(error) }, "Failed to fetch circulation activities");
     return [];
   }
@@ -274,7 +274,7 @@ async function fetchHoldActivities(
   startDate?: string,
   endDate?: string
 ): Promise<Activity[]> {
-  const filter: Record<string, any> = { id: { "!=" : null } };
+  const filter: Record<string, unknown> = { id: { "!=" : null } };
 
   if (userId) {
     filter.usr = userId;
@@ -330,7 +330,7 @@ async function fetchHoldActivities(
     }
 
     return results;
-  } catch (error) {
+  } catch (error: any) {
     logger.warn({ error: String(error) }, "Failed to fetch hold activities");
     return [];
   }
@@ -345,7 +345,7 @@ async function fetchPaymentActivities(
   startDate?: string,
   endDate?: string
 ): Promise<Activity[]> {
-  const filter: Record<string, any> = { id: { "!=" : null } };
+  const filter: Record<string, unknown> = { id: { "!=" : null } };
 
   // Payments link to xact (transaction), which links to usr
   // We'll filter by xact if user specified
@@ -406,7 +406,7 @@ async function fetchPaymentActivities(
     }
 
     return results;
-  } catch (error) {
+  } catch (error: any) {
     logger.warn({ error: String(error) }, "Failed to fetch payment activities");
     return [];
   }
@@ -554,7 +554,7 @@ async function fetchPatronChangeActivities(
 
       patronChangeStacksosCapability = "supported";
       return { activities: results, available: true };
-    } catch (error) {
+    } catch (error: any) {
       // DB fallback may be unavailable if the Evergreen DB user lacks CREATE privileges in `library`.
       // Fall back to parsing the StacksOS audit log file (best-effort).
       try {
@@ -563,7 +563,7 @@ async function fetchPatronChangeActivities(
           patronChangeStacksosCapability = "supported";
           return { activities: fromLog, available: true };
         }
-      } catch (e) {
+      } catch (e: any) {
         logger.warn({ error: String(e) }, "StacksOS audit-log patron-change fallback unavailable");
       }
 
@@ -576,7 +576,7 @@ async function fetchPatronChangeActivities(
   async function fetchEvergreen(): Promise<Activity[]> {
     if (!evergreenSupported) return [];
 
-    const filter: Record<string, any> = { id: { "!=": null } };
+    const filter: Record<string, unknown> = { id: { "!=": null } };
 
     if (userId) {
       filter.id = userId; // In history table, id is the user id
@@ -600,8 +600,8 @@ async function fetchPatronChangeActivities(
             },
           ]
         );
-      } catch (error) {
-        const code = typeof (error as any)?.code === "string" ? String((error as any).code) : "";
+      } catch (error: any) {
+        const code = typeof (error as Record<string, unknown>)?.code === "string" ? String((error as Record<string, unknown>).code) : "";
         // Some Evergreen installs expose the non-atomic variant only.
         if (code === "OSRF_METHOD_NOT_FOUND") {
           response = await callOpenSRF(
@@ -658,8 +658,8 @@ async function fetchPatronChangeActivities(
       }
 
       return [];
-    } catch (error) {
-      const code = typeof (error as any)?.code === "string" ? String((error as any).code) : "";
+    } catch (error: any) {
+      const code = typeof (error as Record<string, unknown>)?.code === "string" ? String((error as Record<string, unknown>).code) : "";
       if (code === "OSRF_METHOD_NOT_FOUND") {
         patronChangeEvergreenCapability = "unsupported";
         return [];
@@ -680,8 +680,8 @@ async function fetchPatronChangeActivities(
 }
 
 // Extract meaningful changes from patron history record
-function extractPatronChanges(record: any): Record<string, any> {
-  const changes: Record<string, any> = {};
+function extractPatronChanges(record: any): Record<string, unknown> {
+  const changes: Record<string, unknown> = {};
   const fields = ["email", "day_phone", "evening_phone", "other_phone", "home_ou", "profile", "expire_date", "barred", "active"];
 
   for (const field of fields) {

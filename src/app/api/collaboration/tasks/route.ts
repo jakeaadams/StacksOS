@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
   try {
     const parsed = await parseJsonBodyWithSchema(req, createSchema);
-    if (parsed instanceof Response) return parsed as any;
+    if (parsed instanceof Response) return parsed;
 
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
     const task = await createRecordTask({
@@ -89,7 +89,7 @@ export async function PATCH(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
   try {
     const parsed = await parseJsonBodyWithSchema(req, updateSchema);
-    if (parsed instanceof Response) return parsed as any;
+    if (parsed instanceof Response) return parsed;
 
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
     const task = await updateRecordTask({

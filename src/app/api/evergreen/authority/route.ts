@@ -41,10 +41,10 @@ export async function GET(req: NextRequest) {
           offset,  // offset
         ]
       );
-    } catch (error) {
+    } catch (error: any) {
       // Evergreen installs vary; many don't expose authority browse in OpenSRF.
       // Fall back to searching authority.record_entry via PCrud (no direct DB access required).
-      if (error && typeof error === "object" && (error as any).code === "OSRF_METHOD_NOT_FOUND") {
+      if (error && typeof error === "object" && (error as Record<string, any>).code === "OSRF_METHOD_NOT_FOUND") {
         response = null;
       } else {
         throw error;
@@ -95,8 +95,8 @@ export async function GET(req: NextRequest) {
       },
       { limit, offset, order_by: { are: "heading" } },
     ]);
-    const rows = Array.isArray(pcrud?.payload?.[0]) ? (pcrud.payload[0] as any[]) : [];
-    const fallback = rows.map((r: any) => ({
+    const rows = Array.isArray(pcrud?.payload?.[0]) ? (pcrud.payload[0] as Record<string, any>[]) : [];
+    const fallback = rows.map((r) => ({
       id: r.id,
       heading: r.heading || r.simple_heading || "",
       type: axis || "main",
@@ -115,7 +115,7 @@ export async function GET(req: NextRequest) {
       message: null,
     });
 
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Authority GET", req);
   }
 }
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
         })
         .strict()
     );
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const { authtoken, actor } = await requirePermissions(["CREATE_AUTHORITY_RECORD", "IMPORT_MARC"]);
     const actorId = typeof actor?.id === "number" ? actor.id : parseInt(String(actor?.id ?? ""), 10);
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
           { deleted: "f", simple_heading: { "~*": exact } },
           { limit: 1 },
         ]);
-        const rows = Array.isArray(existing?.payload?.[0]) ? (existing.payload[0] as any[]) : [];
+        const rows = Array.isArray(existing?.payload?.[0]) ? (existing.payload[0] as Record<string, any>[]) : [];
         if (rows.length > 0) {
           continue;
         }
@@ -173,19 +173,19 @@ export async function POST(req: NextRequest) {
         "StacksOS Demo",
       ]);
       const row = res?.payload?.[0];
-      if (!row || isOpenSRFEvent(row) || (row as any)?.ilsevent) {
+      if (!row || isOpenSRFEvent(row) || (row as Record<string, any>)?.ilsevent) {
         const msg = getErrorMessage(row, "Failed to import authority record");
         logger.warn({ heading, owner, actorId, msg }, "Authority import failed");
         continue;
       }
 
       const id =
-        typeof (row as any)?.id === "number" ? (row as any).id : parseInt(String((row as any)?.id ?? ""), 10);
+        typeof (row as Record<string, any>)?.id === "number" ? (row as Record<string, any>).id : parseInt(String((row as Record<string, any>)?.id ?? ""), 10);
       if (Number.isFinite(id) && id > 0) created.push({ id, heading });
     }
 
     return successResponse({ created, count: created.length });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Authority POST", req);
   }
 }

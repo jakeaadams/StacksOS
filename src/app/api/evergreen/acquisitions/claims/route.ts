@@ -4,6 +4,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { sendEmail } from "@/lib/email";
+import { z } from "zod";
 
 export type ClaimType = "claim" | "cancel_claim" | "receive";
 
@@ -38,6 +39,10 @@ export interface ClaimableItem {
   lastClaimDate?: string;
   daysOverdue: number;
 }
+
+const acqClaimsPostSchema = z.object({
+  action: z.string().trim().min(1),
+}).passthrough();
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -76,20 +81,20 @@ export async function GET(req: NextRequest) {
               claimableItems.push({ lineitemId: li.id, lineitemDetailId: detail.id, title: getAttr("title") || "Unknown", author: getAttr("author") || "", isbn: getAttr("isbn") || "", barcode: detail.barcode || "", orderDate, expectedReceiveDate: expectedDate, vendorId: provider.id || po.provider, vendorName: provider.name || "Provider " + po.provider, purchaseOrderId: po.id, purchaseOrderName: po.name || "PO-" + po.id, claimCount: detail.claim_count || 0, lastClaimDate: detail.last_claim_date || null, daysOverdue });
             }
           }
-        } catch (error) { logger.warn({ route: "api.evergreen.acquisitions.claims", action, err: String(error) }, "Claimable items lookup failed"); }
-        claimableItems.sort((a, b) => b.daysOverdue - a.daysOverdue);
+        } catch (error: any) { logger.warn({ route: "api.evergreen.acquisitions.claims", action, err: String(error) }, "Claimable items lookup failed"); }
+        claimableItems.sort((a: any, b: any) => b.daysOverdue - a.daysOverdue);
         return successResponse({ items: claimableItems, total: claimableItems.length });
       }
       case "history": {
         let claimHistory: ClaimEvent[] = [];
         try {
-          const filters: Record<string, any> = {};
+          const filters: Record<string, unknown> = {};
           if (lineitemId) filters.lineitem = parseInt(lineitemId, 10);
           const response = await callOpenSRF("open-ils.acq", "open-ils.acq.claim_event.org.retrieve", [authtoken, orgId, { ...filters, limit, offset, order_by: { acqce: "create_time DESC" } }]);
           const payload = response?.payload || [];
           const events = Array.isArray(payload?.[0]) ? payload[0] : payload;
           claimHistory = (Array.isArray(events) ? events : []).map((ev: any) => ({ id: ev.id, lineitemId: typeof ev.lineitem === "object" ? ev.lineitem?.id : ev.lineitem, lineitemDetailId: typeof ev.lineitem_detail === "object" ? ev.lineitem_detail?.id : ev.lineitem_detail, claimType: ev.type || "claim", claimDate: ev.claim_date || ev.create_time, claimCount: ev.claim_count || 1, vendorId: ev.provider || null, vendorName: ev.provider_name || null, notes: ev.note || ev.notes || "", creator: ev.creator, createTime: ev.create_time }));
-        } catch (error) { logger.warn({ route: "api.evergreen.acquisitions.claims", action, lineitemId, err: String(error) }, "Claim history lookup failed"); }
+        } catch (error: any) { logger.warn({ route: "api.evergreen.acquisitions.claims", action, lineitemId, err: String(error) }, "Claim history lookup failed"); }
         return successResponse({ history: claimHistory, total: claimHistory.length });
       }
       case "claim_reasons": {
@@ -99,7 +104,7 @@ export async function GET(req: NextRequest) {
           const payload = response?.payload || [];
           const typeList = Array.isArray(payload?.[0]) ? payload[0] : payload;
           reasons = (Array.isArray(typeList) ? typeList : []).map((t: any) => ({ id: t.id, code: t.code || t.name || "Type " + t.id, description: t.description || t.label || "" }));
-        } catch (_error) { reasons = [{ id: 1, code: "not_received", description: "Item not received" }, { id: 2, code: "damaged", description: "Item received damaged" }, { id: 3, code: "wrong_item", description: "Wrong item received" }, { id: 4, code: "short_shipment", description: "Short shipment" }]; }
+        } catch (_error: any) { reasons = [{ id: 1, code: "not_received", description: "Item not received" }, { id: 2, code: "damaged", description: "Item received damaged" }, { id: 3, code: "wrong_item", description: "Wrong item received" }, { id: 4, code: "short_shipment", description: "Short shipment" }]; }
         return successResponse({ reasons });
       }
       case "summary": {
@@ -113,7 +118,7 @@ export async function GET(req: NextRequest) {
           const claimsPayload = claimsResp?.payload || [];
           const claims = Array.isArray(claimsPayload?.[0]) ? claimsPayload[0] : claimsPayload;
           if (Array.isArray(claims)) { summary.totalClaimed = claims.length; summary.pendingClaims = claims.filter((c: any) => !c.resolved_time).length; summary.resolvedClaims = claims.filter((c: any) => c.resolved_time).length; }
-        } catch (error) { logger.warn({ route: "api.evergreen.acquisitions.claims", action, err: String(error) }, "Claims summary lookup failed"); }
+        } catch (error: any) { logger.warn({ route: "api.evergreen.acquisitions.claims", action, err: String(error) }, "Claims summary lookup failed"); }
         return successResponse({ summary });
       }
       default: return errorResponse("Invalid action. Use: claimable, history, claim_reasons, summary", 400);
@@ -129,13 +134,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN", "ADMIN_ACQ_CLAIM"]);
-    const body = await req.json();
-    const { action } = body;
+    const body = acqClaimsPostSchema.parse(await req.json());
+    const { action } = body as Record<string, any>;
     logger.debug({ route: "api.evergreen.acquisitions.claims", action }, "Claims POST");
 
     switch (action) {
       case "claim": {
-        const { lineitemId, lineitemDetailIds, claimTypeId, notes, sendNotification } = body;
+        const { lineitemId, lineitemDetailIds, claimTypeId, notes, sendNotification } = body as Record<string, any>;
         if (!lineitemId && !lineitemDetailIds?.length) return errorResponse("Lineitem ID or detail IDs required", 400);
         const claimType = claimTypeId || 1;
         let claimedCount = 0;
@@ -145,20 +150,20 @@ export async function POST(req: NextRequest) {
             for (const detailId of lineitemDetailIds) {
               try {
                 const response = await callOpenSRF("open-ils.acq", "open-ils.acq.lineitem_detail.claim", [authtoken, detailId, claimType, notes || ""]);
-                const result = response?.payload?.[0];
+                const result = response?.payload?.[0] as any as any;
                 if (result?.ilsevent) errors.push("Detail " + detailId + ": " + (result.textcode || "Failed"));
                 else claimedCount++;
-              } catch (error) { errors.push("Detail " + detailId + ": " + String(error)); }
+              } catch (error: any) { errors.push("Detail " + detailId + ": " + String(error)); }
             }
           } else {
             const response = await callOpenSRF("open-ils.acq", "open-ils.acq.claim.lineitem", [authtoken, lineitemId, claimType, notes || ""]);
-            const result = response?.payload?.[0];
+            const result = response?.payload?.[0] as any as any;
             if (result?.ilsevent) return errorResponse(result.textcode || "Failed to create claim", 400);
             claimedCount = 1;
           }
           if (sendNotification && claimedCount > 0) {
             try { await sendClaimNotification(authtoken, lineitemId, claimType, notes); }
-            catch (emailError) { logger.warn({ route: "api.evergreen.acquisitions.claims", lineitemId, err: String(emailError) }, "Failed to send claim notification"); }
+            catch (emailError: any) { logger.warn({ route: "api.evergreen.acquisitions.claims", lineitemId, err: String(emailError) }, "Failed to send claim notification"); }
           }
 
           await logAuditEvent({
@@ -175,14 +180,14 @@ export async function POST(req: NextRequest) {
           });
 
           return successResponse({ claimed: true, count: claimedCount, errors: errors.length > 0 ? errors : undefined }, "Claimed " + claimedCount + " item(s)");
-        } catch (_error) { return errorResponse("Failed to create claim", 500); }
+        } catch (_error: any) { return errorResponse("Failed to create claim", 500); }
       }
       case "cancel_claim": {
-        const { claimId, lineitemDetailId, notes } = body;
+        const { claimId, lineitemDetailId, notes } = body as Record<string, any>;
         if (!claimId && !lineitemDetailId) return errorResponse("Claim ID or lineitem detail ID required", 400);
         try {
           const response = await callOpenSRF("open-ils.acq", "open-ils.acq.claim.cancel", [authtoken, claimId || lineitemDetailId, notes || ""]);
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to cancel claim", 400);
 
           await logAuditEvent({
@@ -198,16 +203,16 @@ export async function POST(req: NextRequest) {
           });
 
           return successResponse({ cancelled: true, claimId: claimId || lineitemDetailId }, "Claim cancelled");
-        } catch (_error) { return errorResponse("Failed to cancel claim", 500); }
+        } catch (_error: any) { return errorResponse("Failed to cancel claim", 500); }
       }
       case "receive": {
-        const { lineitemDetailId, notes } = body;
+        const { lineitemDetailId, notes } = body as Record<string, any>;
         if (!lineitemDetailId) return errorResponse("Lineitem detail ID required", 400);
         try {
           const response = await callOpenSRF("open-ils.acq", "open-ils.acq.lineitem_detail.receive", [authtoken, lineitemDetailId]);
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to receive item", 400);
-          if (notes) { try { await callOpenSRF("open-ils.acq", "open-ils.acq.claim.resolve", [authtoken, lineitemDetailId, notes]); } catch (resolveError) { logger.warn({ route: "api.evergreen.acquisitions.claims", action, lineitemDetailId, err: String(resolveError) }, "Failed to resolve claim"); } }
+          if (notes) { try { await callOpenSRF("open-ils.acq", "open-ils.acq.claim.resolve", [authtoken, lineitemDetailId, notes]); } catch (resolveError: any) { logger.warn({ route: "api.evergreen.acquisitions.claims", action, lineitemDetailId, err: String(resolveError) }, "Failed to resolve claim"); } }
 
           await logAuditEvent({
             action: "acq.claim.receive",
@@ -222,10 +227,10 @@ export async function POST(req: NextRequest) {
           });
 
           return successResponse({ received: true, lineitemDetailId }, "Item received");
-        } catch (_error) { return errorResponse("Failed to receive item", 500); }
+        } catch (_error: any) { return errorResponse("Failed to receive item", 500); }
       }
       case "batch_claim": {
-        const { items, claimTypeId, notes, sendNotification } = body;
+        const { items, claimTypeId, notes, sendNotification } = body as Record<string, any>;
         if (!items || !Array.isArray(items) || items.length === 0) return errorResponse("Items array required", 400);
         const claimType = claimTypeId || 1;
         let claimedCount = 0;
@@ -238,21 +243,21 @@ export async function POST(req: NextRequest) {
             if (lineitemDetailId) response = await callOpenSRF("open-ils.acq", "open-ils.acq.lineitem_detail.claim", [authtoken, lineitemDetailId, claimType, notes || ""]);
             else if (lineitemId) response = await callOpenSRF("open-ils.acq", "open-ils.acq.claim.lineitem", [authtoken, lineitemId, claimType, notes || ""]);
             else { errors.push("Item missing lineitemDetailId or lineitemId"); continue; }
-            const result = response?.payload?.[0];
+            const result = response?.payload?.[0] as any as any;
             if (result?.ilsevent) errors.push("Item " + (lineitemDetailId || lineitemId) + ": " + (result.textcode || "Failed"));
             else {
               claimedCount++;
               const li = parseInt(String(lineitemId ?? ""), 10);
               if (sendNotification && Number.isFinite(li) && li > 0) notifiedLineitemIds.add(li);
             }
-          } catch (error) { errors.push("Item " + (lineitemDetailId || lineitemId) + ": " + String(error)); }
+          } catch (error: any) { errors.push("Item " + (lineitemDetailId || lineitemId) + ": " + String(error)); }
         }
 
         if (sendNotification && notifiedLineitemIds.size > 0) {
           for (const li of notifiedLineitemIds) {
             try {
               await sendClaimNotification(authtoken, li, claimType, notes);
-            } catch (emailError) {
+            } catch (emailError: any) {
               logger.warn({ route: "api.evergreen.acquisitions.claims", lineitemId: li, err: String(emailError) }, "Failed to send claim notification");
             }
           }
@@ -273,12 +278,12 @@ export async function POST(req: NextRequest) {
         return successResponse({ claimed: true, count: claimedCount, total: items.length, errors: errors.length > 0 ? errors : undefined }, "Claimed " + claimedCount + " of " + items.length + " item(s)");
       }
       case "add_note": {
-        const { claimId, lineitemDetailId, note } = body;
+        const { claimId, lineitemDetailId, note } = body as Record<string, any>;
         if (!claimId && !lineitemDetailId) return errorResponse("Claim ID or lineitem detail ID required", 400);
         if (!note) return errorResponse("Note text required", 400);
         try {
           const response = await callOpenSRF("open-ils.acq", "open-ils.acq.claim.note.add", [authtoken, claimId || lineitemDetailId, note]);
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to add note", 400);
 
           await logAuditEvent({
@@ -294,7 +299,7 @@ export async function POST(req: NextRequest) {
           });
 
           return successResponse({ added: true, claimId: claimId || lineitemDetailId }, "Note added to claim");
-        } catch (_error) { return errorResponse("Failed to add note", 500); }
+        } catch (_error: any) { return errorResponse("Failed to add note", 500); }
       }
       default: return errorResponse("Invalid action. Use: claim, cancel_claim, receive, batch_claim, add_note", 400);
     }
@@ -306,7 +311,7 @@ export async function POST(req: NextRequest) {
 
 async function sendClaimNotification(authtoken: string, lineitemId: number, claimTypeId?: number, notes?: string): Promise<void> {
   const liResponse = await callOpenSRF("open-ils.acq", "open-ils.acq.lineitem.retrieve", [authtoken, lineitemId, { flesh: 2, flesh_fields: { jub: ["attributes", "purchase_order"], acqpo: ["provider"] } }]);
-  const li = liResponse?.payload?.[0];
+  const li = liResponse?.payload?.[0] as any;
   if (!li) throw new Error("Lineitem not found");
   const attrs = Array.isArray(li.attributes) ? li.attributes : [];
   const getAttr = (name: string) => { const attr = attrs.find((a: any) => a.attr_name === name); return attr?.attr_value || ""; };

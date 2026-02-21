@@ -68,7 +68,7 @@ function getStatusName(statusCode: number): string {
 }
 
 function transformCopies(copies: any[]): CopyInfo[] {
-  return copies.map((copy: any) => ({
+  return copies.map((copy) => ({
     id: copy.id,
     barcode: copy.barcode,
     location: copy.location_name || copy.circ_lib_name || "Unknown",

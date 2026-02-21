@@ -199,7 +199,7 @@ export default function KidsRecordDetailPage() {
         setHoldSuccess(false);
       }, 2000);
     } catch (err: any) {
-      setHoldError({ message: err.message || t("holdError") });
+      setHoldError({ message: (err instanceof Error ? err.message : String(err)) || t("holdError") });
     } finally {
       setHoldLoading(false);
     }

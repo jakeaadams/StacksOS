@@ -6,6 +6,7 @@ import {
   serverErrorResponse,
 } from "@/lib/api";
 import { query } from "@/lib/db/evergreen";
+import { z } from "zod";
 
 function toNumber(value: unknown): number | null {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
         { order_by: { cfg: "name" }, limit: 500 },
       ]);
 
-      const rows = Array.isArray(response?.payload?.[0]) ? (response.payload[0] as any[]) : [];
+      const rows = Array.isArray(response?.payload?.[0]) ? (response.payload[0] as Record<string, unknown>[]) : [];
       const groups = rows
         .map((row: any) => ({
           id: toNumber(row?.id ?? row?.__p?.[0]),
@@ -53,14 +54,14 @@ export async function GET(req: NextRequest) {
     );
 
     const groups = rows
-      .map((row) => ({
+      .map((row: any) => ({
         id: Number(row.id) || 0,
         name: String(row.name || "").trim(),
       }))
-      .filter((row) => row.id > 0 && row.name.length > 0);
+      .filter((row: any) => row.id > 0 && row.name.length > 0);
 
     return successResponse({ groups });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Floating groups GET", req);
   }
 }

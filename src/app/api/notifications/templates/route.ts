@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     const { actor } = await requirePermissions(["ADMIN_CONFIG"]);
 
     const body = await parseJsonBodyWithSchema(req, BodySchema);
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     if (body.action === "create") {
       const id = await createTemplateVersion({

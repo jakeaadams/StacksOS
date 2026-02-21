@@ -27,7 +27,7 @@ export interface RecordPatronChangeEventArgs {
   action: PatronChangeAction;
   actor?: PatronChangeActor | null;
   requestId?: string | null;
-  changes?: Record<string, unknown> | null;
+  changes?: Record<string, any> | null;
 }
 
 export interface ListPatronChangeEventsArgs {
@@ -48,7 +48,7 @@ export interface PatronChangeEventRow {
   actor_name: string | null;
   workstation: string | null;
   request_id: string | null;
-  changes: Record<string, unknown> | null;
+  changes: Record<string, any> | null;
 }
 
 let tablesReady = false;
@@ -93,9 +93,9 @@ export async function ensurePatronChangeTables(): Promise<void> {
 
 function toSafeChangesObject(
   action: string,
-  changes: Record<string, unknown> | null | undefined
-): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
+  changes: Record<string, any> | null | undefined
+): Record<string, any> {
+  const out: Record<string, any> = {};
   if (changes && typeof changes === "object") {
     const keys = Object.keys(changes).slice(0, 32);
     for (const key of keys) out[String(key)] = true;
@@ -136,7 +136,7 @@ export async function recordPatronChangeEvent(args: RecordPatronChangeEventArgs)
         JSON.stringify(changes),
       ]
     );
-  } catch (error) {
+  } catch (error: any) {
     logger.warn({ error: String(error), component: "patron-change" }, "Failed to record patron-change event");
   }
 }
@@ -149,7 +149,6 @@ export async function listPatronChangeEvents(args: ListPatronChangeEventsArgs): 
 
   const where: string[] = [];
   const params: any[] = [];
-
   if (typeof args.patronId === "number" && Number.isFinite(args.patronId)) {
     params.push(args.patronId);
     where.push(`patron_id = $${params.length}`);

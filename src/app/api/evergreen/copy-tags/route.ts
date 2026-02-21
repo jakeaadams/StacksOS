@@ -43,7 +43,7 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
 
     if (payload.length > 0 && typeof payload[0] === "object") {
       const map: Record<string, boolean> = {};
-      (payload as Record<string, unknown>[]).forEach((entry: Record<string, unknown>) => {
+      (payload as Record<string, unknown>[]).forEach((entry) => {
         const key = String(entry.perm || entry.code || entry.name);
         if (key) map[key as string] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
       });
@@ -119,7 +119,7 @@ export async function GET(req: NextRequest) {
 
     const rows = Array.isArray(response?.payload?.[0]) ? (response?.payload?.[0] as Record<string, unknown>[]) : [];
     const tags = rows
-      .map((row: Record<string, unknown>) => {
+      .map((row) => {
         const tagTypeObj = row?.tag_type && typeof row.tag_type === "object" ? (row.tag_type as Record<string, unknown>) : null;
         const ownerObj = row?.owner && typeof row.owner === "object" ? (row.owner as Record<string, unknown>) : null;
 

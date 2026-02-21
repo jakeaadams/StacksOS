@@ -14,6 +14,7 @@ import {
   isSuccessResult,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { z } from "zod";
 
 interface PullListRawItem {
   hold_id?: number;
@@ -67,6 +68,12 @@ function mapPullListItem(item: PullListRawItem): MappedPullListItem {
   };
 }
 
+const pullListPostSchema = z.object({
+  action: z.enum(["capture"]),
+  barcode: z.string().trim().min(1).optional(),
+  holdId: z.coerce.number().int().positive().optional(),
+}).passthrough();
+
 export async function GET(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
@@ -118,7 +125,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { authtoken } = await requirePermissions(["STAFF_LOGIN"]);
-    const body = await req.json();
+    const body = pullListPostSchema.parse(await req.json());
     const { action, barcode, holdId } = body;
 
     if (!action) {

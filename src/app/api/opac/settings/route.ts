@@ -111,7 +111,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const updatesParsed = await parseJsonBodyWithSchema(req, updatesSchema);
-    if (updatesParsed instanceof Response) return updatesParsed as any;
+    if (updatesParsed instanceof Response) return updatesParsed;
     const updates = updatesParsed;
 
     // Get session to get patron ID
@@ -133,7 +133,7 @@ export async function PUT(req: NextRequest) {
     if (updates.holdNotifyPhone) notifyMethods.push("phone");
 
     // Update settings
-    const settingsToUpdate: Record<string, any> = {
+    const settingsToUpdate: Record<string, unknown> = {
       "opac.hold_notify": notifyMethods.join(":") || "email",
     };
 
@@ -163,7 +163,7 @@ export async function PUT(req: NextRequest) {
 
     // Update email/phone if changed (requires patron update)
     if (updates.email || updates.phone) {
-      const patronUpdate: any = { id: user.id };
+      const patronUpdate: Record<string, unknown> = { id: user.id };
       if (updates.email) patronUpdate.email = updates.email;
       if (updates.phone) patronUpdate.day_phone = updates.phone;
 

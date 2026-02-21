@@ -12,6 +12,11 @@ import {
 
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { z } from "zod";
+
+const bookingPostSchema = z.object({
+  action: z.string().trim().min(1),
+}).passthrough();
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -36,7 +41,7 @@ export async function GET(req: NextRequest) {
       const rows = Array.isArray(pcrud?.payload?.[0]) ? (pcrud.payload[0] as Record<string, unknown>[]) : [];
       if (rows.length > 0) {
         return successResponse({
-          resources: rows.map((r: Record<string, unknown>) => ({
+          resources: rows.map((r) => ({
             id: r.id,
             barcode: r.barcode ?? null,
             type: typeof r.type === "object" ? (r.type as Record<string, unknown>).id : r.type,
@@ -66,7 +71,7 @@ export async function GET(req: NextRequest) {
 
           if (Array.isArray(resources)) {
             return successResponse({
-              resources: resources.map((r: Record<string, unknown>) => ({
+              resources: resources.map((r) => ({
                 id: r.id,
                 barcode: r.barcode ?? null,
                 type: r.type,
@@ -96,7 +101,7 @@ export async function GET(req: NextRequest) {
         { limit: 200, order_by: { brt: "name" } },
       ]);
       const rows = Array.isArray(response?.payload?.[0]) ? (response.payload[0] as Record<string, unknown>[]) : [];
-      const types = rows.map((t: Record<string, unknown>) => ({
+      const types = rows.map((t) => ({
         id: t.id,
         name: t.name,
         owner: typeof t.owner === "object" ? (t.owner as Record<string, unknown>).id : t.owner,
@@ -122,7 +127,7 @@ export async function GET(req: NextRequest) {
       const rows = Array.isArray(pcrud?.payload?.[0]) ? (pcrud.payload[0] as Record<string, unknown>[]) : [];
       if (rows.length > 0) {
         return successResponse({
-          reservations: rows.map((r: Record<string, unknown>) => ({
+          reservations: rows.map((r) => ({
             id: r.id,
             usr: typeof r.usr === "object" ? (r.usr as Record<string, unknown>).id : r.usr,
             target_resource: typeof r.target_resource === "object" ? (r.target_resource as Record<string, unknown>).id : r.target_resource,
@@ -160,7 +165,7 @@ export async function GET(req: NextRequest) {
 
           if (Array.isArray(reservations)) {
             return successResponse({
-              reservations: reservations.map((r: Record<string, unknown>) => ({
+              reservations: reservations.map((r) => ({
                 id: r.id,
                 usr: r.usr,
                 target_resource: r.target_resource,
@@ -194,7 +199,7 @@ export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
-    const body = await req.json();
+    const body = bookingPostSchema.parse(await req.json());
     const { action } = body;
 
     if (!action) {
@@ -208,7 +213,7 @@ export async function POST(req: NextRequest) {
 
     const { authtoken, actor } = await requirePermissions(actionPerms);
 
-    const audit = async (status: "success" | "failure", details?: Record<string, any>, error?: string) => {
+    const audit = async (status: "success" | "failure", details?: Record<string, unknown>, error?: string) => {
       await logAuditEvent({
         action: `booking.${action}`,
         status,

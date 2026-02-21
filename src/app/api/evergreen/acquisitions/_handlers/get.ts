@@ -95,9 +95,9 @@ export async function handleAcquisitionsGet(
         );
 
         const ordersPayload = response?.payload || [];
-        const orders = Array.isArray((ordersPayload as any)?.[0]) ? (ordersPayload as any)[0] : ordersPayload;
+        const orders = Array.isArray((ordersPayload as unknown[])?.[0]) ? (ordersPayload as unknown[])[0] : ordersPayload;
 
-        const mappedOrders = (Array.isArray(orders) ? orders : []).map((po: any) => {
+        const mappedOrders = (Array.isArray(orders) ? orders : []).map((po) => {
           const providerId = typeof po.provider === "object" ? po.provider.id : po.provider;
           const providerName = typeof po.provider === "object" ? po.provider.name : undefined;
           const orderDate = po.order_date || po.create_time || null;
@@ -139,9 +139,9 @@ export async function handleAcquisitionsGet(
         );
 
         const vendorsPayload = response?.payload || [];
-        const vendors = Array.isArray((vendorsPayload as any)?.[0]) ? (vendorsPayload as any)[0] : vendorsPayload;
+        const vendors = Array.isArray((vendorsPayload as unknown[])?.[0]) ? (vendorsPayload as unknown[])[0] : vendorsPayload;
 
-        const mappedVendors = (Array.isArray(vendors) ? vendors : []).map((v: any) => ({
+        const mappedVendors = (Array.isArray(vendors) ? vendors : []).map((v) => ({
           id: v.id,
           name: v.name || "Unknown",
           code: v.code || "",
@@ -171,9 +171,9 @@ export async function handleAcquisitionsGet(
         );
 
         const fundsPayload = response?.payload || [];
-        const funds = Array.isArray((fundsPayload as any)?.[0]) ? (fundsPayload as any)[0] : fundsPayload;
+        const funds = Array.isArray((fundsPayload as unknown[])?.[0]) ? (fundsPayload as unknown[])[0] : fundsPayload;
 
-        const mappedFunds = (Array.isArray(funds) ? funds : []).map((f: any) => ({
+        const mappedFunds = (Array.isArray(funds) ? funds : []).map((f) => ({
           id: f.id,
           name: f.name || "Unknown",
           code: f.code || "",
@@ -195,8 +195,8 @@ export async function handleAcquisitionsGet(
       case "invoices": {
         // Get invoices (Evergreen 3.16 has no open-ils.acq.invoice.search)
         const receiverOrgId =
-          parsePositiveIntId((_actor as any)?.ws_ou ?? (_actor as any)?.home_ou) ?? 1;
-        let response: any | null = null;
+          parsePositiveIntId((_actor as Record<string, unknown>)?.ws_ou ?? (_actor as Record<string, unknown>)?.home_ou) ?? 1;
+        let response: any = null;
 
         try {
           response = await callOpenSRF(
@@ -204,14 +204,14 @@ export async function handleAcquisitionsGet(
             "open-ils.cstore.direct.acqinv.search.atomic",
             [authtoken, { receiver: receiverOrgId }, { limit: 200, order_by: { acqinv: "recv_date DESC" } }]
           );
-        } catch (_error) {
+        } catch (_error: any) {
           try {
             response = await callOpenSRF(
               "open-ils.cstore",
               "open-ils.cstore.direct.acqinv.search",
               [authtoken, { receiver: receiverOrgId }, { limit: 200, order_by: { acqinv: "recv_date DESC" } }]
             );
-          } catch (_error2) {
+          } catch (_error2: any) {
             // Some Evergreen installs do not expose cstore direct methods for acquisitions.
             // Fall back to pcrud search before treating this as "not available".
             try {
@@ -219,8 +219,8 @@ export async function handleAcquisitionsGet(
                   "open-ils.pcrud.search.acqinv",
                   [authtoken, { receiver: receiverOrgId }, { limit: 200, order_by: { acqinv: "recv_date DESC" } }]
                 );
-              } catch (err) {
-              const code = err && typeof err === "object" ? (err as any).code : undefined;
+              } catch (err: any) {
+              const code = err && typeof err === "object" ? (err as Record<string, unknown>).code : undefined;
               if (code === "OSRF_METHOD_NOT_FOUND") {
                 logger.info({ route: "api.evergreen.acquisitions", action }, "Invoices lookup not supported on this Evergreen install");
               } else {
@@ -235,9 +235,9 @@ export async function handleAcquisitionsGet(
         }
 
         const invoicesPayload = response?.payload || [];
-        const invoices = Array.isArray((invoicesPayload as any)?.[0]) ? (invoicesPayload as any)[0] : invoicesPayload;
+        const invoices = Array.isArray((invoicesPayload as unknown[])?.[0]) ? (invoicesPayload as unknown[])[0] : invoicesPayload;
 
-        const mappedInvoices = (Array.isArray(invoices) ? invoices : []).map((inv: any) => ({
+        const mappedInvoices = (Array.isArray(invoices) ? invoices : []).map((inv) => ({
           id: inv.id,
           vendor_invoice_id: inv.vendor_invoice_id || inv.inv_ident || "",
           provider: typeof inv.provider === "object" ? inv.provider.id : inv.provider,
@@ -293,7 +293,7 @@ export async function handleAcquisitionsGet(
 
         const entryIds: number[] = Array.isArray(entries)
           ? entries
-              .map((e: any) => (typeof e?.id === "number" ? e.id : parseInt(String(e?.id ?? ""), 10)))
+              .map((e) => (typeof e?.id === "number" ? e.id : parseInt(String(e?.id ?? ""), 10)))
               .filter((n: number) => Number.isFinite(n))
           : [];
 
@@ -344,7 +344,7 @@ export async function handleAcquisitionsGet(
             closed_by: typeof invoice.closed_by === "object" ? invoice.closed_by?.id : invoice.closed_by,
           },
           entries: Array.isArray(entries)
-            ? entries.map((e: any) => ({
+            ? entries.map((e) => ({
                 id: e.id,
                 purchase_order: typeof e.purchase_order === "object" ? e.purchase_order?.id : e.purchase_order,
                 lineitem: typeof e.lineitem === "object" ? e.lineitem?.id : e.lineitem,

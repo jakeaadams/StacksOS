@@ -5,11 +5,17 @@ import { isCookieSecure } from "@/lib/csrf";
 import { checkRateLimit, recordSuccess } from "@/lib/rate-limit";
 import { hashPassword } from "@/lib/password";
 import { logAuditEvent } from "@/lib/audit";
+import { z } from "zod";
 
 /**
  * Self-Checkout Patron Authentication
  * Authenticates patrons for self-checkout using barcode and PIN
  */
+
+const selfCheckoutAuthSchema = z.object({
+  barcode: z.string().trim().min(1),
+  pin: z.string().min(1),
+});
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
@@ -35,8 +41,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => null);
-    const barcode = String((body as any)?.barcode || "").trim();
-    const pin = String((body as any)?.pin || "").trim();
+    const barcode = String((body as Record<string, unknown>)?.barcode || "").trim();
+    const pin = String((body as Record<string, unknown>)?.pin || "").trim();
 
     if (!barcode || !pin) {
       await logAuditEvent({
@@ -133,7 +139,7 @@ export async function POST(req: NextRequest) {
       checkoutsCount = typeof out?.out === "number" ? out.out : 0;
 
       const holds = Array.isArray(holdsRes?.payload?.[0]) ? holdsRes.payload[0] : [];
-      holdsReady = holds.filter((h: any) => h?.shelf_time).length;
+      holdsReady = holds.filter((h) => h?.shelf_time).length;
     } catch {
       // Best-effort; self-checkout must still function if counts fail.
     }

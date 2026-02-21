@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 
 import { handleAcquisitionsGet } from "../_handlers/get";
 import { handleAcquisitionsPost } from "../_handlers/post";
+import { z } from "zod";
 
 // GET list POs, or GET details when `?id=` is provided.
 export async function GET(req: NextRequest) {

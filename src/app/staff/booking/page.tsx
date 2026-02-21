@@ -142,9 +142,9 @@ export default function BookingPage() {
         setReservationsMessage(reservationsData.message || null);
         const all: Reservation[] = reservationsData.reservations || [];
         // The current API call returns reservations for pickup_lib=1; filter by date client-side.
-        setReservations(all.filter((r) => formatDate(r.start_time) === selectedDate));
+        setReservations(all.filter((r: any) => formatDate(r.start_time) === selectedDate));
       }
-    } catch (_error) {
+    } catch (_error: any) {
       setError("Failed to load booking data");
     } finally {
       setLoading(false);
@@ -153,7 +153,7 @@ export default function BookingPage() {
 
   const getTypeName = useCallback(
     (typeId: number) => {
-      const type = resourceTypes.find((t) => String(t.id) === String(typeId));
+      const type = resourceTypes.find((t: any) => String(t.id) === String(typeId));
       return type?.name || `Type ${typeId}`;
     },
     [resourceTypes]
@@ -286,7 +286,7 @@ export default function BookingPage() {
 
   const filteredResources = useMemo(() => {
     if (!resourceTypeId) return resources;
-    return resources.filter((r) => String(r.type) === String(resourceTypeId));
+    return resources.filter((r: any) => String(r.type) === String(resourceTypeId));
   }, [resources, resourceTypeId]);
 
   const resetNewBooking = () => {
@@ -529,7 +529,7 @@ export default function BookingPage() {
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {resourceTypes.map((type) => (
+                    {resourceTypes.map((type: any) => (
                       <SelectItem key={type.id} value={String(type.id)}>
                         {type.name}
                       </SelectItem>
@@ -545,7 +545,7 @@ export default function BookingPage() {
                     <SelectValue placeholder={filteredResources.length ? "Select resource" : "No resources"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {filteredResources.map((r) => (
+                    {filteredResources.map((r: any) => (
                       <SelectItem key={r.id} value={String(r.id)}>
                         {r.barcode || `Resource ${r.id}`}
                       </SelectItem>

@@ -11,6 +11,7 @@ import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
 import { hashPassword } from "@/lib/password";
 import { isCookieSecure } from "@/lib/csrf";
+import { z } from "zod";
 
 /**
  * OPAC Patron Login
@@ -18,6 +19,12 @@ import { isCookieSecure } from "@/lib/csrf";
  *
  * Authenticates patron using library card barcode and PIN
  */
+const loginPostSchema = z.object({
+  barcode: z.string().trim().min(1),
+  pin: z.string().min(1),
+  rememberMe: z.boolean().optional(),
+});
+
 export async function POST(req: NextRequest) {
   const { ip, requestId } = getRequestMeta(req);
 
@@ -44,7 +51,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { barcode, pin, rememberMe } = await req.json();
+    const { barcode, pin, rememberMe } = loginPostSchema.parse(await req.json());
 
     if (!barcode || !pin) {
       return errorResponse("Library card number and PIN are required", 400);

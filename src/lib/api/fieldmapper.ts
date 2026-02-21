@@ -98,7 +98,7 @@ function encodeFieldmapperValue(value: any): any {
   return value;
 }
 
-export function encodeFieldmapper(classId: string, data: Record<string, any>) {
+export function encodeFieldmapper(classId: string, data: Record<string, unknown>) {
   const idl = loadIdl();
   const classDef = idl[classId];
 
@@ -141,7 +141,7 @@ export function decodeFieldmapper(value: any): any {
       };
     }
 
-    const decoded: Record<string, any> = { __class: value.__c };
+    const decoded: Record<string, unknown> = { __class: value.__c };
     classDef.fields.forEach((fieldName, idx) => {
       decoded[fieldName] = decodeFieldmapper(value.__p[idx]);
     });
@@ -149,7 +149,7 @@ export function decodeFieldmapper(value: any): any {
     return decoded;
   }
 
-  const output: Record<string, any> = {};
+  const output: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(value)) {
     output[key] = decodeFieldmapper(val);
   }
@@ -160,11 +160,11 @@ export function decodeFieldmapper(value: any): any {
 export function decodeOpenSRFResponse<T = any>(response: T): T {
   if (!response || typeof response !== "object") return response;
 
-  const payload = (response as any).payload;
+  const payload = (response as Record<string, unknown>).payload;
   if (!payload) return response;
 
   return {
-    ...(response as any),
+    ...(response as Record<string, unknown>),
     payload: decodeFieldmapper(payload),
   } as T;
 }
@@ -177,11 +177,11 @@ export function fmGet<T = any>(value: any, key: string, index?: number): T | und
   if (!value || typeof value !== "object") return undefined;
 
   // Try direct property access first
-  const direct = (value as any)[key];
+  const direct = (value as Record<string, unknown>)[key];
   if (direct !== undefined) return direct as T;
 
   // Try __p array access if index provided
-  const arr = (value as any).__p;
+  const arr = (value as Record<string, unknown>).__p;
   if (Array.isArray(arr) && typeof index === "number") {
     return arr[index] as T;
   }
@@ -193,7 +193,7 @@ export function fmGet<T = any>(value: any, key: string, index?: number): T | und
  * Get a number value from fieldmapper object
  * Returns undefined if value is not a valid number
  */
-export function fmNumber(value: any, key: string, index?: number): number | undefined {
+export function fmNumber(value: unknown, key: string, index?: number): number | undefined {
   const raw = fmGet(value, key, index);
   if (typeof raw === "number") return raw;
   
@@ -205,7 +205,7 @@ export function fmNumber(value: any, key: string, index?: number): number | unde
  * Get a string value from fieldmapper object
  * Returns undefined if value is null or undefined
  */
-export function fmString(value: any, key: string, index?: number): string | undefined {
+export function fmString(value: unknown, key: string, index?: number): string | undefined {
   const raw = fmGet(value, key, index);
   if (raw === null || raw === undefined) return undefined;
   return typeof raw === "string" ? raw : String(raw);

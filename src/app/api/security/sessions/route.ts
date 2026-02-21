@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     if (!Number.isFinite(actorId)) return errorResponse("Invalid actor", 400);
 
     const body = await parseJsonBodyWithSchema(req, RevokeSchema);
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const sessionId = body.sessionId;
     const result = await query<{ id: string }>(

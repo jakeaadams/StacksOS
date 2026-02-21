@@ -52,7 +52,7 @@ function getCoverUrl(record: any): string | undefined {
 }
 
 function transformBooks(records: any[]): FeaturedBook[] {
-  return records.map((record: any) => ({
+  return records.map((record) => ({
     id: record.id || record.record_id,
     title: record.title || record.simple_record?.title || "Unknown Title",
     author: record.author || record.simple_record?.author || "",

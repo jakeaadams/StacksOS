@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { z } from "zod";
 
 /**
  * OPAC Reviews API
@@ -71,6 +72,21 @@ function calculateStats(reviews: Review[]) {
     ratingDistribution,
   };
 }
+
+const reviewPostSchema = z.object({
+  bibId: z.coerce.number().int().positive(),
+  rating: z.coerce.number().int().min(1).max(5),
+  title: z.string().trim().max(256).optional(),
+  content: z.string().max(4096).optional(),
+}).passthrough();
+
+const reviewPutSchema = z.object({
+  id: z.coerce.number().int().positive().optional(),
+  reviewId: z.coerce.number().int().positive().optional(),
+  rating: z.coerce.number().int().min(1).max(5).optional(),
+  title: z.string().trim().max(256).optional(),
+  content: z.string().max(4096).optional(),
+}).passthrough();
 
 export async function GET(req: NextRequest) {
   try {

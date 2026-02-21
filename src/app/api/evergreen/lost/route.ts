@@ -17,6 +17,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { withIdempotency } from "@/lib/idempotency";
+import { z } from "zod";
 
 
 const ACTION_PERMS: Record<string, string[]> = {
@@ -32,6 +33,23 @@ const ACTION_PERMS: Record<string, string[]> = {
 const resolvePerms = (action?: string) => ACTION_PERMS[action || ""] || ["STAFF_LOGIN"];
 
 // GET - Get patron's lost/missing/damaged items or item status
+const lostPostSchema = z.object({
+  action: z.enum(["mark_lost", "mark_missing", "mark_damaged", "checkin_lost"]),
+  circId: z.coerce.number().int().positive().optional(),
+  copyBarcode: z.string().trim().optional(),
+  copyId: z.coerce.number().int().positive().optional(),
+  billAmount: z.union([z.number(), z.string()]).optional(),
+  billNote: z.string().max(2048).optional(),
+}).passthrough();
+
+const lostPutSchema = z.object({
+  action: z.enum(["void_bill", "adjust_bill", "process_refund"]),
+  billId: z.coerce.number().int().positive().optional(),
+  circId: z.coerce.number().int().positive().optional(),
+  amount: z.union([z.number(), z.string()]).optional(),
+  note: z.string().max(2048).optional(),
+}).passthrough();
+
 export async function GET(req: NextRequest) {
   try {
     const authtoken = await requireAuthToken();
@@ -49,7 +67,7 @@ export async function GET(req: NextRequest) {
         [authtoken, parseInt(patronId)]
       );
 
-      const checkouts = checkoutsResponse?.payload?.[0];
+      const checkouts = checkoutsResponse?.payload?.[0] as any;
       const lostCircs = checkouts?.lost || [];
 
       // Get patron's bills related to lost items
@@ -59,7 +77,7 @@ export async function GET(req: NextRequest) {
         [authtoken, parseInt(patronId)]
       );
 
-      const allBills = billsResponse?.payload?.[0] || [];
+      const allBills = billsResponse?.payload?.[0] as any || [];
       const lostBills = allBills.filter((bill: any) =>
         bill.billing_type?.toLowerCase().includes("lost") ||
         bill.billing_type?.toLowerCase().includes("replacement")
@@ -137,7 +155,7 @@ export async function GET(req: NextRequest) {
         [authtoken, parseInt(circId)]
       );
 
-      const circ = circResponse?.payload?.[0];
+      const circ = circResponse?.payload?.[0] as any;
 
       if (!circ || circ.ilsevent) {
         return notFoundResponse("Circulation not found");
@@ -149,7 +167,7 @@ export async function GET(req: NextRequest) {
         [authtoken, parseInt(circId)]
       );
 
-      const bills = billsResponse?.payload?.[0] || [];
+      const bills = billsResponse?.payload?.[0] as any || [];
 
       return successResponse({
         circulation: circ,
@@ -158,7 +176,7 @@ export async function GET(req: NextRequest) {
     }
 
     return errorResponse("patron_id, item_barcode, or circ_id required", 400);
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Lost API GET", req);
   }
 }
@@ -168,8 +186,8 @@ export async function POST(req: NextRequest) {
   return withIdempotency(req, "api.evergreen.lost.POST", async () => {
     const { ip, userAgent, requestId } = getRequestMeta(req);
     try {
-    const body = await req.json();
-    const { action, circId, copyBarcode, copyId } = body;
+    const body = lostPostSchema.parse(await req.json());
+    const { action, circId, copyBarcode, copyId } = body as Record<string, any>;
     const { authtoken, actor } = await requirePermissions(resolvePerms(action));
 
     const audit = async (
@@ -201,7 +219,7 @@ export async function POST(req: NextRequest) {
         [authtoken, { circ_id: parseInt(circId) }]
       );
 
-      const result = lostResponse?.payload?.[0];
+      const result = lostResponse?.payload?.[0] as any;
 
       if (isSuccessResult(result)) {
         const billsResponse = await callOpenSRF(
@@ -210,9 +228,8 @@ export async function POST(req: NextRequest) {
           [authtoken, parseInt(circId)]
         );
 
-        const bills = billsResponse?.payload?.[0] || [];
-        const lostBills = bills.filter(
-          (b: any) =>
+        const bills = billsResponse?.payload?.[0] as any || [];
+        const lostBills = bills.filter((b: any) =>
             b.billing_type?.toLowerCase().includes("lost") ||
             b.billing_type?.toLowerCase().includes("replacement") ||
             b.billing_type?.toLowerCase().includes("processing")
@@ -255,7 +272,7 @@ export async function POST(req: NextRequest) {
         [authtoken, parseInt(targetCopyId)]
       );
 
-      const result = missingResponse?.payload?.[0];
+      const result = missingResponse?.payload?.[0] as any;
 
       if (isSuccessResult(result)) {
         await audit("success", { copyId: targetCopyId, copyBarcode });
@@ -274,7 +291,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "mark_damaged") {
-      const { billAmount, billNote } = body;
+      const { billAmount, billNote } = body as Record<string, any>;
 
       if (!copyBarcode && !copyId) {
         return errorResponse("copyBarcode or copyId required", 400);
@@ -290,7 +307,7 @@ export async function POST(req: NextRequest) {
         targetCopyId = copy.id;
       }
 
-      const args: any = {
+      const args: Record<string, any> = {
         apply_fines: billAmount ? "apply" : "noapply",
       };
 
@@ -308,7 +325,7 @@ export async function POST(req: NextRequest) {
         [authtoken, parseInt(targetCopyId), args]
       );
 
-      const result = damagedResponse?.payload?.[0];
+      const result = damagedResponse?.payload?.[0] as any;
 
       if (isSuccessResult(result)) {
         await audit("success", { copyId: targetCopyId, copyBarcode, billAmount, billNote });
@@ -340,7 +357,7 @@ export async function POST(req: NextRequest) {
         },
       ]);
 
-      const result = checkinResponse?.payload?.[0];
+      const result = checkinResponse?.payload?.[0] as any;
       const isLostCheckin = result?.ilsevent === 0 && result?.payload?.circ?.stop_fines === "LOST";
 
       if (isSuccessResult(result) || result?.payload) {
@@ -362,7 +379,7 @@ export async function POST(req: NextRequest) {
 
     await audit("failure", { action }, "Invalid action");
     return errorResponse("Invalid action", 400);
-    } catch (error) {
+    } catch (error: any) {
       return serverErrorResponse(error, "Lost API POST", req);
     }
   });
@@ -373,8 +390,8 @@ export async function PUT(req: NextRequest) {
   return withIdempotency(req, "api.evergreen.lost.PUT", async () => {
     const { ip, userAgent, requestId } = getRequestMeta(req);
     try {
-    const body = await req.json();
-    const { action, billId, circId, amount, note } = body;
+    const body = lostPutSchema.parse(await req.json());
+    const { action, billId, circId, amount, note } = body as Record<string, any>;
     const { authtoken, actor } = await requirePermissions(resolvePerms(action));
 
     const audit = async (
@@ -404,7 +421,7 @@ export async function PUT(req: NextRequest) {
         note || "Voided by staff",
       ]);
 
-      const result = voidResponse?.payload?.[0];
+      const result = voidResponse?.payload?.[0] as any;
 
       if (isSuccessResult(result)) {
         await audit("success", { billId, note });
@@ -432,7 +449,7 @@ export async function PUT(req: NextRequest) {
         { id: parseInt(billId), amount: parseFloat(amount) },
       ]);
 
-      const result = adjustResponse?.payload?.[0];
+      const result = adjustResponse?.payload?.[0] as any;
 
       if (isSuccessResult(result)) {
         await audit("success", { billId, amount });
@@ -462,7 +479,7 @@ export async function PUT(req: NextRequest) {
         [authtoken, parseInt(circId)]
       );
 
-      const payments = paymentsResponse?.payload?.[0] || [];
+      const payments = paymentsResponse?.payload?.[0] as any || [];
       const totalPaid = payments.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0);
 
       if (totalPaid <= 0) {
@@ -488,7 +505,7 @@ export async function PUT(req: NextRequest) {
         },
       ]);
 
-      const result = creditResponse?.payload?.[0];
+      const result = creditResponse?.payload?.[0] as any;
 
       if (isSuccessResult(result)) {
         await audit("success", { circId, refundAmount, totalPaid });
@@ -508,7 +525,7 @@ export async function PUT(req: NextRequest) {
 
     await audit("failure", { action }, "Invalid action");
     return errorResponse("Invalid action", 400);
-    } catch (error) {
+    } catch (error: any) {
       return serverErrorResponse(error, "Lost API PUT", req);
     }
   });

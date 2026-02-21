@@ -8,6 +8,7 @@ import {
   getRequestMeta,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { z } from "zod";
 
 
 type OrgSettingDef = {
@@ -173,7 +174,7 @@ export async function GET(req: NextRequest) {
       [orgId, keys, authtoken]
     );
 
-    const values = (response?.payload?.[0] || {}) as Record<string, any>;
+    const values = (response?.payload?.[0] || {}) as Record<string, unknown>;
 
     const settings = SETTING_DEFS.map((def) => ({
       ...def,

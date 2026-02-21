@@ -8,8 +8,15 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
+import { z } from "zod";
 
 // GET /api/opac/lists/[listId] - Get list details with items
+const updateListSchema = z.object({
+  name: z.string().trim().min(1).max(512).optional(),
+  description: z.string().max(2048).optional(),
+  visibility: z.enum(["private", "public"]).optional(),
+}).passthrough();
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ listId: string }> }
@@ -100,7 +107,7 @@ export async function PATCH(
       return unauthorizedResponse("Not authenticated");
     }
 
-    const { name, description, visibility } = await req.json();
+    const { name, description, visibility } = updateListSchema.parse(await req.json());
 
     // Update the bookbag
     const updateResponse = await callOpenSRF(

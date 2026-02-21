@@ -22,15 +22,15 @@ const GLOBAL_CLEANUP_KEY = "__stacksos_rateLimitCleanupInterval";
 // In-memory store - maps IP:endpoint to attempt count.
 // Use a global singleton to avoid duplicate stores/intervals during dev HMR.
 const rateLimitStore: Map<string, RateLimitEntry> =
-  ((globalThis as any)[GLOBAL_STORE_KEY] as Map<string, RateLimitEntry> | undefined) ??
+  ((globalThis as Record<string, unknown>)[GLOBAL_STORE_KEY] as Map<string, RateLimitEntry> | undefined) ??
   new Map<string, RateLimitEntry>();
 
-if (!(globalThis as any)[GLOBAL_STORE_KEY]) {
-  (globalThis as any)[GLOBAL_STORE_KEY] = rateLimitStore;
+if (!(globalThis as Record<string, unknown>)[GLOBAL_STORE_KEY]) {
+  (globalThis as Record<string, unknown>)[GLOBAL_STORE_KEY] = rateLimitStore;
 }
 
 // Cleanup old entries every 5 minutes (singleton).
-if (!(globalThis as any)[GLOBAL_CLEANUP_KEY]) {
+if (!(globalThis as Record<string, unknown>)[GLOBAL_CLEANUP_KEY]) {
   const handle = setInterval(() => {
     const now = Date.now();
     for (const [key, entry] of rateLimitStore.entries()) {
@@ -43,7 +43,7 @@ if (!(globalThis as any)[GLOBAL_CLEANUP_KEY]) {
   // Best-effort: don't keep the process alive just for cleanup (useful for tests).
   (handle as any).unref?.();
 
-  (globalThis as any)[GLOBAL_CLEANUP_KEY] = handle;
+  (globalThis as Record<string, unknown>)[GLOBAL_CLEANUP_KEY] = handle;
 }
 
 export interface RateLimitConfig {

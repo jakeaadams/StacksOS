@@ -441,7 +441,7 @@ export async function GET(req: NextRequest) {
         []
       );
       const locations = (locResponse?.payload || [])// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Evergreen location data
-      .filter((loc: Record<string, any>) => !loc.ilsevent).map((loc: Record<string, any>) => ({
+      .filter((loc) => !loc.ilsevent).map((loc) => ({
         id: loc.id,
         name: loc.name,
         owningLib: loc.owning_lib,
@@ -515,7 +515,7 @@ export async function GET(req: NextRequest) {
       const fleshedCopies = Array.isArray(fleshed) ? fleshed : [];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fleshed copy data
-      const holdings = fleshedCopies.map((copy: Record<string, any>) => {
+      const holdings = fleshedCopies.map((copy) => {
         const statusObj = copy.status && typeof copy.status === "object" ? copy.status : null;
         const locObj = copy.location && typeof copy.location === "object" ? copy.location : null;
         const circObj =

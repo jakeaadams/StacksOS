@@ -66,7 +66,7 @@ async function readEntry(filePath: string): Promise<IdempotencyEntry | null> {
 
     const createdAt = typeof data.createdAt === "string" ? data.createdAt : null;
     const status = Number(data.status);
-    const body = (data as any).body;
+    const body = (data as Record<string, unknown>).body;
 
     if (!createdAt || !Number.isFinite(status)) return null;
 
@@ -112,9 +112,9 @@ async function tryParseEntry(raw: string | null): Promise<IdempotencyEntry | nul
     const data = JSON.parse(raw);
     if (!data || typeof data !== "object") return null;
 
-    const createdAt = typeof (data as any).createdAt === "string" ? (data as any).createdAt : null;
-    const status = Number((data as any).status);
-    const body = (data as any).body;
+    const createdAt = typeof (data as Record<string, unknown>).createdAt === "string" ? (data as Record<string, unknown>).createdAt as string : null;
+    const status = Number((data as Record<string, unknown>).status);
+    const body = (data as Record<string, unknown>).body;
     if (!createdAt || !Number.isFinite(status)) return null;
 
     return { createdAt, status, body };
@@ -161,7 +161,7 @@ export async function withIdempotency(
     if (client) {
       try {
         return await withIdempotencyRedis(client, req, route, handler, { ttlMs }, keyHash, requestId);
-      } catch (err) {
+      } catch (err: any) {
         logger.error({ error: String(err), route, requestId }, "Redis idempotency failed; falling back to file store");
       }
     }

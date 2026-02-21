@@ -7,6 +7,7 @@ import {
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 interface FundSummary {
   allocation_total: number;
@@ -51,6 +52,10 @@ interface TransferRecord {
   transfer_user?: number;
   ilsevent?: unknown;
 }
+
+const fundsPostSchema = z.object({
+  action: z.string().trim().min(1),
+}).passthrough();
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -206,7 +211,7 @@ export async function GET(req: NextRequest) {
       });
 
     return successResponse({ funds: mappedFunds });
-  } catch (err: unknown) {
+  } catch (err: any) {
     if (err && typeof err === "object" && "name" in err && err.name === "AuthenticationError") {
       return errorResponse("Authentication required", 401);
     }
@@ -217,7 +222,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { authtoken } = await requirePermissions(["ADMIN_FUND"]);
-    const body = await req.json();
+    const body = fundsPostSchema.parse(await req.json());
     const { action } = body;
     logger.debug({ route: "api.evergreen.acquisitions.funds", action }, "Funds POST");
 
@@ -290,7 +295,7 @@ export async function POST(req: NextRequest) {
       default:
         return errorResponse("Invalid action. Use create, update, or delete.", 400);
     }
-  } catch (err: unknown) {
+  } catch (err: any) {
     if (err && typeof err === "object" && "name" in err && err.name === "AuthenticationError") {
       return errorResponse("Authentication required", 401);
     }

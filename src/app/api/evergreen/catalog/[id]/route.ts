@@ -6,6 +6,7 @@ import {
   serverErrorResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 // GET /api/evergreen/catalog/[id] - Get a specific bib record with full details
 export async function GET(
@@ -174,7 +175,7 @@ export async function GET(
     }
 
     // Fetch fleshed copy details if we have copies
-    let copiesArray: any[] = [];
+    let copiesArray: Record<string, unknown>[] = [];
     if (copyIds.length > 0) {
       const fleshedResponse = await callOpenSRF(
         "open-ils.search",
@@ -185,7 +186,7 @@ export async function GET(
       const fleshed = fleshedResponse?.payload?.[0];
       const fleshedCopies = Array.isArray(fleshed) ? fleshed : [];
 
-      copiesArray = fleshedCopies.map((copy: any) => {
+      copiesArray = fleshedCopies.map((copy) => {
         const statusObj = copy.status && typeof copy.status === "object" ? copy.status : null;
         const locObj = copy.location && typeof copy.location === "object" ? copy.location : null;
         const circObj = copy.circ_lib && typeof copy.circ_lib === "object" ? copy.circ_lib : null;

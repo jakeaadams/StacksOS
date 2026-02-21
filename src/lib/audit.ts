@@ -49,7 +49,7 @@ function scrub(value: unknown, depth = 0): unknown {
   if (typeof value !== "object") return value;
 
   if (Array.isArray(value)) {
-    return value.map((item) => scrub(item, depth + 1));
+    return value.map((item: any) => scrub(item, depth + 1));
   }
 
   const output: Record<string, unknown> = {};
@@ -69,7 +69,7 @@ export async function getActorFromToken(authtoken?: string | null): Promise<Audi
     const response = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [
       authtoken,
     ]);
-    const user = response?.payload?.[0];
+    const user = response?.payload?.[0] as any as any;
     if (!user || isOpenSRFEvent(user)) return null;
 
     const first = user.first_given_name || "";
@@ -105,7 +105,7 @@ export async function logAuditEvent(event: AuditEvent): Promise<void> {
     try {
       await fs.mkdir(path.dirname(AUDIT_LOG_PATH), { recursive: true });
       await fs.appendFile(AUDIT_LOG_PATH, line, "utf8");
-    } catch (err) {
+    } catch (err: any) {
       const e =
         err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) };
       logger.warn({ error: e, path: AUDIT_LOG_PATH }, "Failed to write audit log");
@@ -146,7 +146,7 @@ export async function logAuditEvent(event: AuditEvent): Promise<void> {
       requestId: sanitized.requestId ?? null,
       changes,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.warn({ error: String(error) }, "Failed to persist audit activity");
   }
 }

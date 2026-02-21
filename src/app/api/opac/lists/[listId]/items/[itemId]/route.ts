@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
+import { z } from "zod";
 
 // DELETE /api/opac/lists/[listId]/items/[itemId] - Remove item from list
 export async function DELETE(

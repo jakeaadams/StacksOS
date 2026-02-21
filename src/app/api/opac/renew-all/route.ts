@@ -7,6 +7,7 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
+import { z } from "zod";
 
 // POST /api/opac/renew-all - Renew all eligible items
 export async function POST(req: NextRequest) {
@@ -51,8 +52,8 @@ export async function POST(req: NextRequest) {
 
     // Attempt to renew each item
     const results = {
-      renewed: [] as any[],
-      failed: [] as any[],
+      renewed: [] as unknown[],
+      failed: [] as unknown[],
     };
 
     for (let i = 0; i < circDetails.length; i++) {

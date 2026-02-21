@@ -7,6 +7,7 @@ import {
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 interface AllocationRecord {
   id: number;
@@ -18,6 +19,10 @@ interface AllocationRecord {
   allocator?: number;
   ilsevent?: unknown;
 }
+
+const allocationsPostSchema = z.object({
+  action: z.string().trim().min(1),
+}).passthrough();
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -52,7 +57,7 @@ export async function GET(req: NextRequest) {
       }));
 
     return successResponse({ allocations: mappedAllocations });
-  } catch (err: unknown) {
+  } catch (err: any) {
     if (err && typeof err === "object" && "name" in err && err.name === "AuthenticationError") {
       return errorResponse("Authentication required", 401);
     }
@@ -63,7 +68,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { authtoken } = await requirePermissions(["ADMIN_FUND_ALLOCATION"]);
-    const body = await req.json();
+    const body = allocationsPostSchema.parse(await req.json());
     const { action } = body;
     logger.debug({ route: "api.evergreen.acquisitions.allocations", action }, "Allocations POST");
 
@@ -129,7 +134,7 @@ export async function POST(req: NextRequest) {
       default:
         return errorResponse("Invalid action. Use allocate, transfer, or delete_allocation.", 400);
     }
-  } catch (err: unknown) {
+  } catch (err: any) {
     if (err && typeof err === "object" && "name" in err && err.name === "AuthenticationError") {
       return errorResponse("Authentication required", 401);
     }

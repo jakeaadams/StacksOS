@@ -182,7 +182,7 @@ export async function callOpenSRF<T = any>(
     // osrf-gateway encodes many failures in the JSON "status" field (often while
     // still returning HTTP 200). If we ignore this, missing methods/signature
     // issues look like empty payloads and the UI feels "fake".
-    const statusRaw = (json as any)?.status;
+    const statusRaw = (json as Record<string, unknown>)?.status;
     const status =
       typeof statusRaw === "number"
         ? statusRaw
@@ -191,7 +191,7 @@ export async function callOpenSRF<T = any>(
           : null;
 
     if (status && status !== 200) {
-      const debug = (json as any)?.debug;
+      const debug = (json as Record<string, unknown>)?.debug;
       const debugText = typeof debug === "string" ? debug : "";
       const isMethodNotFound =
         status === 404 &&
@@ -420,7 +420,7 @@ export async function getCopyStatuses() {
     "open-ils.search.config.copy_status.retrieve.all"
   );
   const payload = response?.payload;
-  if (Array.isArray(payload?.[0])) return payload[0] as any;
-  if (Array.isArray(payload)) return payload as any;
+  if (Array.isArray(payload?.[0])) return payload[0] as unknown;
+  if (Array.isArray(payload)) return payload as unknown;
   return [];
 }

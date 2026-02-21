@@ -11,6 +11,7 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 /**
  * Parse Evergreen workstation response into a consistent array format.
@@ -47,11 +48,11 @@ function parseWorkstations(rawData: any): Array<{ id: number; name: string; owni
     if (typeof ws !== "object") return null;
 
     // Check if it looks like an error event
-    if ((ws as any).ilsevent !== undefined) return null;
+    if ((ws as Record<string, any>).ilsevent !== undefined) return null;
 
     // Fieldmapper shape (raw)
-    if (typeof (ws as any).__c === "string" && Array.isArray((ws as any).__p)) {
-      const p = (ws as any).__p as any[];
+    if (typeof (ws as Record<string, any>).__c === "string" && Array.isArray((ws as Record<string, any>).__p)) {
+      const p = (ws as Record<string, any>).__p as unknown[];
       const id = typeof p[0] === "number" ? p[0] : parseInt(String(p[0] ?? ""), 10);
       const owningLib = typeof p[2] === "number" ? p[2] : parseInt(String(p[2] ?? ""), 10);
       const name = typeof p[1] === "string" ? p[1] : String(p[1] ?? "");
@@ -64,12 +65,12 @@ function parseWorkstations(rawData: any): Array<{ id: number; name: string; owni
     }
 
     // Fieldmapper decoded shape
-    const idRaw = (ws as any).id ?? (ws as any).wsid;
+    const idRaw = (ws as Record<string, any>).id ?? (ws as Record<string, any>).wsid;
     const id = typeof idRaw === "number" ? idRaw : parseInt(String(idRaw ?? ""), 10);
     if (!Number.isFinite(id) || id <= 0) return null;
 
-    const nameRaw = (ws as any).name ?? (ws as any).wsname;
-    const owningLibRaw = (ws as any).owning_lib ?? (ws as any).owner ?? (ws as any).org_unit;
+    const nameRaw = (ws as Record<string, any>).name ?? (ws as Record<string, any>).wsname;
+    const owningLibRaw = (ws as Record<string, any>).owning_lib ?? (ws as Record<string, any>).owner ?? (ws as Record<string, any>).org_unit;
     const owningLib =
       typeof owningLibRaw === "number" ? owningLibRaw : parseInt(String(owningLibRaw ?? ""), 10);
     const name = typeof nameRaw === "string" ? nameRaw : String(nameRaw ?? "");
@@ -104,7 +105,7 @@ function parseWorkstations(rawData: any): Array<{ id: number; name: string; owni
     if (typeof value === "object") {
       // Evergreen workstation.list returns a hash keyed by org unit id:
       // { "101": [workstation,...], "102": [...] }
-      for (const v of Object.values(value as Record<string, unknown>)) {
+      for (const v of Object.values(value as Record<string, any>)) {
         visit(v);
       }
     }
@@ -115,6 +116,11 @@ function parseWorkstations(rawData: any): Array<{ id: number; name: string; owni
 }
 
 // GET - List workstations for an org unit
+const workstationPostSchema = z.object({
+  name: z.string().trim().min(1).max(512),
+  org_id: z.coerce.number().int().positive(),
+});
+
 export async function GET(req: NextRequest) {
   try {
     const authtoken = await requireAuthToken();
@@ -128,13 +134,13 @@ export async function GET(req: NextRequest) {
     );
 
     // Parse the response into consistent format
-    const rawData = response?.payload?.[0];
+    const rawData = response?.payload?.[0] as any as any;
     const workstations = parseWorkstations(rawData);
 
     return successResponse({
       workstations,
     });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Workstations GET", req);
   }
 }
@@ -144,13 +150,13 @@ export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
-    const { name, org_id } = await req.json();
+    const { name, org_id } = workstationPostSchema.parse(await req.json());
 
     if (!name || !org_id) {
       return errorResponse("Workstation name and org_id are required", 400);
     }
 
-    const orgId = parseInt(org_id);
+    const orgId = org_id;
     const { authtoken, actor } = await requirePermissions(["REGISTER_WORKSTATION"], orgId);
 
     logger.info({ requestId, route: "api.evergreen.workstations", name, orgId }, "Registering workstation");
@@ -161,7 +167,7 @@ export async function POST(req: NextRequest) {
       [authtoken, name, orgId]
     );
 
-    const result = response?.payload?.[0];
+    const result = response?.payload?.[0] as any as any;
 
     const numericResult =
       typeof result === "number"
@@ -208,7 +214,7 @@ export async function POST(req: NextRequest) {
       400,
       result
     );
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Workstations POST", req);
   }
 }

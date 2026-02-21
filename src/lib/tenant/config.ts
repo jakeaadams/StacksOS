@@ -41,7 +41,7 @@ function buildEnvTenantFallback(tenantId: string): TenantConfig {
     },
     ai: {
       enabled: process.env.STACKSOS_AI_ENABLED === "1",
-      provider: (process.env.STACKSOS_AI_PROVIDER as any) || undefined,
+      provider: (process.env.STACKSOS_AI_PROVIDER as unknown) || undefined,
       model: process.env.STACKSOS_AI_MODEL || undefined,
       maxTokens: Number.isFinite(Number(process.env.STACKSOS_AI_MAX_TOKENS))
         ? Number(process.env.STACKSOS_AI_MAX_TOKENS)
@@ -49,7 +49,7 @@ function buildEnvTenantFallback(tenantId: string): TenantConfig {
       temperature: Number.isFinite(Number(process.env.STACKSOS_AI_TEMPERATURE))
         ? Number(process.env.STACKSOS_AI_TEMPERATURE)
         : undefined,
-      safetyMode: (process.env.STACKSOS_AI_SAFETY_MODE as any) || undefined,
+      safetyMode: (process.env.STACKSOS_AI_SAFETY_MODE as unknown) || undefined,
       budgets: {
         maxCallsPerHour: Number.isFinite(Number(process.env.STACKSOS_AI_BUDGET_CALLS_PER_HOUR))
           ? Number(process.env.STACKSOS_AI_BUDGET_CALLS_PER_HOUR)
@@ -60,8 +60,8 @@ function buildEnvTenantFallback(tenantId: string): TenantConfig {
       },
     },
     integrations: {
-      emailProvider: (process.env.STACKSOS_EMAIL_PROVIDER as any) || undefined,
-      smsProvider: (process.env.STACKSOS_SMS_PROVIDER as any) || undefined,
+      emailProvider: (process.env.STACKSOS_EMAIL_PROVIDER as unknown) || undefined,
+      smsProvider: (process.env.STACKSOS_SMS_PROVIDER as unknown) || undefined,
     },
   });
 }

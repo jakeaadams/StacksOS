@@ -147,7 +147,7 @@ export function AddItemDialog({ open, onOpenChange, bibRecord, onItemCreated }: 
         onItemCreated();
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to create item");
+      toast.error((err instanceof Error ? err.message : String(err)) || "Failed to create item");
     } finally {
       setIsCreating(false);
     }

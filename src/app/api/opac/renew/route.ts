@@ -7,13 +7,22 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
+import { z } from "zod";
 
 // POST /api/opac/renew - Renew a single item
+const renewPostSchema = z.object({
+  copyBarcode: z.string().trim().optional(),
+  circId: z.coerce.number().int().positive().optional(),
+  checkoutId: z.coerce.number().int().positive().optional(),
+}).refine((b) => Boolean(b.copyBarcode) || Boolean(b.circId) || Boolean(b.checkoutId), {
+  message: "copyBarcode, circId, or checkoutId required",
+});
+
 export async function POST(req: NextRequest) {
   try {
     const { patronToken } = await requirePatronSession();
 
-    const { copyBarcode, circId, checkoutId } = await req.json();
+    const { copyBarcode, circId, checkoutId } = renewPostSchema.parse(await req.json());
     const resolvedCircId = circId ?? checkoutId;
 
     if (!copyBarcode && !resolvedCircId) {
@@ -21,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Renew by barcode or circ ID
-    const renewParams: any = {};
+    const renewParams: Record<string, unknown> = {};
     if (copyBarcode) {
       renewParams.copy_barcode = copyBarcode;
     } else {

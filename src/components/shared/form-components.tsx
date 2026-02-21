@@ -240,7 +240,7 @@ function FormFieldRenderer<T extends FieldValues>({
                   <SelectValue placeholder={placeholder || "Select..."} />
                 </SelectTrigger>
                 <SelectContent>
-                  {options.map((option) => (
+                  {options.map((option: any) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>

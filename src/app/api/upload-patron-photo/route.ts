@@ -5,6 +5,7 @@ import {
   patronPhotosGet,
   patronPhotosPost,
 } from "@/lib/patron-photos-api";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 

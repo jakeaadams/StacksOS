@@ -46,8 +46,8 @@ export default function NotificationsAdminPage() {
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "Failed to load templates");
       setTemplates(Array.isArray(json.templates) ? json.templates : []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch (e: any) {
+      setError(e instanceof Error ? (e as Error).message : String(e));
       setTemplates([]);
     } finally {
       setLoading(false);
@@ -62,8 +62,8 @@ export default function NotificationsAdminPage() {
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "Failed to load deliveries");
       setDeliveries(Array.isArray(json.deliveries) ? json.deliveries : []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch (e: any) {
+      setError(e instanceof Error ? (e as Error).message : String(e));
       setDeliveries([]);
     } finally {
       setLoading(false);
@@ -77,8 +77,8 @@ export default function NotificationsAdminPage() {
       if (!res.ok || json.ok === false) throw new Error(json.error || "Failed to load sample");
       setSampleContext(json.context || null);
       return json.context || null;
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load sample");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Failed to load sample");
       return null;
     }
   };
@@ -100,8 +100,8 @@ export default function NotificationsAdminPage() {
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "Preview failed");
       setPreviewHtml(String(json.html || ""));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Preview failed");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Preview failed");
     }
   };
 
@@ -143,8 +143,8 @@ export default function NotificationsAdminPage() {
       toast.success(activate ? "Template saved and activated" : "Template saved");
       setShowEditor(false);
       await loadTemplates();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -162,8 +162,8 @@ export default function NotificationsAdminPage() {
       if (!res.ok || json.ok === false) throw new Error(json.error || "Activate failed");
       toast.success("Template activated");
       await loadTemplates();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Activate failed");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Activate failed");
     } finally {
       setSaving(false);
     }
@@ -181,8 +181,8 @@ export default function NotificationsAdminPage() {
       if (!res.ok || json.ok === false) throw new Error(json.error || "Process failed");
       toast.success(`Processed ${json.processed} (sent ${json.sent}, failed ${json.failed})`);
       await loadDeliveries();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Process failed");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Process failed");
     } finally {
       setSaving(false);
     }
@@ -200,8 +200,8 @@ export default function NotificationsAdminPage() {
       if (!res.ok || json.ok === false) throw new Error(json.error || "Retry enqueue failed");
       toast.success("Retry enqueued");
       await loadDeliveries();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Retry enqueue failed");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Retry enqueue failed");
     } finally {
       setSaving(false);
     }
@@ -227,8 +227,8 @@ export default function NotificationsAdminPage() {
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "Test send failed");
       toast.success(`Sent test ${channel.toUpperCase()} to ${json.to}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Test send failed");
+    } catch (e: any) {
+      toast.error(e instanceof Error ? (e as Error).message : "Test send failed");
     } finally {
       setSaving(false);
     }

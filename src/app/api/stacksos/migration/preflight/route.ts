@@ -8,6 +8,7 @@ import {
   serverErrorResponse,
 } from "@/lib/api/responses";
 import { requireAuthToken } from "@/lib/api";
+import { z } from "zod";
 
 interface PreflightRecord {
   barcode: string;
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("records array is empty", 400);
     }
 
-    const results: any[] = [];
+    const results: Record<string, any>[] = [];
     const duplicateMap = new Map<string, number[]>();
 
     records.forEach((record, index) => {
@@ -75,14 +76,14 @@ export async function POST(req: NextRequest) {
     for (const indices of duplicateMap.values()) {
       if (indices.length > 1) {
         duplicateCount += indices.length;
-        indices.forEach((idx) => {
-          results[idx].duplicate = true;
-          results[idx].duplicateGroupSize = indices.length;
+        indices.forEach((idx: any) => {
+          results[idx]!.duplicate = true;
+          results[idx]!.duplicateGroupSize = indices.length;
         });
       }
     }
 
-    const invalidCount = results.filter((r) => !r.valid).length;
+    const invalidCount = results.filter((r: any) => !r.valid).length;
 
     return successResponse({
       summary: {
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
       },
       results,
     });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Migration Preflight POST", req);
   }
 }

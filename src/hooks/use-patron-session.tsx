@@ -130,7 +130,7 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
           setPatron(data.patron);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       clientLogger.error("Session check error:", err);
     } finally {
       setIsLoading(false);
@@ -165,7 +165,7 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
       ]);
 
       return true;
-    } catch (err) {
+    } catch (err: any) {
       clientLogger.error("Login error:", err);
       setError("Unable to connect to the library system");
       return false;
@@ -179,7 +179,7 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
 	      await fetchWithAuth("/api/opac/logout", {
 	        method: "POST",
 	      });
-	    } catch (err) {
+	    } catch (err: any) {
 	      clientLogger.error("Logout error:", err);
 	    } finally {
 	      setPatron(null);
@@ -251,7 +251,7 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
           .filter(Boolean) as PatronCheckout[];
         setCheckouts(normalized);
       }
-    } catch (err) {
+    } catch (err: any) {
       clientLogger.error("Error fetching checkouts:", err);
     }
   }, [patron]);
@@ -324,7 +324,7 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
 
         setHolds(normalized);
       }
-    } catch (err) {
+    } catch (err: any) {
       clientLogger.error("Error fetching holds:", err);
     }
   }, [patron]);
@@ -341,7 +341,7 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         setFines(data.fines || []);
       }
-    } catch (err) {
+    } catch (err: any) {
       clientLogger.error("Error fetching fines:", err);
     }
   }, [patron]);
@@ -349,8 +349,8 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
   const parseActionDetails = (raw: any): PatronActionDetails | undefined => {
     if (!raw || typeof raw !== "object") return undefined;
     const code = typeof raw.code === "string" ? raw.code : undefined;
-    const nextSteps = Array.isArray((raw as any).nextSteps)
-      ? (raw as any).nextSteps.filter((s: any) => typeof s === "string" && s.trim().length > 0)
+    const nextSteps = Array.isArray((raw as Record<string, any>).nextSteps)
+      ? (raw as Record<string, any>).nextSteps.filter((s: any) => typeof s === "string" && s.trim().length > 0)
       : undefined;
     if (!code && (!nextSteps || nextSteps.length === 0)) return undefined;
     return { code, nextSteps };

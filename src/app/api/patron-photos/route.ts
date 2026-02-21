@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { patronPhotosDelete, patronPhotosGet, patronPhotosPost } from "@/lib/patron-photos-api";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 

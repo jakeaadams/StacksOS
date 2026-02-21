@@ -4,6 +4,7 @@ import { requirePermissions } from "@/lib/permissions";
 import { logAuditEvent } from "@/lib/audit";
 import { getScheduledReportSchedule } from "@/lib/db/scheduled-reports";
 import { runScheduledReportOnce } from "@/lib/reports/scheduled-runner";
+import { z } from "zod";
 
 function parseId(raw: string | undefined): number | null {
   const id = raw ? parseInt(raw, 10) : NaN;

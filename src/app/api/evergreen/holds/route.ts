@@ -10,6 +10,21 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { z } from "zod";
+
+const holdsPostSchema = z.object({
+  action: z.enum(["create", "place_hold", "cancel", "cancel_hold", "freeze", "thaw", "update_pickup_lib"]),
+  patronId: z.union([z.coerce.number().int().positive(), z.string().min(1)]).optional(),
+  holdType: z.string().optional(),
+  target: z.union([z.coerce.number(), z.string()]).optional(),
+  targetId: z.union([z.coerce.number(), z.string()]).optional(),
+  pickupLib: z.union([z.coerce.number().int().positive(), z.string().min(1)]).optional(),
+  holdId: z.union([z.coerce.number().int().positive(), z.string().min(1)]).optional(),
+  cause: z.union([z.number(), z.string()]).optional(),
+  reason: z.union([z.number(), z.string()]).optional(),
+  note: z.string().max(1024).optional().nullable(),
+  thawDate: z.string().optional().nullable(),
+}).passthrough();
 
 export async function GET(req: NextRequest) {
   try {
@@ -40,7 +55,7 @@ export async function GET(req: NextRequest) {
     const limit = parseIntMaybe(limitRaw) ?? 50;
     const offset = parseIntMaybe(offsetRaw) ?? 0;
 
-    const defaultOrgId = (actor as any)?.ws_ou ?? (actor as any)?.home_ou ?? 1;
+    const defaultOrgId = (actor as Record<string, unknown>)?.ws_ou ?? (actor as Record<string, unknown>)?.home_ou ?? 1;
 
     const normalizeListPayload = (payload: any): any[] => {
       if (!Array.isArray(payload)) return [];
@@ -48,7 +63,7 @@ export async function GET(req: NextRequest) {
       return payload;
     };
 
-    const mapHold = (hold: any, extra: Record<string, any> = {}) => {
+    const mapHold = (hold: any, extra: Record<string, unknown> = {}) => {
       return {
         id: hold?.id,
         holdType: hold?.hold_type,
@@ -87,7 +102,7 @@ export async function GET(req: NextRequest) {
           authtoken,
           patronId,
         ]);
-        const holds = holdsResponse?.payload?.[0];
+        const holds = holdsResponse?.payload?.[0] as any;
         return successResponse({
           holds: Array.isArray(holds) ? holds.map((h: any) => mapHold(h)) : [],
         });
@@ -116,7 +131,7 @@ export async function GET(req: NextRequest) {
           authtoken,
           patronId,
         ]);
-        const holds = holdsResponse?.payload?.[0];
+        const holds = holdsResponse?.payload?.[0] as any;
 
         if (!Array.isArray(holds) || holds.length === 0) {
           return successResponse({ holds: [] });
@@ -124,14 +139,14 @@ export async function GET(req: NextRequest) {
 
         // Best-effort enrichment via hold.details.retrieve
         const enrichedHolds = await Promise.all(
-          holds.map(async (hold: any) => {
+          holds.map(async (hold) => {
             try {
               const detailsResponse = await callOpenSRF(
                 "open-ils.circ",
                 "open-ils.circ.hold.details.retrieve",
                 [authtoken, hold.id]
               );
-              const details = detailsResponse?.payload?.[0];
+              const details = detailsResponse?.payload?.[0] as any;
               return mapHold(hold, {
                 title: details?.title || details?.mvr?.title || "Unknown",
                 author: details?.author || details?.mvr?.author || "",
@@ -197,7 +212,7 @@ export async function GET(req: NextRequest) {
           [authtoken, titleId, {}]
         );
 
-        const buckets = allResponse?.payload?.[0] as any;
+        const buckets = allResponse?.payload?.[0] as any as any;
         const holdIds: number[] = [];
 
         if (buckets && typeof buckets === "object") {
@@ -253,8 +268,8 @@ export async function GET(req: NextRequest) {
           { hold_type: "T", hold_target: titleId, org_unit: orgUnit },
         ]);
 
-        const result = res?.payload?.[0] || {};
-        const possible = Boolean((result as any)?.copy);
+        const result = res?.payload?.[0] as any || {};
+        const possible = Boolean((result as Record<string, unknown>)?.copy);
         return successResponse({ possible, result });
       }
 
@@ -275,7 +290,7 @@ export async function GET(req: NextRequest) {
       default:
         return errorResponse("Invalid action", 400);
     }
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Holds API GET", req);
   }
 }
@@ -284,8 +299,8 @@ export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
-    const body = await req.json();
-    const { action } = body;
+    const body = holdsPostSchema.parse(await req.json());
+    const { action } = body as Record<string, any>;
 
     if (!action) {
       return errorResponse("Action required", 400);
@@ -295,7 +310,7 @@ export async function POST(req: NextRequest) {
 
     const audit = async (
       status: "success" | "failure",
-      details?: Record<string, any>,
+      details?: Record<string, unknown>,
       error?: string
     ) => {
       await logAuditEvent({
@@ -312,7 +327,7 @@ export async function POST(req: NextRequest) {
 
     // Create hold
     if (action === "create" || action === "place_hold") {
-      const { patronId, holdType, target, targetId, pickupLib } = body;
+      const { patronId, holdType, target, targetId, pickupLib } = body as Record<string, any>;
 
       const resolvedTarget = target ?? targetId;
 
@@ -334,16 +349,16 @@ export async function POST(req: NextRequest) {
         ]
       );
 
-      const result = response?.payload?.[0];
+      const result = response?.payload?.[0] as any as any;
 
       const createdHoldId =
         typeof result === "number"
           ? result
-          : result && typeof result === "object" && typeof (result as any).result === "number"
-            ? (result as any).result
+          : result && typeof result === "object" && typeof (result as Record<string, unknown>).result === "number"
+            ? (result as Record<string, unknown>).result
             : null;
 
-      if (createdHoldId && !(result as any)?.ilsevent) {
+      if (createdHoldId && !(result as Record<string, unknown>)?.ilsevent) {
         await audit("success", {
           patronId,
           holdType,
@@ -361,7 +376,7 @@ export async function POST(req: NextRequest) {
 
     // Cancel hold
     if (action === "cancel" || action === "cancel_hold") {
-      const { holdId, cause, reason, note } = body;
+      const { holdId, cause, reason, note } = body as Record<string, any>;
 
       if (!holdId) {
         return errorResponse("holdId required", 400);
@@ -374,7 +389,7 @@ export async function POST(req: NextRequest) {
         note || null,
       ]);
 
-      const result = response?.payload?.[0];
+      const result = response?.payload?.[0] as any as any;
       const holdIdNum = parseInt(holdId);
 
       if (isSuccessResult(result) || result === holdIdNum) {
@@ -389,7 +404,7 @@ export async function POST(req: NextRequest) {
 
     // Freeze hold
     if (action === "freeze") {
-      const { holdId, thawDate } = body;
+      const { holdId, thawDate } = body as Record<string, any>;
 
       if (!holdId) {
         return errorResponse("holdId required", 400);
@@ -400,7 +415,7 @@ export async function POST(req: NextRequest) {
         { id: parseInt(holdId), frozen: true, thaw_date: thawDate || null },
       ]);
 
-      const result = response?.payload?.[0];
+      const result = response?.payload?.[0] as any as any;
 
       if (result && !result.ilsevent) {
         await audit("success", { holdId, thawDate });
@@ -414,7 +429,7 @@ export async function POST(req: NextRequest) {
 
     // Thaw (unfreeze) hold
     if (action === "thaw") {
-      const { holdId } = body;
+      const { holdId } = body as Record<string, any>;
 
       if (!holdId) {
         return errorResponse("holdId required", 400);
@@ -425,7 +440,7 @@ export async function POST(req: NextRequest) {
         { id: parseInt(holdId), frozen: false, thaw_date: null },
       ]);
 
-      const result = response?.payload?.[0];
+      const result = response?.payload?.[0] as any as any;
 
       if (result && !result.ilsevent) {
         await audit("success", { holdId });
@@ -439,7 +454,7 @@ export async function POST(req: NextRequest) {
 
     // Update pickup library
     if (action === "update_pickup_lib") {
-      const { holdId, pickupLib } = body;
+      const { holdId, pickupLib } = body as Record<string, any>;
 
       if (!holdId || !pickupLib) {
         return errorResponse("holdId and pickupLib required", 400);
@@ -450,7 +465,7 @@ export async function POST(req: NextRequest) {
         { id: parseInt(holdId), pickup_lib: parseInt(pickupLib) },
       ]);
 
-      const result = response?.payload?.[0];
+      const result = response?.payload?.[0] as any as any;
 
       if (result && !result.ilsevent) {
         await audit("success", { holdId, pickupLib });
@@ -466,7 +481,7 @@ export async function POST(req: NextRequest) {
       "Invalid action. Use: create/place_hold, cancel/cancel_hold, freeze, thaw, update_pickup_lib",
       400
     );
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Holds POST", req);
   }
 }

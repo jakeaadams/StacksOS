@@ -7,6 +7,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { errorResponse, getRequestMeta, successResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { imageExtForMime, parsePositiveInt } from "@/lib/upload-utils";
+import { z } from "zod";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "covers");
 const MAX_BYTES = 5 * 1024 * 1024;

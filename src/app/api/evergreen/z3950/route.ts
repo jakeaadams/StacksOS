@@ -33,11 +33,11 @@ function normalizeServices(payload: any[]) {
   if (!payload || typeof payload !== "object") return [];
   return Object.entries(payload).map(([name, info]) => ({
     name,
-    label: (info as any)?.label || name,
-    host: (info as any)?.host,
-    port: (info as any)?.port,
-    db: (info as any)?.db,
-    attrs: (info as any)?.attrs || {},
+    label: (info as Record<string, unknown>)?.label || name,
+    host: (info as Record<string, unknown>)?.host,
+    port: (info as Record<string, unknown>)?.port,
+    db: (info as Record<string, unknown>)?.db,
+    attrs: (info as Record<string, unknown>)?.attrs || {},
   }));
 }
 
@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
 
     const search: Record<string, string> = { [searchType]: query };
 
-    const args: Record<string, any> = {
+    const args: Record<string, unknown> = {
       service: services || "loc",
       search,
       limit,
@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await parseJsonBodyWithSchema(req, ImportSchema);
-    if (body instanceof NextResponse) return body as any;
+    if (body instanceof NextResponse) return body;
 
     const { authtoken, actor } = await requirePermissions(["CREATE_MARC", "IMPORT_MARC"]);
 

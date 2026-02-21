@@ -12,6 +12,7 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -50,6 +51,19 @@ function parseNotePayload(n: Record<string, unknown>): PatronNote {
  * GET /api/evergreen/patrons/[id]/notes
  * Fetch all notes for a patron
  */
+const notePostSchema = z.object({
+  title: z.string().trim().max(512).optional(),
+  value: z.string().optional(),
+  note: z.string().optional(),
+  public: z.boolean().optional(),
+  pub: z.union([z.boolean(), z.literal("t"), z.literal("f")]).optional(),
+}).passthrough();
+
+const noteDeleteSchema = z.object({
+  noteId: z.coerce.number().int().positive().optional(),
+  note_id: z.coerce.number().int().positive().optional(),
+}).passthrough();
+
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { authtoken } = await requirePermissions(["VIEW_USER"]);
@@ -67,8 +81,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     );
 
     const rawNotes = response?.payload?.[0];
-    const notes: PatronNote[] = (Array.isArray(rawNotes) ? rawNotes : []).map(
-      (n: Record<string, unknown>) => parseNotePayload(n)
+    const notes: PatronNote[] = (Array.isArray(rawNotes) ? rawNotes : []).map((n) => parseNotePayload(n)
     );
 
     return successResponse({ notes });
@@ -92,10 +105,11 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       return errorResponse("Invalid patron ID", 400);
     }
 
-    const body = await parseJsonBody(req);
-    if (!body) {
+    const rawBody = await parseJsonBody(req);
+    if (!rawBody) {
       return errorResponse("Request body required", 400);
     }
+    const body = notePostSchema.parse(rawBody);
 
     const title = String(body.title || "Note").trim();
     const value = String(body.value || body.note || "").trim();
@@ -161,10 +175,11 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       return errorResponse("Invalid patron ID", 400);
     }
 
-    const body = await parseJsonBody(req);
-    if (!body) {
+    const rawBody = await parseJsonBody(req);
+    if (!rawBody) {
       return errorResponse("Request body required", 400);
     }
+    const body = noteDeleteSchema.parse(rawBody);
 
     const noteId = parseInt(String(body.noteId || body.note_id || ""), 10);
 

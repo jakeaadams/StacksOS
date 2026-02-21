@@ -88,8 +88,8 @@ export default function ReadingHistoryPage() {
       setHistory(data.history || []);
       setStats(data.stats);
       setTotalPages(Math.ceil((data.total || 0) / itemsPerPage));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+    } catch (err: any) {
+      setError(err instanceof Error ? (err as any).message : "An error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -128,7 +128,7 @@ export default function ReadingHistoryPage() {
         window.URL.revokeObjectURL(url);
         a.remove();
       }
-    } catch (err) {
+    } catch (err: any) {
       clientLogger.error("Export failed:", err);
     }
   };
@@ -251,7 +251,7 @@ export default function ReadingHistoryPage() {
               className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">All Years</option>
-              {years.map((year) => (
+              {years.map((year: any) => (
                 <option key={year} value={year}>
                   {year}
                 </option>
@@ -309,7 +309,7 @@ export default function ReadingHistoryPage() {
           <>
             {/* History list */}
             <div className="space-y-4">
-              {history.map((item) => (
+              {history.map((item: any) => (
                 <div
                   key={item.id}
                   className="bg-card rounded-xl border border-border p-4 flex gap-4"

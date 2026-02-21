@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { callOpenSRF, successResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { z } from "zod";
 
 /**
  * GET /api/evergreen/copy-locations
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
     });
 
     return successResponse({ locations, pagination: { limit, offset, count: locations.length } });
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "CopyLocations GET", req);
   }
 }

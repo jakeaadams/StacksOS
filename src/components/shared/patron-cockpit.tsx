@@ -136,7 +136,7 @@ export function PatronCockpit({ patronId, open, onOpenChange, onCheckout }: Patr
           ...(circData.checkouts.overdue || []),
         ];
         setCheckouts(
-          allCheckouts.slice(0, 5).map((c: any) => ({
+          allCheckouts.slice(0, 5).map((c) => ({
             id: c.circId || c.id,
             title: c.title || "Unknown",
             barcode: c.barcode || "—",

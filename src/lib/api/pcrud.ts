@@ -20,7 +20,7 @@ export async function callPcrud<T = any>(method: string, params: any[] = []) {
   try {
     return await callOpenSRF<T>("open-ils.pcrud", atomicMethod, params);
   } catch (err) {
-    if (err && typeof err === "object" && (err as any).code === "OSRF_METHOD_NOT_FOUND") {
+    if (err && typeof err === "object" && (err as Record<string, unknown>).code === "OSRF_METHOD_NOT_FOUND") {
       return await callOpenSRF<T>("open-ils.pcrud", method, params);
     }
     throw err;

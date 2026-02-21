@@ -10,8 +10,14 @@ import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { cookies } from "next/headers";
 import { hashPassword } from "@/lib/password";
+import { z } from "zod";
 
 // POST /api/opac/change-pin - Change patron PIN
+const changePinSchema = z.object({
+  currentPin: z.string().min(1),
+  newPin: z.string().min(1),
+});
+
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
   try {
@@ -22,7 +28,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("Not authenticated", 401);
     }
 
-    const { currentPin, newPin } = await req.json();
+    const { currentPin, newPin } = changePinSchema.parse(await req.json());
 
     if (!currentPin || !newPin) {
       return errorResponse("Current PIN and new PIN are required");

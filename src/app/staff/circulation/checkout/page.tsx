@@ -253,10 +253,10 @@ export default function CheckoutPage() {
     },
     onError: (err, variables) => {
       if (err instanceof ApiError && err.status === 403) {
-        const missing = Array.isArray((err.details as any)?.missing)
-          ? (err.details as any).missing
+        const missing = Array.isArray((err.details as Record<string, any>)?.missing)
+          ? (err.details as Record<string, any>).missing
           : [];
-        const reqId = (err.details as any)?.requestId;
+        const reqId = (err.details as Record<string, any>)?.requestId;
         const desc = missing.length > 0 ? `Missing: ${missing.join(", ")}` : err.message;
         toast.error("Permission denied", {
           description: reqId ? `${desc} (req ${reqId})` : desc,
@@ -392,9 +392,9 @@ export default function CheckoutPage() {
         setAiExplainDraftId(json.draftId || null);
         setAiExplain(json.response || null);
         setAiExplainLoading(false);
-      } catch (e) {
+      } catch (e: any) {
         if (cancelled) return;
-        setAiExplainError(e instanceof Error ? e.message : String(e));
+        setAiExplainError(e instanceof Error ? (e as Error).message : String(e));
         setAiExplainLoading(false);
       }
     })();

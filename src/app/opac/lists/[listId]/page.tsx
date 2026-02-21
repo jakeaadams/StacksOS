@@ -58,8 +58,8 @@ export default function PublicListPage() {
 
       if (cancelled) return;
 
-      if (!res.ok || (json as any)?.ok === false) {
-        setError((json as any)?.error || t("listNotFound"));
+      if (!res.ok || (json as Record<string, any>)?.ok === false) {
+        setError((json as Record<string, any>)?.error || t("listNotFound"));
         setData(null);
         setIsLoading(false);
         return;
@@ -74,7 +74,7 @@ export default function PublicListPage() {
 
       setData(json);
       setIsLoading(false);
-    })().catch((e) => {
+    })().catch((e: any) => {
       if (cancelled) return;
       setError(e instanceof Error ? e.message : "Failed to load list");
       setIsLoading(false);
@@ -221,7 +221,7 @@ export default function PublicListPage() {
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {items.map((item) => (
+            {items.map((item: any) => (
               <BookCard
                 key={item.bibId}
                 id={item.bibId}

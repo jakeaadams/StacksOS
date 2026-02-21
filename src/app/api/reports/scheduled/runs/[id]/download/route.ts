@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { errorResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { readRunDownload } from "@/lib/db/scheduled-reports";
+import { z } from "zod";
 
 function sha256Hex(value: string): string {
   return crypto.createHash("sha256").update(value, "utf8").digest("hex");

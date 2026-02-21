@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
   try {
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
     const body = await parseJsonBodyWithSchema(req, CreateIllRequestSchema);
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const createdBy = actorIdFrom(actor);
     const providerStatus = getIllProviderStatus();
@@ -211,7 +211,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
     const body = await parseJsonBodyWithSchema(req, UpdateIllRequestSchema);
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const updatedBy = actorIdFrom(actor);
     const updated = await updateIllRequest(body.id, {

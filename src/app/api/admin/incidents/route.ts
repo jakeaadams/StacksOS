@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   try {
     const { actor } = await requirePermissions(["ADMIN_CONFIG"]);
     const body = await parseJsonBodyWithSchema(req, BodySchema);
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     if (body.action === "create") {
       const created = await createIncident({

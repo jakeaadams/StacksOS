@@ -14,6 +14,7 @@ import { hashPassword } from "@/lib/password";
 import { checkRateLimit, recordSuccess } from "@/lib/rate-limit";
 import { isCookieSecure } from "@/lib/csrf";
 import { getPatronPhotoUrl } from "@/lib/db/evergreen";
+import { z } from "zod";
 
 async function setStaffAuthCookies(authtoken: string, cookieSecure: boolean): Promise<void> {
   const cookieStore = await cookies();
@@ -68,8 +69,8 @@ async function enrichUserWithPhotoUrl(user: any): Promise<any> {
     const url = await getPatronPhotoUrl(userId);
     if (url) {
       // Evergreen-style + JS-style keys for client convenience.
-      (user as any).photo_url = url;
-      (user as any).photoUrl = url;
+      (user as Record<string, unknown>).photo_url = url;
+      (user as Record<string, unknown>).photoUrl = url;
     }
   } catch (error) {
     logger.warn({ error: String(error), userId }, "Failed to resolve user photo URL");
@@ -79,6 +80,12 @@ async function enrichUserWithPhotoUrl(user: any): Promise<any> {
 }
 
 // POST - Login
+const authPostSchema = z.object({
+  username: z.string().trim().min(1),
+  password: z.string().min(1),
+  workstation: z.string().trim().optional().nullable(),
+}).passthrough();
+
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
@@ -114,7 +121,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { username: rawUsername, password, workstation: rawWorkstation } = await req.json();
+    const { username: rawUsername, password, workstation: rawWorkstation } = authPostSchema.parse(await req.json());
     const username = String(rawUsername || "").trim();
     const workstation =
       rawWorkstation !== undefined && rawWorkstation !== null
@@ -161,7 +168,7 @@ export async function POST(req: NextRequest) {
     const finalHash = hashPassword(password, seed);
 
     // Step 3: Authenticate
-    const authParams: Record<string, any> = {
+    const authParams: Record<string, unknown> = {
       username,
       password: finalHash,
       type: "staff",

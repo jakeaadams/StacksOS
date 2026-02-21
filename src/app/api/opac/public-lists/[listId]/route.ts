@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { callOpenSRF, errorResponse, serverErrorResponse, successResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 // GET /api/opac/public-lists/[listId] - Fetch a public bookbag and its items (no auth)
 export async function GET(
@@ -18,7 +19,7 @@ export async function GET(
     const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 200);
 
     // Verify the list is public by scanning the public bookbags.
-    let publicBags: any[] = [];
+    let publicBags: Record<string, unknown>[] = [];
     try {
       const searchResponse = await callOpenSRF(
         "open-ils.actor",

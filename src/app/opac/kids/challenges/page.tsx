@@ -85,7 +85,7 @@ export default function KidsChallengesPage() {
     void (async () => {
       const res = await fetchWithAuth("/api/opac/kids/reading-log?limit=500");
       const data = await res.json().catch(() => ({}));
-      const raw = Array.isArray((data as any)?.entries) ? (data as any).entries : [];
+      const raw = Array.isArray((data as Record<string, any>)?.entries) ? (data as Record<string, any>).entries : [];
       const normalized: KidsReadingLogEntry[] = raw
         .filter((e: any) => e && typeof e.id === "number")
         .map((e: any) => ({
@@ -239,7 +239,7 @@ export default function KidsChallengesPage() {
     },
   ];
 
-  const earnedCount = badges.filter((b) => b.isEarned).length;
+  const earnedCount = badges.filter((b: any) => b.isEarned).length;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -324,7 +324,7 @@ export default function KidsChallengesPage() {
         </div>
       ) : activeTab === "challenges" ? (
         <div className="grid gap-4 md:grid-cols-2">
-          {challenges.map((c) => (
+          {challenges.map((c: any) => (
             <div key={c.id} className="bg-card rounded-3xl border border-border p-5 shadow-sm">
               <div className="flex items-start gap-4">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${c.bgColor}`}>
@@ -378,7 +378,7 @@ export default function KidsChallengesPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {badges.map((b) => (
+          {badges.map((b: any) => (
             <div
               key={b.id}
               className={`rounded-3xl border p-5 shadow-sm ${

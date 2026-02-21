@@ -167,7 +167,7 @@ export async function GET(req: NextRequest) {
       if (isOpenSRFEvent(payload) || payload?.ilsevent) {
         historyError = getErrorMessage(payload, "Unable to load circulation history");
       } else if (Array.isArray(payload)) {
-        history = payload.map((circ: Record<string, unknown>) => ({
+        history = payload.map((circ) => ({
           id: circ.id,
           patronId: circ.usr,
           checkoutDate: circ.xact_start,
@@ -185,7 +185,7 @@ export async function GET(req: NextRequest) {
         // (or proxies can duplicate payload elements). De-dupe by a stable key so the
         // UI doesn't look "fake" when it isn't.
         const seen = new Set<string>();
-        history = history.filter((h: Record<string, unknown>) => {
+        history = history.filter((h) => {
           const key = [
             h?.id ?? "",
             h?.patronId ?? "",
@@ -204,7 +204,7 @@ export async function GET(req: NextRequest) {
 
     // Fetch patron barcodes for circulation history
     if (history && history.length > 0) {
-      const patronIds = [...new Set(history.map((h: Record<string, unknown>) => h.patronId).filter(Boolean))];
+      const patronIds = [...new Set(history.map((h) => h.patronId).filter(Boolean))];
       if (patronIds.length > 0 && patronIds.length <= 20) {
         const patronMap = new Map();
         for (const patronId of patronIds) {
@@ -227,7 +227,7 @@ export async function GET(req: NextRequest) {
         }
         
         // Add patron barcodes to history
-        history = history.map((h: Record<string, unknown>) => {
+        history = history.map((h) => {
           const patronInfo = patronMap.get(h.patronId);
           return {
             ...h,

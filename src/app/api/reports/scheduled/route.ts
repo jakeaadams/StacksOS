@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   try {
     const { actor } = await requirePermissions(["RUN_REPORTS"]);
     const body = await parseJsonBodyWithSchema(req, CreateSchema);
-    if (body instanceof Response) return body as any;
+    if (body instanceof Response) return body;
 
     const created = await createScheduledReportSchedule({
       name: body.name.trim(),

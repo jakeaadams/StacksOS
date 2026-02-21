@@ -7,11 +7,18 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
+import { z } from "zod";
 
 // In a production app, lists would be stored in a database (PostgreSQL)
 // For now, we store in Evergreen user settings or a custom table
 
 // GET /api/opac/lists - Get all user lists
+const createListSchema = z.object({
+  name: z.string().trim().min(1).max(512),
+  description: z.string().max(2048).optional(),
+  visibility: z.enum(["private", "public"]).optional(),
+});
+
 export async function GET(req: NextRequest) {
   try {
     const { patronToken, patronId } = await requirePatronSession();
@@ -27,7 +34,7 @@ export async function GET(req: NextRequest) {
 
     // Transform to our list format
     const lists = Array.isArray(bags)
-      ? bags.map((bag: any) => ({
+      ? bags.map((bag) => ({
           id: bag.id,
           name: bag.name,
           description: bag.description || "",
@@ -65,7 +72,7 @@ export async function POST(req: NextRequest) {
   try {
     const { patronToken, patronId } = await requirePatronSession();
 
-    const { name, description, visibility } = await req.json();
+    const { name, description, visibility } = createListSchema.parse(await req.json());
 
     if (!name?.trim()) {
       return errorResponse("List name required");

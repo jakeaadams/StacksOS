@@ -210,7 +210,7 @@ export async function GET(req: NextRequest) {
       default:
         return errorResponse("Invalid type parameter. Use: org_settings, circ_policies, or copy_locations", 400);
     }
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Admin Settings GET", req);
   }
 }
@@ -223,8 +223,8 @@ export async function POST(req: NextRequest) {
   const { requestId } = getRequestMeta(req);
 
   try {
-    const body = await req.json();
-    const { action, type, data, orgId: bodyOrgId } = body;
+    const body: any = await req.json();
+    const { action, type, data, orgId: bodyOrgId } = body as Record<string, any>;
 
     // Require admin permissions for modifications
     const { authtoken, actor } = await requirePermissions(["ADMIN_ORG_UNIT_SETTING_TYPE"]);
@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
           [authtoken, orgId, { [data.name]: value }]
         );
 
-        const result = response?.payload?.[0];
+        const result = response?.payload?.[0] as any as any;
 
         if (result?.ilsevent && result.ilsevent !== 0) {
           return errorResponse(result.textcode || "Failed to update setting", 400, result);
@@ -293,7 +293,7 @@ export async function POST(req: NextRequest) {
             [authtoken, newLocation]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             return errorResponse(result.textcode || "Failed to create location", 400, result);
@@ -318,7 +318,7 @@ export async function POST(req: NextRequest) {
             [authtoken, data.id]
           );
 
-          const existing = fetchResponse?.payload?.[0];
+          const existing = fetchResponse?.payload?.[0] as any;
           if (!existing) {
             return errorResponse("Location not found", 404);
           }
@@ -349,7 +349,7 @@ export async function POST(req: NextRequest) {
             [authtoken, updatePayload]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             return errorResponse(result.textcode || "Failed to update location", 400, result);
@@ -373,7 +373,7 @@ export async function POST(req: NextRequest) {
             [authtoken, data.id]
           );
 
-          const existing = fetchResponse?.payload?.[0];
+          const existing = fetchResponse?.payload?.[0] as any;
           if (!existing) {
             return errorResponse("Location not found", 404);
           }
@@ -403,7 +403,7 @@ export async function POST(req: NextRequest) {
             [authtoken, deletePayload]
           );
 
-          const result = response?.payload?.[0];
+          const result = response?.payload?.[0] as any as any;
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             return errorResponse(result.textcode || "Failed to delete location", 400, result);
@@ -421,7 +421,7 @@ export async function POST(req: NextRequest) {
       default:
         return errorResponse("Invalid type. Use: org_setting or copy_location", 400);
     }
-  } catch (error) {
+  } catch (error: any) {
     return serverErrorResponse(error, "Admin Settings POST", req);
   }
 }
