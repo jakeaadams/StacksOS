@@ -28,6 +28,49 @@ async function loadNotifications() {
   }
 }
 
+type ReminderNoticeChannel = "email" | "sms";
+
+function resolveReminderChannels(reminderChannel: string): ReminderNoticeChannel[] {
+  if (reminderChannel === "both") return ["sms", "email"];
+  if (reminderChannel === "sms") return ["sms"];
+  return ["email"];
+}
+
+function buildReminderNotificationId(
+  registrationId: number,
+  channel: ReminderNoticeChannel
+): string {
+  return `event-reminder-${registrationId}-${channel}`;
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as { code?: unknown }).code;
+  if (code === "23505") return true;
+  const msg = String((error as { message?: unknown }).message || "").toLowerCase();
+  return msg.includes("duplicate key");
+}
+
+async function createNotificationEventIdempotent(
+  notifications: NonNullable<Awaited<ReturnType<typeof loadNotifications>>>,
+  args: {
+    id: string;
+    channel: ReminderNoticeChannel;
+    noticeType: string;
+    patronId: number;
+    context: Record<string, unknown>;
+  }
+): Promise<void> {
+  try {
+    await notifications.createNotificationEvent(args);
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return;
+    }
+    throw error;
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     // Verify cron secret when configured (required in production)
@@ -64,48 +107,23 @@ export async function GET(req: NextRequest) {
         const eventDate = event?.date || "upcoming";
 
         if (notifications) {
-          // Send via the notification system
-          const notificationId = `event-reminder-${reminder.registrationId}-${Date.now()}`;
-          const channel =
-            reminder.reminderChannel === "sms" || reminder.reminderChannel === "both"
-              ? "sms"
-              : "email";
+          const context = {
+            eventId: reminder.eventId,
+            eventTitle,
+            eventDate,
+            registrationId: reminder.registrationId,
+          };
+          const channels = resolveReminderChannels(reminder.reminderChannel);
 
-          // Primary channel — failure here skips marking sent (will retry next cron run)
-          await notifications.createNotificationEvent({
-            id: notificationId,
-            channel,
-            noticeType: "event_reminder",
-            patronId: reminder.patronId,
-            context: {
-              eventId: reminder.eventId,
-              eventTitle,
-              eventDate,
-              registrationId: reminder.registrationId,
-            },
-          });
-
-          // If the reminder channel is "both", also send email (best-effort)
-          if (reminder.reminderChannel === "both") {
-            try {
-              await notifications.createNotificationEvent({
-                id: `${notificationId}-email`,
-                channel: "email",
-                noticeType: "event_reminder",
-                patronId: reminder.patronId,
-                context: {
-                  eventId: reminder.eventId,
-                  eventTitle,
-                  eventDate,
-                  registrationId: reminder.registrationId,
-                },
-              });
-            } catch (notifyErr) {
-              logger.warn(
-                { err: String(notifyErr), registrationId: reminder.registrationId },
-                "Failed to create email notification for dual-channel reminder"
-              );
-            }
+          // All channels for this reminder must enqueue successfully before we mark as sent.
+          for (const channel of channels) {
+            await createNotificationEventIdempotent(notifications, {
+              id: buildReminderNotificationId(reminder.registrationId, channel),
+              channel,
+              noticeType: "event_reminder",
+              patronId: reminder.patronId,
+              context,
+            });
           }
         } else {
           // Notification system unavailable — log for manual follow-up but skip marking sent

@@ -18,6 +18,7 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { normalizeCheckoutDueDate } from "@/lib/circulation/due-date";
 import { z } from "zod";
 
 const ACTION_PERMS: Record<string, string[]> = {
@@ -40,7 +41,7 @@ const circulationBodySchema = z.discriminatedUnion("action", [
       itemBarcode: z.string().trim().min(1),
       override: z.boolean().optional(),
       overrideReason: z.string().trim().max(256).optional(),
-      dueDate: z.string().trim().max(30).optional(),
+      dueDate: z.string().trim().max(64).optional(),
     })
     .passthrough(),
   z
@@ -174,11 +175,12 @@ export async function POST(req: NextRequest) {
         };
 
         // Apply specific due date override when provided by staff
-        if (dueDate) {
-          const parsed = new Date(dueDate);
-          if (!Number.isNaN(parsed.getTime())) {
-            checkoutParams.due_date = parsed.toISOString();
-          }
+        const normalizedDueDate = normalizeCheckoutDueDate(dueDate);
+        if (dueDate && !normalizedDueDate) {
+          return errorResponse("Invalid dueDate format", 400);
+        }
+        if (normalizedDueDate) {
+          checkoutParams.due_date = normalizedDueDate;
         }
 
         const checkoutResponse = await callOpenSRF("open-ils.circ", checkoutMethod, [

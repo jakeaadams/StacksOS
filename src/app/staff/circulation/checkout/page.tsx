@@ -370,6 +370,7 @@ export default function CheckoutPage() {
         itemBarcode: overridePrompt.itemBarcode,
         override: true,
         overrideReason: reason,
+        dueDate: specificDueDate || undefined,
       });
 
       closeOverridePrompt();
@@ -378,7 +379,14 @@ export default function CheckoutPage() {
     } finally {
       setIsOverriding(false);
     }
-  }, [patron, overridePrompt, overrideReason, checkoutMutation, closeOverridePrompt]);
+  }, [
+    patron,
+    overridePrompt,
+    overrideReason,
+    specificDueDate,
+    checkoutMutation,
+    closeOverridePrompt,
+  ]);
 
   useEffect(() => {
     if (!canAi) return;
