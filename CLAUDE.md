@@ -80,6 +80,9 @@ Lint policy note:
   - `STACKSOS_AI_COPILOT_RETRY_TIMEOUT_MS`
   - `STACKSOS_AI_FALLBACK_MODEL_ATTEMPTS`
 - Treat optional AI probes as degraded/non-blocking when upstream fails; keep Evergreen core adapter checks hard-blocking.
+- AI copilots (`holds_copilot`, `patron_copilot`, `acquisitions_copilot`) follow the `staff-copilot` pattern — rate limiting, Zod schemas, `createAiDraft`, deterministic fallback, audit logging.
+- AI audit trail viewable at Staff > Admin > AI Audit Trail; query via `GET /api/ai/audit`.
+- AI cost estimation uses `STACKSOS_AI_PRICING_MAP` env var (JSON) for per-model pricing.
 
 ## Evergreen Ops Rules
 

@@ -175,6 +175,54 @@ npm run evergreen:footprint -- --label after-upgrade
 
 Then diff the two generated folders under `audit/evergreen-footprint/`.
 
+## New in This Release
+
+### AI Copilot Expansion + Audit Trail
+
+- **Holds copilot** on holds management page — prioritization advice from queue data
+- **Patron copilot** on patron detail page — interaction guidance from patron history
+- **Acquisitions copilot** on acquisitions page — budget/fund analysis
+- All copilots include deterministic fallbacks, thumbs up/down feedback, and expandable reasoning
+- **AI audit trail** admin page at Staff > Admin > AI Audit Trail — filterable DataTable with decision chain, redacted inputs, provider/model detail
+
+### Events Lifecycle
+
+- Full event detail page (`/opac/events/[id]`) with registration, cancel, waitlist, calendar link
+- Staff events management page with registrant lists and CSV export
+- Cron-callable reminder delivery endpoint with idempotent processing
+- Waitlist promotion notifications on cancellation
+- Rate limiting on registration (10 req/min per IP)
+
+### K-12 Deep Workflows
+
+- Student-patron linking (map K-12 students to Evergreen patron records)
+- CSV roster import with validation and preview
+- Class-level reading stats dashboard (checkouts, books/student, avg duration, overdue)
+- K-12 asset management — full CRUD, assign/return, barcode scan, status tracking, condition notes
+
+### Onboarding Wizard
+
+- Profile-specific onboarding task lists (public/school/church/academic)
+- Phase stepper (Foundation > Launch > Optimization) with visual progress
+- Readiness probes that run live checks against the system
+- Task completion persistence with notes
+
+### Staff UX Competitive Parity
+
+- Due date override on checkout with date picker
+- Audio feedback (Web Audio API) on checkout/checkin scan events
+- Patron-in-context persistent bar across circulation routes
+- Bulk operations toolbar (select + print) on checkout/checkin sessions
+- Patron barcode visualization on OPAC account page
+- "Did you mean?" spell correction in OPAC search (no results)
+- Patron review submission (star rating + text) on record detail page
+
+### Type-Safety Improvements
+
+- Typed fieldmapper index maps for 19 Evergreen classes
+- `fieldValue`/`payloadFirst` helpers replace `as any` chains across adapter routes
+- Zod discriminated union narrowing in circulation route
+
 ## AI Fallback Monitoring
 
 Platform admins can monitor AI reliability from:

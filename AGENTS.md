@@ -70,6 +70,47 @@ Dependency rule:
   - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake BASE_URL=http://127.0.0.1:3000 bash audit/run_all.sh`: pass
   - Forced lockout resilience check (poisoned limiter + rerun): pass (`run_all.sh` auto-clears stale benchmark limiter keys)
 
+## Key File Patterns (New)
+
+### AI Copilots
+
+- Prompt templates: `src/lib/ai/prompts.ts` (IDs: `holds_copilot`, `patron_copilot`, `acquisitions_copilot`)
+- Copilot routes: `src/app/api/ai/{holds,patron,acquisitions}-copilot/route.ts` (follow `staff-copilot` pattern)
+- AI audit trail: `src/app/api/ai/audit/route.ts`, `src/app/staff/admin/ai-audit/page.tsx`
+- AI DB functions: `src/lib/db/ai.ts` (`listAiDrafts`, `getAiDraftWithDecisions`)
+
+### Events Lifecycle
+
+- Core DB: `src/lib/db/opac-events.ts` (registration, cancel, waitlist, promotion, reminders)
+- Event detail: `src/app/opac/events/[id]/page.tsx`
+- Staff events: `src/app/staff/events/page.tsx`
+- Cron reminders: `src/app/api/cron/event-reminders/route.ts`
+
+### K-12 Workflows
+
+- Class circulation DB: `src/lib/db/k12-class-circulation.ts`
+- Asset management DB: `src/lib/db/k12-assets.ts`
+- Roster import: `src/app/api/staff/k12/roster-import/route.ts`
+- Stats: `src/app/api/staff/k12/stats/route.ts`
+- Asset UI: `src/app/staff/circulation/k12-assets/page.tsx`
+
+### Onboarding
+
+- Playbooks: `src/lib/tenant/onboarding-playbooks.ts`
+- Task persistence: `src/app/api/admin/onboarding/tasks/route.ts`
+- Wizard page: `src/app/staff/admin/onboarding/page.tsx`
+
+### Fieldmapper Type-Safety
+
+- Index maps: `src/lib/api/fieldmapper-maps.ts` (19 Evergreen classes)
+- Payload helpers: `src/lib/api/extract-payload.ts` (`fieldValue`, `payloadFirst`, etc.)
+- Re-exported from: `src/lib/api/index.ts`
+
+### Circulation UX
+
+- Sound hook: `src/hooks/use-circulation-sound.ts` (Web Audio API tones)
+- Patron context: `src/contexts/patron-context.tsx`, `src/components/circulation/patron-context-bar.tsx`
+
 ## Demo Ops
 
 - Use `npm run demo:reset` for deterministic sales/demo state.
