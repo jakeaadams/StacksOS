@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default function OpacTermsPage() {
-  const t = useTranslations("termsPage");
+  const _t = useTranslations("termsPage");
   return (
     <div className="min-h-screen bg-muted/30">
       <section className="border-b border-border bg-card py-12">

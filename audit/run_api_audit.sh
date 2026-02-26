@@ -20,6 +20,7 @@ WORKSTATION="${WORKSTATION:-STACKSOS-AUDIT}"
 ORG_ID="${ORG_ID:-101}"
 STACKSOS_AUDIT_MUTATE="${STACKSOS_AUDIT_MUTATE:-0}"
 SERIAL_STREAM_ID="${SERIAL_STREAM_ID:-}"
+STACKSOS_AUDIT_INCLUDE_AI="${STACKSOS_AUDIT_INCLUDE_AI:-1}"
 
 # Staff credentials (for Evergreen-backed staff auth).
 # Prefer STACKSOS_AUDIT_*; fall back to E2E_* if you already set those.
@@ -38,22 +39,68 @@ prompt_staff_credentials() {
   fi
 }
 
+read_demo_value() {
+  local demo_file="$1"
+  local key="$2"
+  local fallback="${3:-}"
+  python3 - "$demo_file" "$key" "$fallback" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+demo_file, key, fallback = sys.argv[1], sys.argv[2], sys.argv[3]
+try:
+    path = Path(demo_file)
+    if not path.exists():
+        print(fallback)
+        raise SystemExit
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        print(fallback)
+        raise SystemExit
+    value = data.get(key, fallback)
+    if value is None:
+        print(fallback)
+    else:
+        text = str(value).strip()
+        print(text if text else fallback)
+except Exception:
+    print(fallback)
+PY
+}
+
 DEMO_DATA="${DEMO_DATA:-$PROJECT_DIR/audit/demo_data.json}"
 if [[ -f "$DEMO_DATA" ]]; then
+  DEMO_PATRON_BARCODE="$(read_demo_value "$DEMO_DATA" "demoPatronBarcode" "")"
+  DEMO_ITEM_BARCODE="$(read_demo_value "$DEMO_DATA" "demoItemBarcode" "")"
+  DEMO_ORG_ID="$(read_demo_value "$DEMO_DATA" "orgId" "")"
+  DEMO_WORKSTATION="$(read_demo_value "$DEMO_DATA" "workstation" "")"
+  DEMO_SERIAL_STREAM_ID="$(read_demo_value "$DEMO_DATA" "serialStreamId" "")"
+
   if [[ -z "$PATRON_BARCODE" ]]; then
-    PATRON_BARCODE="$(python3 -c "import json; print(json.load(open('${DEMO_DATA}')).get('demoPatronBarcode',''))" 2>/dev/null)" || true
+    if [[ -n "$DEMO_PATRON_BARCODE" ]]; then
+      PATRON_BARCODE="$DEMO_PATRON_BARCODE"
+    fi
   fi
   if [[ -z "${ITEM_BARCODE:-}" || "$ITEM_BARCODE" == "39000000001235" ]]; then
-    ITEM_BARCODE="$(python3 -c "import json; print(json.load(open('${DEMO_DATA}')).get('demoItemBarcode','39000000001235'))" 2>/dev/null)" || true
+    if [[ -n "$DEMO_ITEM_BARCODE" ]]; then
+      ITEM_BARCODE="$DEMO_ITEM_BARCODE"
+    fi
   fi
   if [[ "${ORG_ID:-101}" == "101" ]]; then
-    ORG_ID="$(python3 -c "import json; print(json.load(open('${DEMO_DATA}')).get('orgId',101))" 2>/dev/null)" || true
+    if [[ "$DEMO_ORG_ID" =~ ^[0-9]+$ ]]; then
+      ORG_ID="$DEMO_ORG_ID"
+    fi
   fi
   if [[ "${WORKSTATION:-STACKSOS-AUDIT}" == "STACKSOS-AUDIT" ]]; then
-    WORKSTATION="$(python3 -c "import json; print(json.load(open('${DEMO_DATA}')).get('workstation','STACKSOS-AUDIT'))" 2>/dev/null)" || true
+    if [[ -n "$DEMO_WORKSTATION" ]]; then
+      WORKSTATION="$DEMO_WORKSTATION"
+    fi
   fi
   if [[ -z "${SERIAL_STREAM_ID:-}" ]]; then
-    SERIAL_STREAM_ID="$(python3 -c "import json; print(json.load(open('${DEMO_DATA}')).get('serialStreamId',''))" 2>/dev/null)" || true
+    if [[ -n "$DEMO_SERIAL_STREAM_ID" ]]; then
+      SERIAL_STREAM_ID="$DEMO_SERIAL_STREAM_ID"
+    fi
   fi
 fi
 
@@ -179,15 +226,27 @@ call "circ_modifiers" "$BASE_URL/api/evergreen/circ-modifiers"
 call "buckets_list" "$BASE_URL/api/evergreen/buckets"
 call "copy_locations" "$BASE_URL/api/evergreen/copy-locations?limit=200"
 call "copy_statuses" "$BASE_URL/api/evergreen/copy-statuses"
+call "floating_groups" "$BASE_URL/api/evergreen/floating-groups"
+call "spellcheck_probe" "$BASE_URL/api/evergreen/spellcheck?q=harry+potre"
 call "copy_tag_types" "$BASE_URL/api/evergreen/copy-tags/types"
 call "copy_tags" "$BASE_URL/api/evergreen/copy-tags"
 call "stat_categories" "$BASE_URL/api/evergreen/stat-categories"
 call "course_reserves" "$BASE_URL/api/evergreen/course-reserves"
 call "marc_sources" "$BASE_URL/api/evergreen/marc?action=sources"
+if [[ "$STACKSOS_AUDIT_INCLUDE_AI" == "1" ]]; then
+  call "ai_search_probe" "$BASE_URL/api/evergreen/ai-search?q=harry+potter&limit=5"
+fi
 call "transits_incoming" "$BASE_URL/api/evergreen/transits?org_id=$ORG_ID&direction=incoming"
 call "user_settings" "$BASE_URL/api/evergreen/user-settings"
 call "z3950_services" "$BASE_URL/api/evergreen/z3950?action=services"
 call "scheduled_reports_schedules" "$BASE_URL/api/reports/scheduled"
+if [[ "$STACKSOS_AUDIT_INCLUDE_AI" == "1" ]]; then
+  AI_MARC_PAYLOAD=$(cat <<JSON
+{"title":"StacksOS Audit Probe","author":"StacksOS","format":"book"}
+JSON
+)
+  call "ai_marc_probe" "$BASE_URL/api/evergreen/ai-marc" "POST" "$AI_MARC_PAYLOAD"
+fi
 
 # 4) Workstation list
 call "workstations_list" "$BASE_URL/api/evergreen/workstations?org_id=$ORG_ID"
@@ -279,6 +338,34 @@ PY
 if [[ -n "$RECORD_ID" ]]; then
   call "catalog_record" "$BASE_URL/api/evergreen/catalog?action=record&id=$RECORD_ID"
   call "catalog_holdings" "$BASE_URL/api/evergreen/catalog?action=holdings&id=$RECORD_ID"
+fi
+
+# Discover a real item barcode from holdings when available.
+DISCOVERED_ITEM_BARCODE="$(python3 - <<PY
+import json
+from pathlib import Path
+
+holdings_path = Path("$OUT_DIR/catalog_holdings.json")
+if not holdings_path.exists():
+    print("")
+    raise SystemExit
+try:
+    payload = json.loads(holdings_path.read_text(encoding="utf-8"))
+except Exception:
+    print("")
+    raise SystemExit
+copies = payload.get("copies") or []
+for row in copies:
+    if isinstance(row, dict):
+        barcode = str(row.get("barcode") or "").strip()
+        if barcode:
+            print(barcode)
+            raise SystemExit
+print("")
+PY
+)"
+if [[ -n "$DISCOVERED_ITEM_BARCODE" ]]; then
+  ITEM_BARCODE="$DISCOVERED_ITEM_BARCODE"
 fi
 
 # 9) Items lookup (canonical)

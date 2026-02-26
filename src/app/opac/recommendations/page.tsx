@@ -185,9 +185,7 @@ export default function RecommendationsPage() {
           </p>
           <Link
             href="/opac/account/settings"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600
-                     text-white rounded-lg font-medium hover:bg-primary-700
-                     transition-colors"
+            className="stx-action-primary inline-flex items-center gap-2 rounded-lg px-6 py-3 font-medium transition-colors hover:brightness-110"
           >
             <Settings className="h-4 w-4" />
             Go to Account Settings
@@ -217,8 +215,8 @@ export default function RecommendationsPage() {
     {
       title: t("staffPicksForYou"),
       icon: Star,
-      iconColor: "text-purple-600",
-      iconBg: "bg-purple-100",
+      iconColor: "text-cyan-700",
+      iconBg: "bg-cyan-100",
       items: staffPicks,
       isLoading: loadingStates.staffPicks,
     },

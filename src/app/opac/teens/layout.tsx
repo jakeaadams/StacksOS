@@ -8,16 +8,9 @@ import { usePatronSession } from "@/hooks/use-patron-session";
 import { useAccessibilityPrefs } from "@/hooks/use-accessibility-prefs";
 import { featureFlags } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
-import {
-  Search,
-  Home,
-  Menu,
-  X,
-  Sparkles,
-  LogIn,
-  LogOut,
-  Flame,
-} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, Home, Menu, X, Sparkles, LogIn, LogOut, Flame } from "lucide-react";
 
 interface TeensLayoutProps {
   children: ReactNode;
@@ -127,7 +120,7 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
             {/* Search - Desktop */}
             <form onSubmit={handleSearch} className="hidden md:block flex-1 max-w-md mx-8">
               <div className="relative">
-                <input
+                <Input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -137,14 +130,15 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                            focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100
                            transition-all"
                 />
-                <button
+                <Button
                   type="submit"
+                  size="icon"
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r 
                            from-purple-600 to-indigo-600 text-white rounded-full 
                            hover:from-purple-700 hover:to-indigo-700 transition-colors shadow-md"
                 >
                   <Search className="h-5 w-5" />
-                </button>
+                </Button>
               </div>
             </form>
 
@@ -175,14 +169,16 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                   >
                     {patron.firstName?.[0] || "T"}
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => logout()}
-                    className="p-2 text-muted-foreground hover:text-foreground/80 hover:bg-muted/50 rounded-lg"
+                    className="rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground/80"
                     title="Log out"
                   >
                     <LogOut className="h-5 w-5" />
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <Link
@@ -198,20 +194,22 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
             </nav>
 
             {/* Mobile menu button */}
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-muted-foreground hover:bg-muted/50 rounded-xl"
+              className="rounded-xl text-muted-foreground hover:bg-muted/50 md:hidden"
             >
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+            </Button>
           </div>
 
           {/* Mobile Search */}
           <div className="md:hidden pb-3">
             <form onSubmit={handleSearch}>
               <div className="relative">
-                <input
+                <Input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -220,13 +218,14 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                            text-foreground placeholder:text-muted-foreground/70
                            focus:outline-none focus:border-indigo-400"
                 />
-                <button
+                <Button
                   type="submit"
+                  size="icon"
                   className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r 
                            from-purple-600 to-indigo-600 text-white rounded-full"
                 >
                   <Search className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -264,8 +263,9 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                     </div>
                     <span className="font-medium">{patron.firstName}</span>
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     onClick={() => {
                       logout();
                       setMobileMenuOpen(false);
@@ -273,7 +273,7 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                     className="px-4 py-2 text-muted-foreground hover:bg-muted/50 rounded-lg"
                   >
                     Log Out
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <Link

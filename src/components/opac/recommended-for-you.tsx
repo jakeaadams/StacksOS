@@ -5,6 +5,7 @@ import { clientLogger } from "@/lib/client-logger";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { RecommendationCard, type RecommendationItem } from "@/components/opac/recommendation-card";
+import { Button } from "@/components/ui/button";
 import { Sparkles, ArrowRight, ChevronLeft, ChevronRight, Settings } from "lucide-react";
 
 interface RecommendedForYouProps {
@@ -80,15 +81,12 @@ export function RecommendedForYou({ isLoggedIn }: RecommendedForYouProps) {
               Enable personalized recommendations in your account settings to see books picked just
               for you.
             </p>
-            <Link
-              href="/opac/account/settings"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600
-                       text-white rounded-lg font-medium hover:bg-primary-700
-                       transition-colors"
-            >
-              <Settings className="h-4 w-4" />
-              Account Settings
-            </Link>
+            <Button asChild>
+              <Link href="/opac/account/settings" className="inline-flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Account Settings
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -185,17 +183,16 @@ export function RecommendedForYou({ isLoggedIn }: RecommendedForYouProps) {
                   </p>
                 )}
                 <div className="relative group/carousel">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="icon"
                     onClick={() => scroll("left")}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2
-                             bg-card/90 border border-border rounded-full shadow-lg
-                             opacity-0 group-hover/carousel:opacity-100 transition-opacity
-                             hover:bg-card disabled:opacity-0 -ml-3"
+                    className="absolute left-0 top-1/2 z-10 -ml-3 -translate-y-1/2 rounded-full border-border/90 bg-card/90 opacity-0 shadow-lg transition-opacity group-hover/carousel:opacity-100 disabled:opacity-0"
                     aria-label="Scroll left"
                   >
                     <ChevronLeft className="h-5 w-5" />
-                  </button>
+                  </Button>
                   <div
                     ref={scrollContainerRef}
                     className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin
@@ -207,17 +204,16 @@ export function RecommendedForYou({ isLoggedIn }: RecommendedForYouProps) {
                       </div>
                     ))}
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="icon"
                     onClick={() => scroll("right")}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2
-                             bg-card/90 border border-border rounded-full shadow-lg
-                             opacity-0 group-hover/carousel:opacity-100 transition-opacity
-                             hover:bg-card disabled:opacity-0 -mr-3"
+                    className="absolute right-0 top-1/2 z-10 -mr-3 -translate-y-1/2 rounded-full border-border/90 bg-card/90 opacity-0 shadow-lg transition-opacity group-hover/carousel:opacity-100 disabled:opacity-0"
                     aria-label="Scroll right"
                   >
                     <ChevronRight className="h-5 w-5" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

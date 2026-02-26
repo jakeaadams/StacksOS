@@ -25,7 +25,7 @@ export async function getRedisClient(): Promise<Client | null> {
   const url = redisUrl();
   if (!url) return null;
 
-  const g = globalThis as Record<string, unknown>;
+  const g = globalThis as Record<string, any>;
 
   let client = g[GLOBAL_CLIENT_KEY] as Client | undefined;
   if (!client) {

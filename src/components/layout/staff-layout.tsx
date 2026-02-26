@@ -25,6 +25,17 @@ interface StaffLayoutProps {
   children: React.ReactNode;
 }
 
+interface EvergreenPingResponse {
+  ok?: boolean;
+  status?: number;
+}
+
+interface EnvResponse {
+  env?: {
+    idleTimeoutMinutes?: number;
+  };
+}
+
 const SIDEBAR_KEY = "stacksos_sidebar_collapsed";
 
 export function StaffLayout({ children }: StaffLayoutProps) {
@@ -35,12 +46,12 @@ export function StaffLayout({ children }: StaffLayoutProps) {
   const { user, orgs, isLoading, isAuthenticated, logout, updateUser } = useAuth();
 
   // Single source of truth for backend connectivity indicators.
-  const { data: pingData } = useApi<any>("/api/evergreen/ping", {
+  const { data: pingData } = useApi<EvergreenPingResponse>("/api/evergreen/ping", {
     immediate: true,
     revalidateOnFocus: true,
     revalidateInterval: 60_000,
   });
-  const { data: envData } = useApi<any>("/api/env", {
+  const { data: envData } = useApi<EnvResponse>("/api/env", {
     immediate: true,
     revalidateInterval: 5 * 60_000,
   });
@@ -122,7 +133,7 @@ export function StaffLayout({ children }: StaffLayoutProps) {
   return (
     <KeyboardProvider>
       <WorkformsProvider>
-        <div className="app-shell min-h-screen flex flex-col">
+        <div className="app-shell min-h-screen flex flex-col text-foreground">
           <div className="flex items-center">
             <Button
               variant="ghost"
@@ -180,9 +191,9 @@ export function StaffLayout({ children }: StaffLayoutProps) {
               evergreenStatus={evergreenStatus}
             />
             <main id="main-content" className="flex-1 min-h-0 overflow-auto pb-10">
-              <div className="mx-auto w-full max-w-[1600px] px-5 py-6 sm:px-6 lg:px-8">
+              <div className="mx-auto w-full max-w-[1620px] px-5 py-6 sm:px-6 lg:px-8">
                 {evergreenOk ? null : (
-                  <div className="mb-6 rounded-2xl border border-amber-200/70 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
+                  <div className="stx-surface mb-6 rounded-2xl border-amber-200/70 bg-amber-50/86 px-4 py-3 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-start gap-3">
                         <div className="mt-0.5 inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-amber-500/15">

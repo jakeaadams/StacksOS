@@ -4,6 +4,7 @@ import { clientLogger } from "@/lib/client-logger";
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Check, X, Edit, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -114,7 +115,7 @@ export function InlineEdit({
   return (
     <div className={cn("flex items-center gap-2", className)}>
       {multiline ? (
-        <textarea
+        <Textarea
           ref={inputRef as React.Ref<HTMLTextAreaElement>}
           rows={3}
           className={cn(

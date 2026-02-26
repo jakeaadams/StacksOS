@@ -3,19 +3,52 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { fetchWithAuth } from "@/lib/client-fetch";
-import { PageContainer, PageHeader, PageContent, ErrorMessage, EmptyState, LoadingSpinner } from "@/components/shared";
+import {
+  PageContainer,
+  PageHeader,
+  PageContent,
+  ErrorMessage,
+  EmptyState,
+  LoadingSpinner,
+} from "@/components/shared";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Mail, MessageSquare, Plus, CheckCircle2, RefreshCw, Eye, Send } from "lucide-react";
 
-const NOTICE_TYPES = ["hold_ready", "overdue", "pre_overdue", "card_expiration", "fine_bill"] as const;
+const NOTICE_TYPES = [
+  "hold_ready",
+  "overdue",
+  "pre_overdue",
+  "card_expiration",
+  "fine_bill",
+] as const;
 
 type Channel = "email" | "sms";
 
@@ -42,7 +75,9 @@ export default function NotificationsAdminPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetchWithAuth(`/api/notifications/templates?channel=${channel}&notice_type=${encodeURIComponent(noticeType)}`);
+      const res = await fetchWithAuth(
+        `/api/notifications/templates?channel=${channel}&notice_type=${encodeURIComponent(noticeType)}`
+      );
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "Failed to load templates");
       setTemplates(Array.isArray(json.templates) ? json.templates : []);
@@ -72,7 +107,9 @@ export default function NotificationsAdminPage() {
 
   const loadSample = async () => {
     try {
-      const res = await fetchWithAuth(`/api/notifications/sample?notice_type=${encodeURIComponent(noticeType)}`);
+      const res = await fetchWithAuth(
+        `/api/notifications/sample?notice_type=${encodeURIComponent(noticeType)}`
+      );
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "Failed to load sample");
       setSampleContext(json.context || null);
@@ -113,8 +150,14 @@ export default function NotificationsAdminPage() {
 
   const openEditor = async () => {
     setSubjectTemplate("");
-    setBodyTemplate(channel === "email" ? "<p>Hello {{patron.firstName}},</p>\n<p>Your notice: {{library.name}}</p>" : "Hello {{patron.firstName}} - notice from {{library.name}}");
-    setBodyTextTemplate(channel === "email" ? "Hello {{patron.firstName}} - notice from {{library.name}}" : "");
+    setBodyTemplate(
+      channel === "email"
+        ? "<p>Hello {{patron.firstName}},</p>\n<p>Your notice: {{library.name}}</p>"
+        : "Hello {{patron.firstName}} - notice from {{library.name}}"
+    );
+    setBodyTextTemplate(
+      channel === "email" ? "Hello {{patron.firstName}} - notice from {{library.name}}" : ""
+    );
     setPreviewHtml("");
     setTestTo("");
     setShowEditor(true);
@@ -237,7 +280,14 @@ export default function NotificationsAdminPage() {
   const headerActions =
     activeTab === "templates"
       ? [{ label: "New template", onClick: openEditor, icon: Plus }]
-      : [{ label: "Process queue", onClick: processDeliveries, icon: RefreshCw, variant: "outline" as const }];
+      : [
+          {
+            label: "Process queue",
+            onClick: processDeliveries,
+            icon: RefreshCw,
+            variant: "outline" as const,
+          },
+        ];
 
   return (
     <PageContainer>
@@ -248,18 +298,27 @@ export default function NotificationsAdminPage() {
         actions={headerActions as any}
       />
       <PageContent className="space-y-6">
-        {error && <ErrorMessage message={error} onRetry={() => (activeTab === "templates" ? loadTemplates() : loadDeliveries())} />}
+        {error && (
+          <ErrorMessage
+            message={error}
+            onRetry={() => (activeTab === "templates" ? loadTemplates() : loadDeliveries())}
+          />
+        )}
 
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base">Scope</CardTitle>
-            <CardDescription>Select which channel and notice type you want to manage.</CardDescription>
+            <CardDescription>
+              Select which channel and notice type you want to manage.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             <div>
               <Label htmlFor="channel">Channel</Label>
               <Select id="channel" value={channel} onValueChange={(v) => setChannel(v as Channel)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="email">Email</SelectItem>
                   <SelectItem value="sms">SMS</SelectItem>
@@ -269,10 +328,14 @@ export default function NotificationsAdminPage() {
             <div>
               <Label htmlFor="notice-type">Notice type</Label>
               <Select id="notice-type" value={noticeType} onValueChange={setNoticeType}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {NOTICE_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -282,8 +345,14 @@ export default function NotificationsAdminPage() {
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
           <TabsList>
-            <TabsTrigger value="templates"><Mail className="h-4 w-4 mr-2" />Templates</TabsTrigger>
-            <TabsTrigger value="deliveries"><MessageSquare className="h-4 w-4 mr-2" />Delivery log</TabsTrigger>
+            <TabsTrigger value="templates">
+              <Mail className="h-4 w-4 mr-2" />
+              Templates
+            </TabsTrigger>
+            <TabsTrigger value="deliveries">
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Delivery log
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="templates" className="mt-4">
@@ -292,13 +361,19 @@ export default function NotificationsAdminPage() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <Mail className="h-4 w-4" /> Template versions
                 </CardTitle>
-                <CardDescription>Each save creates a version. Activate a version to make it live.</CardDescription>
+                <CardDescription>
+                  Each save creates a version. Activate a version to make it live.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {activeTab === "templates" && loading ? (
                   <LoadingSpinner message="Loading templates..." />
                 ) : templates.length === 0 ? (
-                  <EmptyState title="No templates" description="Create a template version to override the built-in defaults." action={{ label: "New template", onClick: openEditor, icon: Plus }} />
+                  <EmptyState
+                    title="No templates"
+                    description="Create a template version to override the built-in defaults."
+                    action={{ label: "New template", onClick: openEditor, icon: Plus }}
+                  />
                 ) : (
                   <Table>
                     <TableHeader>
@@ -326,7 +401,12 @@ export default function NotificationsAdminPage() {
                             {t.created_at ? new Date(t.created_at).toLocaleString() : "—"}
                           </TableCell>
                           <TableCell className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => activateTemplate(t.id)} disabled={saving || t.status === "active"}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => activateTemplate(t.id)}
+                              disabled={saving || t.status === "active"}
+                            >
                               <CheckCircle2 className="h-4 w-4 mr-2" /> Activate
                             </Button>
                           </TableCell>
@@ -345,13 +425,18 @@ export default function NotificationsAdminPage() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <MessageSquare className="h-4 w-4" /> Recent deliveries
                 </CardTitle>
-                <CardDescription>Failures can be retried by enqueueing a new delivery for the same event.</CardDescription>
+                <CardDescription>
+                  Failures can be retried by enqueueing a new delivery for the same event.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {activeTab === "deliveries" && loading ? (
                   <LoadingSpinner message="Loading deliveries..." />
                 ) : deliveries.length === 0 ? (
-                  <EmptyState title="No deliveries" description="Send a patron notice or a test email to populate the log." />
+                  <EmptyState
+                    title="No deliveries"
+                    description="Send a patron notice or a test email to populate the log."
+                  />
                 ) : (
                   <Table>
                     <TableHeader>
@@ -374,7 +459,12 @@ export default function NotificationsAdminPage() {
                           <TableCell className="text-sm">{d.attempts}</TableCell>
                           <TableCell className="flex items-center gap-2">
                             {d.status === "failed" && (
-                              <Button size="sm" variant="outline" onClick={() => enqueueRetry(d.event_id)} disabled={saving}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => enqueueRetry(d.event_id)}
+                                disabled={saving}
+                              >
                                 <RefreshCw className="h-4 w-4 mr-2" /> Retry
                               </Button>
                             )}
@@ -392,9 +482,12 @@ export default function NotificationsAdminPage() {
         <Dialog open={showEditor} onOpenChange={setShowEditor}>
           <DialogContent className="max-w-5xl">
             <DialogHeader>
-              <DialogTitle>New {channel.toUpperCase()} template — {noticeType}</DialogTitle>
+              <DialogTitle>
+                New {channel.toUpperCase()} template — {noticeType}
+              </DialogTitle>
               <DialogDescription>
-                Use variables like <span className="font-mono">{"{{patron.firstName}}"}</span>. Preview uses demo data when available.
+                Use variables like <span className="font-mono">{"{{patron.firstName}}"}</span>.
+                Preview uses live context only.
               </DialogDescription>
             </DialogHeader>
 
@@ -402,16 +495,33 @@ export default function NotificationsAdminPage() {
               <div className="space-y-3">
                 <div>
                   <Label htmlFor="subject">Subject (optional)</Label>
-                  <Input id="subject" value={subjectTemplate} onChange={(e) => setSubjectTemplate(e.target.value)} placeholder={channel === "email" ? "{{library.name}} notice" : "(not used)"} />
+                  <Input
+                    id="subject"
+                    value={subjectTemplate}
+                    onChange={(e) => setSubjectTemplate(e.target.value)}
+                    placeholder={channel === "email" ? "{{library.name}} notice" : "(not used)"}
+                  />
                 </div>
                 <div>
-                  <Label htmlFor="channel-email-html-body-message-body">{channel === "email" ? "HTML body" : "Message body"}</Label>
-                  <Textarea id="channel-email-html-body-message-body" value={bodyTemplate} onChange={(e) => setBodyTemplate(e.target.value)} className="min-h-[220px] font-mono text-xs" />
+                  <Label htmlFor="channel-email-html-body-message-body">
+                    {channel === "email" ? "HTML body" : "Message body"}
+                  </Label>
+                  <Textarea
+                    id="channel-email-html-body-message-body"
+                    value={bodyTemplate}
+                    onChange={(e) => setBodyTemplate(e.target.value)}
+                    className="min-h-[220px] font-mono text-xs"
+                  />
                 </div>
                 {channel === "email" && (
                   <div>
                     <Label htmlFor="text-body">Text body (optional)</Label>
-                    <Textarea id="text-body" value={bodyTextTemplate} onChange={(e) => setBodyTextTemplate(e.target.value)} className="min-h-[120px] font-mono text-xs" />
+                    <Textarea
+                      id="text-body"
+                      value={bodyTextTemplate}
+                      onChange={(e) => setBodyTextTemplate(e.target.value)}
+                      className="min-h-[120px] font-mono text-xs"
+                    />
                   </div>
                 )}
 
@@ -427,11 +537,18 @@ export default function NotificationsAdminPage() {
 
               <div className="space-y-3">
                 <div>
-                  <Label htmlFor="channel-email-test-recipient-email-optional-test-recipient-phone-required-for-sms">{channel === "email" ? "Test recipient email (optional)" : "Test recipient phone (required for SMS)"}</Label>
-                  <Input id="channel-email-test-recipient-email-optional-test-recipient-phone-required-for-sms"
+                  <Label htmlFor="channel-email-test-recipient-email-optional-test-recipient-phone-required-for-sms">
+                    {channel === "email"
+                      ? "Test recipient email (optional)"
+                      : "Test recipient phone (required for SMS)"}
+                  </Label>
+                  <Input
+                    id="channel-email-test-recipient-email-optional-test-recipient-phone-required-for-sms"
                     value={testTo}
                     onChange={(e) => setTestTo(e.target.value)}
-                    placeholder={channel === "email" ? "(defaults to your staff email)" : "+15555551212"}
+                    placeholder={
+                      channel === "email" ? "(defaults to your staff email)" : "+15555551212"
+                    }
                   />
                 </div>
                 <div className="text-sm text-muted-foreground">Preview</div>
@@ -452,11 +569,19 @@ export default function NotificationsAdminPage() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowEditor(false)} disabled={saving}>Cancel</Button>
-              <Button onClick={() => void saveTemplate(false)} disabled={saving || !bodyTemplate.trim()}>
+              <Button variant="outline" onClick={() => setShowEditor(false)} disabled={saving}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => void saveTemplate(false)}
+                disabled={saving || !bodyTemplate.trim()}
+              >
                 Save version
               </Button>
-              <Button onClick={() => void saveTemplate(true)} disabled={saving || !bodyTemplate.trim()}>
+              <Button
+                onClick={() => void saveTemplate(true)}
+                disabled={saving || !bodyTemplate.trim()}
+              >
                 Save + activate
               </Button>
             </DialogFooter>

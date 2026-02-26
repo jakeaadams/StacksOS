@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { WhyThisResultDialog, type ExplainFilter } from "@/components/opac/why-this-result-dialog";
+import { Button } from "@/components/ui/button";
 import { clientLogger } from "@/lib/client-logger";
 import {
   Book,
@@ -54,6 +55,7 @@ export interface BookCardProps {
   showAvailability?: boolean;
   // Display options
   variant?: "grid" | "list" | "compact";
+  recordHref?: string;
   showFormats?: boolean;
   showRating?: boolean;
   showSummary?: boolean;
@@ -91,10 +93,7 @@ function AvailabilityBadge({
 }) {
   if (availableCopies > 0) {
     return (
-      <span
-        className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 
-                     text-xs font-medium rounded-full"
-      >
+      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-emerald-300/60 bg-emerald-100/90 text-emerald-800 text-xs font-medium">
         <CheckCircle className="h-3 w-3" />
         Available
       </span>
@@ -103,10 +102,7 @@ function AvailabilityBadge({
 
   if (holdCount > 0) {
     return (
-      <span
-        className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-800 
-                       text-xs font-medium rounded-full"
-      >
+      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-amber-300/60 bg-amber-100/90 text-amber-800 text-xs font-medium">
         <Clock className="h-3 w-3" />
         {holdCount} {holdCount === 1 ? "hold" : "holds"}
       </span>
@@ -114,10 +110,7 @@ function AvailabilityBadge({
   }
 
   return (
-    <span
-      className="inline-flex items-center gap-1 px-2 py-1 bg-muted/50 text-muted-foreground 
-                     text-xs font-medium rounded-full"
-    >
+    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-border/70 bg-muted/55 text-muted-foreground text-xs font-medium">
       <AlertCircle className="h-3 w-3" />
       Checked out
     </span>
@@ -126,24 +119,18 @@ function AvailabilityBadge({
 
 function StarRating({ rating, reviewCount }: { rating?: number; reviewCount?: number }) {
   if (!rating) return null;
+  const roundedRating = Math.round(rating);
   const ratingText = `${rating.toFixed(1)} out of 5 stars${reviewCount ? `, ${reviewCount} reviews` : ""}`;
   return (
     <div className="flex items-center gap-1" role="img" aria-label={ratingText}>
       {[1, 2, 3, 4, 5].map((star) => {
-        const filled = rating >= star;
-        const partial = !filled && rating > star - 1;
+        const filled = roundedRating >= star;
         return (
-          <div key={star} className="relative">
-            <Star className="h-4 w-4 text-muted-foreground/50" fill="currentColor" />
-            {(filled || partial) && (
-              <div
-                className="absolute inset-0 overflow-hidden"
-                style={{ width: filled ? "100%" : `${(rating - (star - 1)) * 100}%` }}
-              >
-                <Star className="h-4 w-4 text-amber-400" fill="currentColor" />
-              </div>
-            )}
-          </div>
+          <Star
+            key={star}
+            className={`h-4 w-4 ${filled ? "text-amber-400" : "text-muted-foreground/50"}`}
+            fill="currentColor"
+          />
         );
       })}
       <span className="text-xs text-muted-foreground font-medium ml-1">{rating.toFixed(1)}</span>
@@ -178,6 +165,7 @@ export function BookCard({
   holdCount = 0,
   showAvailability = true,
   variant = "grid",
+  recordHref,
   showFormats = true,
   showRating = true,
   showSummary = false,
@@ -221,20 +209,19 @@ export function BookCard({
   const rating = propRating || googleRating?.rating;
   const reviewCount = propReviewCount || googleRating?.count;
 
-  // Generate a placeholder color based on title
-  const placeholderColor = `hsl(${(title.charCodeAt(0) * 137) % 360}, 60%, 75%)`;
+  const detailHref = recordHref || (isKidsMode ? `/opac/kids/record/${id}` : `/opac/record/${id}`);
 
   // Grid variant (default)
   if (variant === "grid") {
     return (
       <div
-        className={`group relative bg-card rounded-xl shadow-sm border border-border 
-                   overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary-300
+        className={`group relative stx-surface stx-surface-hover rounded-xl
+                   overflow-hidden transition-all duration-200
                    ${isKidsMode ? "rounded-2xl" : ""}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <Link href={isKidsMode ? `/opac/kids/record/${id}` : `/opac/record/${id}`}>
+        <Link href={detailHref}>
           {/* Cover image */}
           <div
             className={`relative aspect-[2/3] bg-muted/50 overflow-hidden
@@ -250,10 +237,7 @@ export function BookCard({
                 onError={() => setImageError(true)}
               />
             ) : (
-              <div
-                className="w-full h-full flex items-center justify-center p-4"
-                style={{ backgroundColor: placeholderColor }}
-              >
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-300 via-primary-400 to-primary-500 p-4">
                 <div className="text-center text-white">
                   <Book className={`mx-auto mb-2 ${isKidsMode ? "h-12 w-12" : "h-8 w-8"}`} />
                   <p
@@ -290,17 +274,19 @@ export function BookCard({
                   semanticScore={explainRankingScore}
                   filters={explainFilters}
                 >
-                  <button
+                  <Button
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                     }}
-                    className="inline-flex items-center justify-center rounded-full bg-card/90 border border-border/70 shadow-sm p-1.5 text-muted-foreground hover:text-primary-700 hover:border-primary-300 transition-colors"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full bg-card/90 text-muted-foreground hover:text-primary-700 hover:border-primary-300"
                     aria-label="Why this result?"
                   >
                     <HelpCircle className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </WhyThisResultDialog>
               </div>
             ) : null}
@@ -312,31 +298,33 @@ export function BookCard({
                             opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 {onAddToList && (
-                  <button
+                  <Button
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       onAddToList();
                     }}
-                    className="p-2 bg-card rounded-full shadow-lg hover:bg-muted/50 transition-colors"
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10 rounded-full bg-card/90"
                     aria-label="Add to list"
                   >
                     <Heart className="h-5 w-5 text-foreground/80" />
-                  </button>
+                  </Button>
                 )}
                 {onPlaceHold && (
-                  <button
+                  <Button
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       onPlaceHold();
                     }}
-                    className="p-2 bg-primary-600 rounded-full shadow-lg hover:bg-primary-700 
-                             transition-colors"
+                    className="h-10 w-10 rounded-full bg-[linear-gradient(125deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_88%)] shadow-[0_16px_24px_-16px_hsl(var(--brand-3)/0.88)] hover:brightness-110"
+                    size="icon"
                     aria-label="Place hold"
                   >
                     <Plus className="h-5 w-5 text-white" />
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
@@ -371,12 +359,11 @@ export function BookCard({
                   return (
                     <span
                       key={format.type}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs
-                                ${
-                                  format.available > 0
-                                    ? "bg-green-50 text-green-700"
-                                    : "bg-muted/50 text-muted-foreground"
-                                }`}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border ${
+                        format.available > 0
+                          ? "border-emerald-300/60 bg-emerald-50 text-emerald-700"
+                          : "border-border/70 bg-muted/50 text-muted-foreground"
+                      }`}
                     >
                       <Icon className="h-3 w-3" />
                       {formatLabels[format.type]}
@@ -394,14 +381,8 @@ export function BookCard({
   // List variant
   if (variant === "list") {
     return (
-      <div
-        className="group flex gap-4 p-4 bg-card rounded-xl shadow-sm border border-border 
-                     hover:shadow-md hover:border-primary-300 transition-all"
-      >
-        <Link
-          href={isKidsMode ? `/opac/kids/record/${id}` : `/opac/record/${id}`}
-          className="shrink-0"
-        >
+      <div className="group stx-surface stx-surface-hover flex gap-4 p-4 rounded-xl transition-all">
+        <Link href={detailHref} className="shrink-0">
           <div className="relative w-24 h-36 bg-muted/50 rounded-lg overflow-hidden">
             {coverUrl && !imageError ? (
               <Image
@@ -413,10 +394,7 @@ export function BookCard({
                 onError={() => setImageError(true)}
               />
             ) : (
-              <div
-                className="w-full h-full flex items-center justify-center p-2"
-                style={{ backgroundColor: placeholderColor }}
-              >
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-300 via-primary-400 to-primary-500 p-2">
                 <Book className="h-8 w-8 text-white" />
               </div>
             )}
@@ -424,7 +402,7 @@ export function BookCard({
         </Link>
 
         <div className="flex-1 min-w-0">
-          <Link href={isKidsMode ? `/opac/kids/record/${id}` : `/opac/record/${id}`}>
+          <Link href={detailHref}>
             <h3
               className="font-semibold text-foreground hover:text-primary-600 transition-colors 
                          line-clamp-2 text-lg"
@@ -440,7 +418,7 @@ export function BookCard({
           {(rankingLabel || rankingReason) && (
             <div className="mt-2">
               {rankingLabel && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-sky-50 text-sky-700 rounded-full text-xs font-medium">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-sky-50 border border-sky-300/60 text-sky-700 rounded-full text-xs font-medium">
                   {rankingLabel}
                 </span>
               )}
@@ -467,13 +445,15 @@ export function BookCard({
                 semanticScore={explainRankingScore}
                 filters={explainFilters}
               >
-                <button
+                <Button
                   type="button"
-                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary-700 transition-colors"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto px-2 py-1 text-xs text-muted-foreground hover:text-primary-700"
                 >
                   <HelpCircle className="h-3.5 w-3.5" />
                   Why this result?
-                </button>
+                </Button>
               </WhyThisResultDialog>
             </div>
           ) : null}
@@ -500,12 +480,11 @@ export function BookCard({
                   return (
                     <span
                       key={format.type}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs
-                                ${
-                                  format.available > 0
-                                    ? "bg-green-50 text-green-700"
-                                    : "bg-muted/50 text-muted-foreground"
-                                }`}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border ${
+                        format.available > 0
+                          ? "border-emerald-300/60 bg-emerald-50 text-emerald-700"
+                          : "border-border/70 bg-muted/50 text-muted-foreground"
+                      }`}
                     >
                       <Icon className="h-3 w-3" />
                       {formatLabels[format.type]}
@@ -519,24 +498,23 @@ export function BookCard({
 
         <div className="flex flex-col gap-2 shrink-0">
           {onPlaceHold && (
-            <button
+            <Button
               type="button"
               onClick={onPlaceHold}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 
-                       transition-colors text-sm font-medium"
+              className="bg-[linear-gradient(125deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_88%)] text-white hover:brightness-110 shadow-[0_14px_22px_-16px_hsl(var(--brand-3)/0.9)]"
             >
               Place Hold
-            </button>
+            </Button>
           )}
           {onAddToList && (
-            <button
+            <Button
               type="button"
               onClick={onAddToList}
-              className="px-4 py-2 border border-border text-foreground/80 rounded-lg 
-                       hover:bg-muted/30 transition-colors text-sm font-medium"
+              variant="outline"
+              className="text-foreground/80 hover:bg-muted/30"
             >
               Add to List
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -546,7 +524,7 @@ export function BookCard({
   // Compact variant
   return (
     <Link
-      href={isKidsMode ? `/opac/kids/record/${id}` : `/opac/record/${id}`}
+      href={detailHref}
       className="flex items-center gap-3 p-2 hover:bg-muted/30 rounded-lg transition-colors"
     >
       <div className="relative w-12 h-16 bg-muted/50 rounded overflow-hidden shrink-0">
@@ -560,10 +538,7 @@ export function BookCard({
             onError={() => setImageError(true)}
           />
         ) : (
-          <div
-            className="w-full h-full flex items-center justify-center"
-            style={{ backgroundColor: placeholderColor }}
-          >
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-300 via-primary-400 to-primary-500">
             <Book className="h-4 w-4 text-white" />
           </div>
         )}

@@ -66,7 +66,7 @@ async function readEntry(filePath: string): Promise<IdempotencyEntry | null> {
 
     const createdAt = typeof data.createdAt === "string" ? data.createdAt : null;
     const status = Number(data.status);
-    const body = (data as Record<string, unknown>).body;
+    const body = (data as Record<string, any>).body;
 
     if (!createdAt || !Number.isFinite(status)) return null;
 
@@ -112,9 +112,12 @@ async function tryParseEntry(raw: string | null): Promise<IdempotencyEntry | nul
     const data = JSON.parse(raw);
     if (!data || typeof data !== "object") return null;
 
-    const createdAt = typeof (data as Record<string, unknown>).createdAt === "string" ? (data as Record<string, unknown>).createdAt as string : null;
-    const status = Number((data as Record<string, unknown>).status);
-    const body = (data as Record<string, unknown>).body;
+    const createdAt =
+      typeof (data as Record<string, any>).createdAt === "string"
+        ? ((data as Record<string, any>).createdAt as string)
+        : null;
+    const status = Number((data as Record<string, any>).status);
+    const body = (data as Record<string, any>).body;
     if (!createdAt || !Number.isFinite(status)) return null;
 
     return { createdAt, status, body };
@@ -123,9 +126,14 @@ async function tryParseEntry(raw: string | null): Promise<IdempotencyEntry | nul
   }
 }
 
-async function releaseRedisLock(client: RedisClientType, key: string, token: string): Promise<void> {
+async function releaseRedisLock(
+  client: RedisClientType,
+  key: string,
+  token: string
+): Promise<void> {
   // Only release if we still own the lock.
-  const lua = "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end";
+  const lua =
+    "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end";
   try {
     await client.eval(lua, { keys: [key], arguments: [token] });
   } catch {
@@ -160,9 +168,20 @@ export async function withIdempotency(
     const client = await getRedisClient();
     if (client) {
       try {
-        return await withIdempotencyRedis(client, req, route, handler, { ttlMs }, keyHash, requestId);
+        return await withIdempotencyRedis(
+          client,
+          req,
+          route,
+          handler,
+          { ttlMs },
+          keyHash,
+          requestId
+        );
       } catch (err: any) {
-        logger.error({ error: String(err), route, requestId }, "Redis idempotency failed; falling back to file store");
+        logger.error(
+          { error: String(err), route, requestId },
+          "Redis idempotency failed; falling back to file store"
+        );
       }
     }
   }

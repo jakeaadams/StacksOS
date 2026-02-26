@@ -10,14 +10,7 @@ export type IdlMap = Record<string, IdlClassDef>;
 
 let idlCache: IdlMap | null = null;
 
-const DEFAULT_IDL_PATH = path.join(
-  process.cwd(),
-  "src",
-  "lib",
-  "api",
-  "idl",
-  "fm_IDL.xml"
-);
+const DEFAULT_IDL_PATH = path.join(process.cwd(), "src", "lib", "api", "idl", "fm_IDL.xml");
 
 function loadIdl(): IdlMap {
   if (idlCache) return idlCache;
@@ -77,10 +70,7 @@ function loadIdl(): IdlMap {
 
 function isFieldmapperObject(value: any): value is { __c: string; __p: any[] } {
   return (
-    value &&
-    typeof value === "object" &&
-    typeof value.__c === "string" &&
-    Array.isArray(value.__p)
+    value && typeof value === "object" && typeof value.__c === "string" && Array.isArray(value.__p)
   );
 }
 
@@ -98,7 +88,7 @@ function encodeFieldmapperValue(value: any): any {
   return value;
 }
 
-export function encodeFieldmapper(classId: string, data: Record<string, unknown>) {
+export function encodeFieldmapper(classId: string, data: Record<string, any>) {
   const idl = loadIdl();
   const classDef = idl[classId];
 
@@ -141,7 +131,7 @@ export function decodeFieldmapper(value: any): any {
       };
     }
 
-    const decoded: Record<string, unknown> = { __class: value.__c };
+    const decoded: Record<string, any> = { __class: value.__c };
     classDef.fields.forEach((fieldName, idx) => {
       decoded[fieldName] = decodeFieldmapper(value.__p[idx]);
     });
@@ -149,7 +139,7 @@ export function decodeFieldmapper(value: any): any {
     return decoded;
   }
 
-  const output: Record<string, unknown> = {};
+  const output: Record<string, any> = {};
   for (const [key, val] of Object.entries(value)) {
     output[key] = decodeFieldmapper(val);
   }
@@ -160,11 +150,11 @@ export function decodeFieldmapper(value: any): any {
 export function decodeOpenSRFResponse<T = any>(response: T): T {
   if (!response || typeof response !== "object") return response;
 
-  const payload = (response as Record<string, unknown>).payload;
+  const payload = (response as Record<string, any>).payload;
   if (!payload) return response;
 
   return {
-    ...(response as Record<string, unknown>),
+    ...(response as Record<string, any>),
     payload: decodeFieldmapper(payload),
   } as T;
 }
@@ -177,11 +167,11 @@ export function fmGet<T = any>(value: any, key: string, index?: number): T | und
   if (!value || typeof value !== "object") return undefined;
 
   // Try direct property access first
-  const direct = (value as Record<string, unknown>)[key];
+  const direct = (value as Record<string, any>)[key];
   if (direct !== undefined) return direct as T;
 
   // Try __p array access if index provided
-  const arr = (value as Record<string, unknown>).__p;
+  const arr = (value as Record<string, any>).__p;
   if (Array.isArray(arr) && typeof index === "number") {
     return arr[index] as T;
   }
@@ -196,7 +186,7 @@ export function fmGet<T = any>(value: any, key: string, index?: number): T | und
 export function fmNumber(value: unknown, key: string, index?: number): number | undefined {
   const raw = fmGet(value, key, index);
   if (typeof raw === "number") return raw;
-  
+
   const parsed = parseInt(String(raw ?? ""), 10);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
@@ -232,7 +222,7 @@ export function fmDate(value: any, key: string, index?: number): Date | undefine
   const raw = fmGet(value, key, index);
   if (raw === null || raw === undefined) return undefined;
   if (raw instanceof Date) return raw;
-  
+
   const parsed = new Date(raw);
   return isNaN(parsed.getTime()) ? undefined : parsed;
 }

@@ -17,14 +17,27 @@ import {
   DeleteConfirmDialog,
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { GraduationCap, Plus, RefreshCw, Trash2, Pencil, Archive } from "lucide-react";
 
 type Course = {
@@ -90,7 +103,11 @@ export default function CourseReservesPage() {
   });
 
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ entity: "course" | "term"; id: number; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    entity: "course" | "term";
+    id: number;
+    name: string;
+  } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   async function load() {
@@ -134,7 +151,8 @@ export default function CourseReservesPage() {
           <div className="font-medium">{row.original.name}</div>
           <div className="text-xs text-muted-foreground">
             {row.original.courseNumber}
-            {row.original.sectionNumber ? ` • Section ${row.original.sectionNumber}` : ""} • {row.original.materialsCount} materials
+            {row.original.sectionNumber ? ` • Section ${row.original.sectionNumber}` : ""} •{" "}
+            {row.original.materialsCount} materials
           </div>
         </div>
       ),
@@ -144,7 +162,8 @@ export default function CourseReservesPage() {
       header: "Library",
       cell: ({ row }) => {
         const owningId = row.original.owningLibId;
-        const label = row.original.owningLibName || (typeof owningId === "number" ? getOrgName(owningId) : "—");
+        const label =
+          row.original.owningLibName || (typeof owningId === "number" ? getOrgName(owningId) : "—");
         return (
           <Badge variant="secondary" className="rounded-full">
             {label}
@@ -217,7 +236,8 @@ export default function CourseReservesPage() {
       header: "Library",
       cell: ({ row }) => {
         const owningId = row.original.owningLibId;
-        const label = row.original.owningLibName || (typeof owningId === "number" ? getOrgName(owningId) : "—");
+        const label =
+          row.original.owningLibName || (typeof owningId === "number" ? getOrgName(owningId) : "—");
         return (
           <Badge variant="secondary" className="rounded-full">
             {label}
@@ -440,16 +460,21 @@ export default function CourseReservesPage() {
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
               <p>
-                Course Reserves helps keep short-loan materials discoverable for students. Courses and terms are
-                Evergreen-backed.
+                Course Reserves helps keep short-loan materials discoverable for students. Courses
+                and terms are Evergreen-backed.
               </p>
               {canManage ? (
-                <Badge variant="secondary" className="rounded-full w-fit">You can manage reserves</Badge>
+                <Badge variant="secondary" className="rounded-full w-fit">
+                  You can manage reserves
+                </Badge>
               ) : (
-                <Badge variant="outline" className="rounded-full w-fit text-muted-foreground">Read-only</Badge>
+                <Badge variant="outline" className="rounded-full w-fit text-muted-foreground">
+                  Read-only
+                </Badge>
               )}
               <p className="text-xs text-muted-foreground">
-                If you see empty screens, seed demo data: <span className="font-mono">node scripts/seed-sandbox-demo-data.mjs</span>
+                If you see empty screens, run the Evergreen setup checklist and verify terms/courses
+                are configured.
               </p>
             </CardContent>
           </Card>
@@ -457,7 +482,9 @@ export default function CourseReservesPage() {
           <Card className="rounded-2xl md:col-span-2">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Manage</CardTitle>
-              <CardDescription>Courses and terms are editable when you have MANAGE_RESERVES.</CardDescription>
+              <CardDescription>
+                Courses and terms are editable when you have MANAGE_RESERVES.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
@@ -489,7 +516,7 @@ export default function CourseReservesPage() {
                         <EmptyState
                           icon={GraduationCap}
                           title="No course reserves yet"
-                          description="Start by creating a term, then add a course. You can also seed demo data for a sandbox."
+                          description="Start by creating a term, then add a course. You can also run the Evergreen setup checklist for a sandbox."
                           action={
                             canManage
                               ? {
@@ -502,15 +529,25 @@ export default function CourseReservesPage() {
                                 }
                               : undefined
                           }
-                          secondaryAction={{ label: "Seed demo data", onClick: () => window.location.assign("/staff/help#demo-data") }}
+                          secondaryAction={{
+                            label: "Evergreen setup checklist",
+                            onClick: () => window.location.assign("/staff/help#evergreen-setup"),
+                          }}
                         />
                       ) : (
                         <EmptyState
                           icon={GraduationCap}
                           title="No courses"
                           description="Create your first reserve course."
-                          action={canManage ? { label: "Create course", onClick: openCreateCourse, icon: Plus } : undefined}
-                          secondaryAction={{ label: "Seed demo data", onClick: () => window.location.assign("/staff/help#demo-data") }}
+                          action={
+                            canManage
+                              ? { label: "Create course", onClick: openCreateCourse, icon: Plus }
+                              : undefined
+                          }
+                          secondaryAction={{
+                            label: "Evergreen setup checklist",
+                            onClick: () => window.location.assign("/staff/help#evergreen-setup"),
+                          }}
                         />
                       )
                     }
@@ -534,8 +571,15 @@ export default function CourseReservesPage() {
                         icon={GraduationCap}
                         title="No terms"
                         description="Create a term to start organizing courses."
-                        action={canManage ? { label: "Create term", onClick: openCreateTerm, icon: Plus } : undefined}
-                        secondaryAction={{ label: "Seed demo data", onClick: () => window.location.assign("/staff/help#demo-data") }}
+                        action={
+                          canManage
+                            ? { label: "Create term", onClick: openCreateTerm, icon: Plus }
+                            : undefined
+                        }
+                        secondaryAction={{
+                          label: "Evergreen setup checklist",
+                          onClick: () => window.location.assign("/staff/help#evergreen-setup"),
+                        }}
                       />
                     }
                   />
@@ -577,7 +621,9 @@ export default function CourseReservesPage() {
                     <Input
                       id="course-num"
                       value={courseForm.courseNumber}
-                      onChange={(e) => setCourseForm((p) => ({ ...p, courseNumber: e.target.value }))}
+                      onChange={(e) =>
+                        setCourseForm((p) => ({ ...p, courseNumber: e.target.value }))
+                      }
                       placeholder="BIO-101"
                     />
                   </div>
@@ -586,7 +632,9 @@ export default function CourseReservesPage() {
                     <Input
                       id="course-section"
                       value={courseForm.sectionNumber}
-                      onChange={(e) => setCourseForm((p) => ({ ...p, sectionNumber: e.target.value }))}
+                      onChange={(e) =>
+                        setCourseForm((p) => ({ ...p, sectionNumber: e.target.value }))
+                      }
                       placeholder="01"
                     />
                   </div>
@@ -594,7 +642,11 @@ export default function CourseReservesPage() {
 
                 <div className="grid gap-2">
                   <Label htmlFor="owning-library">Owning library</Label>
-                  <Select id="owning-library" value={courseForm.owningLibId} onValueChange={(v) => setCourseForm((p) => ({ ...p, owningLibId: v }))}>
+                  <Select
+                    id="owning-library"
+                    value={courseForm.owningLibId}
+                    onValueChange={(v) => setCourseForm((p) => ({ ...p, owningLibId: v }))}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a library" />
                     </SelectTrigger>
@@ -611,9 +663,14 @@ export default function CourseReservesPage() {
                 <div className="flex items-center justify-between rounded-lg border p-3">
                   <div>
                     <div className="font-medium">Archived</div>
-                    <div className="text-xs text-muted-foreground">Hide this course from active reserve workflows.</div>
+                    <div className="text-xs text-muted-foreground">
+                      Hide this course from active reserve workflows.
+                    </div>
                   </div>
-                  <Switch checked={courseForm.isArchived} onCheckedChange={(v) => setCourseForm((p) => ({ ...p, isArchived: v }))} />
+                  <Switch
+                    checked={courseForm.isArchived}
+                    onCheckedChange={(v) => setCourseForm((p) => ({ ...p, isArchived: v }))}
+                  />
                 </div>
               </div>
             ) : (
@@ -630,7 +687,11 @@ export default function CourseReservesPage() {
 
                 <div className="grid gap-2">
                   <Label htmlFor="owning-library-2">Owning library</Label>
-                  <Select id="owning-library-2" value={termForm.owningLibId} onValueChange={(v) => setTermForm((p) => ({ ...p, owningLibId: v }))}>
+                  <Select
+                    id="owning-library-2"
+                    value={termForm.owningLibId}
+                    onValueChange={(v) => setTermForm((p) => ({ ...p, owningLibId: v }))}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a library" />
                     </SelectTrigger>

@@ -9,12 +9,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   AlertTriangle,
   CheckCircle2,
@@ -98,7 +110,9 @@ export default function ClaimsPage() {
 
     setIsLoading(true);
     try {
-      const patronRes = await fetchWithAuth(`/api/evergreen/patrons?q=${encodeURIComponent(patronBarcode)}&type=barcode`);
+      const patronRes = await fetchWithAuth(
+        `/api/evergreen/patrons?q=${encodeURIComponent(patronBarcode)}&type=barcode`
+      );
       const patronData = await patronRes.json();
 
       if (!patronData.ok || !patronData.patrons?.length) {
@@ -152,7 +166,10 @@ export default function ClaimsPage() {
         checkoutDate: item.checkoutDate,
         isOverdue: false,
         fineAmount: item.fineAmount || 0,
-        status: item.status === "claims_never_checked_out" ? "claims_never_checked_out" : "claims_returned",
+        status:
+          item.status === "claims_never_checked_out"
+            ? "claims_never_checked_out"
+            : "claims_returned",
         claimDate: item.claimDate,
       }));
 
@@ -323,7 +340,9 @@ export default function ClaimsPage() {
         accessorKey: "dueDate",
         header: "Due",
         cell: ({ row }) => (
-          <span className={row.original.isOverdue ? "text-rose-600 font-medium text-xs" : "text-xs"}>
+          <span
+            className={row.original.isOverdue ? "text-rose-600 font-medium text-xs" : "text-xs"}
+          >
             {formatDate(row.original.dueDate)}
           </span>
         ),
@@ -391,14 +410,18 @@ export default function ClaimsPage() {
       {
         accessorKey: "claimDate",
         header: "Claim Date",
-        cell: ({ row }) => <span className="text-xs">{formatDate(row.original.claimDate || "")}</span>,
+        cell: ({ row }) => (
+          <span className="text-xs">{formatDate(row.original.claimDate || "")}</span>
+        ),
       },
       {
         accessorKey: "status",
         header: "Status",
         cell: ({ row }) => (
           <StatusBadge
-            label={row.original.status === "claims_returned" ? "Claimed Returned" : "Never Checked Out"}
+            label={
+              row.original.status === "claims_returned" ? "Claimed Returned" : "Never Checked Out"
+            }
             status="warning"
             showIcon
           />
@@ -430,14 +453,16 @@ export default function ClaimsPage() {
         title="Claims Management"
         subtitle="Track claims returned and never‑checked‑out items."
         breadcrumbs={[{ label: "Circulation" }, { label: "Claims" }]}
-        actions={[
-          { label: "Refresh", onClick: loadPatron, icon: RefreshCw, loading: isLoading },
-        ]}
+        actions={[{ label: "Refresh", onClick: loadPatron, icon: RefreshCw, loading: isLoading }]}
       >
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary" className="rounded-full">Threshold: {MAX_CLAIMS_WARNING}</Badge>
+          <Badge variant="secondary" className="rounded-full">
+            Threshold: {MAX_CLAIMS_WARNING}
+          </Badge>
           {isOverThreshold && (
-            <Badge variant="destructive" className="rounded-full">High Claims</Badge>
+            <Badge variant="destructive" className="rounded-full">
+              High Claims
+            </Badge>
           )}
         </div>
       </PageHeader>
@@ -445,7 +470,9 @@ export default function ClaimsPage() {
       <PageContent className="space-y-6">
         <Card className="rounded-2xl border-border/70 shadow-sm">
           <CardContent className="p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Patron</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Patron
+            </h3>
             <BarcodeInput
               label="Patron Barcode"
               placeholder="Enter patron barcode..."
@@ -456,9 +483,18 @@ export default function ClaimsPage() {
             />
             <div className="flex gap-2">
               <Button onClick={loadPatron} disabled={isLoading}>
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Search className="h-4 w-4 mr-1" />Load Patron</>}
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Search className="h-4 w-4 mr-1" />
+                    Load Patron
+                  </>
+                )}
               </Button>
-              <Button variant="outline" onClick={() => setPatronBarcode("")}>Clear</Button>
+              <Button variant="outline" onClick={() => setPatronBarcode("")}>
+                Clear
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -521,14 +557,20 @@ export default function ClaimsPage() {
                   <CardDescription className="font-mono text-xs">{patron.barcode}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="text-sm font-semibold">{patron.lastName}, {patron.firstName}</div>
+                  <div className="text-sm font-semibold">
+                    {patron.lastName}, {patron.firstName}
+                  </div>
                   <div className="grid grid-cols-2 gap-2 text-center">
                     <div className="rounded-xl bg-amber-50 dark:bg-amber-950 p-2">
-                      <div className="text-lg font-bold text-amber-600">{patron.claimsReturnedCount}</div>
+                      <div className="text-lg font-bold text-amber-600">
+                        {patron.claimsReturnedCount}
+                      </div>
                       <div className="text-[10px] text-muted-foreground">Claims Returned</div>
                     </div>
                     <div className="rounded-xl bg-rose-50 dark:bg-rose-950 p-2">
-                      <div className="text-lg font-bold text-rose-600">{patron.claimsNeverCheckedOutCount}</div>
+                      <div className="text-lg font-bold text-rose-600">
+                        {patron.claimsNeverCheckedOutCount}
+                      </div>
                       <div className="text-[10px] text-muted-foreground">Never Checked Out</div>
                     </div>
                   </div>
@@ -555,7 +597,9 @@ export default function ClaimsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Overdue</span>
-                    <span className="font-medium text-rose-600">{itemsOut.filter((i) => i.isOverdue).length}</span>
+                    <span className="font-medium text-rose-600">
+                      {itemsOut.filter((i) => i.isOverdue).length}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Claimed Items</span>
@@ -572,8 +616,14 @@ export default function ClaimsPage() {
             icon={FileQuestion}
             title="Enter a patron barcode"
             description="Load a patron to manage claims returned or never checked out items."
-            action={{ label: "Seed demo data", onClick: () => router.push("/staff/help#demo-data") }}
-            secondaryAction={{ label: "Search patrons", onClick: () => router.push("/staff/patrons") }}
+            action={{
+              label: "Evergreen setup checklist",
+              onClick: () => router.push("/staff/help#evergreen-setup"),
+            }}
+            secondaryAction={{
+              label: "Search patrons",
+              onClick: () => router.push("/staff/patrons"),
+            }}
           />
         )}
       </PageContent>
@@ -596,7 +646,8 @@ export default function ClaimsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="claim-date">Claim date</Label>
-                <Input id="claim-date"
+                <Input
+                  id="claim-date"
                   type="date"
                   value={claimDate}
                   onChange={(e) => setClaimDate(e.target.value)}
@@ -627,7 +678,10 @@ export default function ClaimsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showClaimsNeverCheckedOutDialog} onOpenChange={setShowClaimsNeverCheckedOutDialog}>
+      <Dialog
+        open={showClaimsNeverCheckedOutDialog}
+        onOpenChange={setShowClaimsNeverCheckedOutDialog}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Claims Never Checked Out</DialogTitle>
@@ -662,21 +716,31 @@ export default function ClaimsPage() {
             <div className="space-y-2">
               <Label htmlFor="resolution">Resolution</Label>
               <Select id="resolution" value={resolution} onValueChange={setResolution}>
-                <SelectTrigger><SelectValue placeholder="Select resolution" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select resolution" />
+                </SelectTrigger>
                 <SelectContent>
                   {RESOLUTION_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox id="refundFee" checked={refundFee} onCheckedChange={(c) => setRefundFee(c as boolean)} />
+              <Checkbox
+                id="refundFee"
+                checked={refundFee}
+                onCheckedChange={(c) => setRefundFee(c as boolean)}
+              />
               <Label htmlFor="refundFee">Refund fees if applicable</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowResolveDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowResolveDialog(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleResolveClaim} disabled={isProcessing || !resolution}>
               {isProcessing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               Resolve Claim
@@ -694,7 +758,8 @@ export default function ClaimsPage() {
           <div className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="claims-returned-count">Claims Returned Count</Label>
-              <Input id="claims-returned-count"
+              <Input
+                id="claims-returned-count"
                 type="number"
                 value={newClaimsReturnedCount}
                 onChange={(e) => setNewClaimsReturnedCount(parseInt(e.target.value) || 0)}
@@ -702,7 +767,8 @@ export default function ClaimsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="claims-never-checked-out-count">Claims Never Checked Out Count</Label>
-              <Input id="claims-never-checked-out-count"
+              <Input
+                id="claims-never-checked-out-count"
                 type="number"
                 value={newClaimsNeverCheckedOutCount}
                 onChange={(e) => setNewClaimsNeverCheckedOutCount(parseInt(e.target.value) || 0)}
@@ -710,7 +776,9 @@ export default function ClaimsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditCountsDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowEditCountsDialog(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleUpdateCounts} disabled={isProcessing}>
               {isProcessing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               Update Counts

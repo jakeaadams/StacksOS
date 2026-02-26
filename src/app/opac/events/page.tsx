@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, useRouter } from "next/navigation";
 import { featureFlags } from "@/lib/feature-flags";
 import { useLibrary } from "@/hooks/use-library";
+import { usePatronSession } from "@/hooks/use-patron-session";
 import {
   Calendar,
   CalendarDays,
@@ -15,8 +16,11 @@ import {
   Search,
   Users,
   ArrowLeft,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -30,65 +34,101 @@ import type { LibraryEvent } from "@/lib/events-data";
 import { useTranslations } from "next-intl";
 
 type ViewMode = "list" | "week" | "month";
+type ReminderChannel = "none" | "email" | "sms" | "both";
+
+type EventRegistrationSnapshot = {
+  required: boolean;
+  capacity: number | null;
+  registeredCount: number;
+  waitlistedCount: number;
+  viewerStatus: "registered" | "waitlisted" | "canceled" | null;
+  viewerWaitlistPosition: number | null;
+  viewerReminderChannel: ReminderChannel | null;
+  viewerReminderScheduledFor: string | null;
+};
+
+type EventWithLifecycle = LibraryEvent & {
+  registration?: EventRegistrationSnapshot;
+};
 
 const AGE_GROUP_COLORS: Record<string, string> = {
-  "All Ages": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  Kids: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-  Teens: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
-  Adults: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-  Seniors: "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300",
+  "All Ages": "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
+  Kids: "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
+  Teens: "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
+  Adults: "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
+  Seniors: "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
 };
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
-  Storytime: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300",
-  "Book Club": "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
-  "Tech Help": "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300",
-  Workshop: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-  "Author Visit": "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-  Teen: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
-  Kids: "bg-lime-100 text-lime-800 dark:bg-lime-900/30 dark:text-lime-300",
-  Adult: "bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300",
+  Storytime: "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
+  "Book Club": "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
+  "Tech Help": "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
+  Workshop: "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
+  "Author Visit": "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
+  Teen: "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
+  Kids: "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
+  Adult: "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
 };
 
 function formatEventDate(dateStr: string): {
   monthAbbr: string;
   day: string;
-  weekday: string;
-  full: string;
 } {
   const date = new Date(dateStr + "T12:00:00");
   return {
     monthAbbr: date.toLocaleDateString("en-US", { month: "short" }).toUpperCase(),
     day: date.getDate().toString(),
-    weekday: date.toLocaleDateString("en-US", { weekday: "long" }),
-    full: date.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    }),
   };
 }
 
-function EventCard({ event }: { event: LibraryEvent }) {
+function formatReminderTime(value: string | null): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function EventCard({
+  event,
+  isLoggedIn,
+  isBusy,
+  onRequireLogin,
+  onRegister,
+  onCancel,
+  onReminderChange,
+}: {
+  event: EventWithLifecycle;
+  isLoggedIn: boolean;
+  isBusy: boolean;
+  onRequireLogin: () => void;
+  onRegister: (eventId: string) => void;
+  onCancel: (eventId: string) => void;
+  onReminderChange: (eventId: string, channel: ReminderChannel) => void;
+}) {
   const t = useTranslations("eventsPage");
   const dateInfo = formatEventDate(event.date);
 
-  const handleRegister = () => {
-    if (event.registrationUrl) {
-      window.open(event.registrationUrl, "_blank", "noopener,noreferrer");
-    } else {
-      toast.info(t("registrationComingSoon"), {
-        description: t("registrationComingSoonDesc"),
-      });
-    }
-  };
+  const registration = event.registration;
+  const viewerStatus = registration?.viewerStatus || null;
+  const isRegistered = viewerStatus === "registered";
+  const isWaitlisted = viewerStatus === "waitlisted";
+
+  const capacity = registration?.capacity;
+  const isAtCapacity =
+    typeof capacity === "number" ? registration!.registeredCount >= capacity : false;
+
+  const reminderValue = (registration?.viewerReminderChannel || "email") as ReminderChannel;
+  const reminderTime = formatReminderTime(registration?.viewerReminderScheduledFor || null);
 
   return (
     <div className="flex gap-4 md:gap-6 p-4 md:p-6 bg-card rounded-xl border border-border hover:shadow-md transition-shadow">
-      {/* Date display - calendar icon style */}
       <div className="shrink-0 w-16 md:w-20 text-center">
-        <div className="bg-primary-600 text-white text-xs font-bold rounded-t-lg py-1 px-2">
+        <div className="stx-action-primary text-xs font-bold rounded-t-lg py-1 px-2">
           {dateInfo.monthAbbr}
         </div>
         <div className="bg-muted border border-t-0 border-border rounded-b-lg py-2 px-2">
@@ -96,22 +136,31 @@ function EventCard({ event }: { event: LibraryEvent }) {
         </div>
       </div>
 
-      {/* Event details */}
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-start gap-2 mb-2">
           <h3 className="text-lg font-semibold text-foreground">{event.title}</h3>
           <Badge
-            className={`text-xs ${EVENT_TYPE_COLORS[event.type] || "bg-gray-100 text-gray-800"}`}
+            className={`text-xs ${EVENT_TYPE_COLORS[event.type] || "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300"}`}
             variant="secondary"
           >
             {event.type}
           </Badge>
           <Badge
-            className={`text-xs ${AGE_GROUP_COLORS[event.ageGroup] || "bg-gray-100 text-gray-800"}`}
+            className={`text-xs ${AGE_GROUP_COLORS[event.ageGroup] || "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300"}`}
             variant="secondary"
           >
             {event.ageGroup}
           </Badge>
+          {isRegistered ? (
+            <Badge className="text-xs bg-emerald-100 text-emerald-800" variant="secondary">
+              Registered
+            </Badge>
+          ) : null}
+          {isWaitlisted ? (
+            <Badge className="text-xs bg-amber-100 text-amber-800" variant="secondary">
+              Waitlist #{registration?.viewerWaitlistPosition ?? "-"}
+            </Badge>
+          ) : null}
         </div>
 
         <p className="text-muted-foreground text-sm mb-3 line-clamp-2">{event.description}</p>
@@ -119,52 +168,154 @@ function EventCard({ event }: { event: LibraryEvent }) {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Clock className="h-4 w-4" />
-            {event.startTime} – {event.endTime}
+            {event.startTime} - {event.endTime}
           </span>
           <span className="inline-flex items-center gap-1">
             <MapPin className="h-4 w-4" />
             {event.branch}
           </span>
-          {event.spotsAvailable !== undefined && (
+          {registration?.capacity !== null && registration ? (
             <span className="inline-flex items-center gap-1">
               <Users className="h-4 w-4" />
-              {t("spotsLeft", { available: event.spotsAvailable ?? 0, capacity: event.capacity ?? 0 })}
+              {t("spotsLeft", {
+                available: Math.max(0, (registration.capacity || 0) - registration.registeredCount),
+                capacity: registration.capacity || 0,
+              })}
             </span>
-          )}
+          ) : event.spotsAvailable !== undefined ? (
+            <span className="inline-flex items-center gap-1">
+              <Users className="h-4 w-4" />
+              {t("spotsLeft", {
+                available: event.spotsAvailable ?? 0,
+                capacity: event.capacity ?? 0,
+              })}
+            </span>
+          ) : null}
+          {registration?.waitlistedCount ? (
+            <span className="inline-flex items-center gap-1 text-amber-700">
+              Waitlist: {registration.waitlistedCount}
+            </span>
+          ) : null}
         </div>
       </div>
 
-      {/* Registration button */}
-      <div className="shrink-0 flex flex-col items-end justify-between">
-        {event.registrationRequired ? (
-          <button
-            onClick={handleRegister}
-            aria-label={`Register for ${event.title}`}
-            className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg
-                     hover:bg-primary-700 transition-colors whitespace-nowrap"
-          >
-            Register
-          </button>
+      <div className="shrink-0 flex flex-col items-end gap-2 justify-between">
+        {isRegistered || isWaitlisted ? (
+          <>
+            <div className="w-[170px]">
+              <label className="text-[11px] text-muted-foreground mb-1 block">Reminder</label>
+              <Select
+                value={reminderValue}
+                onValueChange={(value) => onReminderChange(event.id, value as ReminderChannel)}
+                disabled={isBusy}
+              >
+                <SelectTrigger className="h-8 w-full text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Off</SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="sms">SMS</SelectItem>
+                  <SelectItem value="both">Email + SMS</SelectItem>
+                </SelectContent>
+              </Select>
+              {reminderTime ? (
+                <p className="mt-1 text-[11px] text-muted-foreground">Next: {reminderTime}</p>
+              ) : null}
+            </div>
+            <Button
+              type="button"
+              onClick={() => onCancel(event.id)}
+              variant="destructive"
+              className="min-w-[136px] whitespace-nowrap"
+              disabled={isBusy}
+            >
+              {isBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isWaitlisted ? (
+                "Leave Waitlist"
+              ) : (
+                "Cancel"
+              )}
+            </Button>
+          </>
+        ) : event.registrationRequired ? (
+          isLoggedIn ? (
+            <Button
+              type="button"
+              onClick={() => onRegister(event.id)}
+              className="stx-action-primary min-w-[136px] whitespace-nowrap disabled:opacity-60"
+              disabled={isBusy}
+            >
+              {isBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isAtCapacity ? (
+                "Join Waitlist"
+              ) : (
+                "Register"
+              )}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={onRequireLogin}
+              variant="secondary"
+              className="whitespace-nowrap"
+            >
+              Log in to register
+            </Button>
+          )
         ) : (
-          <span className="px-3 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs font-medium rounded-full">
-            Drop-in
-          </span>
+          <>
+            <span className="px-3 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs font-medium rounded-full">
+              Drop-in
+            </span>
+            {isLoggedIn ? (
+              <Button
+                type="button"
+                onClick={() => onRegister(event.id)}
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap disabled:opacity-60"
+                disabled={isBusy}
+              >
+                {isBusy ? "Saving..." : "Save to My Events"}
+              </Button>
+            ) : null}
+          </>
         )}
-        {event.spotsAvailable !== undefined && event.spotsAvailable <= 3 && (
-          <span className="text-xs text-red-600 dark:text-red-400 font-medium mt-2">
-            Almost full!
-          </span>
-        )}
+
+        {registration?.capacity !== null &&
+        registration &&
+        !isRegistered &&
+        !isWaitlisted &&
+        isAtCapacity ? (
+          <span className="text-xs text-red-600 dark:text-red-400 font-medium">At capacity</span>
+        ) : null}
       </div>
     </div>
   );
 }
 
-function WeekView({ events }: { events: LibraryEvent[] }) {
-  const t = useTranslations("eventsPage");
-  // Group events by date for the next 7 days
+function WeekView({
+  events,
+  isLoggedIn,
+  busyEventId,
+  onRequireLogin,
+  onRegister,
+  onCancel,
+  onReminderChange,
+}: {
+  events: EventWithLifecycle[];
+  isLoggedIn: boolean;
+  busyEventId: string | null;
+  onRequireLogin: () => void;
+  onRegister: (eventId: string) => void;
+  onCancel: (eventId: string) => void;
+  onReminderChange: (eventId: string, channel: ReminderChannel) => void;
+}) {
   const today = new Date();
-  const days: { date: string; label: string; events: LibraryEvent[] }[] = [];
+  const days: { date: string; label: string; events: EventWithLifecycle[] }[] = [];
 
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
@@ -178,7 +329,7 @@ function WeekView({ events }: { events: LibraryEvent[] }) {
     days.push({
       date: dateStr!,
       label,
-      events: events.filter((e) => e.date === dateStr),
+      events: events.filter((event) => event.date === dateStr),
     });
   }
 
@@ -192,7 +343,16 @@ function WeekView({ events }: { events: LibraryEvent[] }) {
           {day.events.length > 0 ? (
             <div className="space-y-3">
               {day.events.map((event) => (
-                <EventCard key={event.id} event={event} />
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  isLoggedIn={isLoggedIn}
+                  isBusy={busyEventId === event.id}
+                  onRequireLogin={onRequireLogin}
+                  onRegister={onRegister}
+                  onCancel={onCancel}
+                  onReminderChange={onReminderChange}
+                />
               ))}
             </div>
           ) : (
@@ -206,31 +366,29 @@ function WeekView({ events }: { events: LibraryEvent[] }) {
   );
 }
 
-function MonthView({ events }: { events: LibraryEvent[] }) {
+function MonthView({ events }: { events: EventWithLifecycle[] }) {
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
   const firstDay = new Date(currentYear, currentMonth, 1);
   const lastDay = new Date(currentYear, currentMonth + 1, 0);
-  const startPadding = firstDay.getDay(); // 0 = Sunday
+  const startPadding = firstDay.getDay();
 
   const monthLabel = firstDay.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
-  const eventsByDate = new Map<string, LibraryEvent[]>();
-  events.forEach((e) => {
-    const existing = eventsByDate.get(e.date) || [];
-    existing.push(e);
-    eventsByDate.set(e.date, existing);
+  const eventsByDate = new Map<string, EventWithLifecycle[]>();
+  events.forEach((event) => {
+    const existing = eventsByDate.get(event.date) || [];
+    existing.push(event);
+    eventsByDate.set(event.date, existing);
   });
 
-  const cells: { day: number | null; dateStr: string; events: LibraryEvent[] }[] = [];
+  const cells: { day: number | null; dateStr: string; events: EventWithLifecycle[] }[] = [];
 
-  // Padding before first day
   for (let i = 0; i < startPadding; i++) {
     cells.push({ day: null, dateStr: "", events: [] });
   }
 
-  // Days of the month
   for (let d = 1; d <= lastDay.getDate(); d++) {
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     cells.push({
@@ -244,44 +402,44 @@ function MonthView({ events }: { events: LibraryEvent[] }) {
     <div>
       <h3 className="text-lg font-semibold text-foreground mb-4 text-center">{monthLabel}</h3>
       <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
           <div
-            key={d}
+            key={day}
             className="bg-muted p-2 text-center text-xs font-semibold text-muted-foreground"
           >
-            {d}
+            {day}
           </div>
         ))}
-        {cells.map((cell, i) => (
+        {cells.map((cell, index) => (
           <div
-            key={i}
+            key={index}
             className={`bg-card p-2 min-h-[80px] ${
               cell.day === today.getDate() && currentMonth === today.getMonth()
                 ? "ring-2 ring-primary-500 ring-inset"
                 : ""
             }`}
           >
-            {cell.day && (
+            {cell.day ? (
               <>
                 <span className="text-sm font-medium text-foreground">{cell.day}</span>
                 <div className="mt-1 space-y-0.5">
-                  {cell.events.slice(0, 2).map((evt) => (
+                  {cell.events.slice(0, 2).map((event) => (
                     <div
-                      key={evt.id}
+                      key={event.id}
                       className="text-xs truncate px-1 py-0.5 rounded bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"
-                      title={`${evt.title} - ${evt.startTime}`}
+                      title={`${event.title} - ${event.startTime}`}
                     >
-                      {evt.title}
+                      {event.title}
                     </div>
                   ))}
-                  {cell.events.length > 2 && (
+                  {cell.events.length > 2 ? (
                     <span className="text-xs text-muted-foreground">
                       +{cell.events.length - 2} more
                     </span>
-                  )}
+                  ) : null}
                 </div>
               </>
-            )}
+            ) : null}
           </div>
         ))}
       </div>
@@ -295,15 +453,20 @@ export default function EventsPage() {
   }
 
   const t = useTranslations("eventsPage");
+  const router = useRouter();
   const { library } = useLibrary();
-  const [events, setEvents] = useState<LibraryEvent[]>([]);
+  const { isLoggedIn } = usePatronSession();
+
+  const [events, setEvents] = useState<EventWithLifecycle[]>([]);
   const [branches, setBranches] = useState<string[]>([]);
   const [types, setTypes] = useState<string[]>([]);
+  const [eventsSource, setEventsSource] = useState<"mock" | "none">("none");
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [filterBranch, setFilterBranch] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [busyEventId, setBusyEventId] = useState<string | null>(null);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -312,15 +475,18 @@ export default function EventsPage() {
       if (filterBranch && filterBranch !== "all") params.set("branch", filterBranch);
       if (filterType && filterType !== "all") params.set("type", filterType);
 
-      const res = await fetch(`/api/opac/events?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setEvents(data.events || []);
-        setBranches(data.branches || []);
-        setTypes(data.types || []);
-      }
+      const res = await fetch(`/api/opac/events?${params.toString()}`, {
+        credentials: "include",
+      });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      setEvents(Array.isArray(data.events) ? data.events : []);
+      setBranches(Array.isArray(data.branches) ? data.branches : []);
+      setTypes(Array.isArray(data.types) ? data.types : []);
+      setEventsSource(data?.source === "mock" ? "mock" : "none");
     } catch {
-      // Silently handle fetch errors
+      // Ignore list-fetch errors; page stays interactive.
     } finally {
       setIsLoading(false);
     }
@@ -334,19 +500,95 @@ export default function EventsPage() {
     if (!searchTerm.trim()) return events;
     const term = searchTerm.toLowerCase();
     return events.filter(
-      (e) =>
-        e.title.toLowerCase().includes(term) ||
-        e.description.toLowerCase().includes(term) ||
-        e.branch.toLowerCase().includes(term)
+      (event) =>
+        event.title.toLowerCase().includes(term) ||
+        event.description.toLowerCase().includes(term) ||
+        event.branch.toLowerCase().includes(term)
     );
   }, [events, searchTerm]);
 
+  const requireLogin = useCallback(() => {
+    router.push("/opac/login?redirect=/opac/events");
+  }, [router]);
+
+  const mutateRegistration = useCallback(
+    async (payload: Record<string, any>) => {
+      const eventId = String(payload.eventId || "");
+      if (!eventId) return;
+      if (!isLoggedIn) {
+        requireLogin();
+        return;
+      }
+
+      setBusyEventId(eventId);
+      try {
+        const res = await fetch("/api/opac/events/registrations", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (res.status === 401) {
+          requireLogin();
+          return;
+        }
+
+        if (!res.ok || data?.ok === false) {
+          toast.error(String(data?.error || `Request failed (${res.status})`));
+          return;
+        }
+
+        toast.success(String(data?.message || "Event registration updated."));
+        await fetchEvents();
+      } catch {
+        toast.error("Unable to update event registration right now.");
+      } finally {
+        setBusyEventId(null);
+      }
+    },
+    [fetchEvents, isLoggedIn, requireLogin]
+  );
+
+  const handleRegister = useCallback(
+    async (eventId: string) => {
+      await mutateRegistration({
+        action: "register",
+        eventId,
+        reminderChannel: "email",
+      });
+    },
+    [mutateRegistration]
+  );
+
+  const handleCancel = useCallback(
+    async (eventId: string) => {
+      await mutateRegistration({
+        action: "cancel",
+        eventId,
+      });
+    },
+    [mutateRegistration]
+  );
+
+  const handleReminderChange = useCallback(
+    async (eventId: string, reminderChannel: ReminderChannel) => {
+      await mutateRegistration({
+        action: "update_reminders",
+        eventId,
+        reminderChannel,
+      });
+    },
+    [mutateRegistration]
+  );
+
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Page header */}
       <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white py-10 md:py-14">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center justify-between gap-3 mb-2">
             <Link
               href="/opac"
               className="text-primary-200 hover:text-white transition-colors text-sm inline-flex items-center gap-1"
@@ -354,6 +596,14 @@ export default function EventsPage() {
               <ArrowLeft className="h-4 w-4" />
               Back to Catalog
             </Link>
+            {isLoggedIn ? (
+              <Link
+                href="/opac/account/events"
+                className="text-xs md:text-sm rounded-full border border-white/30 px-3 py-1.5 bg-white/10 hover:bg-white/20"
+              >
+                My Event Registrations
+              </Link>
+            ) : null}
           </div>
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-white/10 rounded-lg">
@@ -362,31 +612,32 @@ export default function EventsPage() {
             <h1 className="text-3xl md:text-4xl font-bold">{t("title")}</h1>
           </div>
           <p className="text-primary-100 text-lg max-w-2xl">
-            {t("discoverEvents")}{" "}
-            {library?.name || "your library"}.
+            {t("discoverEvents")} {library?.name || "your library"}.
           </p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Filters and controls */}
+        {!isLoading && eventsSource === "none" ? (
+          <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Events are not configured for this library yet. Ask staff to connect a real events
+            source.
+          </div>
+        ) : null}
+
         <div className="flex flex-col md:flex-row gap-4 mb-8">
-          {/* Search */}
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
+            <Input
               type="text"
               placeholder={t("searchPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               aria-label={t("searchEvents")}
-              className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg bg-background
-                       text-foreground placeholder:text-muted-foreground
-                       focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="pl-10"
             />
           </div>
 
-          {/* Filters */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
@@ -399,9 +650,9 @@ export default function EventsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("allBranches")}</SelectItem>
-                {branches.map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {b}
+                {branches.map((branch) => (
+                  <SelectItem key={branch} value={branch}>
+                    {branch}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -413,19 +664,18 @@ export default function EventsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("allTypes")}</SelectItem>
-                {types.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
+                {types.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* View toggle */}
           <Tabs
             value={viewMode}
-            onValueChange={(v) => setViewMode(v as ViewMode)}
+            onValueChange={(value) => setViewMode(value as ViewMode)}
             className="ml-auto"
           >
             <TabsList>
@@ -445,7 +695,6 @@ export default function EventsPage() {
           </Tabs>
         </div>
 
-        {/* Content */}
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
@@ -474,24 +723,44 @@ export default function EventsPage() {
           </div>
         ) : (
           <>
-            {viewMode === "list" && (
+            {viewMode === "list" ? (
               <div className="space-y-4">
                 {filteredEvents.map((event) => (
-                  <EventCard key={event.id} event={event} />
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    isLoggedIn={isLoggedIn}
+                    isBusy={busyEventId === event.id}
+                    onRequireLogin={requireLogin}
+                    onRegister={handleRegister}
+                    onCancel={handleCancel}
+                    onReminderChange={handleReminderChange}
+                  />
                 ))}
               </div>
-            )}
-            {viewMode === "week" && <WeekView events={filteredEvents} />}
-            {viewMode === "month" && <MonthView events={filteredEvents} />}
+            ) : null}
+
+            {viewMode === "week" ? (
+              <WeekView
+                events={filteredEvents}
+                isLoggedIn={isLoggedIn}
+                busyEventId={busyEventId}
+                onRequireLogin={requireLogin}
+                onRegister={handleRegister}
+                onCancel={handleCancel}
+                onReminderChange={handleReminderChange}
+              />
+            ) : null}
+
+            {viewMode === "month" ? <MonthView events={filteredEvents} /> : null}
           </>
         )}
 
-        {/* Results count */}
-        {!isLoading && filteredEvents.length > 0 && (
+        {!isLoading && filteredEvents.length > 0 ? (
           <p className="mt-6 text-sm text-muted-foreground text-center">
             {t("showingEvents", { count: filteredEvents.length })}
           </p>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -1,10 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  callOpenSRF,
-  successResponse,
-  errorResponse,
-  serverErrorResponse,
-} from "@/lib/api";
+import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -20,9 +15,11 @@ interface AllocationRecord {
   ilsevent?: unknown;
 }
 
-const allocationsPostSchema = z.object({
-  action: z.string().trim().min(1),
-}).passthrough();
+const allocationsPostSchema = z
+  .object({
+    action: z.string().trim().min(1),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -31,18 +28,30 @@ export async function GET(req: NextRequest) {
 
   try {
     const { authtoken } = await requirePermissions(["VIEW_FUND_ALLOCATION"]);
-    logger.debug({ route: "api.evergreen.acquisitions.allocations", fundId, fundingSourceId }, "Allocations GET");
+    logger.debug(
+      { route: "api.evergreen.acquisitions.allocations", fundId, fundingSourceId },
+      "Allocations GET"
+    );
 
-    const searchCriteria: Record<string, unknown> = {};
+    const searchCriteria: Record<string, any> = {};
     if (fundId) searchCriteria.fund = parseInt(fundId, 10);
     if (fundingSourceId) searchCriteria.funding_source = parseInt(fundingSourceId, 10);
 
-    const response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund_allocation.search", [authtoken, searchCriteria, { flesh: 2, flesh_fields: { acqfa: ["fund", "funding_source"] } }]);
+    const response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund_allocation.search", [
+      authtoken,
+      searchCriteria,
+      { flesh: 2, flesh_fields: { acqfa: ["fund", "funding_source"] } },
+    ]);
     const allocPayload = response?.payload || [];
     const allocations = Array.isArray(allocPayload?.[0]) ? allocPayload[0] : allocPayload;
 
     const mappedAllocations = (Array.isArray(allocations) ? allocations : [])
-      .filter((a: unknown): a is AllocationRecord => a !== null && typeof a === "object" && !("ilsevent" in a && (a as AllocationRecord).ilsevent))
+      .filter(
+        (a: unknown): a is AllocationRecord =>
+          a !== null &&
+          typeof a === "object" &&
+          !("ilsevent" in a && (a as AllocationRecord).ilsevent)
+      )
       .map((a: AllocationRecord) => ({
         id: a.id,
         amount: parseFloat(String(a.amount)) || 0,
@@ -51,7 +60,8 @@ export async function GET(req: NextRequest) {
         fundId: typeof a.fund === "object" ? a.fund?.id : a.fund,
         fundName: typeof a.fund === "object" ? a.fund?.name || "" : "",
         fundCode: typeof a.fund === "object" ? a.fund?.code || "" : "",
-        fundingSourceId: typeof a.funding_source === "object" ? a.funding_source?.id : a.funding_source,
+        fundingSourceId:
+          typeof a.funding_source === "object" ? a.funding_source?.id : a.funding_source,
         fundingSourceName: typeof a.funding_source === "object" ? a.funding_source?.name || "" : "",
         allocator: a.allocator,
       }));
@@ -123,7 +133,10 @@ export async function POST(req: NextRequest) {
         if (!id) {
           return errorResponse("Allocation ID required", 400);
         }
-        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund_allocation.delete", [authtoken, parseInt(String(id), 10)]);
+        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund_allocation.delete", [
+          authtoken,
+          parseInt(String(id), 10),
+        ]);
         const result = response?.payload?.[0];
         if (result?.ilsevent) {
           return errorResponse(result.textcode || "Failed to delete allocation", 400);

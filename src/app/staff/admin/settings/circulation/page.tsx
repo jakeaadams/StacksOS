@@ -122,9 +122,7 @@ export default function CirculationPoliciesPage() {
       {
         accessorKey: "id",
         header: "ID",
-        cell: ({ row }) => (
-          <span className="font-mono text-xs">#{row.original.id}</span>
-        ),
+        cell: ({ row }) => <span className="font-mono text-xs">#{row.original.id}</span>,
       },
       {
         accessorKey: "active",
@@ -152,20 +150,21 @@ export default function CirculationPoliciesPage() {
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <span>{row.original.grpName || (row.original.grp ? `Group ${row.original.grp}` : "Any")}</span>
+            <span>
+              {row.original.grpName || (row.original.grp ? `Group ${row.original.grp}` : "Any")}
+            </span>
           </div>
         ),
       },
       {
         accessorKey: "circModifier",
         header: "Circ Modifier",
-        cell: ({ row }) => (
+        cell: ({ row }) =>
           row.original.circModifier ? (
             <Badge variant="outline">{row.original.circModifier}</Badge>
           ) : (
             <span className="text-muted-foreground text-xs">Any</span>
-          )
-        ),
+          ),
       },
       {
         accessorKey: "copyLocationName",
@@ -173,30 +172,28 @@ export default function CirculationPoliciesPage() {
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span>{row.original.copyLocationName || (row.original.copyLocation ? `Loc ${row.original.copyLocation}` : "Any")}</span>
+            <span>
+              {row.original.copyLocationName ||
+                (row.original.copyLocation ? `Loc ${row.original.copyLocation}` : "Any")}
+            </span>
           </div>
         ),
       },
       {
         accessorKey: "circulate",
         header: "Circulates",
-        cell: ({ row }) => (
+        cell: ({ row }) =>
           row.original.circulate ? (
             <CheckCircle className="h-4 w-4 text-emerald-600" />
           ) : (
             <XCircle className="h-4 w-4 text-red-600" />
-          )
-        ),
+          ),
       },
       {
         id: "actions",
         header: "",
         cell: ({ row }) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelectedPolicy(row.original)}
-          >
+          <Button variant="ghost" size="sm" onClick={() => setSelectedPolicy(row.original)}>
             <Eye className="h-4 w-4 mr-1" />
             View
           </Button>
@@ -244,9 +241,7 @@ export default function CirculationPoliciesPage() {
           { label: "Settings", href: "/staff/admin/settings" },
           { label: "Circulation" },
         ]}
-        actions={[
-          { label: "Refresh", onClick: loadPolicies, icon: RefreshCw },
-        ]}
+        actions={[{ label: "Refresh", onClick: loadPolicies, icon: RefreshCw }]}
       />
 
       <PageContent className="space-y-6">
@@ -256,7 +251,9 @@ export default function CirculationPoliciesPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Policies</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Total Policies
+                  </p>
                   <div className="text-2xl font-semibold mt-1">{policies.length}</div>
                 </div>
                 <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600">
@@ -284,10 +281,12 @@ export default function CirculationPoliciesPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Organizations</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Organizations
+                  </p>
                   <div className="text-2xl font-semibold mt-1">{stats.uniqueOrgs}</div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-purple-500/10 text-purple-600">
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-indigo-500/10 text-indigo-600">
                   <Building2 className="h-5 w-5" />
                 </div>
               </div>
@@ -298,7 +297,9 @@ export default function CirculationPoliciesPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">With Fines</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    With Fines
+                  </p>
                   <div className="text-2xl font-semibold mt-1">{stats.withFines}</div>
                 </div>
                 <div className="h-10 w-10 rounded-full flex items-center justify-center bg-amber-500/10 text-amber-600">
@@ -316,7 +317,8 @@ export default function CirculationPoliciesPage() {
               <div>
                 <CardTitle className="text-base">Circulation Matrix Matchpoints</CardTitle>
                 <CardDescription>
-                  Policies are evaluated in order based on specificity. More specific matchpoints take precedence.
+                  Policies are evaluated in order based on specificity. More specific matchpoints
+                  take precedence.
                 </CardDescription>
               </div>
               <div className="w-72">
@@ -390,8 +392,8 @@ export default function CirculationPoliciesPage() {
               </div>
             </div>
             <p className="text-xs border-l-2 border-blue-500 pl-3 bg-blue-50 dark:bg-blue-950/20 py-2 rounded-r">
-              <strong>Note:</strong> Modifying circulation policies requires specific Evergreen permissions.
-              Changes may require staff to re-authenticate to take effect.
+              <strong>Note:</strong> Modifying circulation policies requires specific Evergreen
+              permissions. Changes may require staff to re-authenticate to take effect.
             </p>
           </CardContent>
         </Card>
@@ -405,9 +407,7 @@ export default function CirculationPoliciesPage() {
               <BookOpen className="h-5 w-5" />
               Policy #{selectedPolicy?.id}
             </DialogTitle>
-            <DialogDescription>
-              Circulation matrix matchpoint details
-            </DialogDescription>
+            <DialogDescription>Circulation matrix matchpoint details</DialogDescription>
           </DialogHeader>
           {selectedPolicy && (
             <div className="space-y-4 py-4">
@@ -437,7 +437,9 @@ export default function CirculationPoliciesPage() {
                       <div className="flex items-center gap-3 p-3 rounded-lg border">
                         <Building2 className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <Label htmlFor="organization" className="text-xs text-muted-foreground">Organization</Label>
+                          <Label htmlFor="organization" className="text-xs text-muted-foreground">
+                            Organization
+                          </Label>
                           <p className="font-medium">
                             {selectedPolicy.orgUnitName || `Org ${selectedPolicy.orgUnit}`}
                           </p>
@@ -446,25 +448,35 @@ export default function CirculationPoliciesPage() {
                       <div className="flex items-center gap-3 p-3 rounded-lg border">
                         <Users className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <Label htmlFor="patron-group" className="text-xs text-muted-foreground">Patron Group</Label>
+                          <Label htmlFor="patron-group" className="text-xs text-muted-foreground">
+                            Patron Group
+                          </Label>
                           <p className="font-medium">
-                            {selectedPolicy.grpName || (selectedPolicy.grp ? `Group ${selectedPolicy.grp}` : "Any")}
+                            {selectedPolicy.grpName ||
+                              (selectedPolicy.grp ? `Group ${selectedPolicy.grp}` : "Any")}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 p-3 rounded-lg border">
                         <Hash className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <Label htmlFor="circ-modifier" className="text-xs text-muted-foreground">Circ Modifier</Label>
+                          <Label htmlFor="circ-modifier" className="text-xs text-muted-foreground">
+                            Circ Modifier
+                          </Label>
                           <p className="font-medium">{selectedPolicy.circModifier || "Any"}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 p-3 rounded-lg border">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <Label htmlFor="copy-location" className="text-xs text-muted-foreground">Copy Location</Label>
+                          <Label htmlFor="copy-location" className="text-xs text-muted-foreground">
+                            Copy Location
+                          </Label>
                           <p className="font-medium">
-                            {selectedPolicy.copyLocationName || (selectedPolicy.copyLocation ? `Location ${selectedPolicy.copyLocation}` : "Any")}
+                            {selectedPolicy.copyLocationName ||
+                              (selectedPolicy.copyLocation
+                                ? `Location ${selectedPolicy.copyLocation}`
+                                : "Any")}
                           </p>
                         </div>
                       </div>
@@ -493,34 +505,51 @@ export default function CirculationPoliciesPage() {
                       <div className="flex items-center gap-3 p-3 rounded-lg border">
                         <Clock className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <Label htmlFor="duration-rule" className="text-xs text-muted-foreground">Duration Rule</Label>
+                          <Label htmlFor="duration-rule" className="text-xs text-muted-foreground">
+                            Duration Rule
+                          </Label>
                           <p className="font-medium">
-                            {selectedPolicy.durationRule ? `Rule #${selectedPolicy.durationRule}` : "Not set"}
+                            {selectedPolicy.durationRule
+                              ? `Rule #${selectedPolicy.durationRule}`
+                              : "Not set"}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 p-3 rounded-lg border">
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <Label htmlFor="recurring-fine-rule" className="text-xs text-muted-foreground">Recurring Fine Rule</Label>
+                          <Label
+                            htmlFor="recurring-fine-rule"
+                            className="text-xs text-muted-foreground"
+                          >
+                            Recurring Fine Rule
+                          </Label>
                           <p className="font-medium">
-                            {selectedPolicy.recurringFineRule ? `Rule #${selectedPolicy.recurringFineRule}` : "Not set"}
+                            {selectedPolicy.recurringFineRule
+                              ? `Rule #${selectedPolicy.recurringFineRule}`
+                              : "Not set"}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 p-3 rounded-lg border">
                         <AlertCircle className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <Label htmlFor="max-fine-rule" className="text-xs text-muted-foreground">Max Fine Rule</Label>
+                          <Label htmlFor="max-fine-rule" className="text-xs text-muted-foreground">
+                            Max Fine Rule
+                          </Label>
                           <p className="font-medium">
-                            {selectedPolicy.maxFineRule ? `Rule #${selectedPolicy.maxFineRule}` : "Not set"}
+                            {selectedPolicy.maxFineRule
+                              ? `Rule #${selectedPolicy.maxFineRule}`
+                              : "Not set"}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 p-3 rounded-lg border">
                         <Clock className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <Label htmlFor="grace-period" className="text-xs text-muted-foreground">Grace Period</Label>
+                          <Label htmlFor="grace-period" className="text-xs text-muted-foreground">
+                            Grace Period
+                          </Label>
                           <p className="font-medium">{selectedPolicy.gracePeriod || "Not set"}</p>
                         </div>
                       </div>
@@ -529,13 +558,23 @@ export default function CirculationPoliciesPage() {
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         {selectedPolicy.renewalExtends && (
                           <div className="p-3 rounded-lg border">
-                            <Label htmlFor="renewals-allowed" className="text-xs text-muted-foreground">Renewals Allowed</Label>
+                            <Label
+                              htmlFor="renewals-allowed"
+                              className="text-xs text-muted-foreground"
+                            >
+                              Renewals Allowed
+                            </Label>
                             <p className="font-medium">{selectedPolicy.renewalExtends}</p>
                           </div>
                         )}
                         {selectedPolicy.hardDueDate && (
                           <div className="p-3 rounded-lg border">
-                            <Label htmlFor="hard-due-date" className="text-xs text-muted-foreground">Hard Due Date</Label>
+                            <Label
+                              htmlFor="hard-due-date"
+                              className="text-xs text-muted-foreground"
+                            >
+                              Hard Due Date
+                            </Label>
                             <p className="font-medium">Rule #{selectedPolicy.hardDueDate}</p>
                           </div>
                         )}
@@ -544,26 +583,43 @@ export default function CirculationPoliciesPage() {
                   </AccordionContent>
                 </AccordionItem>
 
-                {(selectedPolicy.usrAgeUpperBound || selectedPolicy.usrAgeLowerBound || selectedPolicy.itemAgeRange) && (
+                {(selectedPolicy.usrAgeUpperBound ||
+                  selectedPolicy.usrAgeLowerBound ||
+                  selectedPolicy.itemAgeRange) && (
                   <AccordionItem value="age">
                     <AccordionTrigger>Age Restrictions</AccordionTrigger>
                     <AccordionContent>
                       <div className="grid gap-3 sm:grid-cols-3">
                         {selectedPolicy.usrAgeLowerBound && (
                           <div className="p-3 rounded-lg border">
-                            <Label htmlFor="user-age-lower-bound" className="text-xs text-muted-foreground">User Age Lower Bound</Label>
+                            <Label
+                              htmlFor="user-age-lower-bound"
+                              className="text-xs text-muted-foreground"
+                            >
+                              User Age Lower Bound
+                            </Label>
                             <p className="font-medium">{selectedPolicy.usrAgeLowerBound}</p>
                           </div>
                         )}
                         {selectedPolicy.usrAgeUpperBound && (
                           <div className="p-3 rounded-lg border">
-                            <Label htmlFor="user-age-upper-bound" className="text-xs text-muted-foreground">User Age Upper Bound</Label>
+                            <Label
+                              htmlFor="user-age-upper-bound"
+                              className="text-xs text-muted-foreground"
+                            >
+                              User Age Upper Bound
+                            </Label>
                             <p className="font-medium">{selectedPolicy.usrAgeUpperBound}</p>
                           </div>
                         )}
                         {selectedPolicy.itemAgeRange && (
                           <div className="p-3 rounded-lg border">
-                            <Label htmlFor="item-age-range" className="text-xs text-muted-foreground">Item Age Range</Label>
+                            <Label
+                              htmlFor="item-age-range"
+                              className="text-xs text-muted-foreground"
+                            >
+                              Item Age Range
+                            </Label>
                             <p className="font-medium">{selectedPolicy.itemAgeRange}</p>
                           </div>
                         )}

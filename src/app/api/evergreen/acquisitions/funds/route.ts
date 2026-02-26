@@ -1,10 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  callOpenSRF,
-  successResponse,
-  errorResponse,
-  serverErrorResponse,
-} from "@/lib/api";
+import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -53,9 +48,11 @@ interface TransferRecord {
   ilsevent?: unknown;
 }
 
-const fundsPostSchema = z.object({
-  action: z.string().trim().min(1),
-}).passthrough();
+const fundsPostSchema = z
+  .object({
+    action: z.string().trim().min(1),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -66,24 +63,42 @@ export async function GET(req: NextRequest) {
 
   try {
     const { authtoken } = await requirePermissions(["VIEW_FUND"]);
-    logger.debug({ route: "api.evergreen.acquisitions.funds", id, year, orgId: orgId ? parseInt(orgId, 10) : undefined }, "Funds GET");
+    logger.debug(
+      {
+        route: "api.evergreen.acquisitions.funds",
+        id,
+        year,
+        orgId: orgId ? parseInt(orgId, 10) : undefined,
+      },
+      "Funds GET"
+    );
 
     if (id) {
       const fundId = parseInt(id, 10);
-      const response = await callOpenSRF(
-        "open-ils.acq",
-        "open-ils.acq.fund.retrieve",
-        [authtoken, fundId, { flesh: 1, flesh_fields: { acqf: ["org", "currency_type"] } }]
-      );
+      const response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund.retrieve", [
+        authtoken,
+        fundId,
+        { flesh: 1, flesh_fields: { acqf: ["org", "currency_type"] } },
+      ]);
 
       const fund = response?.payload?.[0] as FundRecord | undefined;
       if (!fund || fund.ilsevent) {
         return errorResponse("Fund not found", 404);
       }
 
-      let summary: FundSummary = { allocation_total: 0, spent_total: 0, encumbrance_total: 0, debit_total: 0, balance: 0 };
+      let summary: FundSummary = {
+        allocation_total: 0,
+        spent_total: 0,
+        encumbrance_total: 0,
+        debit_total: 0,
+        balance: 0,
+      };
       try {
-        const summaryResponse = await callOpenSRF("open-ils.acq", "open-ils.acq.fund.summary.retrieve", [authtoken, fundId]);
+        const summaryResponse = await callOpenSRF(
+          "open-ils.acq",
+          "open-ils.acq.fund.summary.retrieve",
+          [authtoken, fundId]
+        );
         const summaryData = summaryResponse?.payload?.[0];
         if (summaryData && !summaryData.ilsevent) {
           summary = {
@@ -98,33 +113,73 @@ export async function GET(req: NextRequest) {
         logger.warn({ fundId }, "Could not retrieve fund summary");
       }
 
-      let allocations: Array<{ id: number; amount: number; note: string | null; createTime: string; fundingSourceId: number; fundingSourceName: string; allocator: number }> = [];
+      let allocations: Array<{
+        id: number;
+        amount: number;
+        note: string | null;
+        createTime: string;
+        fundingSourceId: number;
+        fundingSourceName: string;
+        allocator: number;
+      }> = [];
       try {
-        const allocResponse = await callOpenSRF("open-ils.acq", "open-ils.acq.fund_allocation.search", [authtoken, { fund: fundId }, { flesh: 1, flesh_fields: { acqfa: ["funding_source"] } }]);
+        const allocResponse = await callOpenSRF(
+          "open-ils.acq",
+          "open-ils.acq.fund_allocation.search",
+          [authtoken, { fund: fundId }, { flesh: 1, flesh_fields: { acqfa: ["funding_source"] } }]
+        );
         const allocPayload = allocResponse?.payload || [];
         const allocList = Array.isArray(allocPayload?.[0]) ? allocPayload[0] : allocPayload;
         allocations = (Array.isArray(allocList) ? allocList : [])
-          .filter((a: unknown): a is AllocationRecord => a !== null && typeof a === "object" && !("ilsevent" in a && (a as AllocationRecord).ilsevent))
+          .filter(
+            (a: unknown): a is AllocationRecord =>
+              a !== null &&
+              typeof a === "object" &&
+              !("ilsevent" in a && (a as AllocationRecord).ilsevent)
+          )
           .map((a: AllocationRecord) => ({
             id: a.id,
             amount: parseFloat(String(a.amount)) || 0,
             note: a.note || null,
             createTime: a.create_time || "",
-            fundingSourceId: typeof a.funding_source === "object" ? a.funding_source?.id ?? 0 : a.funding_source ?? 0,
-            fundingSourceName: typeof a.funding_source === "object" ? a.funding_source?.name || "" : "",
+            fundingSourceId:
+              typeof a.funding_source === "object"
+                ? (a.funding_source?.id ?? 0)
+                : (a.funding_source ?? 0),
+            fundingSourceName:
+              typeof a.funding_source === "object" ? a.funding_source?.name || "" : "",
             allocator: a.allocator ?? 0,
           }));
       } catch {
         logger.warn({ fundId }, "Could not retrieve fund allocations");
       }
 
-      let transfers: Array<{ id: number; sourceFund: number; destFund: number; amount: number; note: string | null; transferTime: string; transferUser: number }> = [];
+      let transfers: Array<{
+        id: number;
+        sourceFund: number;
+        destFund: number;
+        amount: number;
+        note: string | null;
+        transferTime: string;
+        transferUser: number;
+      }> = [];
       try {
-        const transferResponse = await callOpenSRF("open-ils.acq", "open-ils.acq.fund_transfer.search", [authtoken, { "-or": [{ src_fund: fundId }, { dest_fund: fundId }] }]);
+        const transferResponse = await callOpenSRF(
+          "open-ils.acq",
+          "open-ils.acq.fund_transfer.search",
+          [authtoken, { "-or": [{ src_fund: fundId }, { dest_fund: fundId }] }]
+        );
         const transferPayload = transferResponse?.payload || [];
-        const transferList = Array.isArray(transferPayload?.[0]) ? transferPayload[0] : transferPayload;
+        const transferList = Array.isArray(transferPayload?.[0])
+          ? transferPayload[0]
+          : transferPayload;
         transfers = (Array.isArray(transferList) ? transferList : [])
-          .filter((t: unknown): t is TransferRecord => t !== null && typeof t === "object" && !("ilsevent" in t && (t as TransferRecord).ilsevent))
+          .filter(
+            (t: unknown): t is TransferRecord =>
+              t !== null &&
+              typeof t === "object" &&
+              !("ilsevent" in t && (t as TransferRecord).ilsevent)
+          )
           .map((t: TransferRecord) => ({
             id: t.id,
             sourceFund: t.src_fund,
@@ -159,20 +214,28 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const searchCriteria: Record<string, unknown> = {};
+    const searchCriteria: Record<string, any> = {};
     if (!includeInactive) searchCriteria.active = "t";
     if (year) searchCriteria.year = parseInt(year, 10);
     if (orgId) searchCriteria.org = parseInt(orgId, 10);
 
-    const response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund.org.retrieve", [authtoken, searchCriteria, { limit: 500, limit_perm: "VIEW_FUND" }]);
+    const response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund.org.retrieve", [
+      authtoken,
+      searchCriteria,
+      { limit: 500, limit_perm: "VIEW_FUND" },
+    ]);
     const fundsPayload = response?.payload || [];
     const funds = Array.isArray(fundsPayload?.[0]) ? fundsPayload[0] : fundsPayload;
 
     const fundSummaries = new Map<number, FundSummary>();
-    for (const fund of (Array.isArray(funds) ? funds : [])) {
+    for (const fund of Array.isArray(funds) ? funds : []) {
       if (fund && !fund.ilsevent) {
         try {
-          const summaryResponse = await callOpenSRF("open-ils.acq", "open-ils.acq.fund.summary.retrieve", [authtoken, fund.id]);
+          const summaryResponse = await callOpenSRF(
+            "open-ils.acq",
+            "open-ils.acq.fund.summary.retrieve",
+            [authtoken, fund.id]
+          );
           const summaryData = summaryResponse?.payload?.[0];
           if (summaryData && !summaryData.ilsevent) {
             fundSummaries.set(fund.id, {
@@ -190,9 +253,18 @@ export async function GET(req: NextRequest) {
     }
 
     const mappedFunds = (Array.isArray(funds) ? funds : [])
-      .filter((f: unknown): f is FundRecord => f !== null && typeof f === "object" && !("ilsevent" in f && (f as FundRecord).ilsevent))
+      .filter(
+        (f: unknown): f is FundRecord =>
+          f !== null && typeof f === "object" && !("ilsevent" in f && (f as FundRecord).ilsevent)
+      )
       .map((f: FundRecord) => {
-        const summary = fundSummaries.get(f.id) || { allocation_total: 0, spent_total: 0, encumbrance_total: 0, debit_total: 0, balance: 0 };
+        const summary = fundSummaries.get(f.id) || {
+          allocation_total: 0,
+          spent_total: 0,
+          encumbrance_total: 0,
+          debit_total: 0,
+          balance: 0,
+        };
         return {
           id: f.id,
           name: f.name || "Unknown",
@@ -228,7 +300,17 @@ export async function POST(req: NextRequest) {
 
     switch (action) {
       case "create": {
-        const { name, code, year, org, currency, rollover, propagate, balanceWarningPercent, balanceStopPercent } = body;
+        const {
+          name,
+          code,
+          year,
+          org,
+          currency,
+          rollover,
+          propagate,
+          balanceWarningPercent,
+          balanceStopPercent,
+        } = body;
         if (!name || !code || !year || !org) {
           return errorResponse("Name, code, year, and org are required", 400);
         }
@@ -255,11 +337,23 @@ export async function POST(req: NextRequest) {
       }
 
       case "update": {
-        const { id, name, code, active, rollover, propagate, balanceWarningPercent, balanceStopPercent } = body;
+        const {
+          id,
+          name,
+          code,
+          active,
+          rollover,
+          propagate,
+          balanceWarningPercent,
+          balanceStopPercent,
+        } = body;
         if (!id) {
           return errorResponse("Fund ID required", 400);
         }
-        const getResponse = await callOpenSRF("open-ils.acq", "open-ils.acq.fund.retrieve", [authtoken, parseInt(String(id), 10)]);
+        const getResponse = await callOpenSRF("open-ils.acq", "open-ils.acq.fund.retrieve", [
+          authtoken,
+          parseInt(String(id), 10),
+        ]);
         const existingFund = getResponse?.payload?.[0];
         if (!existingFund || existingFund.ilsevent) {
           return errorResponse("Fund not found", 404);
@@ -269,9 +363,14 @@ export async function POST(req: NextRequest) {
         if (active !== undefined) existingFund.active = active ? "t" : "f";
         if (rollover !== undefined) existingFund.rollover = rollover ? "t" : "f";
         if (propagate !== undefined) existingFund.propagate = propagate ? "t" : "f";
-        if (balanceWarningPercent !== undefined) existingFund.balance_warning_percent = balanceWarningPercent;
-        if (balanceStopPercent !== undefined) existingFund.balance_stop_percent = balanceStopPercent;
-        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund.update", [authtoken, existingFund]);
+        if (balanceWarningPercent !== undefined)
+          existingFund.balance_warning_percent = balanceWarningPercent;
+        if (balanceStopPercent !== undefined)
+          existingFund.balance_stop_percent = balanceStopPercent;
+        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund.update", [
+          authtoken,
+          existingFund,
+        ]);
         const result = response?.payload?.[0];
         if (result?.ilsevent) {
           return errorResponse(result.textcode || "Failed to update fund", 400);
@@ -284,7 +383,10 @@ export async function POST(req: NextRequest) {
         if (!id) {
           return errorResponse("Fund ID required", 400);
         }
-        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund.delete", [authtoken, parseInt(String(id), 10)]);
+        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund.delete", [
+          authtoken,
+          parseInt(String(id), 10),
+        ]);
         const result = response?.payload?.[0];
         if (result?.ilsevent) {
           return errorResponse(result.textcode || "Failed to delete fund", 400);

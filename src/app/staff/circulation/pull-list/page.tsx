@@ -119,9 +119,7 @@ export default function PullListPage() {
   );
 
   const handleMarkSelectedCaptured = async () => {
-    const selectedItems = pullList.filter(
-      (item) => selectedRows[String(item.holdId)]
-    );
+    const selectedItems = pullList.filter((item) => selectedRows[String(item.holdId)]);
     if (selectedItems.length === 0) {
       toast.error("No items selected");
       return;
@@ -167,9 +165,7 @@ export default function PullListPage() {
 
   const filteredPullList = useMemo(() => {
     if (filterPickupLib === "all") return pullList;
-    return pullList.filter(
-      (item) => String(item.pickupLib) === filterPickupLib
-    );
+    return pullList.filter((item) => String(item.pickupLib) === filterPickupLib);
   }, [pullList, filterPickupLib]);
 
   const printPullList = useCallback(() => {
@@ -185,9 +181,7 @@ export default function PullListPage() {
           "</td>" +
           "<td>" +
           escapeHtml(item.title) +
-          (item.author
-            ? '<div class="muted">' + escapeHtml(item.author) + "</div>"
-            : "") +
+          (item.author ? '<div class="muted">' + escapeHtml(item.author) + "</div>" : "") +
           "</td>" +
           '<td class="mono">' +
           escapeHtml(item.barcode) +
@@ -199,9 +193,7 @@ export default function PullListPage() {
           escapeHtml(item.pickupLibName) +
           "</td>" +
           "<td>" +
-          (item.requestDate
-            ? format(new Date(item.requestDate), "MM/dd/yyyy")
-            : "") +
+          (item.requestDate ? format(new Date(item.requestDate), "MM/dd/yyyy") : "") +
           "</td>" +
           "</tr>"
       )
@@ -223,12 +215,12 @@ export default function PullListPage() {
       '<table style="margin-top: 16px;">' +
       "<thead>" +
       "<tr>" +
-      "<th scope=\"col\">Call Number</th>" +
-      "<th scope=\"col\">Title / Author</th>" +
-      "<th scope=\"col\">Barcode</th>" +
-      "<th scope=\"col\">Location</th>" +
-      "<th scope=\"col\">Pickup</th>" +
-      "<th scope=\"col\">Requested</th>" +
+      '<th scope="col">Call Number</th>' +
+      '<th scope="col">Title / Author</th>' +
+      '<th scope="col">Barcode</th>' +
+      '<th scope="col">Location</th>' +
+      '<th scope="col">Pickup</th>' +
+      '<th scope="col">Requested</th>' +
       "</tr>" +
       "</thead>" +
       "<tbody>" +
@@ -266,96 +258,60 @@ export default function PullListPage() {
       },
       {
         accessorKey: "title",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Title" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
         cell: ({ row }) => (
           <div>
             <div className="font-medium">{row.original.title}</div>
             {row.original.author && (
-              <div className="text-sm text-muted-foreground">
-                {row.original.author}
-              </div>
+              <div className="text-sm text-muted-foreground">{row.original.author}</div>
             )}
           </div>
         ),
       },
       {
         accessorKey: "callNumber",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Call Number" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Call Number" />,
       },
       {
         accessorKey: "barcode",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Barcode" />
-        ),
-        cell: ({ row }) => (
-          <code className="text-sm">{row.original.barcode}</code>
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Barcode" />,
+        cell: ({ row }) => <code className="text-sm">{row.original.barcode}</code>,
       },
       {
         accessorKey: "shelvingLocation",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Shelving Location" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Shelving Location" />,
       },
       {
         accessorKey: "patronBarcode",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Patron" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Patron" />,
         cell: ({ row }) => {
           const barcode = row.original.patronBarcode || "";
           if (barcode.length > 4) {
-            return (
-              <span className="font-mono text-sm">
-                {"****" + barcode.slice(-4)}
-              </span>
-            );
+            return <span className="font-mono text-sm">{"****" + barcode.slice(-4)}</span>;
           }
           return <span className="font-mono text-sm">{barcode}</span>;
         },
       },
       {
         accessorKey: "pickupLibName",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Pickup Location" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Pickup Location" />,
       },
       {
         accessorKey: "requestDate",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Request Date" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Request Date" />,
         cell: ({ row }) =>
-          row.original.requestDate
-            ? format(new Date(row.original.requestDate), "MM/dd/yyyy")
-            : "-",
+          row.original.requestDate ? format(new Date(row.original.requestDate), "MM/dd/yyyy") : "-",
       },
       {
         accessorKey: "status",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => {
           const status = row.original.status || "pending";
           return (
             <StatusBadge
-              status={
-                status === "ready"
-                  ? "success"
-                  : status === "in-transit"
-                    ? "warning"
-                    : "info"
-              }
+              status={status === "ready" ? "success" : status === "in-transit" ? "warning" : "info"}
               label={
-                status === "ready"
-                  ? "Ready"
-                  : status === "in-transit"
-                    ? "In Transit"
-                    : "Pending"
+                status === "ready" ? "Ready" : status === "in-transit" ? "In Transit" : "Pending"
               }
             />
           );
@@ -394,10 +350,7 @@ export default function PullListPage() {
     <PageContainer>
       <PageHeader
         title="Holds Pull List"
-        breadcrumbs={[
-          { label: "Circulation", href: "/staff/circulation" },
-          { label: "Pull List" },
-        ]}
+        breadcrumbs={[{ label: "Circulation", href: "/staff/circulation" }, { label: "Pull List" }]}
         actions={[
           {
             label: "Refresh",
@@ -419,9 +372,7 @@ export default function PullListPage() {
 
         <div className="flex items-center gap-4 mb-4">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              Filter by Pickup Location:
-            </span>
+            <span className="text-sm text-muted-foreground">Filter by Pickup Location:</span>
             <Select value={filterPickupLib} onValueChange={setFilterPickupLib}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="All Locations" />
@@ -445,8 +396,7 @@ export default function PullListPage() {
               disabled={loading}
             >
               <CheckCircle2 className="h-4 w-4 mr-1" />
-              Capture Selected (
-              {Object.keys(selectedRows).filter((k) => selectedRows[k]).length})
+              Capture Selected ({Object.keys(selectedRows).filter((k) => selectedRows[k]).length})
             </Button>
           )}
 
@@ -469,17 +419,16 @@ export default function PullListPage() {
               onClick: () => router.push("/staff/admin/policies/holds"),
             }}
           >
-            <Button variant="ghost" size="sm" onClick={() => router.push("/staff/help#demo-data")}>
-              Seed demo data
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/staff/help#evergreen-setup")}
+            >
+              Evergreen setup checklist
             </Button>
           </EmptyState>
         ) : (
-          <DataTable
-            columns={columns}
-            data={filteredPullList}
-            isLoading={loading}
-            
-          />
+          <DataTable columns={columns} data={filteredPullList} isLoading={loading} />
         )}
       </PageContent>
     </PageContainer>

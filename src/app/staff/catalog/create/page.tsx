@@ -290,10 +290,10 @@ export default function CreateRecordPage() {
 
             {/* AI MARC Record Generation */}
             {featureFlags.ai && (
-              <Card className="border-purple-200">
+              <Card className="border-indigo-200">
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-purple-600" />
+                    <Sparkles className="h-5 w-5 text-indigo-600" />
                     <CardTitle>AI Record Generation</CardTitle>
                   </div>
                   <CardDescription>
@@ -374,7 +374,7 @@ export default function CreateRecordPage() {
                     <Button
                       onClick={handleAiGenerate}
                       disabled={aiGenerating || !aiTitle.trim()}
-                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
                     >
                       {aiGenerating ? (
                         <>
@@ -407,7 +407,7 @@ export default function CreateRecordPage() {
                     <div className="space-y-4 mt-4">
                       <div className="flex items-center justify-between">
                         <h4 className="font-semibold text-foreground flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-purple-600" />
+                          <Sparkles className="h-4 w-4 text-indigo-600" />
                           Generated MARC Record (Draft)
                         </h4>
                         <Button variant="outline" size="sm" onClick={handleOpenInMarcEditor}>

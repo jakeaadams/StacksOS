@@ -16,7 +16,7 @@ import { z } from "zod";
 
 /**
  * Batch Cataloging Operations API
- * 
+ *
  * Supports:
  * - Batch item status updates
  * - Batch call number changes
@@ -45,7 +45,7 @@ interface BatchResult {
   copyId?: number;
   barcode?: string;
   error?: string;
-  details?: Record<string, unknown>;
+  details?: Record<string, any>;
 }
 
 async function resolveCopyId(
@@ -75,9 +75,11 @@ async function resolveCopyId(
 }
 
 // POST - Execute batch operations
-const catalogBatchPostSchema = z.object({
-  action: z.string().trim().min(1),
-}).passthrough();
+const catalogBatchPostSchema = z
+  .object({
+    action: z.string().trim().min(1),
+  })
+  .passthrough();
 
 export async function POST(req: NextRequest) {
   return withIdempotency(req, "api.evergreen.catalog.batch.POST", async () => {
@@ -103,7 +105,7 @@ export async function POST(req: NextRequest) {
 
       const audit = async (
         status: "success" | "failure",
-        details?: Record<string, unknown>,
+        details?: Record<string, any>,
         error?: string
       ) =>
         logAuditEvent({
@@ -222,12 +224,11 @@ export async function POST(req: NextRequest) {
                 continue;
               }
 
-              const volumeId = typeof copy.call_number === "object" 
-                ? copy.call_number.id 
-                : copy.call_number;
+              const volumeId =
+                typeof copy.call_number === "object" ? copy.call_number.id : copy.call_number;
 
               // Update the volume/call number
-              const volumeUpdate: Record<string, unknown> = {
+              const volumeUpdate: Record<string, any> = {
                 id: volumeId,
                 label: callNumber,
               };
@@ -248,11 +249,11 @@ export async function POST(req: NextRequest) {
               const result = updateResponse?.payload?.[0];
 
               if (isSuccessResult(result) || (result && !result.ilsevent)) {
-                results.push({ 
-                  success: true, 
-                  copyId, 
-                  barcode, 
-                  details: { newCallNumber: callNumber, volumeId } 
+                results.push({
+                  success: true,
+                  copyId,
+                  barcode,
+                  details: { newCallNumber: callNumber, volumeId },
                 });
                 successCount++;
               } else {
@@ -354,11 +355,11 @@ export async function POST(req: NextRequest) {
 
               const circStatus = circResponse?.payload?.[0];
               if (circStatus?.id) {
-                results.push({ 
-                  success: false, 
-                  copyId, 
-                  barcode, 
-                  error: "Cannot delete: Item has open circulation" 
+                results.push({
+                  success: false,
+                  copyId,
+                  barcode,
+                  error: "Cannot delete: Item has open circulation",
                 });
                 failCount++;
                 continue;
@@ -406,10 +407,7 @@ export async function POST(req: NextRequest) {
           const { targetOrgId, targetLocation } = body;
 
           if (!targetOrgId && !targetLocation) {
-            return errorResponse(
-              "targetOrgId or targetLocation required for transfer",
-              400
-            );
+            return errorResponse("targetOrgId or targetLocation required for transfer", 400);
           }
 
           const results: BatchResult[] = [];
@@ -426,7 +424,7 @@ export async function POST(req: NextRequest) {
             }
 
             try {
-              const updateFields: Record<string, unknown> = { id: copyId };
+              const updateFields: Record<string, any> = { id: copyId };
 
               if (targetOrgId) {
                 updateFields.circ_lib = targetOrgId;
@@ -511,11 +509,11 @@ export async function POST(req: NextRequest) {
               const result = updateResponse?.payload?.[0];
 
               if (isSuccessResult(result) || (result && !result.ilsevent)) {
-                results.push({ 
-                  success: true, 
-                  copyId, 
-                  barcode, 
-                  details: { newLocation: locationId } 
+                results.push({
+                  success: true,
+                  copyId,
+                  barcode,
+                  details: { newLocation: locationId },
                 });
                 successCount++;
               } else {
@@ -673,7 +671,7 @@ export async function GET(req: NextRequest) {
         const modResponse = await callOpenSRF(
           "open-ils.pcrud",
           "open-ils.pcrud.search.ccm.atomic",
-          [authtoken, { code: { "!=" : null } }, { limit: 500 }]
+          [authtoken, { code: { "!=": null } }, { limit: 500 }]
         );
 
         const modifiers = modResponse?.payload?.[0] || [];
@@ -689,10 +687,7 @@ export async function GET(req: NextRequest) {
 
       case "orgs": {
         // Get org tree for transfer targets
-        const orgResponse = await callOpenSRF(
-          "open-ils.actor",
-          "open-ils.actor.org_tree.retrieve"
-        );
+        const orgResponse = await callOpenSRF("open-ils.actor", "open-ils.actor.org_tree.retrieve");
 
         const tree = orgResponse?.payload?.[0];
         const flattenOrgs = (node: any, depth = 0): any[] => {
@@ -707,7 +702,9 @@ export async function GET(req: NextRequest) {
           const children = node.children || node.__p?.[5] || [];
           return [
             org,
-            ...(Array.isArray(children) ? children.flatMap((c: any) => flattenOrgs(c, depth + 1)) : []),
+            ...(Array.isArray(children)
+              ? children.flatMap((c: any) => flattenOrgs(c, depth + 1))
+              : []),
           ];
         };
 
@@ -719,11 +716,27 @@ export async function GET(req: NextRequest) {
           availableTypes: ["statuses", "locations", "circ_modifiers", "orgs"],
           actions: [
             { name: "update_status", description: "Update copy status", requires: ["statusId"] },
-            { name: "update_call_number", description: "Change call number", requires: ["callNumber"] },
+            {
+              name: "update_call_number",
+              description: "Change call number",
+              requires: ["callNumber"],
+            },
             { name: "delete", description: "Delete copies", requires: ["confirm: true"] },
-            { name: "transfer", description: "Transfer to different location/library", requires: ["targetOrgId or targetLocation"] },
-            { name: "update_location", description: "Update shelving location", requires: ["locationId"] },
-            { name: "update_circ_modifier", description: "Update circ modifier", requires: ["circModifier"] },
+            {
+              name: "transfer",
+              description: "Transfer to different location/library",
+              requires: ["targetOrgId or targetLocation"],
+            },
+            {
+              name: "update_location",
+              description: "Update shelving location",
+              requires: ["locationId"],
+            },
+            {
+              name: "update_circ_modifier",
+              description: "Update circ modifier",
+              requires: ["circModifier"],
+            },
           ],
         });
     }

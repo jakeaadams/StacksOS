@@ -10,6 +10,23 @@ import { usePatronSession } from "@/hooks/use-patron-session";
 import { BookCard } from "@/components/opac/book-card";
 import { AddToListDialog } from "@/components/opac/add-to-list-dialog";
 import { featureFlags } from "@/lib/feature-flags";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   BookOpen,
@@ -179,9 +196,22 @@ export default function RecordDetailPage() {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/evergreen/catalog/${recordId}`, {
-        credentials: "include",
-      });
+      const scopeParams = new URLSearchParams();
+      const scope = searchParams.get("search_scope");
+      const depth = searchParams.get("copy_depth");
+      const scopeOrg = searchParams.get("scope_org");
+      if (scope) scopeParams.set("search_scope", scope);
+      if (depth) scopeParams.set("copy_depth", depth);
+      if (scopeOrg) scopeParams.set("scope_org", scopeOrg);
+
+      const response = await fetch(
+        scopeParams.size > 0
+          ? `/api/evergreen/catalog/${recordId}?${scopeParams.toString()}`
+          : `/api/evergreen/catalog/${recordId}`,
+        {
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -230,6 +260,21 @@ export default function RecordDetailPage() {
         awards: rec.awards || [],
       };
 
+      try {
+        const coverRes = await fetch(
+          `/api/save-cover?recordId=${encodeURIComponent(String(transformedRecord.id))}`,
+          { cache: "no-store" }
+        );
+        if (coverRes.ok) {
+          const coverData = await coverRes.json();
+          if (coverData?.success && typeof coverData.coverUrl === "string") {
+            transformedRecord.coverUrl = coverData.coverUrl;
+          }
+        }
+      } catch (coverError) {
+        clientLogger.warn("Failed to load custom cover for OPAC record", coverError);
+      }
+
       setRecord(transformedRecord);
     } catch (err) {
       clientLogger.error("Error fetching record:", err);
@@ -237,7 +282,7 @@ export default function RecordDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [recordId]);
+  }, [recordId, searchParams, t]);
 
   useEffect(() => {
     void fetchRecordDetail();
@@ -387,13 +432,9 @@ export default function RecordDetailPage() {
     }
   };
 
-  const placeholderColor = record
-    ? `hsl(${(record.title.charCodeAt(0) * 137) % 360}, 60%, 75%)`
-    : "#e5e7eb";
-
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+      <div className="min-h-screen app-shell flex items-center justify-center">
         <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
       </div>
     );
@@ -401,7 +442,7 @@ export default function RecordDetailPage() {
 
   if (error || !record) {
     return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+      <div className="min-h-screen app-shell flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-foreground mb-2">
@@ -419,18 +460,19 @@ export default function RecordDetailPage() {
   const displayedCopies = showAllCopies ? record.copies : record.copies.slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen app-shell">
       {/* Back button */}
-      <div className="bg-card border-b border-border">
+      <div className="border-b border-border/70 bg-card/86 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 py-3">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-2 px-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to results
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -451,10 +493,10 @@ export default function RecordDetailPage() {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-7">
           {/* Left column - Cover and actions */}
-          <div className="lg:col-span-1">
-            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div className="lg:col-span-1 lg:sticky lg:top-24 self-start">
+            <div className="stx-surface rounded-xl overflow-hidden">
               {/* Cover image */}
               <div className="aspect-[2/3] bg-muted/50 relative">
                 {record.coverUrl && !imageError ? (
@@ -467,10 +509,7 @@ export default function RecordDetailPage() {
                     onError={() => setImageError(true)}
                   />
                 ) : (
-                  <div
-                    className="w-full h-full flex items-center justify-center p-8"
-                    style={{ backgroundColor: placeholderColor }}
-                  >
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary-300 via-primary-400 to-primary-500 p-8">
                     <div className="text-center text-white">
                       <FormatIcon className="h-16 w-16 mx-auto mb-4" />
                       <p className="font-semibold text-lg">{record.title}</p>
@@ -485,7 +524,7 @@ export default function RecordDetailPage() {
                 <div className="flex items-center justify-center">
                   {record.availableCopies > 0 ? (
                     <span
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 border border-green-300/70
                                    text-green-800 rounded-full font-medium"
                     >
                       <CheckCircle className="h-5 w-5" />
@@ -493,7 +532,7 @@ export default function RecordDetailPage() {
                     </span>
                   ) : (
                     <span
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 border border-amber-300/70
                                    text-amber-800 rounded-full font-medium"
                     >
                       <Clock className="h-5 w-5" />
@@ -503,13 +542,12 @@ export default function RecordDetailPage() {
                 </div>
 
                 {/* Place hold button */}
-                <button
+                <Button
                   type="button"
                   onClick={() => setShowHoldModal(true)}
                   disabled={holdSuccess}
-                  className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium
-                           hover:bg-primary-700 transition-colors disabled:opacity-50 
-                           disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-[linear-gradient(125deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_88%)] text-white
+                           hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {holdSuccess ? (
                     <>
@@ -522,37 +560,37 @@ export default function RecordDetailPage() {
                       Place Hold
                     </>
                   )}
-                </button>
+                </Button>
 
                 {/* Secondary actions */}
                 <div className="flex gap-2">
                   {featureFlags.opacLists ? (
-                    <button
+                    <Button
                       type="button"
                       onClick={handleSave}
-                      className="flex-1 py-2 border border-border rounded-lg text-foreground/80
-	                                   hover:bg-muted/30 transition-colors flex items-center justify-center gap-2"
+                      variant="outline"
+                      className="flex-1 text-foreground/80 hover:bg-muted/30 flex items-center justify-center gap-2"
                     >
                       <Heart className="h-4 w-4" />
                       Save
-                    </button>
+                    </Button>
                   ) : null}
-                  <button
+                  <Button
                     type="button"
                     onClick={() => void handleShare()}
-                    className="flex-1 py-2 border border-border rounded-lg text-foreground/80
-	                                   hover:bg-muted/30 transition-colors flex items-center justify-center gap-2"
+                    variant="outline"
+                    className="flex-1 text-foreground/80 hover:bg-muted/30 flex items-center justify-center gap-2"
                   >
                     <Share2 className="h-4 w-4" />
                     Share
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
 
             {/* Reading level info */}
             {(record.lexileLevel || record.arLevel) && (
-              <div className="mt-4 bg-card rounded-xl shadow-sm border border-border p-4">
+              <div className="mt-4 stx-surface rounded-xl p-4">
                 <h3 className="font-semibold text-foreground mb-3">{t("readingLevel")}</h3>
                 <div className="space-y-2">
                   {record.lexileLevel && (
@@ -575,7 +613,7 @@ export default function RecordDetailPage() {
           {/* Right column - Details */}
           <div className="lg:col-span-2 space-y-6">
             {/* Title and basic info */}
-            <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+            <div className="stx-surface rounded-xl p-6">
               <div className="flex items-start gap-3 mb-4">
                 <div className="p-2 bg-primary-100 rounded-lg">
                   <FormatIcon className="h-6 w-6 text-primary-600" />
@@ -586,7 +624,7 @@ export default function RecordDetailPage() {
                     <p className="text-lg text-muted-foreground mt-1">
                       by{" "}
                       <Link
-                        href={`/opac/search?q=author:${encodeURIComponent(record.author)}`}
+                        href={`/opac/search?q=${encodeURIComponent(record.author)}&type=author`}
                         className="text-primary-600 hover:underline"
                       >
                         {record.author}
@@ -658,7 +696,7 @@ export default function RecordDetailPage() {
                   <p className="text-primary-800">
                     Part of the{" "}
                     <Link
-                      href={`/opac/search?q=series:${encodeURIComponent(record.series)}`}
+                      href={`/opac/search?q=${encodeURIComponent(record.series)}&type=series`}
                       className="font-medium hover:underline"
                     >
                       {record.series}
@@ -672,7 +710,7 @@ export default function RecordDetailPage() {
 
             {/* Summary */}
             {record.summary && (
-              <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+              <div className="stx-surface rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-foreground mb-3">Summary</h2>
                 <p className="text-foreground/80 leading-relaxed whitespace-pre-line">
                   {record.summary}
@@ -682,13 +720,13 @@ export default function RecordDetailPage() {
 
             {/* Subjects */}
             {record.subjects && record.subjects.length > 0 && (
-              <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+              <div className="stx-surface rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-foreground mb-3">{t("subjects")}</h2>
                 <div className="flex flex-wrap gap-2">
                   {record.subjects.map((subject, i) => (
                     <Link
                       key={i}
-                      href={`/opac/search?q=subject:${encodeURIComponent(subject)}`}
+                      href={`/opac/search?q=${encodeURIComponent(subject)}&type=subject`}
                       className="px-3 py-1 bg-muted/50 hover:bg-muted rounded-full text-sm 
                                text-foreground/80 transition-colors"
                     >
@@ -700,7 +738,7 @@ export default function RecordDetailPage() {
             )}
 
             {/* Copy availability */}
-            <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+            <div className="stx-surface rounded-xl p-6">
               <h2 className="text-lg font-semibold text-foreground mb-4">
                 Availability ({record.availableCopies} of {record.totalCopies} available)
               </h2>
@@ -708,17 +746,21 @@ export default function RecordDetailPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-border">
-                      <th scope="col" className="text-left py-2 font-medium text-muted-foreground">{t("location")}</th>
+                    <tr className="border-b border-border/80">
+                      <th scope="col" className="text-left py-2 font-medium text-muted-foreground">
+                        {t("location")}
+                      </th>
                       <th scope="col" className="text-left py-2 font-medium text-muted-foreground">
                         Call Number
                       </th>
-                      <th scope="col" className="text-left py-2 font-medium text-muted-foreground">{t("status")}</th>
+                      <th scope="col" className="text-left py-2 font-medium text-muted-foreground">
+                        {t("status")}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {displayedCopies.map((copy) => (
-                      <tr key={copy.id} className="border-b border-border/50">
+                      <tr key={copy.id} className="border-b border-border/50 hover:bg-muted/25">
                         <td className="py-3">
                           <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4 text-muted-foreground/70" />
@@ -727,10 +769,10 @@ export default function RecordDetailPage() {
                         </td>
                         <td className="py-3 font-mono text-xs">{copy.callNumber}</td>
                         <td className="py-3">
-                          {copy.statusCode === 0 ? (
+                          {copy.statusCode === 0 || copy.statusCode === 7 ? (
                             <span className="inline-flex items-center gap-1 text-green-700">
                               <CheckCircle className="h-4 w-4" />
-                              Available
+                              {copy.statusCode === 7 ? "Available (Reshelving)" : "Available"}
                             </span>
                           ) : copy.statusCode === 1 ? (
                             <span className="inline-flex items-center gap-1 text-amber-700">
@@ -748,11 +790,11 @@ export default function RecordDetailPage() {
               </div>
 
               {record.copies.length > 5 && (
-                <button
+                <Button
                   type="button"
                   onClick={() => setShowAllCopies(!showAllCopies)}
-                  className="mt-4 text-primary-600 hover:text-primary-700 font-medium 
-                           flex items-center gap-1"
+                  variant="ghost"
+                  className="mt-4 flex items-center gap-1 px-0 font-medium text-primary-600 hover:bg-transparent hover:text-primary-700"
                 >
                   {showAllCopies ? (
                     <>
@@ -763,13 +805,13 @@ export default function RecordDetailPage() {
                       Show all {record.copies.length} copies <ChevronDown className="h-4 w-4" />
                     </>
                   )}
-                </button>
+                </Button>
               )}
             </div>
 
             {/* Related titles */}
             {record.relatedTitles && record.relatedTitles.length > 0 && (
-              <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+              <div className="stx-surface rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-foreground mb-4">You May Also Like</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {record.relatedTitles.slice(0, 4).map((related) => (
@@ -790,7 +832,7 @@ export default function RecordDetailPage() {
 
             {/* More like this (metadata-only) */}
             {!similarLoading && similar.length > 0 && (
-              <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+              <div className="stx-surface rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-foreground mb-4">More Like This</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {similar.slice(0, 8).map((rec) => (
@@ -819,94 +861,105 @@ export default function RecordDetailPage() {
       </div>
 
       {/* Hold modal */}
-      {showHoldModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-xl font-semibold text-foreground mb-4">Place Hold</h3>
+      <Dialog
+        open={showHoldModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowHoldModal(false);
+            setHoldError(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Place Hold</DialogTitle>
+            <DialogDescription>
+              <strong>{record.title}</strong>
+              {record.author && <> by {record.author}</>}
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="mb-4">
-              <p className="text-muted-foreground mb-2">
-                <strong>{record.title}</strong>
-                {record.author && <> by {record.author}</>}
-              </p>
-              {record.availableCopies === 0 && (
-                <p className="text-amber-600 text-sm">
-                  All copies are currently checked out. You will be #{record.holdCount + 1} in the
-                  queue.
-                </p>
-              )}
-            </div>
+          {record.availableCopies === 0 && (
+            <p className="text-amber-600 text-sm">
+              All copies are currently checked out. You will be #{record.holdCount + 1} in the
+              queue.
+            </p>
+          )}
 
-            <div className="mb-6">
-              <label htmlFor="pickup-location" className="block text-sm font-medium text-foreground/80 mb-2">
-                Pickup Location
-              </label>
-              <select id="pickup-location"
-                value={selectedPickupLocation || ""}
-                onChange={(e) => setSelectedPickupLocation(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none 
-                         focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">Select a location...</option>
+          <div>
+            <label
+              htmlFor="pickup-location"
+              className="block text-sm font-medium text-foreground/80 mb-2"
+            >
+              Pickup Location
+            </label>
+            <Select
+              value={selectedPickupLocation ? String(selectedPickupLocation) : "none"}
+              onValueChange={(value) =>
+                setSelectedPickupLocation(value === "none" ? null : parseInt(value, 10))
+              }
+            >
+              <SelectTrigger id="pickup-location" className="w-full">
+                <SelectValue placeholder="Select a location..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Select a location...</SelectItem>
                 {library?.locations
                   .filter((l) => l.isPickupLocation)
                   .map((location) => (
-                    <option key={location.id} value={location.id}>
+                    <SelectItem key={location.id} value={String(location.id)}>
                       {location.name}
-                    </option>
+                    </SelectItem>
                   ))}
-              </select>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {holdError ? (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              <div className="font-medium">{holdError.message}</div>
+              {holdError.nextSteps && holdError.nextSteps.length > 0 ? (
+                <div className="mt-2">
+                  <div className="text-xs font-medium text-red-800/90">Next steps</div>
+                  <ul className="mt-1 list-disc pl-5 space-y-1">
+                    {holdError.nextSteps.map((step) => (
+                      <li key={step} className="text-sm text-red-700">
+                        {step}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {holdError.code ? (
+                <div className="mt-2 text-[11px] text-red-800/80 font-mono">
+                  Code: {holdError.code}
+                </div>
+              ) : null}
             </div>
+          ) : null}
 
-            {holdError ? (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                <div className="font-medium">{holdError.message}</div>
-                {holdError.nextSteps && holdError.nextSteps.length > 0 ? (
-                  <div className="mt-2">
-                    <div className="text-xs font-medium text-red-800/90">Next steps</div>
-                    <ul className="mt-1 list-disc pl-5 space-y-1">
-                      {holdError.nextSteps.map((step) => (
-                        <li key={step} className="text-sm text-red-700">
-                          {step}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                {holdError.code ? (
-                  <div className="mt-2 text-[11px] text-red-800/80 font-mono">
-                    Code: {holdError.code}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-
-            <div className="flex gap-3">
-              <button
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button
                 type="button"
-                onClick={() => {
-                  setShowHoldModal(false);
-                  setHoldError(null);
-                }}
-                className="flex-1 py-2 border border-border rounded-lg text-foreground/80 
-                         hover:bg-muted/30 transition-colors"
+                variant="outline"
+                className="text-foreground/80 hover:bg-muted/30"
               >
                 Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handlePlaceHold}
-                disabled={isPlacingHold || !selectedPickupLocation}
-                className="flex-1 py-2 bg-primary-600 text-white rounded-lg font-medium
-                         hover:bg-primary-700 transition-colors disabled:opacity-50 
-                         disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isPlacingHold ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Hold"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              onClick={handlePlaceHold}
+              disabled={isPlacingHold || !selectedPickupLocation}
+              className="bg-[linear-gradient(125deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_88%)] text-white
+                       hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isPlacingHold ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Hold"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

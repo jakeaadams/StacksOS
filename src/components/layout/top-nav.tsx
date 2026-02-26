@@ -31,7 +31,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useTheme } from "next-themes";
 import { DensityToggle, UniversalSearch } from "@/components/shared";
 import { useEffect, useMemo, useState } from "react";
@@ -58,6 +64,17 @@ interface TopNavProps {
   orgs?: OrgUnit[];
   evergreenOk?: boolean;
   evergreenStatus?: number;
+}
+
+interface EnvResponse {
+  env?: {
+    label?: string;
+    tone?: string;
+  };
+}
+
+interface PermCheckResponse {
+  perms?: Record<string, boolean>;
 }
 
 const WORKSTATION_KEY = "stacksos_workstation";
@@ -104,7 +121,7 @@ export function TopNav({
   const [uploadPhotoPreview, setUploadPhotoPreview] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  const { data: envData } = useApi<any>("/api/env", {
+  const { data: envData } = useApi<EnvResponse>("/api/env", {
     immediate: true,
     revalidateOnFocus: false,
     revalidateInterval: 5 * 60_000,
@@ -121,13 +138,13 @@ export function TopNav({
 
   const permsQuery = useMemo(() => encodeURIComponent(keyPerms.join(",")), [keyPerms]);
 
-  const { data: permData } = useApi<any>(
+  const { data: permData } = useApi<PermCheckResponse>(
     userId ? `/api/evergreen/perm-check?perms=${permsQuery}` : null,
     { immediate: !!userId, revalidateOnFocus: false, revalidateInterval: 5 * 60_000 }
   );
 
   const permSummary = useMemo(() => {
-    const map: Record<string, boolean> | null = permData?.perms || null;
+    const map = permData?.perms || null;
     if (!map) return null;
     const allowed = keyPerms.filter((p) => map[p]).length;
     return `Key perms: ${allowed}/${keyPerms.length}`;
@@ -230,20 +247,25 @@ export function TopNav({
     <TooltipProvider>
       <header className="sticky top-0 z-50 border-b border-border/70 surface-glass">
         {showEnvBanner ? (
-          <div className={cn("px-4 py-1.5 text-[11px] font-semibold tracking-[0.2em] uppercase", getEnvToneClasses(envTone))}>
+          <div
+            className={cn(
+              "border-b border-white/10 px-4 py-1.5 text-[11px] font-semibold tracking-[0.2em] uppercase",
+              getEnvToneClasses(envTone)
+            )}
+          >
             {envLabel}
           </div>
         ) : null}
 
-        <div className="flex items-center gap-4 px-4 py-3">
+        <div className="flex items-center gap-4 px-4 py-3 md:px-5">
           {/* Left: Brand + Location */}
           <div className="flex items-center gap-4 min-w-0 flex-shrink-0">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-[hsl(var(--brand-1))] via-[hsl(var(--brand-3))] to-[hsl(var(--brand-2))] flex items-center justify-center shadow-lg">
+              <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-[hsl(var(--brand-1))] via-[hsl(var(--brand-3))] to-[hsl(var(--brand-2))] flex items-center justify-center shadow-[0_16px_24px_-16px_hsl(var(--brand-3)/0.9)]">
                 <span className="text-white font-semibold text-xs tracking-[0.2em]">SO</span>
               </div>
               <div className="hidden sm:flex flex-col leading-tight">
-                <span className="text-sm font-semibold">StacksOS</span>
+                <span className="text-sm font-semibold stx-brand-text">StacksOS</span>
                 <span className="text-[11px] text-muted-foreground">Library Operations</span>
               </div>
             </div>
@@ -256,10 +278,12 @@ export function TopNav({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-9 px-3 gap-2 text-foreground/80 hover:text-foreground hover:bg-muted/70 rounded-full"
+                    className="h-9 px-3 gap-2 text-foreground/80 hover:text-foreground hover:bg-muted/70 rounded-full stx-pill"
                   >
                     <Building2 className="h-4 w-4" />
-                    <span className="text-xs font-medium truncate max-w-[140px]">{currentLibrary}</span>
+                    <span className="text-xs font-medium truncate max-w-[140px]">
+                      {currentLibrary}
+                    </span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-72">
@@ -276,7 +300,9 @@ export function TopNav({
                         className="flex items-center justify-between"
                       >
                         <span className="truncate">{org.name}</span>
-                        {workstationOrgId === org.id && <Check className="h-4 w-4 text-emerald-600" />}
+                        {workstationOrgId === org.id && (
+                          <Check className="h-4 w-4 text-emerald-600" />
+                        )}
                       </DropdownMenuItem>
                     ))
                   ) : (
@@ -286,7 +312,10 @@ export function TopNav({
               </DropdownMenu>
 
               {workstation && (
-                <Badge variant="secondary" className="hidden lg:inline-flex rounded-full px-3 text-[10px]">
+                <Badge
+                  variant="secondary"
+                  className="hidden lg:inline-flex rounded-full px-3 text-[10px] border border-border/60"
+                >
                   WS {workstation}
                 </Badge>
               )}
@@ -316,7 +345,7 @@ export function TopNav({
               </Button>
             </div>
 
-            <div className="hidden xl:flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-[11px] text-muted-foreground">
+            <div className="hidden xl:flex items-center gap-2 stx-pill px-3 py-1.5 text-[11px] text-muted-foreground">
               <span
                 className={
                   "inline-flex h-2 w-2 rounded-full " +
@@ -327,7 +356,9 @@ export function TopNav({
             </div>
 
             <div className="text-xs text-muted-foreground font-mono hidden lg:block whitespace-nowrap">
-              {mounted ? time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--"}
+              {mounted
+                ? time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                : "--:--"}
             </div>
 
             <Tooltip>
@@ -335,7 +366,7 @@ export function TopNav({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-full hidden md:inline-flex"
+                  className="h-9 w-9 rounded-full hidden md:inline-flex stx-pill"
                   onClick={onCommandOpen}
                   aria-label="Open command palette"
                 >
@@ -354,7 +385,7 @@ export function TopNav({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-full"
+                  className="h-9 w-9 rounded-full stx-pill"
                   onClick={() => setShortcutsOpen(true)}
                   aria-label="Keyboard shortcuts"
                 >
@@ -366,7 +397,12 @@ export function TopNav({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full stx-pill"
+                >
                   <Link href="/staff/help" aria-label="Help & Documentation">
                     <HelpCircle className="h-4 w-4" />
                   </Link>
@@ -379,7 +415,12 @@ export function TopNav({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full relative" aria-label="Notifications">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-full relative stx-pill"
+                      aria-label="Notifications"
+                    >
                       <Bell className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -398,13 +439,17 @@ export function TopNav({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-full"
+                  className="h-9 w-9 rounded-full stx-pill"
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                   aria-label={
                     mounted && theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
                   }
                 >
-                  {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  {mounted && theme === "dark" ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Toggle theme</TooltipContent>
@@ -412,7 +457,7 @@ export function TopNav({
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-9 px-2 gap-2 rounded-full">
+                <Button variant="ghost" className="h-9 px-2 gap-2 rounded-full stx-pill">
                   <Avatar className="h-7 w-7">
                     {profilePhotoUrl ? (
                       <AvatarImage src={profilePhotoUrl} alt={`${userName} photo`} />
@@ -429,7 +474,9 @@ export function TopNav({
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium">{userName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {userTitle}{workstation ? ` • WS ${workstation}` : ""}{currentLibrary ? ` • ${currentLibrary}` : ""}
+                      {userTitle}
+                      {workstation ? ` • WS ${workstation}` : ""}
+                      {currentLibrary ? ` • ${currentLibrary}` : ""}
                     </p>
                     {permSummary ? (
                       <p className="text-[11px] text-muted-foreground">{permSummary}</p>
@@ -476,13 +523,20 @@ export function TopNav({
         <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
             <DialogTitle>Keyboard shortcuts</DialogTitle>
-            <DialogDescription>StacksOS is designed for scan-first, keyboard-first workflows.</DialogDescription>
+            <DialogDescription>
+              StacksOS is designed for scan-first, keyboard-first workflows.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-2">
             {shortcutRows.map((row) => (
-              <div key={row.keys} className="flex items-center justify-between rounded-xl border border-border/70 bg-muted/20 px-3 py-2">
-                <kbd className="rounded-lg border bg-background px-2 py-1 font-mono text-xs">{row.keys}</kbd>
+              <div
+                key={row.keys}
+                className="flex items-center justify-between rounded-xl border border-border/70 bg-muted/20 px-3 py-2"
+              >
+                <kbd className="rounded-lg border bg-background px-2 py-1 font-mono text-xs">
+                  {row.keys}
+                </kbd>
                 <span className="text-sm text-muted-foreground">{row.label}</span>
               </div>
             ))}
@@ -506,7 +560,9 @@ export function TopNav({
           <div className="flex flex-col gap-5">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
-                {profilePhotoUrl ? <AvatarImage src={profilePhotoUrl} alt={`${userName} photo`} /> : null}
+                {profilePhotoUrl ? (
+                  <AvatarImage src={profilePhotoUrl} alt={`${userName} photo`} />
+                ) : null}
                 <AvatarFallback className="bg-[hsl(var(--brand-1))] text-white">
                   {userInitials}
                 </AvatarFallback>
@@ -523,9 +579,7 @@ export function TopNav({
                 accept="image/*"
                 onChange={(e) => setUploadPhotoFile(e.target.files?.[0] || null)}
               />
-              <div className="text-xs text-muted-foreground">
-                JPG/PNG/GIF/WEBP • Max 2MB
-              </div>
+              <div className="text-xs text-muted-foreground">JPG/PNG/GIF/WEBP • Max 2MB</div>
             </div>
 
             {uploadPhotoPreview && (

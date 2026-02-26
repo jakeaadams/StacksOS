@@ -14,13 +14,7 @@ import {
   SetupRequired,
 } from "@/components/shared";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,9 +51,7 @@ export default function RoutingPage() {
     if (typeof u === "number") return String(u);
     if (typeof u === "object") {
       const name =
-        [u.first_given_name, u.family_name].filter(Boolean).join(" ") ||
-        u.usrname ||
-        u.username;
+        [u.first_given_name, u.family_name].filter(Boolean).join(" ") || u.usrname || u.username;
       return name ? String(name) : String(u.id || "—");
     }
     return String(u);
@@ -84,7 +76,10 @@ export default function RoutingPage() {
     const rows = routing
       .slice()
       .sort((a, b) => Number(a.position || 0) - Number(b.position || 0))
-      .map((r) => `<tr><td style="padding:6px 8px;border-bottom:1px solid #ddd;">${r.position ?? ""}</td><td style="padding:6px 8px;border-bottom:1px solid #ddd;">${getUserDisplay(r.user)}</td></tr>`)
+      .map(
+        (r) =>
+          `<tr><td style="padding:6px 8px;border-bottom:1px solid #ddd;">${r.position ?? ""}</td><td style="padding:6px 8px;border-bottom:1px solid #ddd;">${getUserDisplay(r.user)}</td></tr>`
+      )
       .join("");
 
     const html = `
@@ -174,17 +169,19 @@ export default function RoutingPage() {
         breadcrumbs={[{ label: "Serials", href: "/staff/serials" }, { label: "Routing" }]}
         actions={
           routing.length > 0
-            ? [{ label: "Print slip", onClick: printSlip, icon: MapPin, variant: "outline" as const }]
+            ? [
+                {
+                  label: "Print slip",
+                  onClick: printSlip,
+                  icon: MapPin,
+                  variant: "outline" as const,
+                },
+              ]
             : undefined
         }
       />
       <PageContent className="space-y-6">
-        {error && (
-          <ErrorMessage
-            message={error.message}
-            onRetry={() => void refetch()}
-          />
-        )}
+        {error && <ErrorMessage message={error.message} onRetry={() => void refetch()} />}
 
         <Card>
           <CardHeader>
@@ -220,8 +217,8 @@ export default function RoutingPage() {
               Routing List Users
             </CardTitle>
             <CardDescription>
-              {streamId 
-                ? `Routing list for stream #${streamId}` 
+              {streamId
+                ? `Routing list for stream #${streamId}`
                 : "Evergreen routing list entries."}
             </CardDescription>
           </CardHeader>
@@ -242,10 +239,13 @@ export default function RoutingPage() {
                       ? "No routing list users were returned for this stream_id."
                       : "Provide a stream_id to load a routing list.")
                   }
-                  action={{ label: "Serials setup", onClick: () => router.push("/staff/help#serials") }}
+                  action={{
+                    label: "Serials setup",
+                    onClick: () => router.push("/staff/help#serials"),
+                  }}
                   secondaryAction={{
-                    label: "Seed demo data",
-                    onClick: () => router.push("/staff/help#demo-data"),
+                    label: "Evergreen setup checklist",
+                    onClick: () => router.push("/staff/help#evergreen-setup"),
                   }}
                 />
               }

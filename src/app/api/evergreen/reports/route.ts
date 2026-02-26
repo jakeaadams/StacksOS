@@ -8,7 +8,7 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { query } from "@/lib/db/evergreen";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -39,8 +39,12 @@ export async function GET(req: NextRequest) {
         const transit = h?.transit;
         if (!transit) return false;
         if (typeof transit !== "object") return true;
-        const cancelTime = (transit as Record<string, unknown>).cancel_time ?? (transit as Record<string, unknown>).cancelTime;
-        const destRecv = (transit as Record<string, unknown>).dest_recv_time ?? (transit as Record<string, unknown>).destRecvTime;
+        const cancelTime =
+          (transit as Record<string, any>).cancel_time ??
+          (transit as Record<string, any>).cancelTime;
+        const destRecv =
+          (transit as Record<string, any>).dest_recv_time ??
+          (transit as Record<string, any>).destRecvTime;
         return !cancelTime && !destRecv;
       }).length;
 
@@ -60,7 +64,7 @@ export async function GET(req: NextRequest) {
         const items = response?.payload?.[0];
         return Array.isArray(items) ? items.length : 0;
       } catch (error) {
-        if ((error as Record<string, unknown>)?.code === "OSRF_METHOD_NOT_FOUND") {
+        if ((error as Record<string, any>)?.code === "OSRF_METHOD_NOT_FOUND") {
           logger.info(
             { component: "evergreen.reports", method: "open-ils.circ.overdue_items_by_circ_lib" },
             "Overdue reporting method not available on this Evergreen install"
@@ -90,21 +94,27 @@ export async function GET(req: NextRequest) {
            WHERE circ_lib = $1 
            AND xact_start::date = $2::date`,
           [orgId, today]
-        ).then(rows => parseInt(rows[0]?.count || "0", 10)).catch(() => null),
+        )
+          .then((rows) => parseInt(rows[0]?.count || "0", 10))
+          .catch(() => null),
         // Checkins today - count circulations with checkin_time today for this org
         query<{ count: string }>(
           `SELECT COUNT(*) FROM action.circulation 
            WHERE circ_lib = $1 
            AND checkin_time::date = $2::date`,
           [orgId, today]
-        ).then(rows => parseInt(rows[0]?.count || "0", 10)).catch(() => null),
+        )
+          .then((rows) => parseInt(rows[0]?.count || "0", 10))
+          .catch(() => null),
         // Fines collected today - sum of payments made today for this org
         query<{ total: string }>(
           `SELECT COALESCE(SUM(amount), 0) as total 
            FROM money.payment 
            WHERE payment_ts::date = $1::date`,
           [today]
-        ).then(rows => parseFloat(rows[0]?.total || "0")).catch(() => null),
+        )
+          .then((rows) => parseFloat(rows[0]?.total || "0"))
+          .catch(() => null),
         // New patrons today - count users created today for this org
         query<{ count: string }>(
           `SELECT COUNT(*) FROM actor.usr 
@@ -112,7 +122,9 @@ export async function GET(req: NextRequest) {
            AND create_date::date = $2::date 
            AND NOT deleted`,
           [orgId, today]
-        ).then(rows => parseInt(rows[0]?.count || "0", 10)).catch(() => null),
+        )
+          .then((rows) => parseInt(rows[0]?.count || "0", 10))
+          .catch(() => null),
       ]);
 
       const dashboard = {
@@ -151,7 +163,7 @@ export async function GET(req: NextRequest) {
           [authtoken, orgId]
         );
         const items = response?.payload?.[0];
-        
+
         if (!Array.isArray(items)) {
           return successResponse({ overdue: [], count: 0 });
         }
@@ -169,7 +181,7 @@ export async function GET(req: NextRequest) {
                 [copyId]
               );
               const copy = copyResponse?.payload?.[0];
-              
+
               return {
                 circ_id: circ.id,
                 due_date: circ.due_date,
@@ -189,7 +201,7 @@ export async function GET(req: NextRequest) {
           count: items.length,
         });
       } catch (error) {
-        if ((error as Record<string, unknown>)?.code === "OSRF_METHOD_NOT_FOUND") {
+        if ((error as Record<string, any>)?.code === "OSRF_METHOD_NOT_FOUND") {
           return successResponse({
             overdue: [],
             count: 0,
@@ -197,7 +209,11 @@ export async function GET(req: NextRequest) {
           });
         }
         logger.error({ error: String(error) }, "Error fetching overdue items");
-        return successResponse({ overdue: [], count: 0, message: "Could not retrieve overdue items" });
+        return successResponse({
+          overdue: [],
+          count: 0,
+          message: "Could not retrieve overdue items",
+        });
       }
     }
 
@@ -209,10 +225,7 @@ export async function GET(req: NextRequest) {
       return successResponse({ top_items: [] }, "Top items requires Reporter templates");
     }
 
-    return errorResponse(
-      "Invalid action. Use: dashboard, holds, patrons, top_items, overdue",
-      400
-    );
+    return errorResponse("Invalid action. Use: dashboard, holds, patrons, top_items, overdue", 400);
   } catch (error) {
     return serverErrorResponse(error, "Reports GET", req);
   }

@@ -98,46 +98,53 @@ export default function UserManagementPage() {
     }
   }, []);
 
-  const columns: ColumnDef<StaffUser>[] = useMemo(() => [
-    {
-      accessorKey: "username",
-      header: "Username",
-      cell: ({ row }) => <span className="font-mono text-sm">{row.original.username || "\u2014"}</span>,
-    },
-    {
-      accessorKey: "displayName",
-      header: "Name",
-    },
-    {
-      accessorKey: "barcode",
-      header: "Barcode",
-      cell: ({ row }) => <span className="font-mono text-xs">{row.original.barcode || "\u2014"}</span>,
-    },
-    {
-      accessorKey: "homeLibrary",
-      header: "Home Library",
-    },
-    {
-      accessorKey: "profile",
-      header: "Profile",
-      cell: ({ row }) => (
-        <span className="inline-flex items-center gap-1">
-          <Shield className="h-3 w-3" />
-          {row.original.profile}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "active",
-      header: "Status",
-      cell: ({ row }) => (
-        <StatusBadge
-          label={row.original.active ? "Active" : "Inactive"}
-          status={row.original.active ? "success" : "error"}
-        />
-      ),
-    },
-  ], []);
+  const columns: ColumnDef<StaffUser>[] = useMemo(
+    () => [
+      {
+        accessorKey: "username",
+        header: "Username",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm">{row.original.username || "\u2014"}</span>
+        ),
+      },
+      {
+        accessorKey: "displayName",
+        header: "Name",
+      },
+      {
+        accessorKey: "barcode",
+        header: "Barcode",
+        cell: ({ row }) => (
+          <span className="font-mono text-xs">{row.original.barcode || "\u2014"}</span>
+        ),
+      },
+      {
+        accessorKey: "homeLibrary",
+        header: "Home Library",
+      },
+      {
+        accessorKey: "profile",
+        header: "Profile",
+        cell: ({ row }) => (
+          <span className="inline-flex items-center gap-1">
+            <Shield className="h-3 w-3" />
+            {row.original.profile}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "active",
+        header: "Status",
+        cell: ({ row }) => (
+          <StatusBadge
+            label={row.original.active ? "Active" : "Inactive"}
+            status={row.original.active ? "success" : "error"}
+          />
+        ),
+      },
+    ],
+    []
+  );
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -154,10 +161,7 @@ export default function UserManagementPage() {
         <PageHeader
           title="User Management"
           subtitle="Manage staff users and permissions."
-          breadcrumbs={[
-            { label: "Administration", href: "/staff/admin" },
-            { label: "Users" },
-          ]}
+          breadcrumbs={[{ label: "Administration", href: "/staff/admin" }, { label: "Users" }]}
         />
         <PageContent>
           <LoadingSpinner message="Loading session..." />
@@ -171,12 +175,14 @@ export default function UserManagementPage() {
       <PageHeader
         title="User Management"
         subtitle="Manage staff users and permissions."
-        breadcrumbs={[
-          { label: "Administration", href: "/staff/admin" },
-          { label: "Users" },
-        ]}
+        breadcrumbs={[{ label: "Administration", href: "/staff/admin" }, { label: "Users" }]}
         actions={[
-          { label: "Refresh", onClick: handleRefresh, icon: RefreshCw, disabled: isLoading || !hasLoaded },
+          {
+            label: "Refresh",
+            onClick: handleRefresh,
+            icon: RefreshCw,
+            disabled: isLoading || !hasLoaded,
+          },
         ]}
       />
 
@@ -186,8 +192,12 @@ export default function UserManagementPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Found Users</p>
-                  <div className="text-2xl font-semibold mt-1">{hasLoaded ? staffUsers.length : "—"}</div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Found Users
+                  </p>
+                  <div className="text-2xl font-semibold mt-1">
+                    {hasLoaded ? staffUsers.length : "—"}
+                  </div>
                 </div>
                 <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600">
                   <Users className="h-5 w-5" />
@@ -202,7 +212,7 @@ export default function UserManagementPage() {
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Active</p>
                   <div className="text-2xl font-semibold mt-1">
-                    {hasLoaded ? staffUsers.filter(u => u.active).length : "—"}
+                    {hasLoaded ? staffUsers.filter((u) => u.active).length : "—"}
                   </div>
                 </div>
                 <div className="h-10 w-10 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600">
@@ -218,10 +228,10 @@ export default function UserManagementPage() {
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Profiles</p>
                   <div className="text-2xl font-semibold mt-1">
-                    {hasLoaded ? new Set(staffUsers.map(u => u.profile)).size : "—"}
+                    {hasLoaded ? new Set(staffUsers.map((u) => u.profile)).size : "—"}
                   </div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-purple-500/10 text-purple-600">
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-indigo-500/10 text-indigo-600">
                   <Shield className="h-5 w-5" />
                 </div>
               </div>
@@ -231,11 +241,12 @@ export default function UserManagementPage() {
 
         <Card className="rounded-2xl">
           <CardHeader>
-          <CardTitle className="text-base">Search Users</CardTitle>
-          <CardDescription>
-              Search staff users by name, username, or email. Searches query Evergreen staff accounts (no demo data).
-          </CardDescription>
-        </CardHeader>
+            <CardTitle className="text-base">Search Users</CardTitle>
+            <CardDescription>
+              Search staff users by name, username, or email. Searches query Evergreen staff
+              accounts (no demo data).
+            </CardDescription>
+          </CardHeader>
           <CardContent>
             <form onSubmit={handleSearch} className="flex gap-2 mb-4">
               <Input
@@ -295,7 +306,9 @@ export default function UserManagementPage() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="font-medium">{sessionUser.displayName}</div>
-                  <div className="text-muted-foreground font-mono text-xs">{sessionUser.username}</div>
+                  <div className="text-muted-foreground font-mono text-xs">
+                    {sessionUser.username}
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <StatusBadge
@@ -319,14 +332,22 @@ export default function UserManagementPage() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             <p>
-              Evergreen uses a hierarchical permission system. Staff users are assigned to permission groups
-              that define what actions they can perform. Common profiles include:
+              Evergreen uses a hierarchical permission system. Staff users are assigned to
+              permission groups that define what actions they can perform. Common profiles include:
             </p>
             <ul className="list-disc list-inside mt-2 space-y-1">
-              <li><strong>Circulator</strong> - Basic checkout/checkin permissions</li>
-              <li><strong>Cataloger</strong> - Create and edit bibliographic records</li>
-              <li><strong>Staff</strong> - General staff permissions</li>
-              <li><strong>Local Admin</strong> - Branch-level administration</li>
+              <li>
+                <strong>Circulator</strong> - Basic checkout/checkin permissions
+              </li>
+              <li>
+                <strong>Cataloger</strong> - Create and edit bibliographic records
+              </li>
+              <li>
+                <strong>Staff</strong> - General staff permissions
+              </li>
+              <li>
+                <strong>Local Admin</strong> - Branch-level administration
+              </li>
             </ul>
           </CardContent>
         </Card>

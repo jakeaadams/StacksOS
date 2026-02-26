@@ -33,6 +33,114 @@ const responseSchema = z.object({
     .min(1),
 });
 
+type AnalyticsSummaryRequest = z.infer<typeof requestSchema>;
+type AnalyticsSummaryResponse = z.infer<typeof responseSchema>;
+
+type AiErrorClass = "disabled" | "misconfigured" | "transient" | "unknown";
+
+function toNonNegativeInt(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.round(value));
+}
+
+function classifyAiError(message: string): AiErrorClass {
+  const m = message.toLowerCase();
+  if (m.includes("ai is disabled")) return "disabled";
+  if (
+    m.includes("not configured") ||
+    m.includes("misconfigured") ||
+    (m.includes("missing") && m.includes("api_key"))
+  ) {
+    return "misconfigured";
+  }
+  if (
+    m.includes("timeout") ||
+    m.includes("timed out") ||
+    m.includes("aborted") ||
+    m.includes("fetch failed") ||
+    m.includes("econnreset") ||
+    m.includes("socket hang up") ||
+    m.includes("network")
+  ) {
+    return "transient";
+  }
+  return "unknown";
+}
+
+function buildDeterministicFallbackSummary(
+  input: AnalyticsSummaryRequest
+): AnalyticsSummaryResponse {
+  const checkouts = toNonNegativeInt(input.stats.checkouts_today);
+  const checkins = toNonNegativeInt(input.stats.checkins_today);
+  const activeHolds = toNonNegativeInt(input.stats.active_holds);
+  const overdueItems = toNonNegativeInt(input.stats.overdue_items);
+  const finesCollected = toNonNegativeInt(input.stats.fines_collected_today);
+  const newPatrons = toNonNegativeInt(input.stats.new_patrons_today);
+
+  const holdsAvailable = toNonNegativeInt(input.holds.available);
+  const holdsPending = toNonNegativeInt(input.holds.pending);
+  const holdsInTransit = toNonNegativeInt(input.holds.in_transit);
+  const holdsTotal = toNonNegativeInt(input.holds.total);
+
+  const highlights: string[] = [];
+
+  if (holdsPending > holdsAvailable) {
+    highlights.push(
+      `Pending holds (${holdsPending}) exceed available shelf holds (${holdsAvailable}); prioritize pull-list and transit processing.`
+    );
+  }
+
+  if (overdueItems > Math.max(checkouts, 1) * 0.5) {
+    highlights.push(
+      `Overdue load is elevated (${overdueItems}); run overdue outreach and queue high-risk accounts for staff follow-up.`
+    );
+  }
+
+  if (checkins < checkouts && holdsInTransit > 0) {
+    highlights.push(
+      `Outbound circulation is ahead of returns (${checkouts} vs ${checkins}); in-transit queue (${holdsInTransit}) may need redistribution support.`
+    );
+  }
+
+  if (newPatrons > 0) {
+    highlights.push(
+      `New patron registrations (${newPatrons}) are active; ensure onboarding and card-activation workflows stay staffed.`
+    );
+  }
+
+  if (finesCollected > 0) {
+    highlights.push(
+      `Fines collected today: ${finesCollected}. Review payment-channel throughput before closing.`
+    );
+  }
+
+  if (highlights.length === 0) {
+    highlights.push("Core circulation and holds indicators are stable for this shift.");
+  }
+
+  const caveats: string[] = [
+    "AI provider is temporarily unavailable; this is a deterministic fallback generated from live metrics.",
+  ];
+
+  if (holdsTotal === 0 && activeHolds > 0) {
+    caveats.push("Holds snapshot appears incomplete; verify reports endpoint and org scoping.");
+  }
+
+  const summary = `Fallback operations brief for org ${input.orgId}: ${checkouts} checkouts, ${checkins} checkins, ${activeHolds} active holds, ${overdueItems} overdue.`;
+
+  return {
+    summary,
+    highlights,
+    caveats,
+    drilldowns: [
+      { label: "Circulation Workbench", url: "/staff/circulation" },
+      { label: "Holds Queue", url: `/staff/circulation/holds?org=${input.orgId}` },
+      { label: "Patron Search", url: "/staff/patrons" },
+      { label: "Analytics Reports", url: `/staff/reports?org=${input.orgId}` },
+    ],
+  };
+}
+
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
   const rate = await checkRateLimit(ip || "unknown", {
@@ -80,11 +188,46 @@ export async function POST(req: NextRequest) {
       config = out.config;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg.toLowerCase().includes("ai is disabled")) {
+      const errorClass = classifyAiError(msg);
+
+      if (errorClass === "disabled") {
         return errorResponse("AI is disabled for this tenant", 503);
       }
-      if (msg.toLowerCase().includes("not configured") || msg.toLowerCase().includes("misconfigured")) {
+      if (errorClass === "misconfigured") {
         return errorResponse("AI is not configured", 501);
+      }
+      if (errorClass === "transient") {
+        const fallback = buildDeterministicFallbackSummary(parsed.data);
+
+        await logAuditEvent({
+          action: "ai.suggestion.created",
+          status: "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          details: {
+            type: "analytics_summary",
+            provider: "fallback",
+            reason: "transient_provider_failure",
+            error: msg.slice(0, 300),
+            degraded: true,
+            promptTemplate: prompt.id,
+            promptVersion: prompt.version,
+          },
+        });
+
+        return successResponse({
+          draftId: null,
+          response: fallback,
+          meta: {
+            provider: "fallback",
+            model: "deterministic",
+            usage: null,
+            degraded: true,
+            reason: "ai_provider_timeout_or_transient_error",
+          },
+        });
       }
       throw e;
     }

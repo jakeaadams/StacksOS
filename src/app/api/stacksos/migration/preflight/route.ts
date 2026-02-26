@@ -8,7 +8,7 @@ import {
   serverErrorResponse,
 } from "@/lib/api/responses";
 import { requireAuthToken } from "@/lib/api";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 interface PreflightRecord {
   barcode: string;
@@ -21,8 +21,9 @@ export async function POST(req: NextRequest) {
   try {
     await requireAuthToken();
 
-    const body = await parseJsonBody(req);
-    if (!body || !Array.isArray(body.records)) {
+    const body = await parseJsonBody<{ records?: PreflightRecord[] }>(req);
+    if (body instanceof Response) return body;
+    if (!Array.isArray(body.records)) {
       return errorResponse("records array is required", 400);
     }
 

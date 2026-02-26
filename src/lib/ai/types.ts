@@ -10,6 +10,7 @@ export const aiConfigSchema = z.object({
   enabled: z.boolean(),
   provider: aiProviderSchema.optional(),
   model: z.string().trim().min(1).optional(),
+  fallbackModels: z.array(z.string().trim().min(1)).max(8).default([]),
   maxTokens: z.number().int().min(1).max(8192).default(800),
   temperature: z.number().min(0).max(2).default(0.2),
   safetyMode: aiSafetyModeSchema.default("strict"),

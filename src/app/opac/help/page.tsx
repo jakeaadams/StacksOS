@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default function HelpPage() {
-  const t = useTranslations("helpPage");
+  const _t = useTranslations("helpPage");
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
@@ -97,8 +97,8 @@ export default function HelpPage() {
               <HelpContactPhone />
             </div>
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full mb-4">
-                <MapPin className="h-6 w-6 text-purple-600" />
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-full mb-4">
+                <MapPin className="h-6 w-6 text-indigo-600" />
               </div>
               <h3 className="font-semibold text-foreground mb-2">Visit Us</h3>
               <p className="text-muted-foreground text-sm mb-2">

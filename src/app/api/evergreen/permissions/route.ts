@@ -16,9 +16,11 @@ import { z } from "zod";
 // GET - Fetch permission groups and permissions
 // ============================================================================
 
-const permissionsPostSchema = z.object({
-  action: z.string().trim().min(1),
-}).passthrough();
+const permissionsPostSchema = z
+  .object({
+    action: z.string().trim().min(1),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   const { requestId } = getRequestMeta(req);
@@ -37,21 +39,17 @@ export async function GET(req: NextRequest) {
     switch (type) {
       case "groups": {
         // Query permission.grp_tree for all permission groups
-        const response = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.search.pgt.atomic",
-          [
-            authtoken,
-            { id: { "!=": null } },
-            {
-              flesh: 1,
-              flesh_fields: { pgt: ["parent"] },
-              limit,
-              offset,
-              order_by: { pgt: "id" },
-            },
-          ]
-        );
+        const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.pgt.atomic", [
+          authtoken,
+          { id: { "!=": null } },
+          {
+            flesh: 1,
+            flesh_fields: { pgt: ["parent"] },
+            limit,
+            offset,
+            order_by: { pgt: "id" },
+          },
+        ]);
 
         const groups = (response?.payload?.[0] || []).map((g: any) => {
           const extract = (obj: any, field: string, idx: number) => {
@@ -63,9 +61,8 @@ export async function GET(req: NextRequest) {
             id: extract(g, "id", 0),
             name: extract(g, "name", 1),
             parent: extract(g, "parent", 2),
-            parentName: typeof g?.parent === "object" 
-              ? (g.parent?.name ?? g.parent?.__p?.[1]) 
-              : null,
+            parentName:
+              typeof g?.parent === "object" ? (g.parent?.name ?? g.parent?.__p?.[1]) : null,
             description: extract(g, "description", 3),
             permInterval: extract(g, "perm_interval", 4),
             application_perm: extract(g, "application_perm", 5),
@@ -79,15 +76,11 @@ export async function GET(req: NextRequest) {
 
       case "permissions": {
         // Query permission.perm_list for all available permissions
-        const response = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.search.ppl.atomic",
-          [
-            authtoken,
-            { id: { "!=": null } },
-            { limit: 1000, order_by: { ppl: "code" } },
-          ]
-        );
+        const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.ppl.atomic", [
+          authtoken,
+          { id: { "!=": null } },
+          { limit: 1000, order_by: { ppl: "code" } },
+        ]);
 
         const permissions = (response?.payload?.[0] || []).map((p: any) => {
           const extract = (obj: any, field: string, idx: number) => {
@@ -111,23 +104,19 @@ export async function GET(req: NextRequest) {
         }
 
         // Query permission.grp_perm_map for permissions assigned to this group
-        const response = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.search.pgpm.atomic",
-          [
-            authtoken,
-            { grp: parseInt(groupId, 10) },
-            {
-              flesh: 2,
-              flesh_fields: { 
-                pgpm: ["perm", "grp"],
-                ppl: [],
-              },
-              limit,
-              offset,
+        const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.pgpm.atomic", [
+          authtoken,
+          { grp: parseInt(groupId, 10) },
+          {
+            flesh: 2,
+            flesh_fields: {
+              pgpm: ["perm", "grp"],
+              ppl: [],
             },
-          ]
-        );
+            limit,
+            offset,
+          },
+        ]);
 
         const groupPerms = (response?.payload?.[0] || []).map((gp: any) => {
           const extract = (obj: any, field: string, idx: number) => {
@@ -141,12 +130,9 @@ export async function GET(req: NextRequest) {
             id: extract(gp, "id", 0),
             grp: extract(gp, "grp", 1),
             perm: extract(gp, "perm", 2),
-            permCode: typeof permObj === "object"
-              ? (permObj?.code ?? permObj?.__p?.[1])
-              : null,
-            permDescription: typeof permObj === "object"
-              ? (permObj?.description ?? permObj?.__p?.[2])
-              : null,
+            permCode: typeof permObj === "object" ? (permObj?.code ?? permObj?.__p?.[1]) : null,
+            permDescription:
+              typeof permObj === "object" ? (permObj?.description ?? permObj?.__p?.[2]) : null,
             depth: extract(gp, "depth", 3),
             grantable: extract(gp, "grantable", 4) === "t" || extract(gp, "grantable", 4) === true,
           };
@@ -156,7 +142,10 @@ export async function GET(req: NextRequest) {
       }
 
       default:
-        return errorResponse("Invalid type parameter. Use: groups, permissions, or group_perms", 400);
+        return errorResponse(
+          "Invalid type parameter. Use: groups, permissions, or group_perms",
+          400
+        );
     }
   } catch (error: any) {
     return serverErrorResponse(error, "Permissions GET", req);
@@ -181,7 +170,10 @@ export async function POST(req: NextRequest) {
     // Require admin permissions for modifications
     const { authtoken, actor } = await requirePermissions(["GROUP_APPLICATION_PERM"]);
 
-    logger.info({ requestId, route: "api.evergreen.permissions", action, type }, "Permissions update");
+    logger.info(
+      { requestId, route: "api.evergreen.permissions", action, type },
+      "Permissions update"
+    );
 
     const requestMeta = getRequestMeta(req);
     const auditBase = {
@@ -197,7 +189,7 @@ export async function POST(req: NextRequest) {
       entity: string;
       entityId?: string | number;
       status: "success" | "failure";
-      details?: Record<string, unknown>;
+      details?: Record<string, any>;
       error?: string | null;
     }) => {
       try {
@@ -231,11 +223,10 @@ export async function POST(req: NextRequest) {
             ],
           };
 
-          const response = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.create.pgt",
-            [authtoken, newGroup]
-          );
+          const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.pgt", [
+            authtoken,
+            newGroup,
+          ]);
 
           const result = response?.payload?.[0] as any as any;
 
@@ -245,7 +236,11 @@ export async function POST(req: NextRequest) {
               entity: "pgt",
               status: "failure",
               error: result.textcode || "Failed to create group",
-              details: { name: data.name, parent: data.parent || null, applicationPerm: data.applicationPerm || null },
+              details: {
+                name: data.name,
+                parent: data.parent || null,
+                applicationPerm: data.applicationPerm || null,
+              },
             });
             return errorResponse(result.textcode || "Failed to create group", 400, result);
           }
@@ -256,7 +251,11 @@ export async function POST(req: NextRequest) {
             entity: "pgt",
             entityId: createdId,
             status: "success",
-            details: { name: data.name, parent: data.parent || null, applicationPerm: data.applicationPerm || null },
+            details: {
+              name: data.name,
+              parent: data.parent || null,
+              applicationPerm: data.applicationPerm || null,
+            },
           });
 
           return successResponse({
@@ -272,11 +271,10 @@ export async function POST(req: NextRequest) {
           }
 
           // Fetch existing group first
-          const fetchResponse = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.retrieve.pgt",
-            [authtoken, data.id]
-          );
+          const fetchResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.pgt", [
+            authtoken,
+            data.id,
+          ]);
 
           const existing = fetchResponse?.payload?.[0] as any;
           if (!existing) {
@@ -297,11 +295,10 @@ export async function POST(req: NextRequest) {
             ],
           };
 
-          const response = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.update.pgt",
-            [authtoken, updatePayload]
-          );
+          const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.update.pgt", [
+            authtoken,
+            updatePayload,
+          ]);
 
           const result = response?.payload?.[0] as any as any;
 
@@ -351,11 +348,10 @@ export async function POST(req: NextRequest) {
             ],
           };
 
-          const response = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.create.pgpm",
-            [authtoken, newMapping]
-          );
+          const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.pgpm", [
+            authtoken,
+            newMapping,
+          ]);
 
           const result = response?.payload?.[0] as any as any;
 
@@ -365,7 +361,12 @@ export async function POST(req: NextRequest) {
               entity: "pgpm",
               status: "failure",
               error: result.textcode || "Failed to add permission",
-              details: { grp: data.grp, perm: data.perm, depth: data.depth ?? 0, grantable: Boolean(data.grantable) },
+              details: {
+                grp: data.grp,
+                perm: data.perm,
+                depth: data.depth ?? 0,
+                grantable: Boolean(data.grantable),
+              },
             });
             return errorResponse(result.textcode || "Failed to add permission", 400, result);
           }
@@ -376,7 +377,12 @@ export async function POST(req: NextRequest) {
             entity: "pgpm",
             entityId: createdId,
             status: "success",
-            details: { grp: data.grp, perm: data.perm, depth: data.depth ?? 0, grantable: Boolean(data.grantable) },
+            details: {
+              grp: data.grp,
+              perm: data.perm,
+              depth: data.depth ?? 0,
+              grantable: Boolean(data.grantable),
+            },
           });
 
           return successResponse({
@@ -392,11 +398,10 @@ export async function POST(req: NextRequest) {
             return errorResponse("Mapping ID is required", 400);
           }
 
-          const response = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.delete.pgpm",
-            [authtoken, data.id]
-          );
+          const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.pgpm", [
+            authtoken,
+            data.id,
+          ]);
 
           const result = response?.payload?.[0] as any as any;
 
@@ -450,17 +455,18 @@ export async function POST(req: NextRequest) {
               existing?.grp ?? existing?.__p?.[1],
               existing?.perm ?? existing?.__p?.[2],
               data.depth ?? existing?.depth ?? existing?.__p?.[3],
-              data.grantable !== undefined 
-                ? (data.grantable ? "t" : "f")
+              data.grantable !== undefined
+                ? data.grantable
+                  ? "t"
+                  : "f"
                 : (existing?.grantable ?? existing?.__p?.[4]),
             ],
           };
 
-          const response = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.update.pgpm",
-            [authtoken, updatePayload]
-          );
+          const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.update.pgpm", [
+            authtoken,
+            updatePayload,
+          ]);
 
           const result = response?.payload?.[0] as any as any;
 
@@ -471,7 +477,11 @@ export async function POST(req: NextRequest) {
               entityId: data.id,
               status: "failure",
               error: result.textcode || "Failed to update mapping",
-              details: { id: data.id, depth: data.depth ?? null, grantable: data.grantable ?? null },
+              details: {
+                id: data.id,
+                depth: data.depth ?? null,
+                grantable: data.grantable ?? null,
+              },
             });
             return errorResponse(result.textcode || "Failed to update mapping", 400, result);
           }

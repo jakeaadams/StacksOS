@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-
   callOpenSRF,
   successResponse,
   errorResponse,
@@ -60,7 +59,12 @@ export async function GET(req: NextRequest) {
     }
 
     logger.debug(
-      { requestId: meta.requestId, route: "api.evergreen.user-settings", userId, keys: requestedKeys },
+      {
+        requestId: meta.requestId,
+        route: "api.evergreen.user-settings",
+        userId,
+        keys: requestedKeys,
+      },
       "Fetching user settings"
     );
 
@@ -74,7 +78,7 @@ export async function GET(req: NextRequest) {
     const rawSettings = response?.payload?.[0];
 
     // Normalize response - Evergreen returns object with key -> value
-    const settings: Record<string, unknown> = {};
+    const settings: Record<string, any> = {};
 
     if (rawSettings && typeof rawSettings === "object" && !isOpenSRFEvent(rawSettings)) {
       for (const key of requestedKeys) {
@@ -105,7 +109,7 @@ export async function GET(req: NextRequest) {
  * Saves user settings to Evergreen
  *
  * Body:
- *   - settings: Record<string, unknown> - key-value pairs to save
+ *   - settings: Record<string, any> - key-value pairs to save
  */
 export async function POST(req: NextRequest) {
   const meta = getRequestMeta(req);
@@ -118,7 +122,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("User ID not found in session", 400);
     }
 
-    const bodyResult = await parseJsonBody<{ settings?: Record<string, unknown> }>(req);
+    const bodyResult = await parseJsonBody<{ settings?: Record<string, any> }>(req);
 
     // Check if parseJsonBody returned an error response
     if (bodyResult instanceof NextResponse) {
@@ -160,16 +164,21 @@ export async function POST(req: NextRequest) {
     }
 
     logger.info(
-      { requestId: meta.requestId, route: "api.evergreen.user-settings", userId, keys: Object.keys(validSettings) },
+      {
+        requestId: meta.requestId,
+        route: "api.evergreen.user-settings",
+        userId,
+        keys: Object.keys(validSettings),
+      },
       "Saving user settings"
     );
 
     // Save settings to Evergreen
-    const response = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.patron.settings.update",
-      [authtoken, userId, validSettings]
-    );
+    const response = await callOpenSRF("open-ils.actor", "open-ils.actor.patron.settings.update", [
+      authtoken,
+      userId,
+      validSettings,
+    ]);
 
     const result = response?.payload?.[0];
 

@@ -43,9 +43,12 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
 
     if (payload.length > 0 && typeof payload[0] === "object") {
       const map: Record<string, boolean> = {};
-      (payload as Record<string, unknown>[]).forEach((entry) => {
+      (payload as Record<string, any>[]).forEach((entry) => {
         const key = String(entry.perm || entry.code || entry.name);
-        if (key) map[key as string] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
+        if (key)
+          map[key as string] = Boolean(
+            entry.value ?? entry.allowed ?? entry.granted ?? entry.result
+          );
       });
       if (Object.keys(map).length > 0) return map;
     }
@@ -54,8 +57,8 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
   if (typeof payload === "object") {
     const map: Record<string, boolean> = {};
     for (const perm of perms) {
-      if (perm in (payload as Record<string, unknown>)) {
-        map[perm] = Boolean((payload as Record<string, unknown>)[perm]);
+      if (perm in (payload as Record<string, any>)) {
+        map[perm] = Boolean((payload as Record<string, any>)[perm]);
       }
     }
     if (Object.keys(map).length > 0) return map;
@@ -117,13 +120,21 @@ export async function GET(req: NextRequest) {
       },
     ]);
 
-    const rows = Array.isArray(response?.payload?.[0]) ? (response?.payload?.[0] as Record<string, unknown>[]) : [];
+    const rows = Array.isArray(response?.payload?.[0])
+      ? (response?.payload?.[0] as Record<string, any>[])
+      : [];
     const tags = rows
       .map((row) => {
-        const tagTypeObj = row?.tag_type && typeof row.tag_type === "object" ? (row.tag_type as Record<string, unknown>) : null;
-        const ownerObj = row?.owner && typeof row.owner === "object" ? (row.owner as Record<string, unknown>) : null;
+        const tagTypeObj =
+          row?.tag_type && typeof row.tag_type === "object"
+            ? (row.tag_type as Record<string, any>)
+            : null;
+        const ownerObj =
+          row?.owner && typeof row.owner === "object" ? (row.owner as Record<string, any>) : null;
 
-        const tagTypeCode = tagTypeObj ? toString(tagTypeObj.code).trim() : toString(row?.tag_type).trim();
+        const tagTypeCode = tagTypeObj
+          ? toString(tagTypeObj.code).trim()
+          : toString(row?.tag_type).trim();
         const tagTypeLabel = tagTypeObj
           ? toString(tagTypeObj.label || tagTypeObj.code || "").trim()
           : null;
@@ -143,7 +154,10 @@ export async function GET(req: NextRequest) {
           url: toString(row?.url || "").trim() || null,
         };
       })
-      .filter((t: { id: number | null; label: string }) => typeof t.id === "number" && t.id > 0 && t.label.length > 0);
+      .filter(
+        (t: { id: number | null; label: string }) =>
+          typeof t.id === "number" && t.id > 0 && t.label.length > 0
+      );
 
     return successResponse({
       tags,
@@ -195,11 +209,14 @@ export async function POST(req: Request) {
     ]);
 
     const resultRow = createResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to create tag"), 400, resultRow);
     }
 
-    const id = typeof resultRow === "number" ? resultRow : toNumber((resultRow as Record<string, unknown>)?.id ?? resultRow);
+    const id =
+      typeof resultRow === "number"
+        ? resultRow
+        : toNumber((resultRow as Record<string, any>)?.id ?? resultRow);
 
     return successResponse({ created: true, id });
   } catch (error) {
@@ -234,14 +251,19 @@ export async function PUT(req: Request) {
       id,
     ]);
     const existing = existingResponse?.payload?.[0];
-    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, unknown>)?.ilsevent) {
+    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(existing, "Tag not found"), 404, existing);
     }
 
-    const ownerId = body.ownerId ?? result.orgId ?? actor?.ws_ou ?? actor?.home_ou ?? (existing as Record<string, unknown>)?.owner;
+    const ownerId =
+      body.ownerId ??
+      result.orgId ??
+      actor?.ws_ou ??
+      actor?.home_ou ??
+      (existing as Record<string, any>)?.owner;
     if (!ownerId) return errorResponse("ownerId is required", 400);
 
-    const updateData: Record<string, unknown> = { ...(existing as Record<string, unknown>) };
+    const updateData: Record<string, any> = { ...(existing as Record<string, any>) };
     updateData.id = id;
     if (body.tagType !== undefined) updateData.tag_type = body.tagType;
     if (body.label !== undefined) updateData.label = body.label;
@@ -259,7 +281,7 @@ export async function PUT(req: Request) {
       payload,
     ]);
     const resultRow = updateResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to update tag"), 400, resultRow);
     }
 
@@ -289,7 +311,7 @@ export async function DELETE(req: Request) {
       id,
     ]);
     const resultRow = delResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to delete tag"), 400, resultRow);
     }
 

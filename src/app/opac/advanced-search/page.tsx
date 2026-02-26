@@ -3,17 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Search,
-  BookOpen,
-  User,
-  Tag,
-  Hash,
-  Filter,
-  X,
-  Plus,
-  ArrowLeft,
-} from "lucide-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, BookOpen, User, Tag, Hash, Filter, X, Plus, ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 interface SearchField {
@@ -23,47 +22,55 @@ interface SearchField {
   operator: "AND" | "OR" | "NOT";
 }
 
-function getSEARCH_TYPES(t: (key: string) => string) { return [
-  { value: "keyword", label: t("keyword"), icon: Search },
-  { value: "title", label: t("titleField"), icon: BookOpen },
-  { value: "author", label: t("author"), icon: User },
-  { value: "subject", label: t("subject"), icon: Tag },
-  { value: "series", label: t("series"), icon: BookOpen },
-  { value: "isbn", label: t("isbnField"), icon: Hash },
-]; }
+function getSEARCH_TYPES(t: (key: string) => string) {
+  return [
+    { value: "keyword", label: t("keyword"), icon: Search },
+    { value: "title", label: t("titleField"), icon: BookOpen },
+    { value: "author", label: t("author"), icon: User },
+    { value: "subject", label: t("subject"), icon: Tag },
+    { value: "series", label: t("series"), icon: BookOpen },
+    { value: "isbn", label: t("isbnField"), icon: Hash },
+  ];
+}
 
-function getFORMATS(t: (key: string) => string) { return [
-  { value: "", label: t("allFormats") },
-  { value: "book", label: t("books") },
-  { value: "large_print", label: t("largePrint") },
-  { value: "ebook", label: t("eBooks") },
-  { value: "audiobook", label: t("audiobooks") },
-  { value: "dvd", label: t("dvds") },
-  { value: "bluray", label: t("bluray") },
-  { value: "music", label: t("musicCDs") },
-  { value: "magazine", label: t("magazines") },
-]; }
+function getFORMATS(t: (key: string) => string) {
+  return [
+    { value: "", label: t("allFormats") },
+    { value: "book", label: t("books") },
+    { value: "large_print", label: t("largePrint") },
+    { value: "ebook", label: t("eBooks") },
+    { value: "audiobook", label: t("audiobooks") },
+    { value: "dvd", label: t("dvds") },
+    { value: "bluray", label: t("bluray") },
+    { value: "music", label: t("musicCDs") },
+    { value: "magazine", label: t("magazines") },
+  ];
+}
 
-function getAUDIENCES(t: (key: string) => string) { return [
-  { value: "", label: t("allAudiences") },
-  { value: "adult", label: t("adult") },
-  { value: "young_adult", label: t("youngAdult") },
-  { value: "juvenile", label: t("children") },
-]; }
+function getAUDIENCES(t: (key: string) => string) {
+  return [
+    { value: "", label: t("allAudiences") },
+    { value: "adult", label: t("adult") },
+    { value: "young_adult", label: t("youngAdult") },
+    { value: "juvenile", label: t("children") },
+  ];
+}
 
-function getLANGUAGES(t: (key: string) => string) { return [
-  { value: "", label: t("allLanguages") },
-  { value: "eng", label: "English" },
-  { value: "spa", label: "Spanish" },
-  { value: "fre", label: "French" },
-  { value: "ger", label: "German" },
-  { value: "chi", label: "Chinese" },
-  { value: "jpn", label: "Japanese" },
-  { value: "kor", label: "Korean" },
-  { value: "vie", label: "Vietnamese" },
-  { value: "rus", label: "Russian" },
-  { value: "ara", label: "Arabic" },
-]; }
+function getLANGUAGES(t: (key: string) => string) {
+  return [
+    { value: "", label: t("allLanguages") },
+    { value: "eng", label: "English" },
+    { value: "spa", label: "Spanish" },
+    { value: "fre", label: "French" },
+    { value: "ger", label: "German" },
+    { value: "chi", label: "Chinese" },
+    { value: "jpn", label: "Japanese" },
+    { value: "kor", label: "Korean" },
+    { value: "vie", label: "Vietnamese" },
+    { value: "rus", label: "Russian" },
+    { value: "ara", label: "Arabic" },
+  ];
+}
 
 export default function AdvancedSearchPage() {
   const t = useTranslations("advancedSearch");
@@ -72,11 +79,11 @@ export default function AdvancedSearchPage() {
   const AUDIENCES = getAUDIENCES(t);
   const LANGUAGES = getLANGUAGES(t);
   const router = useRouter();
-  
+
   const [searchFields, setSearchFields] = useState<SearchField[]>([
     { id: "1", type: "keyword", value: "", operator: "AND" },
   ]);
-  
+
   const [filters, setFilters] = useState({
     format: "",
     audience: "",
@@ -100,9 +107,7 @@ export default function AdvancedSearchPage() {
   };
 
   const updateSearchField = (id: string, updates: Partial<SearchField>) => {
-    setSearchFields(
-      searchFields.map((f) => (f.id === id ? { ...f, ...updates } : f))
-    );
+    setSearchFields(searchFields.map((f) => (f.id === id ? { ...f, ...updates } : f)));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -110,7 +115,7 @@ export default function AdvancedSearchPage() {
 
     // Build query string
     const queryParts: string[] = [];
-    
+
     searchFields.forEach((field, index) => {
       if (field.value.trim()) {
         const prefix = index > 0 ? ` ${field.operator} ` : "";
@@ -128,7 +133,7 @@ export default function AdvancedSearchPage() {
 
     const params = new URLSearchParams();
     params.set("q", queryParts.join(""));
-    
+
     if (filters.format) params.set("format", filters.format);
     if (filters.audience) params.set("audience", filters.audience);
     if (filters.language) params.set("language", filters.language);
@@ -175,70 +180,80 @@ export default function AdvancedSearchPage() {
           {/* Search Fields */}
           <div className="bg-card rounded-xl border border-border p-6 mb-6">
             <h2 className="text-lg font-semibold text-foreground mb-4">Search Terms</h2>
-            
+
             <div className="space-y-4">
               {searchFields.map((field, index) => (
                 <div key={field.id} className="flex items-start gap-3">
                   {/* Operator (for fields after the first) */}
                   {index > 0 && (
-                    <select
+                    <Select
                       value={field.operator}
-                      onChange={(e) => updateSearchField(field.id, { operator: e.target.value as "AND" | "OR" | "NOT" })}
-                      className="w-20 px-2 py-2 border border-border rounded-lg text-sm focus:outline-none 
-                               focus:ring-2 focus:ring-primary-500"
+                      onValueChange={(value) =>
+                        updateSearchField(field.id, { operator: value as "AND" | "OR" | "NOT" })
+                      }
                     >
-                      <option value="AND">AND</option>
-                      <option value="OR">OR</option>
-                      <option value="NOT">NOT</option>
-                    </select>
+                      <SelectTrigger className="h-10 w-20 rounded-lg text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="AND">AND</SelectItem>
+                        <SelectItem value="OR">OR</SelectItem>
+                        <SelectItem value="NOT">NOT</SelectItem>
+                      </SelectContent>
+                    </Select>
                   )}
-                  
+
                   {/* Search type dropdown */}
-                  <select
+                  <Select
                     value={field.type}
-                    onChange={(e) => updateSearchField(field.id, { type: e.target.value })}
-                    className="w-32 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none 
-                             focus:ring-2 focus:ring-primary-500"
+                    onValueChange={(value) => updateSearchField(field.id, { type: value })}
                   >
-                    {SEARCH_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                  
+                    <SelectTrigger className="h-10 w-40 rounded-lg text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SEARCH_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
                   {/* Search input */}
-                  <input
+                  <Input
                     type="text"
                     value={field.value}
                     onChange={(e) => updateSearchField(field.id, { value: e.target.value })}
                     placeholder={`Enter ${field.type}...`}
-                    className="flex-1 px-4 py-2 border border-border rounded-lg focus:outline-none 
-                             focus:ring-2 focus:ring-primary-500"
+                    className="h-10 flex-1 rounded-lg px-4"
                   />
-                  
+
                   {/* Remove button */}
                   {searchFields.length > 1 && (
-                    <button type="button"
-
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
                       onClick={() => removeSearchField(field.id)}
-                      className="p-2 text-muted-foreground/70 hover:text-red-600 transition-colors"
+                      className="h-10 w-10 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600"
                     >
                       <X className="h-5 w-5" />
-                    </button>
+                    </Button>
                   )}
                 </div>
               ))}
             </div>
 
-            <button type="button"
+            <Button
+              type="button"
+              variant="ghost"
               onClick={addSearchField}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm text-primary-600 
-                       hover:bg-primary-50 rounded-lg transition-colors"
+              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg px-4 text-sm text-primary-600 hover:bg-primary-50"
             >
               <Plus className="h-4 w-4" />
               Add another search term
-            </button>
+            </Button>
           </div>
 
           {/* Filters */}
@@ -247,124 +262,151 @@ export default function AdvancedSearchPage() {
               <Filter className="h-5 w-5" />
               Filters
             </h2>
-            
+
             <div className="grid md:grid-cols-2 gap-4">
               {/* Format */}
               <div>
-                <label htmlFor="format" className="block text-sm font-medium text-foreground/80 mb-1">
+                <label
+                  htmlFor="format"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
                   Format
                 </label>
-                <select id="format"
-                  value={filters.format}
-                  onChange={(e) => setFilters({ ...filters, format: e.target.value })}
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none 
-                           focus:ring-2 focus:ring-primary-500"
+                <Select
+                  value={filters.format || "__all__"}
+                  onValueChange={(value) =>
+                    setFilters({ ...filters, format: value === "__all__" ? "" : value })
+                  }
                 >
-                  {FORMATS.map((format) => (
-                    <option key={format.value} value={format.value}>
-                      {format.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="format" className="h-10 rounded-lg">
+                    <SelectValue placeholder="All formats" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">All formats</SelectItem>
+                    {FORMATS.filter((format) => format.value).map((format) => (
+                      <SelectItem key={format.value} value={format.value}>
+                        {format.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Audience */}
               <div>
-                <label htmlFor="audience" className="block text-sm font-medium text-foreground/80 mb-1">
+                <label
+                  htmlFor="audience"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
                   Audience
                 </label>
-                <select id="audience"
-                  value={filters.audience}
-                  onChange={(e) => setFilters({ ...filters, audience: e.target.value })}
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none 
-                           focus:ring-2 focus:ring-primary-500"
+                <Select
+                  value={filters.audience || "__all__"}
+                  onValueChange={(value) =>
+                    setFilters({ ...filters, audience: value === "__all__" ? "" : value })
+                  }
                 >
-                  {AUDIENCES.map((audience) => (
-                    <option key={audience.value} value={audience.value}>
-                      {audience.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="audience" className="h-10 rounded-lg">
+                    <SelectValue placeholder="All audiences" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">All audiences</SelectItem>
+                    {AUDIENCES.filter((audience) => audience.value).map((audience) => (
+                      <SelectItem key={audience.value} value={audience.value}>
+                        {audience.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Language */}
               <div>
-                <label htmlFor="language" className="block text-sm font-medium text-foreground/80 mb-1">
+                <label
+                  htmlFor="language"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
                   Language
                 </label>
-                <select id="language"
-                  value={filters.language}
-                  onChange={(e) => setFilters({ ...filters, language: e.target.value })}
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none 
-                           focus:ring-2 focus:ring-primary-500"
+                <Select
+                  value={filters.language || "__all__"}
+                  onValueChange={(value) =>
+                    setFilters({ ...filters, language: value === "__all__" ? "" : value })
+                  }
                 >
-                  {LANGUAGES.map((lang) => (
-                    <option key={lang.value} value={lang.value}>
-                      {lang.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="language" className="h-10 rounded-lg">
+                    <SelectValue placeholder="All languages" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">All languages</SelectItem>
+                    {LANGUAGES.filter((lang) => lang.value).map((lang) => (
+                      <SelectItem key={lang.value} value={lang.value}>
+                        {lang.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Publication Year */}
               <div>
-                <label htmlFor="publication-year" className="block text-sm font-medium text-foreground/80 mb-1">
+                <label
+                  htmlFor="publication-year"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
                   Publication Year
                 </label>
                 <div className="flex items-center gap-2">
-                  <input id="publication-year"
+                  <Input
+                    id="publication-year"
                     type="number"
                     value={filters.yearFrom}
                     onChange={(e) => setFilters({ ...filters, yearFrom: e.target.value })}
                     placeholder="From"
                     min="1800"
                     max="2030"
-                    className="flex-1 px-3 py-2 border border-border rounded-lg focus:outline-none 
-                             focus:ring-2 focus:ring-primary-500"
+                    className="h-10 flex-1 rounded-lg px-3"
                   />
                   <span className="text-muted-foreground">to</span>
-                  <input
+                  <Input
                     type="number"
                     value={filters.yearTo}
                     onChange={(e) => setFilters({ ...filters, yearTo: e.target.value })}
                     placeholder="To"
                     min="1800"
                     max="2030"
-                    className="flex-1 px-3 py-2 border border-border rounded-lg focus:outline-none 
-                             focus:ring-2 focus:ring-primary-500"
+                    className="h-10 flex-1 rounded-lg px-3"
                   />
                 </div>
               </div>
             </div>
 
             {/* Available only checkbox */}
-            <label htmlFor="show-only-items-currently-available" className="flex items-center gap-2 mt-4 cursor-pointer">
+            <label
+              htmlFor="show-only-items-currently-available"
+              className="flex items-center gap-2 mt-4 cursor-pointer"
+            >
               <input
                 type="checkbox"
                 checked={filters.availableOnly}
                 onChange={(e) => setFilters({ ...filters, availableOnly: e.target.checked })}
                 className="rounded border-border text-primary-600 focus:ring-primary-500"
               />
-              <span className="text-sm text-foreground/80">Show only items currently available</span>
+              <span className="text-sm text-foreground/80">
+                Show only items currently available
+              </span>
             </label>
           </div>
 
           {/* Action buttons */}
           <div className="flex gap-4">
-            <button type="submit"
-              className="flex-1 py-3 bg-primary-600 text-white rounded-lg font-medium
-                       hover:bg-primary-700 transition-colors flex items-center justify-center gap-2"
-            >
+            <Button type="submit" className="flex-1 items-center justify-center gap-2">
               <Search className="h-5 w-5" />
               Search
-            </button>
-            <button type="button"
-              onClick={handleClear}
-              className="px-6 py-3 border border-border text-foreground/80 rounded-lg font-medium
-                       hover:bg-muted/30 transition-colors"
-            >
+            </Button>
+            <Button type="button" variant="outline" onClick={handleClear} className="px-6">
               Clear
-            </button>
+            </Button>
           </div>
         </form>
 

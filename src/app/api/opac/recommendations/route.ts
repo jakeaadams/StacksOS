@@ -3,7 +3,7 @@ import { callOpenSRF, successResponse, serverErrorResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { getOpacPrivacyPrefs } from "@/lib/db/opac";
 import { requirePatronSession } from "@/lib/opac-auth";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -39,7 +39,7 @@ async function getPersonalizedRecommendations(
   type: string,
   limit: number
 ) {
-  const recommendations: Record<string, unknown>[] = [];
+  const recommendations: Record<string, any>[] = [];
   const seenBibIds = new Set<number>();
   const prefs = await getOpacPrivacyPrefs(patronId);
 
@@ -72,7 +72,7 @@ async function getPersonalizedRecommendations(
           "open-ils.actor.patron.settings.retrieve",
           [authtoken, patronId, ["history.circ.retention_start"]]
         );
-        const raw = settingsResponse?.payload?.[0] as any || {};
+        const raw = (settingsResponse?.payload?.[0] as any) || {};
         allowHistory = raw["history.circ.retention_start"] != null;
       } catch {
         allowHistory = false;
@@ -274,7 +274,7 @@ async function getBecauseYouReadItems(bibId: number, limit: number) {
 }
 
 async function getTrendingItems(limit: number) {
-  const recommendations: Record<string, unknown>[] = [];
+  const recommendations: Record<string, any>[] = [];
   try {
     const searchResponse = await callOpenSRF(
       "open-ils.search",
@@ -317,7 +317,7 @@ async function getTrendingItems(limit: number) {
 }
 
 async function getSimilarItems(bibId: number, limit: number) {
-  const recommendations: Record<string, unknown>[] = [];
+  const recommendations: Record<string, any>[] = [];
   try {
     const modsResponse = await callOpenSRF(
       "open-ils.search",
@@ -418,7 +418,7 @@ async function getPopularItems(limit: number) {
 }
 
 async function collectPopularItems(limit: number) {
-  const recommendations: Record<string, unknown>[] = [];
+  const recommendations: Record<string, any>[] = [];
   try {
     const searchResponse = await callOpenSRF(
       "open-ils.search",

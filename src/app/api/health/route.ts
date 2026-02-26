@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchEvergreen } from "@/lib/api/evergreen-fetch";
 import { getEvergreenPool } from "@/lib/db/evergreen";
 import { cookies } from "next/headers";
-import { z } from "zod";
+import { z as _z } from "zod";
+import { getTenantConfig } from "@/lib/tenant/config";
 
 const startTime = Date.now();
 
@@ -44,12 +45,12 @@ async function checkDatabase(): Promise<HealthCheck> {
 async function checkEvergreen(): Promise<HealthCheck> {
   const start = Date.now();
   try {
-    const evergreenBase = process.env.EVERGREEN_BASE_URL;
+    const evergreenBase = getTenantConfig().evergreenBaseUrl;
     if (!evergreenBase) {
       return {
         status: "down",
         latency: Date.now() - start,
-        error: "EVERGREEN_BASE_URL is not set",
+        error: "Tenant evergreenBaseUrl is not set",
       };
     }
 
@@ -85,7 +86,7 @@ async function checkEvergreen(): Promise<HealthCheck> {
     }
 
     const json: unknown = await res.json();
-    const statusRaw = (json as Record<string, unknown>)?.status;
+    const statusRaw = (json as Record<string, any>)?.status;
     const status =
       typeof statusRaw === "number"
         ? statusRaw
@@ -93,7 +94,7 @@ async function checkEvergreen(): Promise<HealthCheck> {
           ? Number(statusRaw)
           : null;
 
-    const debugRaw = (json as Record<string, unknown>)?.debug;
+    const debugRaw = (json as Record<string, any>)?.debug;
     const debug = typeof debugRaw === "string" ? debugRaw : "";
     const methodNotFound =
       status === 404 &&

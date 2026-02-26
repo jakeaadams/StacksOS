@@ -8,12 +8,24 @@ import { decodeOpenSRFResponse } from "./fieldmapper";
 import type { OpenSRFResponse, OpenSRFEvent } from "./types";
 import { logger } from "@/lib/logger";
 import { fetchEvergreen } from "./evergreen-fetch";
+import { getTenantConfig } from "@/lib/tenant/config";
 import { opensrfRequestDurationSeconds, opensrfRequestsTotal } from "@/lib/metrics";
 
 function resolveEvergreenBaseUrl(): string {
+  try {
+    const tenant = getTenantConfig();
+    if (tenant.evergreenBaseUrl && tenant.evergreenBaseUrl.trim()) {
+      return tenant.evergreenBaseUrl.trim();
+    }
+  } catch {
+    // Fall back to env-based configuration when tenant config is unavailable.
+  }
+
   const raw = process.env.EVERGREEN_BASE_URL;
   if (raw && raw.trim()) return raw.trim();
-  throw new Error("EVERGREEN_BASE_URL is not set. Configure it in .env.local/.env.production.");
+  throw new Error(
+    "Evergreen base URL is not set. Configure tenant evergreenBaseUrl or EVERGREEN_BASE_URL."
+  );
 }
 
 // Avoid spamming logs for Evergreen capability mismatches (method not found).
@@ -182,7 +194,7 @@ export async function callOpenSRF<T = any>(
     // osrf-gateway encodes many failures in the JSON "status" field (often while
     // still returning HTTP 200). If we ignore this, missing methods/signature
     // issues look like empty payloads and the UI feels "fake".
-    const statusRaw = (json as Record<string, unknown>)?.status;
+    const statusRaw = (json as Record<string, any>)?.status;
     const status =
       typeof statusRaw === "number"
         ? statusRaw
@@ -191,7 +203,7 @@ export async function callOpenSRF<T = any>(
           : null;
 
     if (status && status !== 200) {
-      const debug = (json as Record<string, unknown>)?.debug;
+      const debug = (json as Record<string, any>)?.debug;
       const debugText = typeof debug === "string" ? debug : "";
       const isMethodNotFound =
         status === 404 &&

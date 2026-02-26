@@ -7,6 +7,14 @@ import { featureFlags } from "@/lib/feature-flags";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { BookCard } from "@/components/opac/book-card";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sparkles,
   Filter,
@@ -49,14 +57,16 @@ function transformResults(records: any[]): NewTitle[] {
   }));
 }
 
-function getFORMAT_FILTERS(t: (key: string) => string) { return [
-  { value: "all", label: t("allFormats"), icon: Sparkles },
-  { value: "book", label: "Books", icon: BookOpen },
-  { value: "ebook", label: "eBooks", icon: Smartphone },
-  { value: "audiobook", label: "Audiobooks", icon: Headphones },
-  { value: "dvd", label: "DVDs", icon: Film },
-  { value: "music", label: "Music", icon: Music },
-]; }
+function getFORMAT_FILTERS(t: (key: string) => string) {
+  return [
+    { value: "all", label: t("allFormats"), icon: Sparkles },
+    { value: "book", label: "Books", icon: BookOpen },
+    { value: "ebook", label: "eBooks", icon: Smartphone },
+    { value: "audiobook", label: "Audiobooks", icon: Headphones },
+    { value: "dvd", label: "DVDs", icon: Film },
+    { value: "music", label: "Music", icon: Music },
+  ];
+}
 
 const TIME_FILTERS = [
   { value: "7", label: "Past Week" },
@@ -137,8 +147,8 @@ export default function NewTitlesPage() {
           </p>
           <Link
             href="/opac/search"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white
-                     rounded-lg font-medium hover:bg-primary-700 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 stx-action-primary
+                     rounded-lg font-medium hover:brightness-110 transition-colors"
           >
             Search the catalog
           </Link>
@@ -172,8 +182,10 @@ export default function NewTitlesPage() {
               <span className="text-sm text-muted-foreground">Format:</span>
               <div className="flex gap-1">
                 {FORMAT_FILTERS.map((filter) => (
-                  <button
+                  <Button
                     type="button"
+                    variant={formatFilter === filter.value ? "default" : "outline"}
+                    size="sm"
                     key={filter.value}
                     onClick={() => {
                       setFormatFilter(filter.value);
@@ -182,12 +194,12 @@ export default function NewTitlesPage() {
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors
                       ${
                         formatFilter === filter.value
-                          ? "bg-primary-600 text-white"
+                          ? "stx-action-primary"
                           : "bg-muted/50 text-muted-foreground hover:bg-muted"
                       }`}
                   >
                     {filter.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -195,21 +207,24 @@ export default function NewTitlesPage() {
             {/* Time filter */}
             <div className="flex items-center gap-2 ml-auto">
               <span className="text-sm text-muted-foreground">Added:</span>
-              <select
+              <Select
                 value={timeFilter}
-                onChange={(e) => {
-                  setTimeFilter(e.target.value);
+                onValueChange={(value) => {
+                  setTimeFilter(value);
                   setPage(1);
                 }}
-                className="px-3 py-1.5 border border-border rounded-lg text-sm focus:outline-none 
-                         focus:ring-2 focus:ring-primary-500"
               >
-                {TIME_FILTERS.map((filter) => (
-                  <option key={filter.value} value={filter.value}>
-                    {filter.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-8 w-[150px] text-sm">
+                  <SelectValue placeholder="Choose range" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIME_FILTERS.map((filter) => (
+                    <SelectItem key={filter.value} value={filter.value}>
+                      {filter.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
@@ -252,15 +267,15 @@ export default function NewTitlesPage() {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="mt-8 flex items-center justify-center gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="icon"
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
-                  className="p-2 rounded-lg border border-border hover:bg-muted/30 
-                           disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronLeft className="h-5 w-5" />
-                </button>
+                </Button>
 
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -276,32 +291,34 @@ export default function NewTitlesPage() {
                     }
 
                     return (
-                      <button
+                      <Button
                         type="button"
+                        variant={page === pageNum ? "default" : "outline"}
+                        size="icon"
                         key={pageNum}
                         onClick={() => setPage(pageNum)}
                         className={`w-10 h-10 rounded-lg font-medium transition-colors
                           ${
                             page === pageNum
-                              ? "bg-primary-600 text-white"
+                              ? "stx-action-primary"
                               : "border border-border hover:bg-muted/30"
                           }`}
                       >
                         {pageNum}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
 
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="icon"
                   onClick={() => setPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
-                  className="p-2 rounded-lg border border-border hover:bg-muted/30 
-                           disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronRight className="h-5 w-5" />
-                </button>
+                </Button>
               </div>
             )}
           </>

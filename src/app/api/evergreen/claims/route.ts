@@ -66,11 +66,10 @@ async function updateClaimCounts(
     ischanged: 1,
   });
 
-  const updateResponse = await callOpenSRF(
-    "open-ils.actor",
-    "open-ils.actor.patron.update",
-    [authtoken, payload]
-  );
+  const updateResponse = await callOpenSRF("open-ils.actor", "open-ils.actor.patron.update", [
+    authtoken,
+    payload,
+  ]);
 
   const result = updateResponse?.payload?.[0];
   if (!isSuccessResult(result)) {
@@ -80,20 +79,29 @@ async function updateClaimCounts(
   return { claimsReturnedCount, claimsNeverCheckedOutCount };
 }
 
-const claimsPostSchema = z.object({
-  action: z.enum(["claims_returned", "claims_never_checked_out", "resolve_claim", "void_claim_fines"]),
-  circId: z.coerce.number().int().positive().optional(),
-  copyBarcode: z.string().trim().optional(),
-  claimDate: z.string().optional(),
-  patronId: z.coerce.number().int().positive().optional(),
-  note: z.string().max(2048).optional(),
-}).passthrough();
+const claimsPostSchema = z
+  .object({
+    action: z.enum([
+      "claims_returned",
+      "claims_never_checked_out",
+      "resolve_claim",
+      "void_claim_fines",
+    ]),
+    circId: z.coerce.number().int().positive().optional(),
+    copyBarcode: z.string().trim().optional(),
+    claimDate: z.string().optional(),
+    patronId: z.coerce.number().int().positive().optional(),
+    note: z.string().max(2048).optional(),
+  })
+  .passthrough();
 
-const claimsPutSchema = z.object({
-  patronId: z.coerce.number().int().positive(),
-  claimsReturnedCount: z.coerce.number().int().min(0).optional(),
-  claimsNeverCheckedOutCount: z.coerce.number().int().min(0).optional(),
-}).passthrough();
+const claimsPutSchema = z
+  .object({
+    patronId: z.coerce.number().int().positive(),
+    claimsReturnedCount: z.coerce.number().int().min(0).optional(),
+    claimsNeverCheckedOutCount: z.coerce.number().int().min(0).optional(),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   try {
@@ -111,7 +119,7 @@ export async function GET(req: NextRequest) {
       // Derive a durable list by querying circulations with stop_fines=CLAIMSRETURNED for this patron.
       // Prefer *open* circulations (checkin_time IS NULL), since the Claims Returned staff workflow
       // is about managing currently-claimed items.
-      let claimsReturned: Record<string, unknown>[] = [];
+      let claimsReturned: Record<string, any>[] = [];
       try {
         const claimsCircsResponse = await callOpenSRF(
           "open-ils.pcrud",
@@ -135,15 +143,18 @@ export async function GET(req: NextRequest) {
         const fallbackResponse = await callOpenSRF(
           "open-ils.pcrud",
           "open-ils.pcrud.search.circ.atomic",
-          [authtoken, { usr: pid, checkin_time: null }, { limit: 500, order_by: { circ: "xact_start DESC" } }]
+          [
+            authtoken,
+            { usr: pid, checkin_time: null },
+            { limit: 500, order_by: { circ: "xact_start DESC" } },
+          ]
         );
         const fallbackCircs = fallbackResponse?.payload?.[0];
         const allCircs = Array.isArray(fallbackCircs) ? fallbackCircs : [];
-        claimsReturned = allCircs.filter((c) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED"
-        );
+        claimsReturned = allCircs.filter((c) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED");
       }
 
-      const detailedClaims: Record<string, unknown>[] = [];
+      const detailedClaims: Record<string, any>[] = [];
       for (const claim of claimsReturned) {
         const circIdVal = fmNumber(claim, "id", 10);
         if (!circIdVal) continue;
@@ -154,7 +165,13 @@ export async function GET(req: NextRequest) {
         const checkoutDate = fmString(claim, "xact_start", 24);
 
         if (!copyId) {
-          detailedClaims.push({ circId: circIdVal, copyId: null, claimDate, dueDate, checkoutDate });
+          detailedClaims.push({
+            circId: circIdVal,
+            copyId: null,
+            claimDate,
+            dueDate,
+            checkoutDate,
+          });
           continue;
         }
 
@@ -167,11 +184,11 @@ export async function GET(req: NextRequest) {
           const copy = copyResponse?.payload?.[0];
 
           let title = "Unknown";
-          const rawCallNumber = (copy as Record<string, unknown>)?.call_number;
+          const rawCallNumber = (copy as Record<string, any>)?.call_number;
           if (rawCallNumber) {
             const cnId =
               typeof rawCallNumber === "object"
-                ? fmNumber(rawCallNumber, "id", 4) ?? (rawCallNumber as Record<string, unknown>).id
+                ? (fmNumber(rawCallNumber, "id", 4) ?? (rawCallNumber as Record<string, any>).id)
                 : rawCallNumber;
             const cnResponse = await callOpenSRF(
               "open-ils.search",
@@ -179,7 +196,7 @@ export async function GET(req: NextRequest) {
               [cnId]
             );
             const cn = cnResponse?.payload?.[0];
-            const recordId = (cn as Record<string, unknown>)?.record;
+            const recordId = (cn as Record<string, any>)?.record;
             if (recordId) {
               const bibResponse = await callOpenSRF(
                 "open-ils.search",
@@ -193,7 +210,7 @@ export async function GET(req: NextRequest) {
           detailedClaims.push({
             circId: circIdVal,
             copyId,
-            barcode: (copy as Record<string, unknown>)?.barcode || null,
+            barcode: (copy as Record<string, any>)?.barcode || null,
             title,
             claimDate,
             dueDate,
@@ -212,7 +229,8 @@ export async function GET(req: NextRequest) {
         [authtoken, pid]
       );
       const allBills = billsResponse?.payload?.[0] || [];
-      const claimBills = (Array.isArray(allBills) ? allBills : []).filter((bill) =>
+      const claimBills = (Array.isArray(allBills) ? allBills : []).filter(
+        (bill) =>
           (bill.billing_type as string | undefined)?.toLowerCase().includes("claim") ||
           (bill.billing_type as string | undefined)?.toLowerCase().includes("lost")
       );
@@ -227,7 +245,8 @@ export async function GET(req: NextRequest) {
           claimsNeverCheckedOut: fmNumber(patron, "claims_never_checked_out_count", 17) || 0,
         },
         relatedBills: claimBills,
-        totalBillsOwed: claimBills.reduce((sum: number, b) => sum + parseFloat(String(b.balance_owed || 0)),
+        totalBillsOwed: claimBills.reduce(
+          (sum: number, b) => sum + parseFloat(String(b.balance_owed || 0)),
           0
         ),
       });
@@ -237,18 +256,18 @@ export async function GET(req: NextRequest) {
       const cid = toInt(circId);
       if (!cid) return errorResponse("Invalid circ_id", 400);
 
-      const circResponse = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.retrieve",
-        [authtoken, cid]
-      );
+      const circResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.retrieve", [
+        authtoken,
+        cid,
+      ]);
 
       const circ = circResponse?.payload?.[0];
       if (!circ || circ.ilsevent) {
         return notFoundResponse("Circulation not found");
       }
 
-      const stopFines = fmString(circ, "stop_fines", 19) || (circ as Record<string, unknown>).stop_fines || null;
+      const stopFines =
+        fmString(circ, "stop_fines", 19) || (circ as Record<string, any>).stop_fines || null;
       const isClaimsReturned = stopFines === "CLAIMSRETURNED";
 
       const billsResponse = await callOpenSRF(
@@ -261,12 +280,15 @@ export async function GET(req: NextRequest) {
       return successResponse({
         circulation: {
           id: cid,
-          patronId: fmNumber(circ, "usr", 22) ?? (circ as Record<string, unknown>).usr ?? null,
-          copyId: fmNumber(circ, "target_copy", 21) ?? (circ as Record<string, unknown>).target_copy ?? null,
-          dueDate: fmString(circ, "due_date", 6) ?? (circ as Record<string, unknown>).due_date ?? null,
+          patronId: fmNumber(circ, "usr", 22) ?? (circ as Record<string, any>).usr ?? null,
+          copyId:
+            fmNumber(circ, "target_copy", 21) ?? (circ as Record<string, any>).target_copy ?? null,
+          dueDate: fmString(circ, "due_date", 6) ?? (circ as Record<string, any>).due_date ?? null,
           stopFines,
           stopFinesTime:
-            fmString(circ, "stop_fines_time", 20) ?? (circ as Record<string, unknown>).stop_fines_time ?? null,
+            fmString(circ, "stop_fines_time", 20) ??
+            (circ as Record<string, any>).stop_fines_time ??
+            null,
           isClaimsReturned,
         },
         bills: Array.isArray(bills) ? bills : [],
@@ -287,7 +309,8 @@ export async function GET(req: NextRequest) {
       );
 
       const circs = circResponse?.payload?.[0] || [];
-      const claimsReturnedCircs = (Array.isArray(circs) ? circs : []).filter((c) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED"
+      const claimsReturnedCircs = (Array.isArray(circs) ? circs : []).filter(
+        (c) => fmString(c, "stop_fines", 19) === "CLAIMSRETURNED"
       );
 
       return successResponse({
@@ -325,7 +348,7 @@ export async function POST(req: NextRequest) {
 
       const audit = async (
         status: "success" | "failure",
-        details?: Record<string, unknown>,
+        details?: Record<string, any>,
         error?: string
       ) =>
         logAuditEvent({
@@ -347,18 +370,21 @@ export async function POST(req: NextRequest) {
           return errorResponse("circId required", 400);
         }
 
-        const circResponse = await callOpenSRF(
-          "open-ils.circ",
-          "open-ils.circ.retrieve",
-          [authtoken, cid]
-        );
+        const circResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.retrieve", [
+          authtoken,
+          cid,
+        ]);
         const circ = circResponse?.payload?.[0];
 
         if (!circ || circ.ilsevent) {
           return notFoundResponse("Circulation not found");
         }
 
-        const circPatronId: number | null = fmNumber(circ, "usr", 22) ?? (typeof (circ as Record<string, unknown>).usr === "number" ? (circ as Record<string, unknown>).usr as number : null);
+        const circPatronId: number | null =
+          fmNumber(circ, "usr", 22) ??
+          (typeof (circ as Record<string, any>).usr === "number"
+            ? ((circ as Record<string, any>).usr as number)
+            : null);
 
         // Some Evergreen installs require the copy barcode in the claims-returned payload.
         // Prefer the request-provided copyBarcode (best for audits/QA), otherwise derive it
@@ -369,10 +395,10 @@ export async function POST(req: NextRequest) {
         if (!resolvedCopyBarcode) {
           const rawCopyId =
             fmNumber(circ, "target_copy", 21) ??
-            (circ as Record<string, unknown>).target_copy ??
-            (circ as Record<string, unknown>).targetCopy ??
-            (circ as Record<string, unknown>).copy ??
-            (circ as Record<string, unknown>).target;
+            (circ as Record<string, any>).target_copy ??
+            (circ as Record<string, any>).targetCopy ??
+            (circ as Record<string, any>).copy ??
+            (circ as Record<string, any>).target;
           const copyId = toInt(rawCopyId);
           if (copyId) {
             try {
@@ -382,8 +408,13 @@ export async function POST(req: NextRequest) {
                 [copyId]
               );
               const copy = copyResponse?.payload?.[0];
-              if (copy && !copy.ilsevent && typeof (copy as Record<string, unknown>).barcode === "string" && ((copy as Record<string, unknown>).barcode as string).trim()) {
-                resolvedCopyBarcode = ((copy as Record<string, unknown>).barcode as string).trim();
+              if (
+                copy &&
+                !copy.ilsevent &&
+                typeof (copy as Record<string, any>).barcode === "string" &&
+                ((copy as Record<string, any>).barcode as string).trim()
+              ) {
+                resolvedCopyBarcode = ((copy as Record<string, any>).barcode as string).trim();
               }
             } catch {
               // ignore
@@ -407,7 +438,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        const payload: Record<string, unknown> = { barcode: resolvedCopyBarcode };
+        const payload: Record<string, any> = { barcode: resolvedCopyBarcode };
         if (claimDate) payload.backdate = claimDate;
 
         const claimResponse = await callOpenSRF(
@@ -424,7 +455,7 @@ export async function POST(req: NextRequest) {
           let effectiveStopFines: string | null = null;
           try {
             const copy = await getCopyByBarcode(resolvedCopyBarcode);
-            const copyId = fmNumber(copy, "id", 4) ?? ((copy as Record<string, unknown>)?.id as number);
+            const copyId = fmNumber(copy, "id", 4) ?? ((copy as Record<string, any>)?.id as number);
             if (copyId) {
               const openCircResponse = await callOpenSRF(
                 "open-ils.pcrud",
@@ -459,12 +490,14 @@ export async function POST(req: NextRequest) {
 
           let fineAdjustment = null;
           if (claimDate) {
-            const voidedFines = (Array.isArray(bills) ? bills : []).filter((b) => b.voided === "t" || b.voided === true
+            const voidedFines = (Array.isArray(bills) ? bills : []).filter(
+              (b) => b.voided === "t" || b.voided === true
             );
             fineAdjustment = {
               backdatedTo: claimDate,
               finesVoided: voidedFines.length,
-              amountVoided: voidedFines.reduce((sum: number, b) => sum + parseFloat(String(b.amount || 0)),
+              amountVoided: voidedFines.reduce(
+                (sum: number, b) => sum + parseFloat(String(b.amount || 0)),
                 0
               ),
             };
@@ -488,10 +521,14 @@ export async function POST(req: NextRequest) {
 
           const warnings: string[] = [];
           if (effectiveCircId && effectiveCircId !== cid) {
-            warnings.push(`claims_returned affected circ ${effectiveCircId} (requested circ ${cid})`);
+            warnings.push(
+              `claims_returned affected circ ${effectiveCircId} (requested circ ${cid})`
+            );
           }
           if (effectiveStopFines && effectiveStopFines !== "CLAIMSRETURNED") {
-            warnings.push(`effective circulation stop_fines=${effectiveStopFines} (expected CLAIMSRETURNED)`);
+            warnings.push(
+              `effective circulation stop_fines=${effectiveStopFines} (expected CLAIMSRETURNED)`
+            );
           }
           if (typeof claimCountDelta === "number" && claimCountDelta !== 1) {
             warnings.push(`claims_returned_count changed by ${claimCountDelta} (expected 1)`);
@@ -538,11 +575,10 @@ export async function POST(req: NextRequest) {
         }
 
         try {
-          const checkinResponse = await callOpenSRF(
-            "open-ils.circ",
-            "open-ils.circ.checkin",
-            [authtoken, { copy_barcode: copyBarcode }]
-          );
+          const checkinResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.checkin", [
+            authtoken,
+            { copy_barcode: copyBarcode },
+          ]);
 
           const checkinResult = checkinResponse?.payload?.[0];
           if (checkinResult?.ilsevent && checkinResult.ilsevent !== 0) {
@@ -618,7 +654,7 @@ export async function POST(req: NextRequest) {
 
         const { resolution, voidFines } = body;
 
-        const checkinPayload: Record<string, unknown> = { copy_barcode: copyBarcode, noop: false };
+        const checkinPayload: Record<string, any> = { copy_barcode: copyBarcode, noop: false };
 
         let checkinResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.checkin", [
           authtoken,
@@ -643,7 +679,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (isSuccessResult(result) || result?.payload) {
-          const response: Record<string, unknown> = {
+          const response: Record<string, any> = {
             action: "resolve_claim",
             resolution: resolution || "Item returned",
             copyBarcode,
@@ -723,11 +759,11 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        const voidResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.money.billing.void", [
-          authtoken,
-          unpaidBillIds,
-          note || "Fines voided for claim",
-        ]);
+        const voidResponse = await callOpenSRF(
+          "open-ils.circ",
+          "open-ils.circ.money.billing.void",
+          [authtoken, unpaidBillIds, note || "Fines voided for claim"]
+        );
 
         const voidResult = voidResponse?.payload?.[0];
 
@@ -753,7 +789,9 @@ export async function POST(req: NextRequest) {
 
       await audit("failure", { action }, "Invalid action");
       return errorResponse(
-        "Invalid action: " + action + ". Valid actions: claims_returned, claims_never_checked_out, resolve_claim, void_claim_fines",
+        "Invalid action: " +
+          action +
+          ". Valid actions: claims_returned, claims_never_checked_out, resolve_claim, void_claim_fines",
         400
       );
     } catch (error) {

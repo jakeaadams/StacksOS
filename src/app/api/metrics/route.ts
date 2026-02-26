@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { errorResponse, serverErrorResponse } from "@/lib/api";
 import { getMetricsRegistry } from "@/lib/metrics";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 export const runtime = "nodejs";
 
@@ -18,7 +18,10 @@ export async function GET(req: NextRequest) {
     const secret = String(process.env.STACKSOS_METRICS_SECRET || "").trim();
 
     if (!secret && process.env.NODE_ENV === "production") {
-      return errorResponse("Metrics endpoint is not configured (STACKSOS_METRICS_SECRET missing)", 501);
+      return errorResponse(
+        "Metrics endpoint is not configured (STACKSOS_METRICS_SECRET missing)",
+        501
+      );
     }
 
     if (secret) {

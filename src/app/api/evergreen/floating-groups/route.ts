@@ -1,12 +1,6 @@
 import { NextRequest } from "next/server";
-import {
-  callOpenSRF,
-  requireAuthToken,
-  successResponse,
-  serverErrorResponse,
-} from "@/lib/api";
+import { callOpenSRF, requireAuthToken, successResponse, serverErrorResponse } from "@/lib/api";
 import { query } from "@/lib/db/evergreen";
-import { z } from "zod";
 
 function toNumber(value: unknown): number | null {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
@@ -16,6 +10,18 @@ function toNumber(value: unknown): number | null {
 
 function toString(value: unknown): string {
   return typeof value === "string" ? value : String(value ?? "");
+}
+
+type FloatingGroup = {
+  id: number;
+  name: string;
+};
+
+function normalizeFloatingGroupRow(row: Record<string, any>): FloatingGroup | null {
+  const id = toNumber(row.id ?? (Array.isArray(row.__p) ? row.__p[0] : null));
+  const name = toString(row.name ?? (Array.isArray(row.__p) ? row.__p[1] : null)).trim();
+  if (typeof id !== "number" || id <= 0 || name.length === 0) return null;
+  return { id, name };
 }
 
 export async function GET(req: NextRequest) {
@@ -29,13 +35,12 @@ export async function GET(req: NextRequest) {
         { order_by: { cfg: "name" }, limit: 500 },
       ]);
 
-      const rows = Array.isArray(response?.payload?.[0]) ? (response.payload[0] as Record<string, unknown>[]) : [];
+      const rows = Array.isArray(response?.payload?.[0])
+        ? (response.payload[0] as Record<string, any>[])
+        : [];
       const groups = rows
-        .map((row: any) => ({
-          id: toNumber(row?.id ?? row?.__p?.[0]),
-          name: toString(row?.name ?? row?.__p?.[1]).trim(),
-        }))
-        .filter((row: any) => typeof row.id === "number" && row.name.length > 0);
+        .map((row) => normalizeFloatingGroupRow(row))
+        .filter((row): row is FloatingGroup => row !== null);
 
       if (groups.length > 0) {
         return successResponse({ groups });
@@ -54,15 +59,14 @@ export async function GET(req: NextRequest) {
     );
 
     const groups = rows
-      .map((row: any) => ({
+      .map((row) => ({
         id: Number(row.id) || 0,
         name: String(row.name || "").trim(),
       }))
-      .filter((row: any) => row.id > 0 && row.name.length > 0);
+      .filter((row): row is FloatingGroup => row.id > 0 && row.name.length > 0);
 
     return successResponse({ groups });
   } catch (error: any) {
     return serverErrorResponse(error, "Floating groups GET", req);
   }
 }
-

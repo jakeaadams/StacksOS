@@ -67,9 +67,7 @@ export default function HoldsShelfPage() {
     setError(null);
 
     try {
-      const res = await fetchWithAuth(
-        "/api/evergreen/holds/shelf?org_id=" + defaultOrgId
-      );
+      const res = await fetchWithAuth("/api/evergreen/holds/shelf?org_id=" + defaultOrgId);
       const data = await res.json();
 
       if (data.ok) {
@@ -89,10 +87,7 @@ export default function HoldsShelfPage() {
     void loadShelfHolds();
   }, [loadShelfHolds]);
 
-  const expiredCount = useMemo(
-    () => shelfHolds.filter((h) => h.isExpired).length,
-    [shelfHolds]
-  );
+  const expiredCount = useMemo(() => shelfHolds.filter((h) => h.isExpired).length, [shelfHolds]);
 
   const expiringSoonCount = useMemo(
     () => shelfHolds.filter((h) => h.isExpiringSoon && !h.isExpired).length,
@@ -114,9 +109,7 @@ export default function HoldsShelfPage() {
       const data = await res.json();
 
       if (data.ok) {
-        toast.success(
-          "Cleared " + (data.clearedCount || 0) + " expired hold(s)"
-        );
+        toast.success("Cleared " + (data.clearedCount || 0) + " expired hold(s)");
         setClearDialogOpen(false);
         void loadShelfHolds();
       } else {
@@ -147,22 +140,16 @@ export default function HoldsShelfPage() {
           ">" +
           "<td>" +
           escapeHtml(item.title) +
-          (item.author
-            ? '<div class="muted">' + escapeHtml(item.author) + "</div>"
-            : "") +
+          (item.author ? '<div class="muted">' + escapeHtml(item.author) + "</div>" : "") +
           "</td>" +
           "<td>" +
           escapeHtml(item.patronName) +
           "</td>" +
           "<td>" +
-          (item.pickupDate
-            ? format(new Date(item.pickupDate), "MM/dd/yyyy")
-            : "-") +
+          (item.pickupDate ? format(new Date(item.pickupDate), "MM/dd/yyyy") : "-") +
           "</td>" +
           "<td>" +
-          (item.expireDate
-            ? format(new Date(item.expireDate), "MM/dd/yyyy")
-            : "-") +
+          (item.expireDate ? format(new Date(item.expireDate), "MM/dd/yyyy") : "-") +
           "</td>" +
           "<td>" +
           escapeHtml(item.shelfLocation) +
@@ -194,12 +181,12 @@ export default function HoldsShelfPage() {
       '<table style="margin-top: 16px;">' +
       "<thead>" +
       "<tr>" +
-      "<th scope=\"col\">Title / Author</th>" +
-      "<th scope=\"col\">Patron</th>" +
-      "<th scope=\"col\">Pickup Date</th>" +
-      "<th scope=\"col\">Expire Date</th>" +
-      "<th scope=\"col\">Shelf Location</th>" +
-      "<th scope=\"col\">Days</th>" +
+      '<th scope="col">Title / Author</th>' +
+      '<th scope="col">Patron</th>' +
+      '<th scope="col">Pickup Date</th>' +
+      '<th scope="col">Expire Date</th>' +
+      '<th scope="col">Shelf Location</th>' +
+      '<th scope="col">Days</th>' +
       "</tr>" +
       "</thead>" +
       "<tbody>" +
@@ -218,54 +205,39 @@ export default function HoldsShelfPage() {
     () => [
       {
         accessorKey: "title",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Title" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
         cell: ({ row }) => (
           <div>
             <div className="font-medium">{row.original.title}</div>
             {row.original.author && (
-              <div className="text-sm text-muted-foreground">
-                {row.original.author}
-              </div>
+              <div className="text-sm text-muted-foreground">{row.original.author}</div>
             )}
           </div>
         ),
       },
       {
         accessorKey: "patronName",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Patron" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Patron" />,
         cell: ({ row }) => {
           const barcode = row.original.patronBarcode || "";
-          const maskedBarcode =
-            barcode.length > 4 ? "****" + barcode.slice(-4) : barcode;
+          const maskedBarcode = barcode.length > 4 ? "****" + barcode.slice(-4) : barcode;
           return (
             <div>
               <div>{row.original.patronName}</div>
-              <div className="text-xs text-muted-foreground font-mono">
-                {maskedBarcode}
-              </div>
+              <div className="text-xs text-muted-foreground font-mono">{maskedBarcode}</div>
             </div>
           );
         },
       },
       {
         accessorKey: "pickupDate",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Pickup Date" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Pickup Date" />,
         cell: ({ row }) =>
-          row.original.pickupDate
-            ? format(new Date(row.original.pickupDate), "MM/dd/yyyy")
-            : "-",
+          row.original.pickupDate ? format(new Date(row.original.pickupDate), "MM/dd/yyyy") : "-",
       },
       {
         accessorKey: "expireDate",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Expire Date" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Expire Date" />,
         cell: ({ row }) => {
           const expireDate = row.original.expireDate;
           if (!expireDate) return "-";
@@ -290,25 +262,17 @@ export default function HoldsShelfPage() {
       },
       {
         accessorKey: "shelfLocation",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Shelf Location" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Shelf Location" />,
       },
       {
         accessorKey: "daysOnShelf",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Days on Shelf" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Days on Shelf" />,
         cell: ({ row }) => {
           const days = row.original.daysOnShelf;
           return (
             <span
               className={
-                days > 7
-                  ? "text-red-600 font-medium"
-                  : days > 5
-                    ? "text-amber-600 font-medium"
-                    : ""
+                days > 7 ? "text-red-600 font-medium" : days > 5 ? "text-amber-600 font-medium" : ""
               }
             >
               {days}
@@ -318,9 +282,7 @@ export default function HoldsShelfPage() {
       },
       {
         accessorKey: "status",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => {
           const isExpired = row.original.isExpired;
           const isExpiringSoon = row.original.isExpiringSoon;
@@ -415,16 +377,16 @@ export default function HoldsShelfPage() {
               label: "Hold policies",
               onClick: () => router.push("/staff/admin/policies/holds"),
             }}
-	          >
-	            <Button variant="ghost" onClick={() => router.push("/staff/help#demo-data")}>
-	              Seed demo data
-	            </Button>
-	          </EmptyState>
-	        ) : (
-	          <DataTable
-	            columns={columns}
-	            data={shelfHolds}
-	            isLoading={loading}
+          >
+            <Button variant="ghost" onClick={() => router.push("/staff/help#evergreen-setup")}>
+              Evergreen setup checklist
+            </Button>
+          </EmptyState>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={shelfHolds}
+            isLoading={loading}
             getRowClassName={getRowClassName}
           />
         )}
@@ -435,24 +397,15 @@ export default function HoldsShelfPage() {
           <DialogHeader>
             <DialogTitle>Clear Expired Holds</DialogTitle>
             <DialogDescription>
-              This will remove {expiredCount} expired hold(s) from the shelf and
-              return them to the available pool. Items will need to be
-              reshelved.
+              This will remove {expiredCount} expired hold(s) from the shelf and return them to the
+              available pool. Items will need to be reshelved.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setClearDialogOpen(false)}
-              disabled={clearing}
-            >
+            <Button variant="outline" onClick={() => setClearDialogOpen(false)} disabled={clearing}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleClearExpired}
-              disabled={clearing}
-            >
+            <Button variant="destructive" onClick={handleClearExpired} disabled={clearing}>
               {clearing ? "Clearing..." : "Clear Expired"}
             </Button>
           </DialogFooter>

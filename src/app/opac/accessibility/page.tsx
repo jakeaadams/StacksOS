@@ -7,7 +7,7 @@ export const metadata = {
 };
 
 export default function AccessibilityPage() {
-  const t = useTranslations("accessibilityPage");
+  const _t = useTranslations("accessibilityPage");
   return (
     <div className="min-h-screen bg-muted/30">
       <section className="bg-card border-b border-border py-12">

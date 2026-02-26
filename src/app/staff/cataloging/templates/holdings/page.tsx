@@ -19,8 +19,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ArrowLeft, Layers, Plus, RefreshCw, Trash2, Pencil } from "lucide-react";
 
 type HoldingsTemplate = {
@@ -112,17 +125,20 @@ export default function HoldingsTemplatesPage() {
     setDialogOpen(true);
   }, [orgId]);
 
-  const openEdit = useCallback((t: HoldingsTemplate) => {
-    setEditing(t);
-    setForm({
-      name: t.name,
-      owningLib: String(t.owningLib || orgId),
-      classification: t.classification ? String(t.classification) : "",
-      callNumberPrefix: t.callNumberPrefix ? String(t.callNumberPrefix) : "",
-      callNumberSuffix: t.callNumberSuffix ? String(t.callNumberSuffix) : "",
-    });
-    setDialogOpen(true);
-  }, [orgId]);
+  const openEdit = useCallback(
+    (t: HoldingsTemplate) => {
+      setEditing(t);
+      setForm({
+        name: t.name,
+        owningLib: String(t.owningLib || orgId),
+        classification: t.classification ? String(t.classification) : "",
+        callNumberPrefix: t.callNumberPrefix ? String(t.callNumberPrefix) : "",
+        callNumberSuffix: t.callNumberSuffix ? String(t.callNumberSuffix) : "",
+      });
+      setDialogOpen(true);
+    },
+    [orgId]
+  );
 
   const requestDelete = useCallback((t: HoldingsTemplate) => {
     setDeleteTarget(t);
@@ -227,24 +243,38 @@ export default function HoldingsTemplatesPage() {
       {
         accessorKey: "classificationName",
         header: "Classification",
-        cell: ({ row }) => row.original.classificationName || (row.original.classification ? classLabelById.get(row.original.classification) : null) || "—",
+        cell: ({ row }) =>
+          row.original.classificationName ||
+          (row.original.classification ? classLabelById.get(row.original.classification) : null) ||
+          "—",
       },
       {
         id: "prefix",
         header: "Prefix",
-        cell: ({ row }) => (row.original.callNumberPrefix ? prefixLabelById.get(row.original.callNumberPrefix) : null) || "—",
+        cell: ({ row }) =>
+          (row.original.callNumberPrefix
+            ? prefixLabelById.get(row.original.callNumberPrefix)
+            : null) || "—",
       },
       {
         id: "suffix",
         header: "Suffix",
-        cell: ({ row }) => (row.original.callNumberSuffix ? suffixLabelById.get(row.original.callNumberSuffix) : null) || "—",
+        cell: ({ row }) =>
+          (row.original.callNumberSuffix
+            ? suffixLabelById.get(row.original.callNumberSuffix)
+            : null) || "—",
       },
       {
         id: "actions",
         header: "",
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
-            <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)} aria-label="Edit template">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openEdit(row.original)}
+              aria-label="Edit template"
+            >
               <Pencil className="h-4 w-4" />
             </Button>
             <Button
@@ -274,7 +304,12 @@ export default function HoldingsTemplatesPage() {
           { label: "Holdings" },
         ]}
         actions={[
-          { label: "Back", onClick: () => router.push("/staff/cataloging/templates"), icon: ArrowLeft, variant: "outline" as const },
+          {
+            label: "Back",
+            onClick: () => router.push("/staff/cataloging/templates"),
+            icon: ArrowLeft,
+            variant: "outline" as const,
+          },
           { label: "Refresh", onClick: load, icon: RefreshCw, variant: "outline" as const },
           { label: "New Template", onClick: openCreate, icon: Plus },
         ]}
@@ -286,12 +321,18 @@ export default function HoldingsTemplatesPage() {
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base">Scope</CardTitle>
-            <CardDescription>Holdings templates are stored in org unit settings as JSON.</CardDescription>
+            <CardDescription>
+              Holdings templates are stored in org unit settings as JSON.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="organization">Organization</Label>
-              <Select id="organization" value={String(orgId)} onValueChange={(v) => setOrgId(parseInt(v, 10))}>
+              <Select
+                id="organization"
+                value={String(orgId)}
+                onValueChange={(v) => setOrgId(parseInt(v, 10))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select org" />
                 </SelectTrigger>
@@ -320,7 +361,9 @@ export default function HoldingsTemplatesPage() {
             <CardTitle className="text-base flex items-center gap-2">
               <Layers className="h-4 w-4" /> Templates
             </CardTitle>
-            <CardDescription>{templates.length} template{templates.length === 1 ? "" : "s"}</CardDescription>
+            <CardDescription>
+              {templates.length} template{templates.length === 1 ? "" : "s"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <DataTable
@@ -335,7 +378,10 @@ export default function HoldingsTemplatesPage() {
                   title="No holdings templates"
                   description="Create your first holdings template to standardize call number entry."
                   action={{ label: "Create template", onClick: openCreate, icon: Plus }}
-                  secondaryAction={{ label: "Seed demo data", onClick: () => router.push("/staff/help#demo-data") }}
+                  secondaryAction={{
+                    label: "Evergreen setup checklist",
+                    onClick: () => router.push("/staff/help#evergreen-setup"),
+                  }}
                 />
               }
             />
@@ -346,23 +392,40 @@ export default function HoldingsTemplatesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit holdings template" : "New holdings template"}</DialogTitle>
-            <DialogDescription>These defaults apply when creating new call numbers/holdings.</DialogDescription>
+            <DialogTitle>
+              {editing ? "Edit holdings template" : "New holdings template"}
+            </DialogTitle>
+            <DialogDescription>
+              These defaults apply when creating new call numbers/holdings.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-2 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g., Adult Fiction" />
+              <Input
+                id="name"
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="e.g., Adult Fiction"
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="owning-library">Owning library</Label>
-              <Select id="owning-library" value={form.owningLib} onValueChange={(v) => setForm((p) => ({ ...p, owningLib: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select org" /></SelectTrigger>
+              <Select
+                id="owning-library"
+                value={form.owningLib}
+                onValueChange={(v) => setForm((p) => ({ ...p, owningLib: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select org" />
+                </SelectTrigger>
                 <SelectContent>
                   {orgs.map((o) => (
-                    <SelectItem key={o.id} value={String(o.id)}>{o.shortname} — {o.name}</SelectItem>
+                    <SelectItem key={o.id} value={String(o.id)}>
+                      {o.shortname} — {o.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -370,12 +433,20 @@ export default function HoldingsTemplatesPage() {
 
             <div className="space-y-2">
               <Label htmlFor="classification">Classification</Label>
-              <Select id="classification" value={form.classification} onValueChange={(v) => setForm((p) => ({ ...p, classification: v }))}>
-                <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
+              <Select
+                id="classification"
+                value={form.classification}
+                onValueChange={(v) => setForm((p) => ({ ...p, classification: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Optional" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">(None)</SelectItem>
                   {classifications.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -383,12 +454,20 @@ export default function HoldingsTemplatesPage() {
 
             <div className="space-y-2">
               <Label htmlFor="prefix">Prefix</Label>
-              <Select id="prefix" value={form.callNumberPrefix} onValueChange={(v) => setForm((p) => ({ ...p, callNumberPrefix: v }))}>
-                <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
+              <Select
+                id="prefix"
+                value={form.callNumberPrefix}
+                onValueChange={(v) => setForm((p) => ({ ...p, callNumberPrefix: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Optional" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">(None)</SelectItem>
                   {prefixes.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>{p.label}</SelectItem>
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -396,12 +475,20 @@ export default function HoldingsTemplatesPage() {
 
             <div className="space-y-2">
               <Label htmlFor="suffix">Suffix</Label>
-              <Select id="suffix" value={form.callNumberSuffix} onValueChange={(v) => setForm((p) => ({ ...p, callNumberSuffix: v }))}>
-                <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
+              <Select
+                id="suffix"
+                value={form.callNumberSuffix}
+                onValueChange={(v) => setForm((p) => ({ ...p, callNumberSuffix: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Optional" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">(None)</SelectItem>
                   {suffixes.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.label}</SelectItem>
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

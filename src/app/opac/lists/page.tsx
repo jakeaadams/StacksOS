@@ -148,7 +148,7 @@ export default function OpacListsPage() {
     return () => {
       cancelled = true;
     };
-  }, [browseEnabled]);
+  }, [browseEnabled, t]);
 
   if (!browseEnabled) {
     return (
@@ -200,7 +200,7 @@ export default function OpacListsPage() {
             title={t("newTitles")}
             description={t("newTitlesDesc")}
             icon={Sparkles}
-            accent="bg-violet-500/10 text-violet-600"
+            accent="bg-indigo-500/10 text-indigo-600"
           />
           <CuratedLinkCard
             href="/opac/search?sort=popularity"
@@ -322,7 +322,11 @@ export default function OpacListsPage() {
                     <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
                   </div>
                   <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-                    {typeof l.itemCount === "number" ? <span>{l.itemCount} {t("items")}</span> : null}
+                    {typeof l.itemCount === "number" ? (
+                      <span>
+                        {l.itemCount} {t("items")}
+                      </span>
+                    ) : null}
                     {l.ownerName ? <span className="truncate">• {l.ownerName}</span> : null}
                   </div>
                 </Link>

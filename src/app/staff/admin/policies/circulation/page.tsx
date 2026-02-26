@@ -4,14 +4,38 @@ import { RefreshCw, BookOpen, Clock, DollarSign, Tag, Plus } from "lucide-react"
 
 import { useApi, useMutation } from "@/hooks";
 import { featureFlags } from "@/lib/feature-flags";
-import { PageContainer, PageHeader, PageContent, DataTable, EmptyState, ConfirmDialog } from "@/components/shared";
+import {
+  PageContainer,
+  PageHeader,
+  PageContent,
+  DataTable,
+  EmptyState,
+  ConfirmDialog,
+} from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-import type { CircMatchpoint, CircMatchpointDraft, DurationRule, FineRule, MaxFineRule, CircModifier, OrgTreeNode, OrgOption, PermGroup, CopyLocation } from "./_components/policy-types";
-import { useMatchpointColumns, useDurationColumns, useFineColumns, useMaxFineColumns, useModifierColumns } from "./_components/policy-columns";
+import type {
+  CircMatchpoint,
+  CircMatchpointDraft,
+  DurationRule,
+  FineRule,
+  MaxFineRule,
+  CircModifier,
+  OrgTreeNode,
+  OrgOption,
+  PermGroup,
+  CopyLocation,
+} from "./_components/policy-types";
+import {
+  useMatchpointColumns,
+  useDurationColumns,
+  useFineColumns,
+  useMaxFineColumns,
+  useModifierColumns,
+} from "./_components/policy-columns";
 import { MatchpointEditorDialog } from "./_components/MatchpointEditorDialog";
 
 const DEFAULT_MATCHPOINT_DRAFT: CircMatchpointDraft = {
@@ -38,30 +62,118 @@ export default function CirculationPolicyEditorPage() {
   const maxFineUrl = policyEditorsEnabled ? "/api/evergreen/policies?type=max_fine_rules" : null;
   const modifiersUrl = policyEditorsEnabled ? "/api/evergreen/circ-modifiers" : null;
   const orgTreeUrl = policyEditorsEnabled ? "/api/evergreen/org-tree" : null;
-  const groupsUrl = policyEditorsEnabled ? "/api/evergreen/permissions?type=groups&limit=2000" : null;
+  const groupsUrl = policyEditorsEnabled
+    ? "/api/evergreen/permissions?type=groups&limit=2000"
+    : null;
   const copyLocationsUrl = policyEditorsEnabled ? "/api/evergreen/copy-locations?limit=5000" : null;
 
-  const { data: circData, isLoading: circLoading, error: circError, refetch: refetchCirc } = useApi<any>(circUrl, { immediate: policyEditorsEnabled, revalidateOnFocus: false });
-  const { data: durationData, isLoading: durationLoading, error: durationError, refetch: refetchDuration } = useApi<any>(durationUrl, { immediate: policyEditorsEnabled, revalidateOnFocus: false });
-  const { data: fineData, isLoading: fineLoading, error: fineError, refetch: refetchFine } = useApi<any>(fineUrl, { immediate: policyEditorsEnabled, revalidateOnFocus: false });
-  const { data: maxFineData, isLoading: maxFineLoading, error: maxFineError, refetch: refetchMaxFine } = useApi<any>(maxFineUrl, { immediate: policyEditorsEnabled, revalidateOnFocus: false });
-  const { data: modifiersData, isLoading: modifiersLoading, error: modifiersError, refetch: refetchModifiers } = useApi<any>(modifiersUrl, { immediate: policyEditorsEnabled, revalidateOnFocus: false });
-  const { data: orgTreeData, isLoading: orgTreeLoading, error: orgTreeError, refetch: refetchOrgTree } = useApi<any>(orgTreeUrl, { immediate: policyEditorsEnabled, revalidateOnFocus: false, revalidateInterval: 30 * 60_000 });
-  const { data: groupsData, isLoading: groupsLoading, error: groupsError, refetch: refetchGroups } = useApi<any>(groupsUrl, { immediate: policyEditorsEnabled, revalidateOnFocus: false, revalidateInterval: 30 * 60_000 });
-  const { data: copyLocationsData, isLoading: copyLocationsLoading, error: copyLocationsError, refetch: refetchCopyLocations } = useApi<any>(copyLocationsUrl, { immediate: policyEditorsEnabled, revalidateOnFocus: false, revalidateInterval: 30 * 60_000 });
+  const {
+    data: circData,
+    isLoading: circLoading,
+    error: circError,
+    refetch: refetchCirc,
+  } = useApi<any>(circUrl, { immediate: policyEditorsEnabled, revalidateOnFocus: false });
+  const {
+    data: durationData,
+    isLoading: durationLoading,
+    error: durationError,
+    refetch: refetchDuration,
+  } = useApi<any>(durationUrl, { immediate: policyEditorsEnabled, revalidateOnFocus: false });
+  const {
+    data: fineData,
+    isLoading: fineLoading,
+    error: fineError,
+    refetch: refetchFine,
+  } = useApi<any>(fineUrl, { immediate: policyEditorsEnabled, revalidateOnFocus: false });
+  const {
+    data: maxFineData,
+    isLoading: maxFineLoading,
+    error: maxFineError,
+    refetch: refetchMaxFine,
+  } = useApi<any>(maxFineUrl, { immediate: policyEditorsEnabled, revalidateOnFocus: false });
+  const {
+    data: modifiersData,
+    isLoading: modifiersLoading,
+    error: modifiersError,
+    refetch: refetchModifiers,
+  } = useApi<any>(modifiersUrl, { immediate: policyEditorsEnabled, revalidateOnFocus: false });
+  const {
+    data: orgTreeData,
+    isLoading: orgTreeLoading,
+    error: orgTreeError,
+    refetch: refetchOrgTree,
+  } = useApi<any>(orgTreeUrl, {
+    immediate: policyEditorsEnabled,
+    revalidateOnFocus: false,
+    revalidateInterval: 30 * 60_000,
+  });
+  const {
+    data: groupsData,
+    isLoading: groupsLoading,
+    error: groupsError,
+    refetch: refetchGroups,
+  } = useApi<any>(groupsUrl, {
+    immediate: policyEditorsEnabled,
+    revalidateOnFocus: false,
+    revalidateInterval: 30 * 60_000,
+  });
+  const {
+    data: copyLocationsData,
+    isLoading: copyLocationsLoading,
+    error: copyLocationsError,
+    refetch: refetchCopyLocations,
+  } = useApi<any>(copyLocationsUrl, {
+    immediate: policyEditorsEnabled,
+    revalidateOnFocus: false,
+    revalidateInterval: 30 * 60_000,
+  });
 
-  const matchpoints = useMemo<CircMatchpoint[]>(() => (Array.isArray(circData?.policies) ? (circData.policies as CircMatchpoint[]) : []), [circData?.policies]);
-  const durationRules = useMemo<DurationRule[]>(() => (Array.isArray(durationData?.rules) ? (durationData.rules as DurationRule[]) : []), [durationData?.rules]);
-  const fineRules = useMemo<FineRule[]>(() => (Array.isArray(fineData?.rules) ? (fineData.rules as FineRule[]) : []), [fineData?.rules]);
-  const maxFineRules = useMemo<MaxFineRule[]>(() => (Array.isArray(maxFineData?.rules) ? (maxFineData.rules as MaxFineRule[]) : []), [maxFineData?.rules]);
-  const circModifiers = useMemo<CircModifier[]>(() => (Array.isArray(modifiersData?.modifiers) ? (modifiersData.modifiers as CircModifier[]) : []), [modifiersData?.modifiers]);
+  const matchpoints = useMemo<CircMatchpoint[]>(
+    () => (Array.isArray(circData?.policies) ? (circData.policies as CircMatchpoint[]) : []),
+    [circData?.policies]
+  );
+  const durationRules = useMemo<DurationRule[]>(
+    () => (Array.isArray(durationData?.rules) ? (durationData.rules as DurationRule[]) : []),
+    [durationData?.rules]
+  );
+  const fineRules = useMemo<FineRule[]>(
+    () => (Array.isArray(fineData?.rules) ? (fineData.rules as FineRule[]) : []),
+    [fineData?.rules]
+  );
+  const maxFineRules = useMemo<MaxFineRule[]>(
+    () => (Array.isArray(maxFineData?.rules) ? (maxFineData.rules as MaxFineRule[]) : []),
+    [maxFineData?.rules]
+  );
+  const circModifiers = useMemo<CircModifier[]>(
+    () =>
+      Array.isArray(modifiersData?.modifiers) ? (modifiersData.modifiers as CircModifier[]) : [],
+    [modifiersData?.modifiers]
+  );
   const orgTree: OrgTreeNode | null = (orgTreeData?.tree as OrgTreeNode | null) ?? null;
-  const groups = useMemo<PermGroup[]>(() => (Array.isArray(groupsData?.groups) ? (groupsData.groups as PermGroup[]) : []), [groupsData?.groups]);
-  const copyLocations = useMemo<CopyLocation[]>(() => (Array.isArray(copyLocationsData?.locations) ? (copyLocationsData.locations as CopyLocation[]) : []), [copyLocationsData?.locations]);
+  const groups = useMemo<PermGroup[]>(
+    () => (Array.isArray(groupsData?.groups) ? (groupsData.groups as PermGroup[]) : []),
+    [groupsData?.groups]
+  );
+  const copyLocations = useMemo<CopyLocation[]>(
+    () =>
+      Array.isArray(copyLocationsData?.locations)
+        ? (copyLocationsData.locations as CopyLocation[])
+        : [],
+    [copyLocationsData?.locations]
+  );
 
   const handleRefresh = async () => {
     if (!policyEditorsEnabled) return;
-    await Promise.allSettled([refetchCirc(), refetchDuration(), refetchFine(), refetchMaxFine(), refetchModifiers(), refetchOrgTree(), refetchGroups(), refetchCopyLocations()]);
+    await Promise.allSettled([
+      refetchCirc(),
+      refetchDuration(),
+      refetchFine(),
+      refetchMaxFine(),
+      refetchModifiers(),
+      refetchOrgTree(),
+      refetchGroups(),
+      refetchCopyLocations(),
+    ]);
   };
 
   const toNumberOrNull = useCallback((value: unknown): number | null => {
@@ -114,10 +226,19 @@ export default function CirculationPolicyEditorPage() {
     }
     return new Map(entries);
   }, [copyLocations, toNumberOrNull]);
-  const durationRuleById = useMemo(() => new Map(durationRules.map((r) => [r.id, r.name])), [durationRules]);
+  const durationRuleById = useMemo(
+    () => new Map(durationRules.map((r) => [r.id, r.name])),
+    [durationRules]
+  );
   const fineRuleById = useMemo(() => new Map(fineRules.map((r) => [r.id, r.name])), [fineRules]);
-  const maxFineRuleById = useMemo(() => new Map(maxFineRules.map((r) => [r.id, r.name])), [maxFineRules]);
-  const modifierByCode = useMemo(() => new Map(circModifiers.map((m) => [m.code, m.name])), [circModifiers]);
+  const maxFineRuleById = useMemo(
+    () => new Map(maxFineRules.map((r) => [r.id, r.name])),
+    [maxFineRules]
+  );
+  const modifierByCode = useMemo(
+    () => new Map(circModifiers.map((m) => [m.code, m.name])),
+    [circModifiers]
+  );
 
   // --- Editor state ---
   const [editorOpen, setEditorOpen] = useState(false);
@@ -188,23 +309,68 @@ export default function CirculationPolicyEditorPage() {
       return label ? `${label} (#${id})` : fallback.replace("{id}", String(id));
     };
     const rows: Array<{ label: string; from: string; to: string; changed: boolean }> = [];
-    const add = (label: string, from: string, to: string) => { rows.push({ label, from, to, changed: from !== to }); };
+    const add = (label: string, from: string, to: string) => {
+      rows.push({ label, from, to, changed: from !== to });
+    };
 
     add("Active", formatBool(base.active), formatBool(draft.active));
-    add("Org unit", fmtId(base.orgUnit, orgLabelById, "Org #{id}"), fmtId(draft.orgUnit, orgLabelById, "Org #{id}"));
-    add("Patron group", fmtId(base.grp, groupLabelById, "Group #{id}"), fmtId(draft.grp, groupLabelById, "Group #{id}"));
-    add("Circ modifier", base.circModifier ? `${base.circModifier} — ${modifierByCode.get(base.circModifier) || "Unknown"}` : "Any", draft.circModifier ? `${draft.circModifier} — ${modifierByCode.get(draft.circModifier) || "Unknown"}` : "Any");
-    add("Copy location", fmtId(base.copyLocation, copyLocationLabelById, "Location #{id}"), fmtId(draft.copyLocation, copyLocationLabelById, "Location #{id}"));
+    add(
+      "Org unit",
+      fmtId(base.orgUnit, orgLabelById, "Org #{id}"),
+      fmtId(draft.orgUnit, orgLabelById, "Org #{id}")
+    );
+    add(
+      "Patron group",
+      fmtId(base.grp, groupLabelById, "Group #{id}"),
+      fmtId(draft.grp, groupLabelById, "Group #{id}")
+    );
+    add(
+      "Circ modifier",
+      base.circModifier
+        ? `${base.circModifier} — ${modifierByCode.get(base.circModifier) || "Unknown"}`
+        : "Any",
+      draft.circModifier
+        ? `${draft.circModifier} — ${modifierByCode.get(draft.circModifier) || "Unknown"}`
+        : "Any"
+    );
+    add(
+      "Copy location",
+      fmtId(base.copyLocation, copyLocationLabelById, "Location #{id}"),
+      fmtId(draft.copyLocation, copyLocationLabelById, "Location #{id}")
+    );
     add("Circulate", formatBool(base.circulate), formatBool(draft.circulate));
     add("Is renewal", formatTri(base.isRenewal), formatTri(draft.isRenewal));
     add("Reference", formatTri(base.refFlag), formatTri(draft.refFlag));
-    add("Duration rule", fmtId(base.durationRule, durationRuleById, "Rule #{id}"), fmtId(draft.durationRule, durationRuleById, "Rule #{id}"));
-    add("Fine rule", fmtId(base.recurringFineRule, fineRuleById, "Rule #{id}"), fmtId(draft.recurringFineRule, fineRuleById, "Rule #{id}"));
-    add("Max fine rule", fmtId(base.maxFineRule, maxFineRuleById, "Rule #{id}"), fmtId(draft.maxFineRule, maxFineRuleById, "Rule #{id}"));
+    add(
+      "Duration rule",
+      fmtId(base.durationRule, durationRuleById, "Rule #{id}"),
+      fmtId(draft.durationRule, durationRuleById, "Rule #{id}")
+    );
+    add(
+      "Fine rule",
+      fmtId(base.recurringFineRule, fineRuleById, "Rule #{id}"),
+      fmtId(draft.recurringFineRule, fineRuleById, "Rule #{id}")
+    );
+    add(
+      "Max fine rule",
+      fmtId(base.maxFineRule, maxFineRuleById, "Rule #{id}"),
+      fmtId(draft.maxFineRule, maxFineRuleById, "Rule #{id}")
+    );
     add("Description", base.description || "\u2014", draft.description.trim() || "\u2014");
 
     return rows.filter((r) => r.changed);
-  }, [buildDraftFromMatchpoint, copyLocationLabelById, draft, durationRuleById, editing, fineRuleById, groupLabelById, maxFineRuleById, modifierByCode, orgLabelById]);
+  }, [
+    buildDraftFromMatchpoint,
+    copyLocationLabelById,
+    draft,
+    durationRuleById,
+    editing,
+    fineRuleById,
+    groupLabelById,
+    maxFineRuleById,
+    modifierByCode,
+    orgLabelById,
+  ]);
 
   // --- Save / Delete handlers ---
   const confirmSave = useCallback(async () => {
@@ -213,10 +379,18 @@ export default function CirculationPolicyEditorPage() {
       return;
     }
     const action = editorMode === "create" ? "create" : "update";
-    const data: Record<string, unknown> = {
-      active: draft.active, orgUnit: draft.orgUnit, grp: draft.grp, circModifier: draft.circModifier,
-      copyLocation: draft.copyLocation, isRenewal: draft.isRenewal, refFlag: draft.refFlag, circulate: draft.circulate,
-      durationRule: draft.durationRule, recurringFineRule: draft.recurringFineRule, maxFineRule: draft.maxFineRule,
+    const data: Record<string, any> = {
+      active: draft.active,
+      orgUnit: draft.orgUnit,
+      grp: draft.grp,
+      circModifier: draft.circModifier,
+      copyLocation: draft.copyLocation,
+      isRenewal: draft.isRenewal,
+      refFlag: draft.refFlag,
+      circulate: draft.circulate,
+      durationRule: draft.durationRule,
+      recurringFineRule: draft.recurringFineRule,
+      maxFineRule: draft.maxFineRule,
       description: draft.description.trim() ? draft.description.trim() : null,
     };
     if (editorMode === "edit" && editing?.id) data.id = editing.id;
@@ -235,7 +409,11 @@ export default function CirculationPolicyEditorPage() {
   const confirmDelete = useCallback(async () => {
     if (!deleteTarget?.id) return;
     try {
-      await mutatePolicies("/api/evergreen/policies", { action: "delete", type: "circ", data: { id: deleteTarget.id } });
+      await mutatePolicies("/api/evergreen/policies", {
+        action: "delete",
+        type: "circ",
+        data: { id: deleteTarget.id },
+      });
       await refetchCirc();
       toast.success(`Matchpoint #${deleteTarget.id} deleted.`);
       setDeleteConfirmOpen(false);
@@ -245,24 +423,54 @@ export default function CirculationPolicyEditorPage() {
     }
   }, [deleteTarget, mutatePolicies, refetchCirc]);
 
-  const hasError = Boolean(circError || durationError || fineError || maxFineError || modifiersError || orgTreeError || groupsError || copyLocationsError);
+  const hasError = Boolean(
+    circError ||
+    durationError ||
+    fineError ||
+    maxFineError ||
+    modifiersError ||
+    orgTreeError ||
+    groupsError ||
+    copyLocationsError
+  );
 
   return (
     <PageContainer>
       <PageHeader
         title="Circulation Policies (Advanced)"
         subtitle="Evergreen-backed circulation matchpoints + rule tables. Writes are feature-flagged and audited."
-        breadcrumbs={[{ label: "Administration", href: "/staff/admin" }, { label: "Policy Editors" }, { label: "Circulation" }]}
-        actions={policyEditorsEnabled ? [{ label: "Refresh", onClick: () => void handleRefresh(), icon: RefreshCw, variant: "outline" }] : undefined}
+        breadcrumbs={[
+          { label: "Administration", href: "/staff/admin" },
+          { label: "Policy Editors" },
+          { label: "Circulation" },
+        ]}
+        actions={
+          policyEditorsEnabled
+            ? [
+                {
+                  label: "Refresh",
+                  onClick: () => void handleRefresh(),
+                  icon: RefreshCw,
+                  variant: "outline",
+                },
+              ]
+            : undefined
+        }
       />
       <PageContent className="space-y-6">
         {!policyEditorsEnabled ? (
-          <EmptyState title="Policy editors are disabled" description="Set NEXT_PUBLIC_STACKSOS_EXPERIMENTAL=1 to enable advanced policy editors." />
+          <EmptyState
+            title="Policy editors are disabled"
+            description="Set NEXT_PUBLIC_STACKSOS_EXPERIMENTAL=1 to enable advanced policy editors."
+          />
         ) : (
           <>
             <MatchpointEditorDialog
               open={editorOpen}
-              onOpenChange={(open) => { setEditorOpen(open); if (!open) setEditing(null); }}
+              onOpenChange={(open) => {
+                setEditorOpen(open);
+                if (!open) setEditing(null);
+              }}
               mode={editorMode}
               editingId={editing?.id ?? null}
               draft={draft}
@@ -289,7 +497,11 @@ export default function CirculationPolicyEditorPage() {
             <ConfirmDialog
               open={saveConfirmOpen}
               onOpenChange={setSaveConfirmOpen}
-              title={editorMode === "create" ? "Create matchpoint?" : `Save changes to matchpoint #${editing?.id ?? "\u2014"}?`}
+              title={
+                editorMode === "create"
+                  ? "Create matchpoint?"
+                  : `Save changes to matchpoint #${editing?.id ?? "\u2014"}?`
+              }
               description="This writes directly to Evergreen policy tables. Changes are audited."
               confirmText={editorMode === "create" ? "Create" : "Save"}
               variant="warning"
@@ -304,7 +516,9 @@ export default function CirculationPolicyEditorPage() {
                   {previewRows.map((r) => (
                     <li key={r.label} className="flex items-start justify-between gap-3">
                       <span className="font-medium">{r.label}</span>
-                      <span className="text-muted-foreground">{editorMode === "create" ? r.to : `${r.from} \u2192 ${r.to}`}</span>
+                      <span className="text-muted-foreground">
+                        {editorMode === "create" ? r.to : `${r.from} \u2192 ${r.to}`}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -314,7 +528,9 @@ export default function CirculationPolicyEditorPage() {
             <ConfirmDialog
               open={deleteConfirmOpen}
               onOpenChange={setDeleteConfirmOpen}
-              title={deleteTarget?.id ? `Delete matchpoint #${deleteTarget.id}?` : "Delete matchpoint?"}
+              title={
+                deleteTarget?.id ? `Delete matchpoint #${deleteTarget.id}?` : "Delete matchpoint?"
+              }
               description="This permanently deletes the matchpoint from Evergreen. This action cannot be undone."
               confirmText="Delete"
               variant="danger"
@@ -323,9 +539,18 @@ export default function CirculationPolicyEditorPage() {
             >
               {deleteTarget ? (
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between"><span className="text-muted-foreground">Org</span><span>{deleteTarget.orgUnitName || "\u2014"}</span></div>
-                  <div className="flex items-center justify-between"><span className="text-muted-foreground">Group</span><span>{deleteTarget.grpName || "Any"}</span></div>
-                  <div className="flex items-center justify-between"><span className="text-muted-foreground">Modifier</span><span className="font-mono text-xs">{deleteTarget.circModifier || "Any"}</span></div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Org</span>
+                    <span>{deleteTarget.orgUnitName || "\u2014"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Group</span>
+                    <span>{deleteTarget.grpName || "Any"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Modifier</span>
+                    <span className="font-mono text-xs">{deleteTarget.circModifier || "Any"}</span>
+                  </div>
                 </div>
               ) : null}
             </ConfirmDialog>
@@ -333,22 +558,93 @@ export default function CirculationPolicyEditorPage() {
             {hasError ? (
               <EmptyState
                 title="Could not load circulation policies"
-                description={String(circError || durationError || fineError || maxFineError || modifiersError || orgTreeError || groupsError || copyLocationsError)}
-                action={{ label: "Try again", onClick: () => void handleRefresh(), icon: RefreshCw }}
+                description={String(
+                  circError ||
+                    durationError ||
+                    fineError ||
+                    maxFineError ||
+                    modifiersError ||
+                    orgTreeError ||
+                    groupsError ||
+                    copyLocationsError
+                )}
+                action={{
+                  label: "Try again",
+                  onClick: () => void handleRefresh(),
+                  icon: RefreshCw,
+                }}
               />
             ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card className="rounded-2xl"><CardContent className="p-5"><div className="flex items-center justify-between"><div><p className="text-xs uppercase tracking-wide text-muted-foreground">Matchpoints</p><div className="text-2xl font-semibold mt-1">{matchpoints.length}</div></div><div className="h-10 w-10 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600"><BookOpen className="h-5 w-5" /></div></div></CardContent></Card>
-              <Card className="rounded-2xl"><CardContent className="p-5"><div className="flex items-center justify-between"><div><p className="text-xs uppercase tracking-wide text-muted-foreground">Duration Rules</p><div className="text-2xl font-semibold mt-1">{durationRules.length}</div></div><div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600"><Clock className="h-5 w-5" /></div></div></CardContent></Card>
-              <Card className="rounded-2xl"><CardContent className="p-5"><div className="flex items-center justify-between"><div><p className="text-xs uppercase tracking-wide text-muted-foreground">Fine Rules</p><div className="text-2xl font-semibold mt-1">{fineRules.length}</div></div><div className="h-10 w-10 rounded-full flex items-center justify-center bg-amber-500/10 text-amber-700"><DollarSign className="h-5 w-5" /></div></div></CardContent></Card>
-              <Card className="rounded-2xl"><CardContent className="p-5"><div className="flex items-center justify-between"><div><p className="text-xs uppercase tracking-wide text-muted-foreground">Circ Modifiers</p><div className="text-2xl font-semibold mt-1">{circModifiers.length}</div></div><div className="h-10 w-10 rounded-full flex items-center justify-center bg-purple-500/10 text-purple-600"><Tag className="h-5 w-5" /></div></div></CardContent></Card>
+              <Card className="rounded-2xl">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Matchpoints
+                      </p>
+                      <div className="text-2xl font-semibold mt-1">{matchpoints.length}</div>
+                    </div>
+                    <div className="h-10 w-10 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600">
+                      <BookOpen className="h-5 w-5" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="rounded-2xl">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Duration Rules
+                      </p>
+                      <div className="text-2xl font-semibold mt-1">{durationRules.length}</div>
+                    </div>
+                    <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600">
+                      <Clock className="h-5 w-5" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="rounded-2xl">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Fine Rules
+                      </p>
+                      <div className="text-2xl font-semibold mt-1">{fineRules.length}</div>
+                    </div>
+                    <div className="h-10 w-10 rounded-full flex items-center justify-center bg-amber-500/10 text-amber-700">
+                      <DollarSign className="h-5 w-5" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="rounded-2xl">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Circ Modifiers
+                      </p>
+                      <div className="text-2xl font-semibold mt-1">{circModifiers.length}</div>
+                    </div>
+                    <div className="h-10 w-10 rounded-full flex items-center justify-center bg-indigo-500/10 text-indigo-600">
+                      <Tag className="h-5 w-5" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             <Card className="rounded-2xl">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Configuration</CardTitle>
-                <CardDescription>Read from Evergreen. Matchpoint writes are feature-flagged and audited.</CardDescription>
+                <CardDescription>
+                  Read from Evergreen. Matchpoint writes are feature-flagged and audited.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="matchpoints">
@@ -366,28 +662,89 @@ export default function CirculationPolicyEditorPage() {
                       data={matchpoints}
                       isLoading={circLoading}
                       searchPlaceholder="Search matchpoints..."
-                      toolbar={<Button size="sm" onClick={openCreate} disabled={isMutating}><Plus className="h-4 w-4 mr-2" />New matchpoint</Button>}
-                      emptyState={<EmptyState title="No matchpoints found" description="Evergreen returned zero circulation matchpoints." />}
+                      toolbar={
+                        <Button size="sm" onClick={openCreate} disabled={isMutating}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          New matchpoint
+                        </Button>
+                      }
+                      emptyState={
+                        <EmptyState
+                          title="No matchpoints found"
+                          description="Evergreen returned zero circulation matchpoints."
+                        />
+                      }
                       caption="Evergreen: config.circ_matrix_matchpoint"
                     />
                   </TabsContent>
 
                   <TabsContent value="duration" className="mt-4">
-                    <DataTable columns={durationColumns} data={durationRules} isLoading={durationLoading} searchPlaceholder="Search duration rules..." emptyState={<EmptyState title="No duration rules found" description="Evergreen returned zero duration rules." />} caption="Evergreen: config.rule_circ_duration" />
+                    <DataTable
+                      columns={durationColumns}
+                      data={durationRules}
+                      isLoading={durationLoading}
+                      searchPlaceholder="Search duration rules..."
+                      emptyState={
+                        <EmptyState
+                          title="No duration rules found"
+                          description="Evergreen returned zero duration rules."
+                        />
+                      }
+                      caption="Evergreen: config.rule_circ_duration"
+                    />
                   </TabsContent>
 
                   <TabsContent value="fine" className="mt-4">
-                    <DataTable columns={fineColumns} data={fineRules} isLoading={fineLoading} searchPlaceholder="Search fine rules..." emptyState={<EmptyState title="No fine rules found" description="Evergreen returned zero recurring fine rules." />} caption="Evergreen: config.rule_recurring_fine" />
+                    <DataTable
+                      columns={fineColumns}
+                      data={fineRules}
+                      isLoading={fineLoading}
+                      searchPlaceholder="Search fine rules..."
+                      emptyState={
+                        <EmptyState
+                          title="No fine rules found"
+                          description="Evergreen returned zero recurring fine rules."
+                        />
+                      }
+                      caption="Evergreen: config.rule_recurring_fine"
+                    />
                   </TabsContent>
 
                   <TabsContent value="maxFine" className="mt-4">
-                    <DataTable columns={maxFineColumns} data={maxFineRules} isLoading={maxFineLoading} searchPlaceholder="Search max fine rules..." emptyState={<EmptyState title="No max fine rules found" description="Evergreen returned zero maximum fine rules." />} caption="Evergreen: config.rule_max_fine" />
+                    <DataTable
+                      columns={maxFineColumns}
+                      data={maxFineRules}
+                      isLoading={maxFineLoading}
+                      searchPlaceholder="Search max fine rules..."
+                      emptyState={
+                        <EmptyState
+                          title="No max fine rules found"
+                          description="Evergreen returned zero maximum fine rules."
+                        />
+                      }
+                      caption="Evergreen: config.rule_max_fine"
+                    />
                   </TabsContent>
 
                   <TabsContent value="modifiers" className="mt-4">
-                    <DataTable columns={modifierColumns} data={circModifiers} isLoading={modifiersLoading} searchPlaceholder="Search circ modifiers..." emptyState={<EmptyState title="No circ modifiers found" description="Evergreen returned zero circ modifiers." />} caption="Evergreen: config.circ_modifier" />
+                    <DataTable
+                      columns={modifierColumns}
+                      data={circModifiers}
+                      isLoading={modifiersLoading}
+                      searchPlaceholder="Search circ modifiers..."
+                      emptyState={
+                        <EmptyState
+                          title="No circ modifiers found"
+                          description="Evergreen returned zero circ modifiers."
+                        />
+                      }
+                      caption="Evergreen: config.circ_modifier"
+                    />
                     {!featureFlags.policyEditors ? (
-                      <div className="mt-3 text-xs text-muted-foreground">Editing tools are disabled. Set `NEXT_PUBLIC_STACKSOS_EXPERIMENTAL=1` to enable advanced admin tooling.</div>
+                      <div className="mt-3 text-xs text-muted-foreground">
+                        Editing tools are disabled. Set `NEXT_PUBLIC_STACKSOS_EXPERIMENTAL=1` to
+                        enable advanced admin tooling.
+                      </div>
                     ) : null}
                   </TabsContent>
                 </Tabs>

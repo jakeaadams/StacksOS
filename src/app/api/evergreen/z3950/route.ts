@@ -33,11 +33,11 @@ function normalizeServices(payload: any[]) {
   if (!payload || typeof payload !== "object") return [];
   return Object.entries(payload).map(([name, info]) => ({
     name,
-    label: (info as Record<string, unknown>)?.label || name,
-    host: (info as Record<string, unknown>)?.host,
-    port: (info as Record<string, unknown>)?.port,
-    db: (info as Record<string, unknown>)?.db,
-    attrs: (info as Record<string, unknown>)?.attrs || {},
+    label: (info as Record<string, any>)?.label || name,
+    host: (info as Record<string, any>)?.host,
+    port: (info as Record<string, any>)?.port,
+    db: (info as Record<string, any>)?.db,
+    attrs: (info as Record<string, any>)?.attrs || {},
   }));
 }
 
@@ -84,7 +84,11 @@ export async function GET(req: NextRequest) {
 
       const payload = servicesResponse?.payload?.[0];
       if (isOpenSRFEvent(payload) || payload?.ilsevent) {
-        return errorResponse(getErrorMessage(payload, "Failed to load Z39.50 services"), 400, payload);
+        return errorResponse(
+          getErrorMessage(payload, "Failed to load Z39.50 services"),
+          400,
+          payload
+        );
       }
 
       const services = normalizeServices(payload);
@@ -102,9 +106,13 @@ export async function GET(req: NextRequest) {
     }
 
     const serviceParam = searchParams.get("service") || "loc";
-    const services = serviceParam === "all"
-      ? undefined
-      : serviceParam.split(",").map((s) => s.trim()).filter(Boolean);
+    const services =
+      serviceParam === "all"
+        ? undefined
+        : serviceParam
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
 
     const searchType = (searchParams.get("type") || "title").toLowerCase();
     const limit = parseInt(searchParams.get("limit") || "10", 10);
@@ -112,7 +120,7 @@ export async function GET(req: NextRequest) {
 
     const search: Record<string, string> = { [searchType]: query };
 
-    const args: Record<string, unknown> = {
+    const args: Record<string, any> = {
       service: services || "loc",
       search,
       limit,
@@ -164,11 +172,12 @@ export async function POST(req: NextRequest) {
     const autoTcn = body.auto_tcn !== false && body.autoTcn !== false;
 
     // Import the MARC record using Evergreen bib import method
-    const response = await callOpenSRF(
-      "open-ils.cat",
-      "open-ils.cat.biblio.record.xml.import",
-      [authtoken, marcxml, source, autoTcn]
-    );
+    const response = await callOpenSRF("open-ils.cat", "open-ils.cat.biblio.record.xml.import", [
+      authtoken,
+      marcxml,
+      source,
+      autoTcn,
+    ]);
 
     const result = response?.payload?.[0];
     if (!result || isOpenSRFEvent(result) || result?.ilsevent) {

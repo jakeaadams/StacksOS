@@ -4,25 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/use-patron-session";
-import {
-  CreditCard,
-  CheckCircle,
-  Loader2,
-  ArrowLeft,
-  Calendar,
-  Receipt,
-} from "lucide-react";
+import { CreditCard, CheckCircle, Loader2, ArrowLeft, Calendar, Receipt } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export default function FinesPage() {
-  const t = useTranslations("finesPage");
+  const _t = useTranslations("finesPage");
   const router = useRouter();
-  const { 
-    isLoggedIn, 
-    isLoading: sessionLoading,
-    fines,
-    fetchFines,
-  } = usePatronSession();
+  const { isLoggedIn, isLoading: sessionLoading, fines, fetchFines } = usePatronSession();
 
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFines, setSelectedFines] = useState<number[]>([]);
@@ -48,31 +36,29 @@ export default function FinesPage() {
     );
   }
 
-  const unpaidFines = fines.filter(f => !f.isPaid);
-  const paidFines = fines.filter(f => f.isPaid);
+  const unpaidFines = fines.filter((f) => !f.isPaid);
+  const paidFines = fines.filter((f) => f.isPaid);
   const totalBalance = unpaidFines.reduce((sum, f) => sum + f.amount, 0);
   const selectedTotal = unpaidFines
-    .filter(f => selectedFines.includes(f.id))
+    .filter((f) => selectedFines.includes(f.id))
     .reduce((sum, f) => sum + f.amount, 0);
 
   const toggleFine = (id: number) => {
-    setSelectedFines(prev => 
-      prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
-    );
+    setSelectedFines((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
   };
 
   const selectAll = () => {
     if (selectedFines.length === unpaidFines.length) {
       setSelectedFines([]);
     } else {
-      setSelectedFines(unpaidFines.map(f => f.id));
+      setSelectedFines(unpaidFines.map((f) => f.id));
     }
   };
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        <Link 
+        <Link
           href="/opac/account"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6"
         >
@@ -85,28 +71,34 @@ export default function FinesPage() {
         </div>
 
         {/* Balance summary */}
-        <div className={`rounded-xl p-6 mb-6 ${totalBalance > 0 
-          ? "bg-amber-50 border border-amber-200" 
-          : "bg-green-50 border border-green-200"}`}>
+        <div
+          className={`rounded-xl p-6 mb-6 ${
+            totalBalance > 0
+              ? "bg-amber-50 border border-amber-200"
+              : "bg-green-50 border border-green-200"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground mb-1">Current Balance</p>
-              <p className={`text-4xl font-bold ${totalBalance > 0 ? "text-amber-700" : "text-green-700"}`}>
+              <p
+                className={`text-4xl font-bold ${totalBalance > 0 ? "text-amber-700" : "text-green-700"}`}
+              >
                 ${totalBalance.toFixed(2)}
               </p>
             </div>
             {totalBalance > 0 && (
               <div className="text-right">
                 <p className="text-sm text-muted-foreground mb-2">
-                  {selectedFines.length > 0 
+                  {selectedFines.length > 0
                     ? `${selectedFines.length} selected: $${selectedTotal.toFixed(2)}`
-                    : "Select items to pay"
-                  }
+                    : "Select items to pay"}
                 </p>
-                <button type="button"
+                <button
+                  type="button"
                   disabled={selectedFines.length === 0}
-                  className="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium
-                           hover:bg-primary-700 transition-colors disabled:opacity-50 
+                  className="px-6 py-3 stx-action-primary rounded-lg font-medium
+                           hover:brightness-110 transition-colors disabled:opacity-50 
                            disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <CreditCard className="h-5 w-5" />
@@ -122,7 +114,7 @@ export default function FinesPage() {
             <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
           </div>
         ) : fines.length === 0 ? (
-          <div className="bg-card rounded-xl shadow-sm border border-border p-12 text-center">
+          <div className="stx-surface rounded-xl p-12 text-center">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">No fines</h2>
             <p className="text-muted-foreground">Your account is in good standing.</p>
@@ -131,12 +123,13 @@ export default function FinesPage() {
           <div className="space-y-6">
             {/* Unpaid fines */}
             {unpaidFines.length > 0 && (
-              <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+              <div className="stx-surface rounded-xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                   <h2 className="font-semibold text-foreground">
                     Outstanding ({unpaidFines.length})
                   </h2>
-                  <button type="button"
+                  <button
+                    type="button"
                     onClick={selectAll}
                     className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                   >
@@ -145,7 +138,7 @@ export default function FinesPage() {
                 </div>
                 <div className="divide-y divide-border/50">
                   {unpaidFines.map((fine) => (
-                    <div 
+                    <div
                       key={fine.id}
                       className={`px-6 py-4 flex items-center gap-4 cursor-pointer hover:bg-muted/30
                                ${selectedFines.includes(fine.id) ? "bg-primary-50" : ""}`}
@@ -179,7 +172,7 @@ export default function FinesPage() {
 
             {/* Paid fines history */}
             {paidFines.length > 0 && (
-              <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+              <div className="stx-surface rounded-xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-border">
                   <h2 className="font-semibold text-foreground flex items-center gap-2">
                     <Receipt className="h-5 w-5 text-muted-foreground/70" />
@@ -188,10 +181,7 @@ export default function FinesPage() {
                 </div>
                 <div className="divide-y divide-border/50">
                   {paidFines.map((fine) => (
-                    <div 
-                      key={fine.id}
-                      className="px-6 py-4 flex items-center gap-4"
-                    >
+                    <div key={fine.id} className="px-6 py-4 flex items-center gap-4">
                       <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-foreground/80">{fine.type}</p>
@@ -221,7 +211,9 @@ export default function FinesPage() {
           </ul>
           <p className="text-sm text-blue-700 mt-3">
             Questions about your fines? Contact us at{" "}
-            <a href="tel:555-123-4567" className="underline">555-123-4567</a>
+            <a href="tel:555-123-4567" className="underline">
+              555-123-4567
+            </a>
           </p>
         </div>
       </div>

@@ -1,14 +1,13 @@
 "use client";
 /**
  * Activity Log Page - Staff activity feed interface
- * 
+ *
  * Displays a reverse chronological feed of all system activities including:
  * - User logins
  * - Circulation events (checkouts, checkins)
  * - Hold operations
  * - Payment transactions
  */
-
 
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
@@ -48,7 +47,6 @@ import {
   RefreshCw,
   Calendar,
   Clock,
-
   Filter,
   ChevronDown,
   ArrowDownUp,
@@ -61,14 +59,7 @@ import {
 // Types
 // ============================================================================
 
-type ActivityType =
-  | "login"
-  | "checkout"
-  | "checkin"
-  | "hold"
-  | "payment"
-  | "patron_change"
-  | "all";
+type ActivityType = "login" | "checkout" | "checkin" | "hold" | "payment" | "patron_change" | "all";
 
 type ApiActivityType = Exclude<ActivityType, "all">;
 
@@ -128,7 +119,11 @@ interface ApiActivityResponse {
 // Constants
 // ============================================================================
 
-type ActivityTypeOption = { value: ActivityType; label: string; icon: React.ComponentType<{ className?: string }> };
+type ActivityTypeOption = {
+  value: ActivityType;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
 
 const ACTIVITY_TYPES: ActivityTypeOption[] = [
   { value: "all", label: "All Activities", icon: Activity },
@@ -162,7 +157,7 @@ const ACTIVITY_COLORS: Record<string, string> = {
   checkout: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   checkin: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
   hold: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  payment: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  payment: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
   patron_change: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
 };
 
@@ -205,7 +200,8 @@ function getRelativeTime(timestamp: string): string {
 
 function formatFullTimestamp(timestamp: string): string {
   const date = new Date(timestamp);
-  if (!Number.isFinite(date.getTime())) return typeof timestamp === "string" && timestamp.trim() ? timestamp : "Unknown";
+  if (!Number.isFinite(date.getTime()))
+    return typeof timestamp === "string" && timestamp.trim() ? timestamp : "Unknown";
   return date.toLocaleString(undefined, {
     weekday: "short",
     year: "numeric",
@@ -228,7 +224,7 @@ function getInitials(name: string): string {
 function getDateRangeParams(range: string): { startDate?: string; endDate?: string } {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
+
   switch (range) {
     case "today":
       return { startDate: today.toISOString() };
@@ -310,7 +306,8 @@ function toActivityItem(activity: ApiActivity): ActivityItem {
   if (activity.type === "payment") {
     const amount = typeof activity.details?.amount === "number" ? activity.details.amount : null;
     const amountLabel = formatMoneyUSD(amount);
-    const paymentType = typeof activity.details?.payment_type === "string" ? activity.details.payment_type : null;
+    const paymentType =
+      typeof activity.details?.payment_type === "string" ? activity.details.payment_type : null;
 
     const details = [paymentType, amountLabel].filter(Boolean).join(" • ") || undefined;
     return { ...base, description: "Accepted a payment", details, status: "success" };
@@ -319,10 +316,10 @@ function toActivityItem(activity: ApiActivity): ActivityItem {
   if (activity.type === "patron_change") {
     const changes = activity.details?.changes;
     const changedFields =
-      changes && typeof changes === "object"
-        ? Object.keys(changes).slice(0, 4).join(", ")
-        : "";
-    const details = changedFields ? `Updated: ${changedFields}${Object.keys(changes).length > 4 ? "…" : ""}` : undefined;
+      changes && typeof changes === "object" ? Object.keys(changes).slice(0, 4).join(", ") : "";
+    const details = changedFields
+      ? `Updated: ${changedFields}${Object.keys(changes).length > 4 ? "…" : ""}`
+      : undefined;
     return { ...base, description: "Updated patron record", details, status: "info" };
   }
 
@@ -346,7 +343,9 @@ function ActivityCard({ activity }: ActivityCardProps) {
   return (
     <div className="group relative flex gap-4 p-4 rounded-xl border border-border/50 bg-card hover:bg-accent/30 hover:border-border transition-all duration-200">
       {/* Activity Type Icon */}
-      <div className={`flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center ${colorClass}`}>
+      <div
+        className={`flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center ${colorClass}`}
+      >
         <Icon className="h-5 w-5" />
       </div>
 
@@ -364,8 +363,8 @@ function ActivityCard({ activity }: ActivityCardProps) {
             <span className="font-medium text-sm truncate">{activity.userName}</span>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className={`text-[10px] px-2 py-0.5 rounded-full ${statusClass}`}
             >
               {activity.status}
@@ -377,9 +376,7 @@ function ActivityCard({ activity }: ActivityCardProps) {
         </div>
 
         {/* Description */}
-        <p className="text-sm text-foreground leading-relaxed">
-          {activity.description}
-        </p>
+        <p className="text-sm text-foreground leading-relaxed">{activity.description}</p>
 
         {/* Details & Target */}
         {(activity.details || activity.targetLabel) && (
@@ -390,9 +387,7 @@ function ActivityCard({ activity }: ActivityCardProps) {
               </Badge>
             )}
             {activity.details && (
-              <span className="text-xs text-muted-foreground">
-                {activity.details}
-              </span>
+              <span className="text-xs text-muted-foreground">{activity.details}</span>
             )}
           </div>
         )}
@@ -436,10 +431,17 @@ function FilterBar({
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Activity Type Filter */}
           <div className="flex-1 min-w-[200px]">
-            <label htmlFor="activity-type" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            <label
+              htmlFor="activity-type"
+              className="text-xs font-medium text-muted-foreground mb-1.5 block"
+            >
               Activity Type
             </label>
-            <Select id="activity-type" value={activityType} onValueChange={(v) => onActivityTypeChange(v as ActivityType)}>
+            <Select
+              id="activity-type"
+              value={activityType}
+              onValueChange={(v) => onActivityTypeChange(v as ActivityType)}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
@@ -461,7 +463,10 @@ function FilterBar({
 
           {/* Date Range Filter */}
           <div className="flex-1 min-w-[180px]">
-            <label htmlFor="date-range" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            <label
+              htmlFor="date-range"
+              className="text-xs font-medium text-muted-foreground mb-1.5 block"
+            >
               Date Range
             </label>
             <Select id="date-range" value={dateRange} onValueChange={onDateRangeChange}>
@@ -483,12 +488,16 @@ function FilterBar({
 
           {/* User Search */}
           <div className="flex-[2] min-w-[250px]">
-            <label htmlFor="search-by-user" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            <label
+              htmlFor="search-by-user"
+              className="text-xs font-medium text-muted-foreground mb-1.5 block"
+            >
               Search by User
             </label>
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input id="search-by-user"
+              <Input
+                id="search-by-user"
                 placeholder="Search by name or barcode..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
@@ -592,8 +601,8 @@ function ActivityStats({ activities, total }: ActivityStatsProps) {
 
       <Card className="rounded-xl border-border/50 shadow-sm col-span-2 lg:col-span-1">
         <CardContent className="p-4 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
-            <CreditCard className="h-5 w-5 text-violet-600" />
+          <div className="h-10 w-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+            <CreditCard className="h-5 w-5 text-indigo-600" />
           </div>
           <div>
             <p className="text-2xl font-semibold">{stats.payments}</p>
@@ -635,7 +644,7 @@ export default function ActivityLogPage() {
 
     params.set("limit", String(pageSize));
     params.set("offset", String(offset));
-    
+
     const queryString = params.toString();
     return `/api/evergreen/activity${queryString ? `?${queryString}` : ""}`;
   }, [activityType, dateRange, offset, pageSize]);
@@ -662,7 +671,8 @@ export default function ActivityLogPage() {
       } else {
         setAllActivities(nextItems);
       }
-      const count = typeof data.pagination?.count === "number" ? data.pagination.count : nextItems.length;
+      const count =
+        typeof data.pagination?.count === "number" ? data.pagination.count : nextItems.length;
       setHasMore(count >= pageSize);
       setIsLoadingMore(false);
     }
@@ -731,12 +741,9 @@ export default function ActivityLogPage() {
     const q = (debouncedSearch || "").trim().toLowerCase();
     if (!q) return allActivities;
     return allActivities.filter((a: any) => {
-      const haystack = [
-        a.userName,
-        a.description,
-        a.details || "",
-        a.targetLabel || "",
-      ].join(" ").toLowerCase();
+      const haystack = [a.userName, a.description, a.details || "", a.targetLabel || ""]
+        .join(" ")
+        .toLowerCase();
       return haystack.includes(q);
     });
   }, [allActivities, debouncedSearch]);
@@ -765,7 +772,10 @@ export default function ActivityLogPage() {
             {shownCount.toLocaleString()} activities
           </Badge>
           {!patronChangeSupported ? (
-            <Badge variant="outline" className="rounded-full border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300">
+            <Badge
+              variant="outline"
+              className="rounded-full border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300"
+            >
               <AlertCircle className="h-3 w-3 mr-1" />
               Patron changes unavailable
             </Badge>
@@ -826,7 +836,9 @@ export default function ActivityLogPage() {
                   <EmptyState
                     icon={AlertCircle}
                     title="Failed to load activities"
-                    description={error.message || "An error occurred while fetching the activity log."}
+                    description={
+                      error.message || "An error occurred while fetching the activity log."
+                    }
                     action={{
                       label: "Try Again",
                       onClick: handleRefresh,
@@ -891,9 +903,7 @@ export default function ActivityLogPage() {
                 {/* End of List */}
                 {!hasMore && allActivities.length > 0 && (
                   <div className="py-6 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      End of activity log
-                    </p>
+                    <p className="text-sm text-muted-foreground">End of activity log</p>
                   </div>
                 )}
               </div>

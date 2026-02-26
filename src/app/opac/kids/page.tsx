@@ -5,8 +5,11 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { UnoptimizedImage } from "@/components/shared";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Search,
   Sparkles,
@@ -37,7 +40,6 @@ import {
   ArrowRight,
   Medal,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
 
 interface CategoryItem {
   icon: React.ElementType;
@@ -80,30 +82,132 @@ function transformBooks(records: any[]): FeaturedBook[] {
 }
 
 const browseCategories: CategoryItem[] = [
-  { icon: Wand2, label: "Magic & Fantasy", query: "fantasy", color: "text-purple-600", bgColor: "bg-purple-100" },
-  { icon: Rocket, label: "Space & Sci-Fi", query: "science fiction", color: "text-blue-600", bgColor: "bg-blue-100" },
-  { icon: Ghost, label: "Spooky Stories", query: "horror", color: "text-muted-foreground", bgColor: "bg-muted/50" },
-  { icon: Swords, label: "Adventure", query: "adventure", color: "text-red-600", bgColor: "bg-red-100" },
-  { icon: Heart, label: "Friendship", query: "friendship", color: "text-pink-600", bgColor: "bg-pink-100" },
-  { icon: Laugh, label: "Funny Books", query: "humor", color: "text-yellow-600", bgColor: "bg-yellow-100" },
+  {
+    icon: Wand2,
+    label: "Magic & Fantasy",
+    query: "fantasy",
+    color: "text-purple-600",
+    bgColor: "bg-purple-100",
+  },
+  {
+    icon: Rocket,
+    label: "Space & Sci-Fi",
+    query: "science fiction",
+    color: "text-blue-600",
+    bgColor: "bg-blue-100",
+  },
+  {
+    icon: Ghost,
+    label: "Spooky Stories",
+    query: "horror",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted/50",
+  },
+  {
+    icon: Swords,
+    label: "Adventure",
+    query: "adventure",
+    color: "text-red-600",
+    bgColor: "bg-red-100",
+  },
+  {
+    icon: Heart,
+    label: "Friendship",
+    query: "friendship",
+    color: "text-pink-600",
+    bgColor: "bg-pink-100",
+  },
+  {
+    icon: Laugh,
+    label: "Funny Books",
+    query: "humor",
+    color: "text-yellow-600",
+    bgColor: "bg-yellow-100",
+  },
   { icon: Dog, label: "Dogs", query: "dogs", color: "text-amber-600", bgColor: "bg-amber-100" },
   { icon: Cat, label: "Cats", query: "cats", color: "text-orange-600", bgColor: "bg-orange-100" },
-  { icon: Fish, label: "Ocean Life", query: "ocean", color: "text-cyan-600", bgColor: "bg-cyan-100" },
-  { icon: Bug, label: "Bugs & Insects", query: "insects", color: "text-lime-600", bgColor: "bg-lime-100" },
+  {
+    icon: Fish,
+    label: "Ocean Life",
+    query: "ocean",
+    color: "text-cyan-600",
+    bgColor: "bg-cyan-100",
+  },
+  {
+    icon: Bug,
+    label: "Bugs & Insects",
+    query: "insects",
+    color: "text-lime-600",
+    bgColor: "bg-lime-100",
+  },
   { icon: Bird, label: "Birds", query: "birds", color: "text-sky-600", bgColor: "bg-sky-100" },
-  { icon: TreePine, label: "Nature", query: "nature", color: "text-green-600", bgColor: "bg-green-100" },
-  { icon: Microscope, label: "Science", query: "science", color: "text-teal-600", bgColor: "bg-teal-100" },
-  { icon: Globe, label: "World & Culture", query: "geography", color: "text-indigo-600", bgColor: "bg-indigo-100" },
-  { icon: Clock, label: "History", query: "history", color: "text-stone-600", bgColor: "bg-stone-100" },
-  { icon: Music, label: "Music & Dance", query: "music", color: "text-fuchsia-600", bgColor: "bg-fuchsia-100" },
-  { icon: Palette, label: "Art & Crafts", query: "art", color: "text-rose-600", bgColor: "bg-rose-100" },
-  { icon: Gamepad2, label: "Games & Sports", query: "sports", color: "text-emerald-600", bgColor: "bg-emerald-100" },
-  { icon: Car, label: "Things That Go", query: "vehicles", color: "text-slate-600", bgColor: "bg-slate-100" },
-  { icon: Crown, label: "Princesses", query: "princesses", color: "text-violet-600", bgColor: "bg-violet-100" },
+  {
+    icon: TreePine,
+    label: "Nature",
+    query: "nature",
+    color: "text-green-600",
+    bgColor: "bg-green-100",
+  },
+  {
+    icon: Microscope,
+    label: "Science",
+    query: "science",
+    color: "text-teal-600",
+    bgColor: "bg-teal-100",
+  },
+  {
+    icon: Globe,
+    label: "World & Culture",
+    query: "geography",
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-100",
+  },
+  {
+    icon: Clock,
+    label: "History",
+    query: "history",
+    color: "text-stone-600",
+    bgColor: "bg-stone-100",
+  },
+  {
+    icon: Music,
+    label: "Music & Dance",
+    query: "music",
+    color: "text-fuchsia-600",
+    bgColor: "bg-fuchsia-100",
+  },
+  {
+    icon: Palette,
+    label: "Art & Crafts",
+    query: "art",
+    color: "text-rose-600",
+    bgColor: "bg-rose-100",
+  },
+  {
+    icon: Gamepad2,
+    label: "Games & Sports",
+    query: "sports",
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-100",
+  },
+  {
+    icon: Car,
+    label: "Things That Go",
+    query: "vehicles",
+    color: "text-slate-600",
+    bgColor: "bg-slate-100",
+  },
+  {
+    icon: Crown,
+    label: "Princesses",
+    query: "princesses",
+    color: "text-violet-600",
+    bgColor: "bg-violet-100",
+  },
 ];
 
 export default function KidsHomePage() {
-  const t = useTranslations("kidsPage");
+  const router = useRouter();
   const { patron, isLoggedIn } = usePatronSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [featuredBooks, setFeaturedBooks] = useState<FeaturedBook[]>([]);
@@ -113,11 +217,13 @@ export default function KidsHomePage() {
   const fetchContent = useCallback(async () => {
     try {
       setIsLoading(true);
-      
+
       // Fetch kids books from catalog (juvenile audience)
       const [featuredRes, newRes] = await Promise.all([
         fetchWithAuth("/api/evergreen/catalog?audience=juvenile&sort=popularity&limit=6"),
-        fetchWithAuth("/api/evergreen/catalog?audience=juvenile&sort=create_date&order=desc&limit=6"),
+        fetchWithAuth(
+          "/api/evergreen/catalog?audience=juvenile&sort=create_date&order=desc&limit=6"
+        ),
       ]);
 
       if (featuredRes.ok) {
@@ -143,7 +249,7 @@ export default function KidsHomePage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      window.location.href = `/opac/kids/search?q=${encodeURIComponent(searchQuery)}`;
+      router.push(`/opac/kids/search?q=${encodeURIComponent(searchQuery)}`);
     }
   };
 
@@ -153,16 +259,16 @@ export default function KidsHomePage() {
       <section className="relative py-12 md:py-20 overflow-hidden">
         {/* Animated floating elements */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-10 left-10 animate-bounce" style={{ animationDuration: "3s" }}>
+          <div className="absolute top-10 left-10 animate-bounce [animation-duration:3s]">
             <Star className="h-8 w-8 text-yellow-400" />
           </div>
-          <div className="absolute top-20 right-20 animate-bounce" style={{ animationDuration: "2.5s", animationDelay: "0.5s" }}>
+          <div className="absolute top-20 right-20 animate-bounce [animation-delay:0.5s] [animation-duration:2.5s]">
             <Sparkles className="h-10 w-10 text-pink-400" />
           </div>
-          <div className="absolute bottom-20 left-1/4 animate-bounce" style={{ animationDuration: "3.5s", animationDelay: "1s" }}>
+          <div className="absolute bottom-20 left-1/4 animate-bounce [animation-delay:1s] [animation-duration:3.5s]">
             <BookOpen className="h-8 w-8 text-blue-400" />
           </div>
-          <div className="absolute top-1/3 right-10 animate-bounce" style={{ animationDuration: "2.8s", animationDelay: "0.3s" }}>
+          <div className="absolute top-1/3 right-10 animate-bounce [animation-delay:0.3s] [animation-duration:2.8s]">
             <Rocket className="h-9 w-9 text-purple-400" />
           </div>
         </div>
@@ -171,8 +277,10 @@ export default function KidsHomePage() {
           {/* Welcome message for logged in users */}
           {isLoggedIn && patron && (
             <div className="mb-6 inline-flex items-center gap-2 px-6 py-3 bg-card/90 rounded-full shadow-lg">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 
-                            flex items-center justify-center text-white font-bold text-sm">
+              <div
+                className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 
+                            flex items-center justify-center text-white font-bold text-sm"
+              >
                 {patron.firstName?.[0]}
               </div>
               <span className="font-medium text-foreground">
@@ -196,7 +304,7 @@ export default function KidsHomePage() {
               Adventure!
             </span>
           </h1>
-          
+
           <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Discover amazing books, earn badges, and have fun reading!
           </p>
@@ -204,25 +312,25 @@ export default function KidsHomePage() {
           {/* Big Search */}
           <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
             <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 
-                            rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
+              <div
+                className="absolute -inset-1 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 
+                            rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity"
+              />
               <div className="relative">
-                <input
+                <Input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="What do you want to read about?"
-                  className="w-full pl-6 pr-16 py-5 text-xl rounded-full border-2 border-purple-200 
-                           text-foreground placeholder:text-muted-foreground/70 bg-card
-                           focus:outline-none focus:border-purple-400"
+                  className="h-16 rounded-full border-2 border-purple-200 bg-card pl-6 pr-16 text-xl text-foreground placeholder:text-muted-foreground/70 focus-visible:border-purple-400 focus-visible:ring-0 md:text-xl"
                 />
-                <button type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-4 bg-gradient-to-r 
-                           from-purple-500 to-pink-500 text-white rounded-full 
-                           hover:from-purple-600 hover:to-pink-600 transition-colors shadow-lg"
+                <Button
+                  type="submit"
+                  size="icon"
+                  className="absolute right-2 top-1/2 h-12 w-12 -translate-y-1/2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:from-purple-600 hover:to-pink-600"
                 >
                   <Search className="h-6 w-6" />
-                </button>
+                </Button>
               </div>
             </div>
           </form>
@@ -248,8 +356,10 @@ export default function KidsHomePage() {
                          shadow-sm hover:shadow-lg border-2 border-transparent
                          hover:border-purple-200 transition-all group"
               >
-                <div className={`p-3 md:p-4 rounded-xl ${category.bgColor} 
-                              group-hover:scale-110 transition-transform`}>
+                <div
+                  className={`p-3 md:p-4 rounded-xl ${category.bgColor} 
+                              group-hover:scale-110 transition-transform`}
+                >
                   <category.icon className={`h-6 w-6 md:h-8 md:w-8 ${category.color}`} />
                 </div>
                 <span className="text-xs md:text-sm font-medium text-foreground/80 text-center line-clamp-2">
@@ -280,8 +390,10 @@ export default function KidsHomePage() {
                   <p className="text-white/90">Complete challenges, earn badges, and win prizes!</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-6 py-3 bg-card/20 backdrop-blur-sm rounded-full 
-                            text-white font-bold group-hover:bg-card/30 transition-colors">
+              <div
+                className="flex items-center gap-2 px-6 py-3 bg-card/20 backdrop-blur-sm rounded-full 
+                            text-white font-bold group-hover:bg-card/30 transition-colors"
+              >
                 <Medal className="h-5 w-5" />
                 <span>See Challenges</span>
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -383,9 +495,7 @@ export default function KidsHomePage() {
       <section className="py-8 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 rounded-3xl p-6 md:p-8">
-            <h3 className="text-xl font-bold text-foreground mb-4 text-center">
-              Did You Know?
-            </h3>
+            <h3 className="text-xl font-bold text-foreground mb-4 text-center">Did You Know?</h3>
             <div className="grid md:grid-cols-3 gap-4">
               <div className="bg-card/70 backdrop-blur-sm rounded-2xl p-4 text-center">
                 <BookOpen className="h-8 w-8 text-purple-500 mx-auto mb-2" />
@@ -418,12 +528,11 @@ function KidsBookCard({ book }: { book: FeaturedBook }) {
   const [imageError, setImageError] = useState(false);
 
   return (
-    <Link
-      href={`/opac/kids/record/${book.id}`}
-      className="group block"
-    >
-      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
-                    shadow-md group-hover:shadow-xl transition-all group-hover:-translate-y-1">
+    <Link href={`/opac/kids/record/${book.id}`} className="group block">
+      <div
+        className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
+                    shadow-md group-hover:shadow-xl transition-all group-hover:-translate-y-1"
+      >
         {book.coverUrl && !imageError ? (
           <UnoptimizedImage
             src={book.coverUrl}
@@ -436,16 +545,18 @@ function KidsBookCard({ book }: { book: FeaturedBook }) {
             <BookOpen className="h-12 w-12 text-purple-300" />
           </div>
         )}
-        
+
         {/* Reading level badge */}
         {book.readingLevel && (
-          <div className="absolute top-2 left-2 px-2 py-1 bg-card/90 backdrop-blur-sm 
-                        rounded-full text-xs font-medium text-purple-700 shadow-sm">
+          <div
+            className="absolute top-2 left-2 px-2 py-1 bg-card/90 backdrop-blur-sm 
+                        rounded-full text-xs font-medium text-purple-700 shadow-sm"
+          >
             {book.readingLevel}
           </div>
         )}
       </div>
-      
+
       <div className="mt-2">
         <h3 className="font-medium text-foreground text-sm line-clamp-2 group-hover:text-purple-600 transition-colors">
           {book.title}

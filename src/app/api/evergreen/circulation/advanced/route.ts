@@ -55,9 +55,11 @@ function toInt(value: unknown): number | null {
 }
 
 // POST - Execute advanced circulation operations
-const advancedCircPostSchema = z.object({
-  action: z.string().trim().min(1),
-}).passthrough();
+const advancedCircPostSchema = z
+  .object({
+    action: z.string().trim().min(1),
+  })
+  .passthrough();
 
 export async function POST(req: NextRequest) {
   return withIdempotency(req, "api.evergreen.circulation.advanced.POST", async () => {
@@ -75,7 +77,7 @@ export async function POST(req: NextRequest) {
 
       const audit = async (
         status: "success" | "failure",
-        details?: Record<string, unknown>,
+        details?: Record<string, any>,
         error?: string
       ) =>
         logAuditEvent({
@@ -123,8 +125,9 @@ export async function POST(req: NextRequest) {
               [authtoken, circId]
             );
 
-            const bills = billsResponse?.payload?.[0] as any || [];
-            const longOverdueBills = (Array.isArray(bills) ? bills : []).filter((b: any) =>
+            const bills = (billsResponse?.payload?.[0] as any) || [];
+            const longOverdueBills = (Array.isArray(bills) ? bills : []).filter(
+              (b: any) =>
                 b.billing_type?.toLowerCase().includes("long") ||
                 b.billing_type?.toLowerCase().includes("overdue") ||
                 b.billing_type?.toLowerCase().includes("replacement")
@@ -137,7 +140,8 @@ export async function POST(req: NextRequest) {
                 action: "mark_long_overdue",
                 circId,
                 bills: longOverdueBills,
-                totalBilled: longOverdueBills.reduce((sum: number, b) => sum + parseFloat(b.amount || 0),
+                totalBilled: longOverdueBills.reduce(
+                  (sum: number, b) => sum + parseFloat(b.amount || 0),
                   0
                 ),
               },
@@ -176,7 +180,7 @@ export async function POST(req: NextRequest) {
             [authtoken, targetOrgId, cutoffDateStr, maxItems]
           );
 
-          const overdueCircs = overdueResponse?.payload?.[0] as any || [];
+          const overdueCircs = (overdueResponse?.payload?.[0] as any) || [];
 
           if (!Array.isArray(overdueCircs) || overdueCircs.length === 0) {
             return successResponse({
@@ -246,22 +250,18 @@ export async function POST(req: NextRequest) {
           }
 
           // Check in the item
-          const checkinResponse = await callOpenSRF(
-            "open-ils.circ",
-            "open-ils.circ.checkin",
-            [
-              authtoken,
-              {
-                copy_barcode: copyBarcode,
-                void_overdues: voidFines || false,
-              },
-            ]
-          );
+          const checkinResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.checkin", [
+            authtoken,
+            {
+              copy_barcode: copyBarcode,
+              void_overdues: voidFines || false,
+            },
+          ]);
 
           const result = checkinResponse?.payload?.[0] as any;
 
           if (isSuccessResult(result) || result?.payload) {
-            const response: Record<string, unknown> = {
+            const response: Record<string, any> = {
               action: "checkin_long_overdue",
               copyBarcode,
               checkinResult: result?.payload,
@@ -278,11 +278,12 @@ export async function POST(req: NextRequest) {
                 [authtoken, circId]
               );
 
-              const bills = billsResponse?.payload?.[0] as any || [];
+              const bills = (billsResponse?.payload?.[0] as any) || [];
               response.currentBills = bills;
 
               // Void long overdue processing fees if item is returned
-              const longOverdueBills = (Array.isArray(bills) ? bills : []).filter((b: any) =>
+              const longOverdueBills = (Array.isArray(bills) ? bills : []).filter(
+                (b: any) =>
                   b.billing_type?.toLowerCase().includes("long") &&
                   b.billing_type?.toLowerCase().includes("overdue")
               );
@@ -343,7 +344,7 @@ export async function POST(req: NextRequest) {
           }
 
           // Fetch subordinate patron details
-          const subordinates: Record<string, unknown>[] = [];
+          const subordinates: Record<string, any>[] = [];
           const mergeStats = {
             totalCheckouts: 0,
             totalHolds: 0,
@@ -382,7 +383,7 @@ export async function POST(req: NextRequest) {
               "open-ils.actor.user.transactions.have_balance",
               [authtoken, subId]
             );
-            const bills = billsResponse?.payload?.[0] as any || [];
+            const bills = (billsResponse?.payload?.[0] as any) || [];
             const billCount = Array.isArray(bills) ? bills.length : 0;
             const billTotal = Array.isArray(bills)
               ? bills.reduce((sum: number, b) => sum + parseFloat(b.balance_owed || 0), 0)
@@ -655,22 +656,17 @@ export async function POST(req: NextRequest) {
 
           for (const barcode of itemBarcodes) {
             try {
-              const renewResponse = await callOpenSRF(
-                "open-ils.circ",
-                "open-ils.circ.renew",
-                [authtoken, { copy_barcode: barcode }]
-              );
+              const renewResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.renew", [
+                authtoken,
+                { copy_barcode: barcode },
+              ]);
 
               const renewResult = renewResponse?.payload?.[0] as any;
 
-              if (
-                renewResult?.ilsevent === 0 ||
-                renewResult?.payload?.circ
-              ) {
+              if (renewResult?.ilsevent === 0 || renewResult?.payload?.circ) {
                 const circ = renewResult?.payload?.circ || renewResult?.circ;
                 const dueDate =
-                  circ?.due_date ||
-                  (Array.isArray(circ?.__p) ? circ.__p[6] : undefined);
+                  circ?.due_date || (Array.isArray(circ?.__p) ? circ.__p[6] : undefined);
 
                 results.push({ barcode, success: true, dueDate });
               } else {
@@ -726,24 +722,24 @@ export async function POST(req: NextRequest) {
 
           for (const barcode of itemBarcodes) {
             try {
-              const checkinParams: Record<string, unknown> = { copy_barcode: barcode };
+              const checkinParams: Record<string, any> = { copy_barcode: barcode };
               if (backdateDate) {
                 checkinParams.backdate = backdateDate;
               }
 
-              const checkinResponse = await callOpenSRF(
-                "open-ils.circ",
-                "open-ils.circ.checkin",
-                [authtoken, checkinParams]
-              );
+              const checkinResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.checkin", [
+                authtoken,
+                checkinParams,
+              ]);
 
               const checkinResult = checkinResponse?.payload?.[0] as any;
 
-              if (
-                checkinResult?.ilsevent === 0 ||
-                checkinResult?.payload
-              ) {
-                const result: Record<string, unknown> = { barcode, success: true, status: "checked_in" };
+              if (checkinResult?.ilsevent === 0 || checkinResult?.payload) {
+                const result: Record<string, any> = {
+                  barcode,
+                  success: true,
+                  status: "checked_in",
+                };
 
                 if (checkinResult?.payload?.hold) {
                   result.holdCaptured = true;
@@ -755,7 +751,15 @@ export async function POST(req: NextRequest) {
                   result.status = "in_transit";
                 }
 
-                results.push(result as { barcode: string; success: boolean; status?: string; holdCaptured?: boolean; transitTo?: string; });
+                results.push(
+                  result as {
+                    barcode: string;
+                    success: boolean;
+                    status?: string;
+                    holdCaptured?: boolean;
+                    transitTo?: string;
+                  }
+                );
               } else {
                 results.push({
                   barcode,
@@ -831,7 +835,7 @@ export async function GET(req: NextRequest) {
           [authtoken, orgId, cutoffDateStr, limit]
         );
 
-        const overdueCircs = overdueResponse?.payload?.[0] as any || [];
+        const overdueCircs = (overdueResponse?.payload?.[0] as any) || [];
 
         const items = (Array.isArray(overdueCircs) ? overdueCircs : []).map((circ: any) => ({
           circId: circ.id || circ.__p?.[0],
@@ -866,7 +870,7 @@ export async function GET(req: NextRequest) {
             [authtoken, orgId]
           );
 
-          const sessions = sessionsResponse?.payload?.[0] as any || [];
+          const sessions = (sessionsResponse?.payload?.[0] as any) || [];
 
           const formattedSessions = (Array.isArray(sessions) ? sessions : []).map((s: any) => ({
             id: s.id || s.__p?.[0],
@@ -903,7 +907,7 @@ export async function GET(req: NextRequest) {
           [authtoken, sessionId]
         );
 
-        const transactions = txnResponse?.payload?.[0] as any || [];
+        const transactions = (txnResponse?.payload?.[0] as any) || [];
 
         return successResponse({
           type: "offline_session",

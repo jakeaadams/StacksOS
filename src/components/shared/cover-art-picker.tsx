@@ -4,7 +4,13 @@ import { clientLogger } from "@/lib/client-logger";
 
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -41,9 +47,15 @@ function getCoverProviderOrder(): CoverOption["provider"][] {
     .map((p) => p.trim().toLowerCase())
     .filter(Boolean);
 
-  const supported = new Set<CoverOption["provider"]>(["current", "openlibrary", "google", "custom"]);
-  const ordered = normalized
-    .filter((p): p is CoverOption["provider"] => supported.has(p as CoverOption["provider"]));
+  const supported = new Set<CoverOption["provider"]>([
+    "current",
+    "openlibrary",
+    "google",
+    "custom",
+  ]);
+  const ordered = normalized.filter((p): p is CoverOption["provider"] =>
+    supported.has(p as CoverOption["provider"])
+  );
 
   // Ensure all providers exist in the list (preserve configured order first).
   for (const p of ["current", "openlibrary", "google", "custom"] as const) {
@@ -141,10 +153,9 @@ export function CoverArtPicker({
       // Google Books API
       if (cleanIsbn || title) {
         try {
-          const googleQueryByTitle =
-            title?.trim()
-              ? `intitle:${title}${author?.trim() ? ` inauthor:${author}` : ""}`
-              : "";
+          const googleQueryByTitle = title?.trim()
+            ? `intitle:${title}${author?.trim() ? ` inauthor:${author}` : ""}`
+            : "";
 
           const fetchGoogle = async (q: string) => {
             const params = new URLSearchParams({ q, maxResults: "10" });
@@ -162,8 +173,7 @@ export function CoverArtPicker({
             cleanIsbn && primaryItems.length === 0 && googleQueryByTitle
               ? await fetchGoogle(googleQueryByTitle)
               : null;
-          const fallbackItems =
-            fallback?.ok && Array.isArray(fallback.items) ? fallback.items : [];
+          const fallbackItems = fallback?.ok && Array.isArray(fallback.items) ? fallback.items : [];
 
           const allItems = [...primaryItems, ...fallbackItems];
 
@@ -185,14 +195,20 @@ export function CoverArtPicker({
       }
 
       // Remove duplicates by URL
-      const uniqueCovers = options.filter(
-        (cover, index, self) =>
-          index === self.findIndex((c) => c.thumbnail === cover.thumbnail)
-      ).map((cover, index) => ({ cover, index }))
+      const uniqueCovers = options
+        .filter(
+          (cover, index, self) => index === self.findIndex((c) => c.thumbnail === cover.thumbnail)
+        )
+        .map((cover, index) => ({ cover, index }))
         .sort((a, b) => rank(a.cover.provider) - rank(b.cover.provider) || a.index - b.index)
         .map(({ cover }) => cover);
 
       setCovers(uniqueCovers);
+      if (uniqueCovers.length > 0) {
+        setSelectedCover((prev) => prev || uniqueCovers[0]!);
+      } else {
+        setSelectedCover(null);
+      }
     } catch (err) {
       clientLogger.error("Error fetching covers:", err);
       toast.error("Failed to fetch cover options");
@@ -203,6 +219,7 @@ export function CoverArtPicker({
 
   useEffect(() => {
     if (!open) return;
+    setSelectedCover(null);
     void fetchCoverOptions();
   }, [fetchCoverOptions, open]);
 
@@ -255,11 +272,11 @@ export function CoverArtPicker({
       formData.append("file", uploadFile);
       formData.append("recordId", recordId.toString());
 
-	      // Upload to server
-	      const response = await fetchWithAuth("/api/upload-cover", {
-	        method: "POST",
-	        body: formData,
-	      });
+      // Upload to server
+      const response = await fetchWithAuth("/api/upload-cover", {
+        method: "POST",
+        body: formData,
+      });
 
       if (!response.ok) {
         const error = await response.json();
@@ -309,6 +326,27 @@ export function CoverArtPicker({
           </TabsList>
 
           <TabsContent value="browse" className="space-y-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                Poster wall sorted by provider priority (current, Open Library, Google, custom).
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={covers.length === 0}
+                onClick={() => {
+                  const top = covers[0];
+                  if (!top) return;
+                  setSelectedCover(top);
+                  onCoverSelected(top.url, top.source);
+                  toast.success(`Cover updated from ${top.source}`);
+                  onOpenChange(false);
+                }}
+              >
+                Use best match
+              </Button>
+            </div>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -337,10 +375,26 @@ export function CoverArtPicker({
             )}
 
             {selectedCover && (
-              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Check className="h-5 w-5 text-green-600" />
-                  <span className="text-sm font-medium">Selected: {selectedCover.source}</span>
+              <div className="flex items-center justify-between gap-4 p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-14 rounded overflow-hidden bg-background border border-border shrink-0">
+                    <UnoptimizedImage
+                      src={selectedCover.thumbnail}
+                      alt={selectedCover.source}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium truncate">
+                        Selected: {selectedCover.source}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
+                      Provider: {selectedCover.provider}
+                    </p>
+                  </div>
                 </div>
                 <Button onClick={handleConfirmSelection}>Apply Cover</Button>
               </div>
@@ -356,7 +410,7 @@ export function CoverArtPicker({
                 value={customUrl}
                 onChange={(e) => setCustomUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCustomUrl()}
-              autoFocus
+                autoFocus
               />
               <p className="text-xs text-muted-foreground">
                 Enter a direct link to an image file (JPG, PNG, etc.)
@@ -386,7 +440,7 @@ export function CoverArtPicker({
                 type="file"
                 accept="image/*"
                 onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-              autoFocus
+                autoFocus
               />
               <p className="text-xs text-muted-foreground">
                 Supported formats: JPG, PNG, GIF, WEBP (max 5MB)
@@ -436,13 +490,13 @@ function CoverThumbnail({
   return (
     <div
       className={`aspect-[2/3] relative rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-105 border-2 ${
-        selected ? "border-primary ring-2 ring-primary" : "border-transparent hover:border-muted-foreground/50"
+        selected
+          ? "border-primary ring-2 ring-primary"
+          : "border-transparent hover:border-muted-foreground/50"
       }`}
       onClick={onSelect}
     >
-      {!loaded && (
-        <div className="absolute inset-0 bg-muted animate-pulse" />
-      )}
+      {!loaded && <div className="absolute inset-0 bg-muted animate-pulse" />}
       <Image
         src={cover.thumbnail}
         alt={cover.source}

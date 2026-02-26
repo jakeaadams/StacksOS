@@ -3,7 +3,7 @@ import { serverErrorResponse, successResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { query } from "@/lib/db/evergreen";
 import { logger } from "@/lib/logger";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 const STAFF_GROUP_CACHE_TTL_MS = 5 * 60 * 1000;
 let staffGroupCache: { loadedAt: number; ids: number[] } | null = null;
@@ -59,7 +59,10 @@ export async function GET(req: NextRequest) {
 
     const staffGroupIds = await getStaffGroupIds();
     if (staffGroupIds.length === 0) {
-      logger.warn({}, "No STAFF_LOGIN permission groups found; staff user search will return empty results");
+      logger.warn(
+        {},
+        "No STAFF_LOGIN permission groups found; staff user search will return empty results"
+      );
       return successResponse({ count: 0, users: [], message: "No staff permission groups found" });
     }
 
@@ -116,7 +119,8 @@ export async function GET(req: NextRequest) {
     const users = rows.map((r) => ({
       id: r.id,
       username: r.username,
-      displayName: [r.first_given_name, r.family_name].filter(Boolean).join(" ").trim() || r.username,
+      displayName:
+        [r.first_given_name, r.family_name].filter(Boolean).join(" ").trim() || r.username,
       barcode: r.barcode || "",
       homeLibrary: r.home_library || "",
       profile: r.profile || "Staff",

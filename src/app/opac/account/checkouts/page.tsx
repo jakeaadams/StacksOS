@@ -27,10 +27,10 @@ const formatIcons: Record<string, React.ElementType> = {
 };
 
 export default function CheckoutsPage() {
-  const t = useTranslations("checkoutsPage");
+  const _t = useTranslations("checkoutsPage");
   const router = useRouter();
-  const { 
-    isLoggedIn, 
+  const {
+    isLoggedIn,
     isLoading: sessionLoading,
     checkouts,
     fetchCheckouts,
@@ -59,16 +59,16 @@ export default function CheckoutsPage() {
   const handleRenew = async (checkoutId: number) => {
     setRenewingId(checkoutId);
     setMessage(null);
-    
+
     const result = await renewItem(checkoutId);
-    
+
     setMessage({
       type: result.success ? "success" : "error",
       text: result.message,
     });
-    
+
     setRenewingId(null);
-    
+
     // Clear message after 5 seconds
     setTimeout(() => setMessage(null), 5000);
   };
@@ -76,16 +76,16 @@ export default function CheckoutsPage() {
   const handleRenewAll = async () => {
     setRenewAllLoading(true);
     setMessage(null);
-    
+
     const result = await renewAll();
-    
+
     setMessage({
       type: result.success ? "success" : "error",
-      text: result.success 
+      text: result.success
         ? `Successfully renewed ${result.renewed} item${result.renewed !== 1 ? "s" : ""}`
         : `Renewed ${result.renewed}, failed to renew ${result.failed}`,
     });
-    
+
     setRenewAllLoading(false);
     setTimeout(() => setMessage(null), 5000);
   };
@@ -98,14 +98,14 @@ export default function CheckoutsPage() {
     );
   }
 
-  const overdueItems = checkouts.filter(c => c.isOverdue);
-  const currentItems = checkouts.filter(c => !c.isOverdue);
+  const overdueItems = checkouts.filter((c) => c.isOverdue);
+  const currentItems = checkouts.filter((c) => !c.isOverdue);
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">
       <div className="max-w-4xl mx-auto px-4">
         {/* Back link */}
-        <Link 
+        <Link
           href="/opac/account"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6"
         >
@@ -117,14 +117,17 @@ export default function CheckoutsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">My Checkouts</h1>
-            <p className="text-muted-foreground">{checkouts.length} item{checkouts.length !== 1 && "s"} checked out</p>
+            <p className="text-muted-foreground">
+              {checkouts.length} item{checkouts.length !== 1 && "s"} checked out
+            </p>
           </div>
           {checkouts.length > 0 && (
-            <button type="button"
+            <button
+              type="button"
               onClick={handleRenewAll}
               disabled={renewAllLoading}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium
-                       hover:bg-primary-700 transition-colors disabled:opacity-50 
+              className="px-4 py-2 stx-action-primary rounded-lg font-medium
+                       hover:brightness-110 transition-colors disabled:opacity-50 
                        flex items-center gap-2"
             >
               {renewAllLoading ? (
@@ -139,14 +142,19 @@ export default function CheckoutsPage() {
 
         {/* Message */}
         {message && (
-          <div className={`mb-6 p-4 rounded-lg flex items-center gap-3
-                        ${message.type === "success" 
-                          ? "bg-green-50 border border-green-200" 
-                          : "bg-red-50 border border-red-200"}`}>
-            {message.type === "success" 
-              ? <CheckCircle className="h-5 w-5 text-green-600" />
-              : <AlertCircle className="h-5 w-5 text-red-600" />
-            }
+          <div
+            className={`mb-6 p-4 rounded-lg flex items-center gap-3
+                        ${
+                          message.type === "success"
+                            ? "bg-green-50 border border-green-200"
+                            : "bg-red-50 border border-red-200"
+                        }`}
+          >
+            {message.type === "success" ? (
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-red-600" />
+            )}
             <p className={message.type === "success" ? "text-green-800" : "text-red-800"}>
               {message.text}
             </p>
@@ -158,14 +166,16 @@ export default function CheckoutsPage() {
             <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
           </div>
         ) : checkouts.length === 0 ? (
-          <div className="bg-card rounded-xl shadow-sm border border-border p-12 text-center">
+          <div className="stx-surface rounded-xl p-12 text-center">
             <BookOpen className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">No checkouts</h2>
-            <p className="text-muted-foreground mb-6">You don&apos;t have any items checked out right now.</p>
+            <p className="text-muted-foreground mb-6">
+              You don&apos;t have any items checked out right now.
+            </p>
             <Link
               href="/opac/search"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white 
-                       rounded-lg font-medium hover:bg-primary-700 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 stx-action-primary 
+                       rounded-lg font-medium hover:brightness-110 transition-colors"
             >
               Browse Catalog
             </Link>
@@ -181,8 +191,8 @@ export default function CheckoutsPage() {
                 </h2>
                 <div className="space-y-3">
                   {overdueItems.map((item) => (
-                    <CheckoutCard 
-                      key={item.id} 
+                    <CheckoutCard
+                      key={item.id}
                       checkout={item}
                       onRenew={() => handleRenew(item.id)}
                       isRenewing={renewingId === item.id}
@@ -202,8 +212,8 @@ export default function CheckoutsPage() {
                 )}
                 <div className="space-y-3">
                   {currentItems.map((item) => (
-                    <CheckoutCard 
-                      key={item.id} 
+                    <CheckoutCard
+                      key={item.id}
                       checkout={item}
                       onRenew={() => handleRenew(item.id)}
                       isRenewing={renewingId === item.id}
@@ -219,18 +229,17 @@ export default function CheckoutsPage() {
   );
 }
 
-function CheckoutCard({ 
-  checkout, 
-  onRenew, 
-  isRenewing 
-}: { 
-  checkout: PatronCheckout; 
+function CheckoutCard({
+  checkout,
+  onRenew,
+  isRenewing,
+}: {
+  checkout: PatronCheckout;
   onRenew: () => void;
   isRenewing: boolean;
 }) {
   const Icon = formatIcons[checkout.format] || BookOpen;
-  const canRenew =
-    checkout.renewalsRemaining === null ? true : checkout.renewalsRemaining > 0;
+  const canRenew = checkout.renewalsRemaining === null ? true : checkout.renewalsRemaining > 0;
   const dueDate = formatMaybeDate(checkout.dueDate);
   const renewalsLabel =
     typeof checkout.renewalsRemaining === "number"
@@ -240,13 +249,15 @@ function CheckoutCard({
       : "Renewals unknown";
 
   return (
-    <div className={`bg-card rounded-xl shadow-sm border p-4 flex gap-4
-                   ${checkout.isOverdue ? "border-red-200 bg-red-50/50" : "border-border"}`}>
+    <div
+      className={`bg-card rounded-xl shadow-sm border p-4 flex gap-4
+                   ${checkout.isOverdue ? "border-red-200 bg-red-50/50" : "border-border"}`}
+    >
       {/* Cover */}
       <div className="w-16 h-24 bg-muted rounded-lg overflow-hidden shrink-0">
         {checkout.coverUrl ? (
           <UnoptimizedImage
-            src={checkout.coverUrl} 
+            src={checkout.coverUrl}
             alt={checkout.title}
             className="w-full h-full object-cover"
           />
@@ -263,24 +274,27 @@ function CheckoutCard({
         {checkout.author && (
           <p className="text-sm text-muted-foreground truncate">{checkout.author}</p>
         )}
-        
+
         <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-          <span className={`flex items-center gap-1 
-                         ${checkout.isOverdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
+          <span
+            className={`flex items-center gap-1 
+                         ${checkout.isOverdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}
+          >
             <Calendar className="h-4 w-4" />
             {checkout.isOverdue ? "OVERDUE — " : "Due "}
             {dueDate}
           </span>
-          
+
           <span className="text-muted-foreground/70">•</span>
-          
+
           <span className="text-muted-foreground">{renewalsLabel}</span>
         </div>
       </div>
 
       {/* Renew button */}
       <div className="shrink-0">
-        <button type="button"
+        <button
+          type="button"
           onClick={onRenew}
           disabled={!canRenew || isRenewing}
           className="px-4 py-2 border border-border rounded-lg text-sm font-medium

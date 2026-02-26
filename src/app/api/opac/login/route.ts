@@ -135,6 +135,14 @@ export async function POST(req: NextRequest) {
     );
     return errorResponse("Invalid library card number or PIN", 401);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return errorResponse("Library card number and PIN are required", 400, {
+        issues: error.issues,
+      });
+    }
+    if (error instanceof SyntaxError) {
+      return errorResponse("Invalid JSON body", 400);
+    }
     return serverErrorResponse(error, "OPAC Login POST", req);
   }
 }

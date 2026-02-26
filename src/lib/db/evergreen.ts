@@ -6,6 +6,17 @@ import { ensureLibrarySchemaExists } from "./library-schema";
 
 let pool: Pool | null = null;
 
+function envEnabled(value: string | undefined): boolean {
+  const raw = String(value || "")
+    .trim()
+    .toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
+const SYNC_PATRON_PHOTO_TO_EVERGREEN = envEnabled(
+  process.env.STACKSOS_SYNC_PATRON_PHOTO_TO_EVERGREEN
+);
+
 export function getEvergreenPool(): Pool {
   if (!pool) {
     const host = String(process.env.EVERGREEN_DB_HOST || "").trim() || "127.0.0.1";
@@ -158,18 +169,20 @@ export async function savePatronPhotoUrl(
     [patronId, photoUrl, uploadedBy || null]
   );
 
-  // Best-effort: also persist to Evergreen core so other clients can display it.
-  try {
-    await query(
-      `
-        UPDATE actor.usr
-        SET photo_url = $2
-        WHERE id = $1
-      `,
-      [patronId, photoUrl]
-    );
-  } catch (error) {
-    logger.warn({ error: String(error), patronId }, "Failed to update actor.usr.photo_url");
+  // Optional: mirror to Evergreen core for interoperability with non-StacksOS clients.
+  if (SYNC_PATRON_PHOTO_TO_EVERGREEN) {
+    try {
+      await query(
+        `
+          UPDATE actor.usr
+          SET photo_url = $2
+          WHERE id = $1
+        `,
+        [patronId, photoUrl]
+      );
+    } catch (error) {
+      logger.warn({ error: String(error), patronId }, "Failed to update actor.usr.photo_url");
+    }
   }
 }
 
@@ -203,17 +216,19 @@ export async function clearPatronPhotoUrl(patronId: number, _clearedBy?: number)
 
   await query(`DELETE FROM library.patron_photos WHERE patron_id = $1`, [patronId]);
 
-  // Best-effort: also clear Evergreen core so other clients stop displaying it.
-  try {
-    await query(
-      `
-        UPDATE actor.usr
-        SET photo_url = NULL
-        WHERE id = $1
-      `,
-      [patronId]
-    );
-  } catch (error) {
-    logger.warn({ error: String(error), patronId }, "Failed to clear actor.usr.photo_url");
+  // Optional: mirror delete to Evergreen core for interoperability with non-StacksOS clients.
+  if (SYNC_PATRON_PHOTO_TO_EVERGREEN) {
+    try {
+      await query(
+        `
+          UPDATE actor.usr
+          SET photo_url = NULL
+          WHERE id = $1
+        `,
+        [patronId]
+      );
+    } catch (error) {
+      logger.warn({ error: String(error), patronId }, "Failed to clear actor.usr.photo_url");
+    }
   }
 }

@@ -6,6 +6,8 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Search,
   BookOpen,
@@ -167,7 +169,7 @@ function TeensSearchContent() {
       <div className="mb-8">
         <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-6">
           <div className="relative">
-            <input
+            <Input
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -175,12 +177,13 @@ function TeensSearchContent() {
               aria-label={t("searchTeenBooks")}
               className="w-full pl-5 pr-14 py-4 text-lg rounded-full border-2 border-indigo-200 text-foreground placeholder:text-muted-foreground/70 bg-card focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
             />
-            <button
+            <Button
               type="submit"
+              size="icon"
               className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full hover:from-purple-700 hover:to-indigo-700 transition-colors"
             >
               <Search className="h-5 w-5" />
-            </button>
+            </Button>
           </div>
         </form>
 
@@ -226,32 +229,35 @@ function TeensSearchContent() {
               </Select>
             </div>
 
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-colors ${showFilters ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-border text-muted-foreground hover:border-indigo-200"}`}
             >
               <Filter className="h-4 w-4" />
               <span>{t("filters")}</span>
-            </button>
+            </Button>
 
             <div className="flex bg-card rounded-xl border-2 border-border overflow-hidden">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setViewMode("grid")}
                 aria-label={t("gridView")}
-                className={`p-2 ${viewMode === "grid" ? "bg-indigo-100 text-indigo-700" : "text-muted-foreground"}`}
+                className={`rounded-none p-2 ${viewMode === "grid" ? "bg-indigo-100 text-indigo-700" : "text-muted-foreground"}`}
               >
                 <Grid className="h-5 w-5" />
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setViewMode("list")}
                 aria-label={t("listView")}
-                className={`p-2 ${viewMode === "list" ? "bg-indigo-100 text-indigo-700" : "text-muted-foreground"}`}
+                className={`rounded-none p-2 ${viewMode === "list" ? "bg-indigo-100 text-indigo-700" : "text-muted-foreground"}`}
               >
                 <LayoutList className="h-5 w-5" />
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -261,7 +267,12 @@ function TeensSearchContent() {
           <div className="mt-4 p-4 bg-card rounded-2xl border-2 border-indigo-100 shadow-sm">
             <div className="flex flex-wrap gap-4">
               <div>
-                <label htmlFor="format" className="block text-sm font-medium text-foreground/80 mb-1">{t("format")}</label>
+                <label
+                  htmlFor="format"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  {t("format")}
+                </label>
                 <Select
                   value={format || "all"}
                   onValueChange={(val) =>
@@ -282,10 +293,14 @@ function TeensSearchContent() {
               </div>
 
               <div>
-                <label htmlFor="availability" className="block text-sm font-medium text-foreground/80 mb-1">
+                <label
+                  htmlFor="availability"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
                   Availability
                 </label>
-                <Select id="availability"
+                <Select
+                  id="availability"
                   value={availableOnly ? "available" : "all"}
                   onValueChange={(val) =>
                     updateSearchParams({
@@ -303,13 +318,14 @@ function TeensSearchContent() {
                 </Select>
               </div>
 
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => updateSearchParams({ format: null, available: null })}
                 className="self-end px-4 py-2 text-sm text-indigo-600 hover:text-indigo-700"
               >
                 Clear Filters
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -338,25 +354,25 @@ function TeensSearchContent() {
 
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-4 mt-8">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => updateSearchParams({ page: String(Math.max(1, page - 1)) })}
                 disabled={page === 1}
                 className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed hover:border-indigo-200 transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" /> Back
-              </button>
-              <span className="text-muted-foreground">
-                {t("pageOf", { page, totalPages })}
-              </span>
-              <button
+              </Button>
+              <span className="text-muted-foreground">{t("pageOf", { page, totalPages })}</span>
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => updateSearchParams({ page: String(Math.min(totalPages, page + 1)) })}
                 disabled={page === totalPages}
                 className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed hover:border-indigo-200 transition-colors"
               >
                 Next <ChevronRight className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
           )}
         </>

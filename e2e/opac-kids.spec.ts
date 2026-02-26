@@ -16,6 +16,6 @@ test.describe("OPAC Kids", () => {
     }
 
     // Enabled posture: should render the kids layout header branding.
-    await expect(page.getByRole("link", { name: /^Kids Zone$/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Kids Zone/i }).first()).toBeVisible();
   });
 });

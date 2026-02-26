@@ -1,25 +1,71 @@
-import fs from "node:fs";
-import path from "node:path";
 import { TenantConfigSchema, type TenantConfig } from "@/lib/tenant/schema";
 import { logger } from "@/lib/logger";
+import { applyTenantProfileDefaults } from "@/lib/tenant/profiles";
+import { loadTenantConfigFromDisk } from "@/lib/tenant/store";
 
 let cached: TenantConfig | null = null;
+let cachedTenantId: string | null = null;
 
-function resolveTenantId(): string {
+function parseCsvList(value: string | undefined): string[] {
+  return String(value || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+export function getTenantId(): string {
   const raw = process.env.STACKSOS_TENANT_ID;
   return raw && raw.trim() ? raw.trim() : "default";
 }
 
-function resolveTenantConfigPath(tenantId: string): string {
-  const repoRoot = process.cwd();
-  return path.join(repoRoot, "tenants", `${tenantId}.json`);
-}
-
 function buildEnvTenantFallback(tenantId: string): TenantConfig {
   const evergreenBaseUrl = process.env.EVERGREEN_BASE_URL || "http://127.0.0.1";
+  const profileTypeRaw = String(process.env.STACKSOS_TENANT_PROFILE || "public")
+    .trim()
+    .toLowerCase();
+  const profileType = ["public", "school", "church", "academic", "custom"].includes(profileTypeRaw)
+    ? profileTypeRaw
+    : "public";
+
+  const discoveryScopeRaw = String(process.env.STACKSOS_DISCOVERY_SCOPE || "")
+    .trim()
+    .toLowerCase();
+  const discoveryScope: "local" | "system" | "consortium" | undefined =
+    discoveryScopeRaw === "local" ||
+    discoveryScopeRaw === "system" ||
+    discoveryScopeRaw === "consortium"
+      ? discoveryScopeRaw
+      : undefined;
+  const discoveryDepthRaw = Number.parseInt(
+    String(process.env.STACKSOS_DISCOVERY_COPY_DEPTH || ""),
+    10
+  );
+  const discoveryDepth = Number.isFinite(discoveryDepthRaw)
+    ? Math.min(99, Math.max(0, discoveryDepthRaw))
+    : undefined;
+  const allowPatronScopeOverrideRaw = String(
+    process.env.STACKSOS_DISCOVERY_ALLOW_SCOPE_OVERRIDE || ""
+  )
+    .trim()
+    .toLowerCase();
+  const allowPatronScopeOverride =
+    allowPatronScopeOverrideRaw === "1" ||
+    allowPatronScopeOverrideRaw === "true" ||
+    allowPatronScopeOverrideRaw === "yes"
+      ? true
+      : allowPatronScopeOverrideRaw === "0" ||
+          allowPatronScopeOverrideRaw === "false" ||
+          allowPatronScopeOverrideRaw === "no"
+        ? false
+        : undefined;
+
   return TenantConfigSchema.parse({
     tenantId,
     displayName: process.env.STACKSOS_TENANT_DISPLAY_NAME || "StacksOS Tenant",
+    profile: {
+      type: profileType,
+      notes: process.env.STACKSOS_TENANT_PROFILE_NOTES || undefined,
+    },
     region: process.env.STACKSOS_TENANT_REGION || undefined,
     evergreenBaseUrl,
     branding: {
@@ -43,6 +89,7 @@ function buildEnvTenantFallback(tenantId: string): TenantConfig {
       enabled: process.env.STACKSOS_AI_ENABLED === "1",
       provider: (process.env.STACKSOS_AI_PROVIDER as unknown) || undefined,
       model: process.env.STACKSOS_AI_MODEL || undefined,
+      fallbackModels: parseCsvList(process.env.STACKSOS_AI_MODEL_FALLBACKS),
       maxTokens: Number.isFinite(Number(process.env.STACKSOS_AI_MAX_TOKENS))
         ? Number(process.env.STACKSOS_AI_MAX_TOKENS)
         : undefined,
@@ -59,6 +106,11 @@ function buildEnvTenantFallback(tenantId: string): TenantConfig {
           : undefined,
       },
     },
+    discovery: {
+      defaultSearchScope: discoveryScope,
+      defaultCopyDepth: discoveryDepth,
+      allowPatronScopeOverride,
+    },
     integrations: {
       emailProvider: (process.env.STACKSOS_EMAIL_PROVIDER as unknown) || undefined,
       smsProvider: (process.env.STACKSOS_SMS_PROVIDER as unknown) || undefined,
@@ -66,23 +118,27 @@ function buildEnvTenantFallback(tenantId: string): TenantConfig {
   });
 }
 
-export function getTenantConfig(): TenantConfig {
-  if (cached) return cached;
+export function clearTenantConfigCache(): void {
+  cached = null;
+  cachedTenantId = null;
+}
 
-  const tenantId = resolveTenantId();
-  const p = resolveTenantConfigPath(tenantId);
+export function getTenantConfig(): TenantConfig {
+  const tenantId = getTenantId();
+  if (cached && cachedTenantId === tenantId) return cached;
+
   try {
-    if (fs.existsSync(p)) {
-      const raw = fs.readFileSync(p, "utf8");
-      const json = JSON.parse(raw);
-      cached = TenantConfigSchema.parse(json);
+    const fromDisk = loadTenantConfigFromDisk(tenantId);
+    if (fromDisk) {
+      cached = applyTenantProfileDefaults(fromDisk);
+      cachedTenantId = tenantId;
       return cached;
     }
   } catch (error) {
     logger.error({ tenantId, err: String(error) }, "Failed to load tenant config from disk");
   }
 
-  cached = buildEnvTenantFallback(tenantId);
+  cached = applyTenantProfileDefaults(buildEnvTenantFallback(tenantId));
+  cachedTenantId = tenantId;
   return cached;
 }
-

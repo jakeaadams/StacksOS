@@ -1,6 +1,6 @@
 /**
  * Evergreen/OpenSRF Type Definitions
- * 
+ *
  * Common types for Evergreen ILS responses and field extraction
  */
 
@@ -43,12 +43,12 @@ export type FieldValue = string | number | boolean | null | undefined;
  * Extracts a field value from either object property or __p array
  */
 export function extractField<T extends FieldValue>(
-  obj: FieldmapperObject | Record<string, unknown> | null | undefined,
+  obj: FieldmapperObject | Record<string, any> | null | undefined,
   field: string,
   index: number
 ): T | null {
   if (!obj) return null;
-  
+
   // Handle fieldmapper object with __p array
   if (isFieldmapperObject(obj)) {
     const val = obj.__p[index];
@@ -56,9 +56,9 @@ export function extractField<T extends FieldValue>(
     if (typeof val === "object") return null; // Nested objects need special handling
     return val as T;
   }
-  
+
   // Handle regular object
-  const val = (obj as Record<string, unknown>)[field];
+  const val = (obj as Record<string, any>)[field];
   if (val === undefined || val === null) return null;
   if (typeof val === "object") return null;
   return val as T;
@@ -73,15 +73,15 @@ export function extractNestedField<T extends FieldValue>(
   nameIdx: number
 ): T | null {
   if (!obj || typeof obj !== "object") return null;
-  
+
   if (isFieldmapperObject(obj)) {
     const val = obj.__p[nameIdx];
     if (val === undefined || val === null) return null;
     if (typeof val === "object") return null;
     return val as T;
   }
-  
-  const val = (obj as Record<string, unknown>)[nameField];
+
+  const val = (obj as Record<string, any>)[nameField];
   if (val === undefined || val === null) return null;
   if (typeof val === "object") return null;
   return val as T;
@@ -453,4 +453,3 @@ export interface Vendor {
   active: boolean;
   ediDefault?: number;
 }
-

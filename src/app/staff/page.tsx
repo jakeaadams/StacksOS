@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -10,10 +10,13 @@ import {
   StatusBadge,
   UniversalSearch,
 } from "@/components/shared";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useApi, useDashboardSettings } from "@/hooks";
 import { useAuth } from "@/contexts/auth-context";
+import { fetchWithAuth } from "@/lib/client-fetch";
+import { featureFlags } from "@/lib/feature-flags";
 import {
   ArrowLeftRight,
   BarChart3,
@@ -23,8 +26,12 @@ import {
   ChevronUp,
   Clock3,
   FileText,
+  Loader2,
   Package,
+  Sparkles,
   Settings2,
+  ThumbsDown,
+  ThumbsUp,
   UserPlus,
   Users,
   RotateCcw,
@@ -44,6 +51,54 @@ function formatMetric(value: unknown): string {
   const num = metricNumber(value);
   return num === null ? "—" : num.toLocaleString();
 }
+
+type DashboardStats = {
+  checkouts_today: number | null;
+  checkins_today: number | null;
+  active_holds: number | null;
+  overdue_items: number | null;
+  open_bill_total?: number | null;
+  fines_collected_today?: number | null;
+  new_patrons_today?: number | null;
+};
+
+type HoldsStats = {
+  available: number;
+  pending: number;
+  in_transit: number;
+  total: number;
+};
+
+type AiOpsSummary = {
+  summary: string;
+  highlights: string[];
+  caveats?: string[];
+  drilldowns: Array<{ label: string; url: string }>;
+};
+
+type AiPlaybookAction = {
+  id: string;
+  title: string;
+  why: string;
+  impact: "high" | "medium" | "low";
+  etaMinutes: number;
+  steps: string[];
+  deepLink: string;
+};
+
+type AiOpsPlaybooks = {
+  summary: string;
+  actions: AiPlaybookAction[];
+  caveats?: string[];
+};
+
+type AiStaffCopilot = {
+  summary: string;
+  highlights: string[];
+  actions: AiPlaybookAction[];
+  caveats?: string[];
+  drilldowns: Array<{ label: string; url: string }>;
+};
 
 function DeskSearchWidget() {
   return (
@@ -105,7 +160,7 @@ function DeskActionsWidget() {
   );
 }
 
-function OperationalSnapshotWidget({ stats }: { stats: Record<string, unknown> | undefined }) {
+function OperationalSnapshotWidget({ stats }: { stats: DashboardStats | undefined }) {
   const rows = [
     {
       label: "Checkouts Today",
@@ -158,7 +213,7 @@ function OperationalSnapshotWidget({ stats }: { stats: Record<string, unknown> |
   );
 }
 
-function AlertsWidget({ stats }: { stats: Record<string, unknown> | undefined }) {
+function AlertsWidget({ stats }: { stats: DashboardStats | undefined }) {
   const alerts = useMemo(() => {
     const holds = metricNumber(stats?.active_holds);
     const overdue = metricNumber(stats?.overdue_items);
@@ -245,6 +300,307 @@ function AlertsWidget({ stats }: { stats: Record<string, unknown> | undefined })
   );
 }
 
+function OpsAssistantWidget({
+  orgId,
+  stats,
+  holds,
+}: {
+  orgId: number;
+  stats: DashboardStats | undefined;
+  holds: HoldsStats | undefined;
+}) {
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiDraftId, setAiDraftId] = useState<string | null>(null);
+  const [aiSummary, setAiSummary] = useState<AiOpsSummary | null>(null);
+  const [aiPlaybooks, setAiPlaybooks] = useState<AiOpsPlaybooks | null>(null);
+  const [aiFeedback, setAiFeedback] = useState<null | "accepted" | "rejected">(null);
+  const autoRequested = useRef(false);
+
+  const toCount = useCallback((value: number | null | undefined) => {
+    if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+    return Math.max(Math.round(value), 0);
+  }, []);
+
+  const generateAiSummary = useCallback(async () => {
+    if (!featureFlags.ai || !stats) return;
+
+    const activeHolds = toCount(stats.active_holds);
+    const holdSnapshot: HoldsStats = holds || {
+      available: Math.max(Math.floor(activeHolds * 0.3), 0),
+      pending: Math.max(activeHolds - Math.floor(activeHolds * 0.3), 0),
+      in_transit: 0,
+      total: activeHolds,
+    };
+
+    setAiLoading(true);
+    setAiError(null);
+    setAiDraftId(null);
+    setAiSummary(null);
+    setAiPlaybooks(null);
+    setAiFeedback(null);
+
+    try {
+      const payload = {
+        orgId,
+        stats: {
+          checkouts_today: toCount(stats.checkouts_today),
+          checkins_today: toCount(stats.checkins_today),
+          active_holds: toCount(stats.active_holds),
+          overdue_items: toCount(stats.overdue_items),
+          fines_collected_today: toCount(stats.fines_collected_today),
+          new_patrons_today: toCount(stats.new_patrons_today),
+        },
+        holds: holdSnapshot,
+      };
+
+      // Preferred path: single cross-module copilot request.
+      try {
+        const copilotResponse = await fetchWithAuth("/api/ai/staff-copilot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const copilotJson = await copilotResponse.json();
+        if (!copilotResponse.ok || copilotJson.ok === false) {
+          throw new Error(copilotJson.error || "AI staff copilot failed");
+        }
+
+        const copilot = (copilotJson.response || null) as AiStaffCopilot | null;
+        if (!copilot) {
+          throw new Error("AI staff copilot returned an empty payload");
+        }
+
+        setAiSummary({
+          summary: copilot.summary,
+          highlights: Array.isArray(copilot.highlights) ? copilot.highlights : [],
+          caveats: Array.isArray(copilot.caveats) ? copilot.caveats : [],
+          drilldowns: Array.isArray(copilot.drilldowns) ? copilot.drilldowns : [],
+        });
+        setAiPlaybooks({
+          summary: copilot.summary,
+          actions: Array.isArray(copilot.actions) ? copilot.actions : [],
+          caveats: Array.isArray(copilot.caveats) ? copilot.caveats : [],
+        });
+        setAiDraftId(typeof copilotJson.draftId === "string" ? copilotJson.draftId : null);
+        return;
+      } catch {
+        // Fallback path for older deployments or temporary endpoint failures.
+      }
+
+      const [summaryResult, playbookResult] = await Promise.allSettled([
+        fetchWithAuth("/api/ai/analytics-summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }).then(async (response) => {
+          const json = await response.json();
+          if (!response.ok || json.ok === false) {
+            throw new Error(json.error || "AI summary failed");
+          }
+          return json;
+        }),
+        fetchWithAuth("/api/ai/ops-playbooks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }).then(async (response) => {
+          const json = await response.json();
+          if (!response.ok || json.ok === false) {
+            throw new Error(json.error || "AI ops playbooks failed");
+          }
+          return json;
+        }),
+      ]);
+
+      let summaryDraftId: string | null = null;
+      let playbookDraftId: string | null = null;
+
+      if (summaryResult.status === "fulfilled") {
+        summaryDraftId =
+          typeof summaryResult.value.draftId === "string" ? summaryResult.value.draftId : null;
+        setAiSummary((summaryResult.value.response || null) as AiOpsSummary | null);
+      }
+
+      if (playbookResult.status === "fulfilled") {
+        playbookDraftId =
+          typeof playbookResult.value.draftId === "string" ? playbookResult.value.draftId : null;
+        setAiPlaybooks((playbookResult.value.response || null) as AiOpsPlaybooks | null);
+      }
+
+      if (summaryResult.status !== "fulfilled" && playbookResult.status !== "fulfilled") {
+        const summaryError =
+          summaryResult.status === "rejected" ? String(summaryResult.reason) : "";
+        const playbookError =
+          playbookResult.status === "rejected" ? String(playbookResult.reason) : "";
+        throw new Error(`AI generation failed: ${summaryError} ${playbookError}`.trim());
+      }
+
+      if (summaryResult.status !== "fulfilled" || playbookResult.status !== "fulfilled") {
+        setAiError("Assistant returned partial results; retry for a full refresh.");
+      }
+
+      setAiDraftId(playbookDraftId || summaryDraftId);
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setAiLoading(false);
+    }
+  }, [holds, orgId, stats, toCount]);
+
+  const submitAiFeedback = useCallback(
+    async (decision: "accepted" | "rejected") => {
+      if (!aiDraftId) return;
+      setAiFeedback(decision);
+      try {
+        await fetchWithAuth(`/api/ai/drafts/${aiDraftId}/decision`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision, suggestionId: "staff_copilot" }),
+        });
+      } catch {
+        // Best-effort only.
+      }
+    },
+    [aiDraftId]
+  );
+
+  useEffect(() => {
+    if (!featureFlags.ai || !stats || autoRequested.current) return;
+    autoRequested.current = true;
+    void generateAiSummary();
+  }, [generateAiSummary, stats]);
+
+  if (!featureFlags.ai) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Ops Assistant (Kimi 2.5 Pro)
+            </CardTitle>
+            <CardDescription>
+              Cross-module shift guidance from live Evergreen metrics.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void generateAiSummary()}
+              disabled={aiLoading || !stats}
+            >
+              {aiLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Refresh
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void submitAiFeedback("accepted")}
+              disabled={!aiDraftId || aiFeedback !== null}
+              title="Useful"
+            >
+              <ThumbsUp className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void submitAiFeedback("rejected")}
+              disabled={!aiDraftId || aiFeedback !== null}
+              title="Not useful"
+            >
+              <ThumbsDown className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {aiLoading && (
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Generating shift plan...
+          </div>
+        )}
+        {aiError && (
+          <div className="text-sm text-muted-foreground">Assistant unavailable: {aiError}</div>
+        )}
+        {!aiLoading && !aiError && !aiSummary && (
+          <div className="text-sm text-muted-foreground">
+            Refresh to generate prioritized actions for circulation, holds, and reports.
+          </div>
+        )}
+        {aiSummary && (
+          <div className="space-y-3">
+            <div className="text-sm">{aiSummary.summary}</div>
+            <div className="grid gap-2">
+              {aiSummary.highlights.slice(0, 4).map((highlight, idx) => (
+                <div key={idx} className="rounded-lg border bg-muted/20 px-3 py-2 text-sm">
+                  {highlight}
+                </div>
+              ))}
+            </div>
+            {Array.isArray(aiSummary.caveats) && aiSummary.caveats.length > 0 ? (
+              <div className="rounded-lg border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                <div className="font-medium text-foreground/80 mb-1">Caveats</div>
+                <ul className="list-disc list-inside space-y-1">
+                  {aiSummary.caveats.slice(0, 3).map((caveat, idx) => (
+                    <li key={idx}>{caveat}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              {aiSummary.drilldowns.slice(0, 4).map((drilldown, idx) => (
+                <Button key={idx} asChild size="sm" variant="outline">
+                  <Link href={drilldown.url}>{drilldown.label}</Link>
+                </Button>
+              ))}
+            </div>
+            {aiPlaybooks && aiPlaybooks.actions.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Proactive Playbooks
+                </div>
+                {aiPlaybooks.actions.slice(0, 4).map((action) => (
+                  <div key={action.id} className="rounded-lg border bg-muted/15 px-3 py-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm font-semibold">{action.title}</div>
+                      <Badge
+                        variant={action.impact === "high" ? "destructive" : "outline"}
+                        className="capitalize"
+                      >
+                        {action.impact} impact • {action.etaMinutes}m
+                      </Badge>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">{action.why}</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={action.deepLink}>Open Workflow</Link>
+                      </Button>
+                    </div>
+                    <div className="mt-2 text-xs">
+                      {action.steps.slice(0, 3).map((step, index) => (
+                        <div key={`${action.id}-step-${index}`} className="text-muted-foreground">
+                          {index + 1}. {step}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ShiftChecklistWidget() {
   const checklist = [
     { title: "Process pull list", href: "/staff/circulation/pull-list" },
@@ -286,7 +642,13 @@ function DashboardCustomizationPanel({
   onMove,
   onReset,
 }: {
-  allWidgets: Array<{ id: string; label: string; description: string; enabled: boolean; order: number }>;
+  allWidgets: Array<{
+    id: string;
+    label: string;
+    description: string;
+    enabled: boolean;
+    order: number;
+  }>;
   isSaving: boolean;
   onToggle: (id: string) => void;
   onMove: (id: string, direction: "up" | "down") => void;
@@ -371,12 +733,17 @@ export default function StaffDashboard() {
     setIsEditing,
   } = useDashboardSettings();
 
-  const { data: dashboardData } = useApi<Record<string, unknown>>(
+  const { data: dashboardData } = useApi<{ stats?: DashboardStats; message?: string }>(
     orgId ? `/api/evergreen/reports?action=dashboard&org=${orgId}` : null,
     { immediate: !!orgId }
   );
+  const { data: holdsData } = useApi<{ holds?: HoldsStats }>(
+    orgId ? `/api/evergreen/reports?action=holds&org=${orgId}` : null,
+    { immediate: !!orgId }
+  );
 
-  const stats = (dashboardData?.stats as Record<string, unknown> | undefined) || undefined;
+  const stats = dashboardData?.stats || undefined;
+  const holds = holdsData?.holds || undefined;
   const enabledIds = useMemo(
     () => new Set(enabledWidgets.map((widget) => widget.id)),
     [enabledWidgets]
@@ -391,13 +758,14 @@ export default function StaffDashboard() {
     (id) => id === "desk-actions" || id === "shift-checklist"
   );
   const sideWidgetIds = orderedWidgetIds.filter(
-    (id) => id === "alerts" || id === "operational-snapshot"
+    (id) =>
+      id === "alerts" ||
+      id === "operational-snapshot" ||
+      (id === "ops-assistant" && featureFlags.ai)
   );
 
   const moveWidget = (widgetId: string, direction: "up" | "down") => {
-    const ordered = [...allWidgets]
-      .sort((a, b) => a.order - b.order)
-      .map((widget) => widget.id);
+    const ordered = [...allWidgets].sort((a, b) => a.order - b.order).map((widget) => widget.id);
     const index = ordered.indexOf(widgetId);
     if (index < 0) return;
 
@@ -419,6 +787,9 @@ export default function StaffDashboard() {
   const renderSideWidget = (id: string) => {
     if (id === "alerts") return <AlertsWidget key={id} stats={stats} />;
     if (id === "operational-snapshot") return <OperationalSnapshotWidget key={id} stats={stats} />;
+    if (id === "ops-assistant") {
+      return <OpsAssistantWidget key={id} orgId={orgId} stats={stats} holds={holds} />;
+    }
     return null;
   };
 
@@ -476,11 +847,15 @@ export default function StaffDashboard() {
           />
         )}
 
-        {topWidgetIds.map((id) => (id === "universal-search" ? <DeskSearchWidget key={id} /> : null))}
+        {topWidgetIds.map((id) =>
+          id === "universal-search" ? <DeskSearchWidget key={id} /> : null
+        )}
 
         {hasBodyWidgets ? (
           <div className="grid gap-6 lg:grid-cols-3">
-            <div className="space-y-6 lg:col-span-2">{mainWidgetIds.map((id) => renderMainWidget(id))}</div>
+            <div className="space-y-6 lg:col-span-2">
+              {mainWidgetIds.map((id) => renderMainWidget(id))}
+            </div>
 
             <div className="space-y-6">{sideWidgetIds.map((id) => renderSideWidget(id))}</div>
           </div>

@@ -31,8 +31,12 @@ async function ensureAiTelemetryTables(): Promise<void> {
   `);
   await query(`ALTER TABLE library.ai_calls ADD COLUMN IF NOT EXISTS prompt_template TEXT`);
   await query(`ALTER TABLE library.ai_calls ADD COLUMN IF NOT EXISTS prompt_version INTEGER`);
-  await query(`CREATE INDEX IF NOT EXISTS idx_ai_calls_created_at ON library.ai_calls(created_at DESC)`);
-  await query(`CREATE INDEX IF NOT EXISTS idx_ai_calls_type_created_at ON library.ai_calls(type, created_at DESC)`);
+  await query(
+    `CREATE INDEX IF NOT EXISTS idx_ai_calls_created_at ON library.ai_calls(created_at DESC)`
+  );
+  await query(
+    `CREATE INDEX IF NOT EXISTS idx_ai_calls_type_created_at ON library.ai_calls(type, created_at DESC)`
+  );
   aiTelemetryInitialized = true;
   logger.info({}, "AI telemetry tables initialized");
 }
@@ -85,10 +89,50 @@ export async function enforceAiBudgets(args: {
   }
 }
 
-function estimateCostUsd(_completion: AiCompletion): number | null {
-  // Cost estimation is intentionally conservative. Many providers/models vary and
-  // pricing can change; for pilots we rely on call-count budgets by default.
-  return null;
+/**
+ * Default per-token pricing (USD) by model prefix.
+ * Override at runtime via STACKSOS_AI_PRICING_MAP env var (JSON object keyed by model name).
+ * Format: { "model-name": { "input": <$/1M tokens>, "output": <$/1M tokens> } }
+ */
+const DEFAULT_PRICING: Record<string, { input: number; output: number }> = {
+  "kimi-k2.5": { input: 0.6, output: 2.4 },
+  "moonshotai/kimi-k2.5": { input: 0.6, output: 2.4 },
+  "kimi-k2-instruct": { input: 0.4, output: 1.6 },
+  "moonshotai/kimi-k2-instruct": { input: 0.4, output: 1.6 },
+  "gpt-4o-mini": { input: 0.15, output: 0.6 },
+  "claude-sonnet-4-6": { input: 3.0, output: 15.0 },
+  "claude-haiku-4-5-20251001": { input: 0.8, output: 4.0 },
+};
+
+function loadPricingMap(): Record<string, { input: number; output: number }> {
+  const envJson = process.env.STACKSOS_AI_PRICING_MAP;
+  if (!envJson) return DEFAULT_PRICING;
+  try {
+    const parsed = JSON.parse(envJson);
+    if (typeof parsed === "object" && parsed !== null) {
+      return { ...DEFAULT_PRICING, ...parsed };
+    }
+  } catch {
+    logger.warn({}, "STACKSOS_AI_PRICING_MAP is not valid JSON; using defaults");
+  }
+  return DEFAULT_PRICING;
+}
+
+function estimateCostUsd(completion: AiCompletion): number | null {
+  const model = completion.model;
+  if (!model) return null;
+  const usage = completion.usage;
+  if (!usage || (!usage.inputTokens && !usage.outputTokens)) return null;
+
+  const pricing = loadPricingMap();
+  // Try exact match first, then prefix match
+  const entry =
+    pricing[model] || Object.entries(pricing).find(([key]) => model.startsWith(key))?.[1];
+  if (!entry) return null;
+
+  const inputCost = ((usage.inputTokens || 0) / 1_000_000) * entry.input;
+  const outputCost = ((usage.outputTokens || 0) / 1_000_000) * entry.output;
+  return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000;
 }
 
 export async function recordAiCall(args: {
@@ -104,7 +148,11 @@ export async function recordAiCall(args: {
   userAgent?: string | null;
 }): Promise<void> {
   // Unit tests and the mock provider should not require a DB connection.
-  if (process.env.VITEST || process.env.NODE_ENV === "test" || args.completion.provider === "mock") {
+  if (
+    process.env.VITEST ||
+    process.env.NODE_ENV === "test" ||
+    args.completion.provider === "mock"
+  ) {
     return;
   }
 

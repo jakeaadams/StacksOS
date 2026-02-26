@@ -1,13 +1,25 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, parseJsonBodyWithSchema, successResponse, serverErrorResponse, getRequestMeta } from "@/lib/api";
+import {
+  errorResponse,
+  parseJsonBodyWithSchema,
+  successResponse,
+  serverErrorResponse,
+  getRequestMeta,
+} from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { sendEmail } from "@/lib/email/provider";
 import { renderTemplateString } from "@/lib/notifications/render";
-import { createDelivery, createNotificationEvent, getActiveTemplate, markDeliveryAttempt } from "@/lib/db/notifications";
+import {
+  createDelivery,
+  createNotificationEvent,
+  getActiveTemplate,
+  markDeliveryAttempt,
+} from "@/lib/db/notifications";
 import { logAuditEvent } from "@/lib/audit";
 import { sendSms } from "@/lib/sms/provider";
 import type { NoticeContext, NoticeType } from "@/lib/email";
+import { callOpenSRF } from "@/lib/api/client";
 
 const Schema = z
   .object({
@@ -25,7 +37,7 @@ export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
-    const { actor } = await requirePermissions(["ADMIN_CONFIG"]);
+    const { actor, authtoken } = await requirePermissions(["ADMIN_CONFIG"]);
     const body = await parseJsonBodyWithSchema(req, Schema);
     if (body instanceof Response) return body;
 
@@ -38,17 +50,49 @@ export async function POST(req: NextRequest) {
           : "";
 
     if (!to) {
-      return errorResponse(channel === "email" ? "Recipient email required" : "Recipient phone required", 400);
+      return errorResponse(
+        channel === "email" ? "Recipient email required" : "Recipient phone required",
+        400
+      );
     }
 
     const noticeType = body.noticeType as NoticeType;
+    let libraryName = "Library";
+    try {
+      const orgId = Number(actor?.ws_ou ?? actor?.home_ou ?? 0) || 0;
+      if (orgId > 0) {
+        const orgRes = await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.retrieve", [
+          authtoken,
+          orgId,
+        ]);
+        const org = orgRes?.payload?.[0] as Record<string, any> | undefined;
+        if (org && !org.ilsevent && typeof org.name === "string" && org.name.trim()) {
+          libraryName = org.name.trim();
+        }
+      }
+    } catch {
+      // Keep fallback libraryName.
+    }
+
     const context = (body.context || {
-      patron: { id: actor?.id || 0, firstName: actor?.first_given_name || "", lastName: actor?.family_name || "", email: channel === "email" ? to : "patron@example.org" },
-      library: { name: "Library" },
-      items: [{ title: "Sample Item", barcode: "000000" }],
+      patron: {
+        id: actor?.id || 0,
+        firstName: actor?.first_given_name || "",
+        lastName: actor?.family_name || "",
+        email:
+          channel === "email"
+            ? to
+            : String(actor?.email || process.env.STACKSOS_EMAIL_FROM || "notices@invalid.local"),
+      },
+      library: { name: libraryName },
+      items: [],
+      holds: [],
+      bills: [],
     }) as NoticeContext;
 
-    const eventId = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    const eventId = globalThis.crypto?.randomUUID
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`;
     await createNotificationEvent({
       id: eventId,
       channel,
@@ -58,26 +102,43 @@ export async function POST(req: NextRequest) {
       createdBy: actor?.id ?? null,
       context,
     });
-    const provider = channel === "email" ? String(process.env.STACKSOS_EMAIL_PROVIDER || "console") : String(process.env.STACKSOS_SMS_PROVIDER || "console");
+    const provider =
+      channel === "email"
+        ? String(process.env.STACKSOS_EMAIL_PROVIDER || "console")
+        : String(process.env.STACKSOS_SMS_PROVIDER || "console");
     const deliveryId = await createDelivery({ eventId, provider });
 
     const active = await getActiveTemplate(channel, noticeType);
-    const subjectTemplate = body.subjectTemplate ?? active?.subject_template ?? `StacksOS test: ${noticeType}`;
-    const bodyTemplate = body.bodyTemplate ?? active?.body_template ?? (channel === "email" ? "<p>Test message</p>" : "Test message");
+    const subjectTemplate =
+      body.subjectTemplate ?? active?.subject_template ?? `StacksOS test: ${noticeType}`;
+    const bodyTemplate =
+      body.bodyTemplate ??
+      active?.body_template ??
+      (channel === "email" ? "<p>Test message</p>" : "Test message");
     const bodyTextTemplate = body.bodyTextTemplate ?? active?.body_text_template ?? "Test message";
 
-    const subject = subjectTemplate ? renderTemplateString(subjectTemplate, context, { html: false }) : `StacksOS test: ${noticeType}`;
+    const subject = subjectTemplate
+      ? renderTemplateString(subjectTemplate, context, { html: false })
+      : `StacksOS test: ${noticeType}`;
     const html = renderTemplateString(bodyTemplate, context, { html: true });
-    const text = bodyTextTemplate ? renderTemplateString(bodyTextTemplate, context, { html: false }) : undefined;
+    const text = bodyTextTemplate
+      ? renderTemplateString(bodyTextTemplate, context, { html: false })
+      : undefined;
 
     try {
       if (channel === "email") {
         await sendEmail({
-          to: { email: to, name: `${actor?.first_given_name || ""} ${actor?.family_name || ""}`.trim() },
+          to: {
+            email: to,
+            name: `${actor?.first_given_name || ""} ${actor?.family_name || ""}`.trim(),
+          },
           subject,
           html,
           text,
-          from: { email: process.env.STACKSOS_EMAIL_FROM || "noreply@library.org", name: process.env.STACKSOS_EMAIL_FROM_NAME || "StacksOS" },
+          from: {
+            email: process.env.STACKSOS_EMAIL_FROM || "noreply@library.org",
+            name: process.env.STACKSOS_EMAIL_FROM_NAME || "StacksOS",
+          },
         });
       } else {
         await sendSms({ to, message: text || subject });

@@ -64,6 +64,14 @@ export const AVAILABLE_WIDGETS: WidgetConfig[] = [
     defaultOrder: 4,
   },
   {
+    id: "ops-assistant",
+    label: "Ops Assistant",
+    description: "Kimi-powered shift guidance across circulation and reports",
+    icon: "Sparkles",
+    defaultEnabled: true,
+    defaultOrder: 5,
+  },
+  {
     id: "date-display",
     label: "Date Display",
     description: "Current date in header",
@@ -136,10 +144,9 @@ export function useDashboardSettings(): UseDashboardSettingsReturn {
     data: settingsData,
     isLoading,
     error: fetchError,
-  } = useApi<{ settings: Record<string, unknown> }>(
-    `${SETTINGS_URL}?keys=${SETTINGS_KEY}`,
-    { immediate: true }
-  );
+  } = useApi<{ settings: Record<string, any> }>(`${SETTINGS_URL}?keys=${SETTINGS_KEY}`, {
+    immediate: true,
+  });
 
   // Load settings when data arrives
   useEffect(() => {
@@ -198,15 +205,15 @@ export function useDashboardSettings(): UseDashboardSettingsReturn {
       pendingSaveRef.current = layout; // Store for rollback
       setLayout(newLayout); // Optimistic update
       setIsSaving(true);
-	      setSaveError(null);
+      setSaveError(null);
 
-	      try {
-	        const response = await fetchWithAuth(SETTINGS_URL, {
-	          method: "POST",
-	          headers: { "Content-Type": "application/json" },
-	          body: JSON.stringify({
-	            settings: {
-	              [SETTINGS_KEY]: newLayout,
+      try {
+        const response = await fetchWithAuth(SETTINGS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            settings: {
+              [SETTINGS_KEY]: newLayout,
             },
           }),
         });

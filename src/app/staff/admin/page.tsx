@@ -14,6 +14,7 @@ import { useApi } from "@/hooks";
 import { featureFlags } from "@/lib/feature-flags";
 
 import {
+  Cable,
   ShieldCheck,
   Users,
   Monitor,
@@ -27,6 +28,7 @@ import {
   ClipboardCheck,
   SlidersHorizontal,
   ArrowRight,
+  Globe,
 } from "lucide-react";
 
 type AdminCard = {
@@ -44,11 +46,16 @@ export default function AdminHubPage() {
   const { user } = useAuth();
 
   const { data: ping } = useApi<any>("/api/evergreen/ping", { immediate: true });
-  const { data: envData } = useApi<any>("/api/env", { immediate: true, revalidateInterval: 5 * 60_000 });
+  const { data: envData } = useApi<any>("/api/env", {
+    immediate: true,
+    revalidateInterval: 5 * 60_000,
+  });
 
   const evergreenOnline = ping?.ok === true;
   const envLabel = String(envData?.env?.label || "").trim();
-  const envTone = String(envData?.env?.tone || "").trim().toLowerCase();
+  const envTone = String(envData?.env?.tone || "")
+    .trim()
+    .toLowerCase();
 
   const cards = useMemo<AdminCard[]>(
     () => [
@@ -79,7 +86,7 @@ export default function AdminHubPage() {
         description: "Register circulation workstations per branch.",
         href: "/staff/admin/workstations",
         icon: Monitor,
-        tone: "bg-purple-500/10 text-purple-600",
+        tone: "bg-sky-500/10 text-sky-700",
         enabled: featureFlags.adminWorkstations,
       },
       {
@@ -88,6 +95,22 @@ export default function AdminHubPage() {
         href: "/staff/admin/settings",
         icon: Settings2,
         tone: "bg-amber-500/10 text-amber-700",
+      },
+      {
+        title: "Tenants",
+        description: "Profile-based tenant onboarding and SaaS readiness checks.",
+        href: "/staff/admin/tenants",
+        icon: Globe,
+        tone: "bg-emerald-500/10 text-emerald-700",
+        enabled: featureFlags.tenantConsole && Boolean(user?.isPlatformAdmin),
+      },
+      {
+        title: "Developer Platform",
+        description: "Webhook contracts, delivery telemetry, and extension integrations.",
+        href: "/staff/admin/developer-platform",
+        icon: Cable,
+        tone: "bg-cyan-500/10 text-cyan-700",
+        enabled: featureFlags.developerPlatform && Boolean(user?.isPlatformAdmin),
       },
       {
         title: "Policy Editors",
@@ -136,7 +159,7 @@ export default function AdminHubPage() {
         enabled: featureFlags.serverAdmin,
       },
     ],
-    []
+    [user?.isPlatformAdmin]
   );
 
   return (
@@ -149,7 +172,8 @@ export default function AdminHubPage() {
         <div className="flex flex-wrap items-center gap-2">
           {envLabel ? (
             <Badge variant="secondary" className="rounded-full">
-              {envLabel}{envTone ? ` • ${envTone}` : ""}
+              {envLabel}
+              {envTone ? ` • ${envTone}` : ""}
             </Badge>
           ) : null}
           <StatusBadge
@@ -164,7 +188,9 @@ export default function AdminHubPage() {
           <Card className="rounded-2xl md:col-span-1">
             <CardHeader>
               <CardTitle className="text-base">Your Session</CardTitle>
-              <CardDescription>Who you are, and what org/workstation you’re acting in.</CardDescription>
+              <CardDescription>
+                Who you are, and what org/workstation you’re acting in.
+              </CardDescription>
             </CardHeader>
             <CardContent className="text-sm space-y-2">
               <div className="flex items-center justify-between">
@@ -174,6 +200,10 @@ export default function AdminHubPage() {
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Role</span>
                 <span className="font-medium">{user?.profileName || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">SaaS Role</span>
+                <span className="font-medium">{user?.saasRole || "staff"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Home Library</span>
@@ -221,19 +251,26 @@ export default function AdminHubPage() {
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex items-start gap-3 min-w-0">
-                              <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${card.tone}`}>
+                              <div
+                                className={`h-10 w-10 rounded-xl flex items-center justify-center ${card.tone}`}
+                              >
                                 <Icon className="h-5 w-5" />
                               </div>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                   <div className="font-medium truncate">{card.title}</div>
                                   {card.badge ? (
-                                    <Badge variant="outline" className="rounded-full text-[10px] px-2 py-0.5">
+                                    <Badge
+                                      variant="outline"
+                                      className="rounded-full text-[10px] px-2 py-0.5"
+                                    >
                                       {card.badge}
                                     </Badge>
                                   ) : null}
                                 </div>
-                                <div className="text-xs text-muted-foreground line-clamp-2">{card.description}</div>
+                                <div className="text-xs text-muted-foreground line-clamp-2">
+                                  {card.description}
+                                </div>
                               </div>
                             </div>
                             <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
@@ -245,8 +282,8 @@ export default function AdminHubPage() {
               </div>
 
               <div className="mt-4 text-xs text-muted-foreground">
-                Missing something? Some advanced Evergreen configuration still lives in the Evergreen admin UI until
-                StacksOS editors exist. Start with{" "}
+                Missing something? Some advanced Evergreen configuration still lives in the
+                Evergreen admin UI until StacksOS editors exist. Start with{" "}
                 <Link href="/staff/admin/policy-inspector" className="underline underline-offset-2">
                   Policy Inspector
                 </Link>{" "}

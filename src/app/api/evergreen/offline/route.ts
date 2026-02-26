@@ -177,7 +177,8 @@ export async function GET(req: NextRequest) {
             })),
           });
         } catch (error) {
-          const code = error && typeof error === "object" ? (error as Record<string, unknown>).code : undefined;
+          const code =
+            error && typeof error === "object" ? (error as Record<string, any>).code : undefined;
           if (code === "OSRF_METHOD_NOT_FOUND") {
             logger.warn(
               { route: "api.evergreen.offline", type: "policies" },
@@ -246,7 +247,7 @@ export async function POST(req: NextRequest) {
 
     const audit = async (
       status: "success" | "failure",
-      details?: Record<string, unknown>,
+      details?: Record<string, any>,
       error?: string
     ) => {
       await logAuditEvent({

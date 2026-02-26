@@ -38,27 +38,55 @@ const BROWSE_CATEGORIES: BrowseCategory[] = [
     icon: BookOpen,
     color: "text-blue-600",
     bgColor: "bg-blue-100",
-    subjects: ["General Fiction", "Literary Fiction", "Historical Fiction", "Mystery", "Thriller", "Romance", "Science Fiction", "Fantasy", "Horror"],
+    subjects: [
+      "General Fiction",
+      "Literary Fiction",
+      "Historical Fiction",
+      "Mystery",
+      "Thriller",
+      "Romance",
+      "Science Fiction",
+      "Fantasy",
+      "Horror",
+    ],
   },
   {
     name: "Non-Fiction",
     icon: GraduationCap,
     color: "text-emerald-600",
     bgColor: "bg-emerald-100",
-    subjects: ["Biography", "History", "Science", "Philosophy", "Psychology", "Self-Help", "True Crime", "Politics", "Economics"],
+    subjects: [
+      "Biography",
+      "History",
+      "Science",
+      "Philosophy",
+      "Psychology",
+      "Self-Help",
+      "True Crime",
+      "Politics",
+      "Economics",
+    ],
   },
   {
     name: "Children",
     icon: Baby,
-    color: "text-pink-600",
-    bgColor: "bg-pink-100",
-    subjects: ["Picture Books", "Early Readers", "Chapter Books", "Middle Grade", "Young Adult", "Educational", "Activity Books"],
+    color: "text-rose-600",
+    bgColor: "bg-rose-100",
+    subjects: [
+      "Picture Books",
+      "Early Readers",
+      "Chapter Books",
+      "Middle Grade",
+      "Young Adult",
+      "Educational",
+      "Activity Books",
+    ],
   },
   {
     name: "Arts & Entertainment",
     icon: Palette,
-    color: "text-purple-600",
-    bgColor: "bg-purple-100",
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-100",
     subjects: ["Art", "Music", "Film", "Photography", "Theater", "Dance", "Architecture", "Design"],
   },
   {
@@ -66,35 +94,75 @@ const BROWSE_CATEGORIES: BrowseCategory[] = [
     icon: Dumbbell,
     color: "text-red-600",
     bgColor: "bg-red-100",
-    subjects: ["Fitness", "Nutrition", "Mental Health", "Medicine", "Alternative Health", "Diet", "Yoga", "Sports"],
+    subjects: [
+      "Fitness",
+      "Nutrition",
+      "Mental Health",
+      "Medicine",
+      "Alternative Health",
+      "Diet",
+      "Yoga",
+      "Sports",
+    ],
   },
   {
     name: "Home & Garden",
     icon: Leaf,
     color: "text-green-600",
     bgColor: "bg-green-100",
-    subjects: ["Gardening", "Home Improvement", "Interior Design", "Crafts", "DIY", "Cooking", "Pets"],
+    subjects: [
+      "Gardening",
+      "Home Improvement",
+      "Interior Design",
+      "Crafts",
+      "DIY",
+      "Cooking",
+      "Pets",
+    ],
   },
   {
     name: "Technology",
     icon: Computer,
     color: "text-cyan-600",
     bgColor: "bg-cyan-100",
-    subjects: ["Computers", "Programming", "Internet", "Artificial Intelligence", "Gadgets", "Science", "Engineering"],
+    subjects: [
+      "Computers",
+      "Programming",
+      "Internet",
+      "Artificial Intelligence",
+      "Gadgets",
+      "Science",
+      "Engineering",
+    ],
   },
   {
     name: "Travel",
     icon: Plane,
     color: "text-orange-600",
     bgColor: "bg-orange-100",
-    subjects: ["Travel Guides", "Adventure", "World Cultures", "Maps", "Language Learning", "Food & Drink"],
+    subjects: [
+      "Travel Guides",
+      "Adventure",
+      "World Cultures",
+      "Maps",
+      "Language Learning",
+      "Food & Drink",
+    ],
   },
   {
     name: "Business",
     icon: Briefcase,
     color: "text-slate-600",
     bgColor: "bg-slate-100",
-    subjects: ["Management", "Marketing", "Finance", "Entrepreneurship", "Investing", "Career", "Leadership"],
+    subjects: [
+      "Management",
+      "Marketing",
+      "Finance",
+      "Entrepreneurship",
+      "Investing",
+      "Career",
+      "Leadership",
+    ],
   },
 ];
 
@@ -111,11 +179,15 @@ const QUICK_LISTS = [
   { name: "New Arrivals", icon: Sparkles, href: "/opac/new-titles" },
   { name: "Most Popular", icon: TrendingUp, href: "/opac/search?sort=popularity" },
   { name: "Staff Picks", icon: Heart, href: "/opac/lists" },
-  { name: "Award Winners", icon: Library, href: `/opac/search?q=${encodeURIComponent("subject: award winners")}` },
+  {
+    name: "Award Winners",
+    icon: Library,
+    href: `/opac/search?q=${encodeURIComponent("subject: award winners")}`,
+  },
 ];
 
 export default function BrowsePage() {
-  const t = useTranslations("browsePage");
+  const _t = useTranslations("browsePage");
   const enabled = featureFlags.opacBrowseV2;
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
@@ -132,8 +204,8 @@ export default function BrowsePage() {
           </p>
           <Link
             href="/opac/search"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white
-                     rounded-lg font-medium hover:bg-primary-700 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 stx-action-primary
+                     rounded-lg font-medium hover:brightness-110 transition-colors"
           >
             Search the catalog
           </Link>
@@ -201,13 +273,14 @@ export default function BrowsePage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {BROWSE_CATEGORIES.map((category) => {
               const isExpanded = expandedCategory === category.name;
-              
+
               return (
                 <div
                   key={category.name}
                   className="bg-card rounded-xl border border-border overflow-hidden"
                 >
-                  <button type="button"
+                  <button
+                    type="button"
                     onClick={() => setExpandedCategory(isExpanded ? null : category.name)}
                     className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
                   >
@@ -217,11 +290,11 @@ export default function BrowsePage() {
                       </div>
                       <span className="font-medium text-foreground">{category.name}</span>
                     </div>
-                    <ChevronRight 
-                      className={`h-5 w-5 text-muted-foreground/70 transition-transform ${isExpanded ? "rotate-90" : ""}`} 
+                    <ChevronRight
+                      className={`h-5 w-5 text-muted-foreground/70 transition-transform ${isExpanded ? "rotate-90" : ""}`}
                     />
                   </button>
-                  
+
                   {isExpanded && (
                     <div className="px-4 pb-4 border-t border-border/50">
                       <div className="pt-3 space-y-1">

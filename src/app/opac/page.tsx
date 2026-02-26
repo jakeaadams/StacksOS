@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 
 import type { LibraryEvent } from "@/lib/events-data";
-import { toast } from "sonner";
+
 import { useTranslations } from "next-intl";
 
 interface FeaturedBook {
@@ -151,8 +151,7 @@ export default function OPACHomePage() {
   const QuickSearchChip = ({ label, href }: { label: string; href: string }) => (
     <Link
       href={href}
-      className="px-4 py-2 bg-card rounded-full text-sm font-medium text-foreground/80 
-               hover:bg-primary-50 hover:text-primary-700 transition-colors shadow-sm"
+      className="rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/20 hover:text-white"
     >
       {label}
     </Link>
@@ -171,10 +170,12 @@ export default function OPACHomePage() {
   }) => (
     <Link
       href={href}
-      className="flex flex-col items-center gap-3 p-6 bg-card rounded-xl shadow-sm border 
-               border-border hover:shadow-md hover:border-primary-300 transition-all group"
+      className="stx-surface flex flex-col items-center gap-3 p-6 
+               hover:shadow-md hover:border-primary-400/40 transition-all group"
     >
-      <div className={`p-4 rounded-full ${color} group-hover:scale-110 transition-transform`}>
+      <div
+        className={`p-4 rounded-full ${color} group-hover:scale-110 transition-transform shadow-sm`}
+      >
         <Icon className="h-8 w-8 text-white" />
       </div>
       <span className="font-medium text-foreground">{label}</span>
@@ -188,15 +189,7 @@ export default function OPACHomePage() {
         className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 
                         text-white py-16 md:py-24"
       >
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width=60 height=60 viewBox=0 0 60 60 xmlns=http://www.w3.org/2000/svg%3E%3Cg fill=none fill-rule=evenodd%3E%3Cg fill=%23ffffff fill-opacity=0.4%3E%3Cpath d=M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            }}
-          />
-        </div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,hsl(var(--primary-foreground)/0.15)_0%,transparent_45%),radial-gradient(circle_at_80%_80%,hsl(var(--primary-foreground)/0.12)_0%,transparent_44%)]" />
 
         <div className="relative max-w-4xl mx-auto px-4 text-center">
           <h1 className="text-3xl md:text-5xl font-bold mb-4">Discover Your Next Great Read</h1>
@@ -240,12 +233,13 @@ export default function OPACHomePage() {
                     href="/opac/account/checkouts"
                     className="text-sm text-primary-600 hover:underline"
                   >
-                    {patron.checkoutCount} {t("itemsCheckedOut", {count: patron.checkoutCount})}
+                    {patron.checkoutCount} {t("itemsCheckedOut", { count: patron.checkoutCount })}
                   </Link>
                 )}
                 {holds.filter((h) => h.status === "ready").length > 0 && (
-                  <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                    {holds.filter((h) => h.status === "ready").length} {t("holdsReady", {count: holds.filter((h) => h.status === "ready").length})}
+                  <span className="rounded-full bg-primary-100 px-3 py-1 text-sm font-medium text-primary-800">
+                    {holds.filter((h) => h.status === "ready").length}{" "}
+                    {t("holdsReady", { count: holds.filter((h) => h.status === "ready").length })}
                   </span>
                 )}
               </div>
@@ -271,25 +265,25 @@ export default function OPACHomePage() {
               icon={BookOpen}
               label={t("books")}
               href="/opac/search?format=book"
-              color="bg-blue-500"
+              color="bg-primary-600"
             />
             <FormatCard
               icon={Smartphone}
               label={t("eBooks")}
               href="/opac/search?format=ebook"
-              color="bg-purple-500"
+              color="bg-primary-500"
             />
             <FormatCard
               icon={Headphones}
               label={t("audiobooks")}
               href="/opac/search?format=audiobook"
-              color="bg-green-500"
+              color="bg-primary-700"
             />
             <FormatCard
               icon={MonitorPlay}
               label={t("moviesTV")}
               href="/opac/search?format=dvd"
-              color="bg-red-500"
+              color="bg-primary-800"
             />
           </div>
         </div>
@@ -329,7 +323,7 @@ export default function OPACHomePage() {
                   >
                     <div className="flex items-start gap-3 mb-3">
                       <div className="shrink-0 text-center">
-                        <div className="bg-primary-600 text-white text-[10px] font-bold rounded-t-md py-0.5 px-2">
+                        <div className="stx-action-primary text-[10px] font-bold rounded-t-md py-0.5 px-2">
                           {monthAbbr}
                         </div>
                         <div className="bg-white dark:bg-muted border border-t-0 border-border rounded-b-md py-1 px-2">
@@ -353,19 +347,14 @@ export default function OPACHomePage() {
                         {event.ageGroup}
                       </span>
                       {event.registrationRequired ? (
-                        <button
-                          onClick={() =>
-                            toast.info(t("registrationComingSoon"), {
-                              description:
-                                t("registrationComingSoonDesc"),
-                            })
-                          }
-                          className="text-xs font-medium text-primary-600 hover:underline"
+                        <Link
+                          href={`/opac/events/${event.id}`}
+                          className="text-xs font-medium text-primary-700 hover:underline"
                         >
                           Register
-                        </button>
+                        </Link>
                       ) : (
-                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                        <span className="text-xs font-medium text-primary-700 dark:text-primary-300">
                           Drop-in
                         </span>
                       )}
@@ -387,8 +376,8 @@ export default function OPACHomePage() {
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 rounded-lg">
-                  <Sparkles className="h-6 w-6 text-amber-600" />
+                <div className="rounded-lg bg-primary-100 p-2">
+                  <Sparkles className="h-6 w-6 text-primary-600" />
                 </div>
                 <h2 className="text-2xl md:text-3xl font-bold text-foreground">New Arrivals</h2>
               </div>
@@ -429,9 +418,7 @@ export default function OPACHomePage() {
                 ))}
               </div>
             ) : (
-              <p className="text-center text-muted-foreground py-8">
-                {t("noNewArrivals")}
-              </p>
+              <p className="text-center text-muted-foreground py-8">{t("noNewArrivals")}</p>
             )}
           </div>
         </section>
@@ -443,8 +430,8 @@ export default function OPACHomePage() {
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-rose-100 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-rose-600" />
+                <div className="rounded-lg bg-primary-100 p-2">
+                  <TrendingUp className="h-6 w-6 text-primary-600" />
                 </div>
                 <h2 className="text-2xl md:text-3xl font-bold text-foreground">
                   Popular This Month
@@ -486,9 +473,7 @@ export default function OPACHomePage() {
                 ))}
               </div>
             ) : (
-              <p className="text-center text-muted-foreground py-8">
-                {t("searchCatalogDiscover")}
-              </p>
+              <p className="text-center text-muted-foreground py-8">{t("searchCatalogDiscover")}</p>
             )}
           </div>
         </section>
@@ -500,8 +485,8 @@ export default function OPACHomePage() {
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Star className="h-6 w-6 text-purple-600" />
+                <div className="rounded-lg bg-primary-100 p-2">
+                  <Star className="h-6 w-6 text-primary-600" />
                 </div>
                 <h2 className="text-2xl md:text-3xl font-bold text-foreground">Staff Picks</h2>
               </div>
@@ -518,8 +503,7 @@ export default function OPACHomePage() {
               {staffPicks.map((pick) => (
                 <div
                   key={pick.id}
-                  className="bg-gradient-to-br from-purple-50 to-white p-6 rounded-xl 
-                           border border-purple-100"
+                  className="rounded-xl border border-primary-100 bg-gradient-to-br from-primary-50/40 to-card p-6"
                 >
                   <div className="flex gap-4">
                     <div className="w-20 h-28 bg-muted rounded-lg shrink-0 overflow-hidden">
@@ -532,8 +516,8 @@ export default function OPACHomePage() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full bg-purple-200 flex items-center justify-center">
-                          <BookOpen className="h-8 w-8 text-purple-400" />
+                        <div className="flex h-full w-full items-center justify-center bg-primary-100">
+                          <BookOpen className="h-8 w-8 text-primary-500" />
                         </div>
                       )}
                     </div>
@@ -550,7 +534,7 @@ export default function OPACHomePage() {
                   <blockquote className="mt-4 text-foreground/80 italic">
                     {`"${pick.review}"`}
                   </blockquote>
-                  <p className="mt-3 text-sm text-purple-600 font-medium">
+                  <p className="mt-3 text-sm font-medium text-primary-700">
                     — {pick.staffName}, {pick.staffBranch}
                   </p>
                 </div>
@@ -636,13 +620,11 @@ export default function OPACHomePage() {
             {/* Get a Card */}
             <div>
               <h3 className="font-semibold text-lg mb-4">{t("getLibraryCard")}</h3>
-              <p className="text-muted-foreground/70 text-sm mb-4">
-                {t("getCardDescription")}
-              </p>
+              <p className="text-muted-foreground/70 text-sm mb-4">{t("getCardDescription")}</p>
               <Link
                 href="/opac/register"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 
-                         hover:bg-primary-700 rounded-lg font-medium transition-colors"
+                         hover:brightness-110 rounded-lg font-medium transition-colors"
               >
                 Apply Online
                 <ArrowRight className="h-4 w-4" />

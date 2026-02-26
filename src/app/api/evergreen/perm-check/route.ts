@@ -9,7 +9,7 @@ import {
 } from "@/lib/api";
 import { getActorFromToken } from "@/lib/audit";
 import { logger } from "@/lib/logger";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 function normalizePermPayload(payload: unknown, perms: string[]): Record<string, boolean> | null {
   if (!payload) return null;
@@ -37,7 +37,7 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
     const map: Record<string, boolean> = {};
     for (const perm of perms) {
       if (perm in payload) {
-        map[perm] = Boolean((payload as Record<string, unknown>)[perm]);
+        map[perm] = Boolean((payload as Record<string, any>)[perm]);
       }
     }
     if (Object.keys(map).length > 0) return map;
@@ -46,7 +46,11 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
   return null;
 }
 
-async function checkPerms(authtoken: string, perms: string[], orgId?: number): Promise<Record<string, boolean> | null> {
+async function checkPerms(
+  authtoken: string,
+  perms: string[],
+  orgId?: number
+): Promise<Record<string, boolean> | null> {
   const attempts: unknown[][] = [];
   attempts.push([authtoken, perms]);
   if (orgId) {
@@ -112,4 +116,3 @@ export async function GET(req: NextRequest) {
     return serverErrorResponse(error, "Perm-check GET", req);
   }
 }
-

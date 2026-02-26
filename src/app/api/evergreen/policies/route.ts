@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import {
-
   callOpenSRF,
   successResponse,
   errorResponse,
@@ -13,14 +12,15 @@ import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { z } from "zod";
 
-
 // ============================================================================
 // GET - Fetch circulation and hold policies
 // ============================================================================
 
-const policiesPostSchema = z.object({
-  action: z.string().trim().min(1),
-}).passthrough();
+const policiesPostSchema = z
+  .object({
+    action: z.string().trim().min(1),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   const { requestId } = getRequestMeta(req);
@@ -38,26 +38,29 @@ export async function GET(req: NextRequest) {
     switch (type) {
       case "circ": {
         // Query config.circ_matrix_matchpoint
-        const response = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.search.ccmm.atomic",
-          [
-            authtoken,
-            { id: { "!=": null } },
-            {
-              flesh: 3,
-              flesh_fields: {
-                ccmm: ["org_unit", "grp", "copy_location", "duration_rule", "recurring_fine_rule", "max_fine_rule"],
-                pgt: [],
-                aou: [],
-                acpl: [],
-              },
-              limit,
-              offset,
-              order_by: { ccmm: "id" },
+        const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.ccmm.atomic", [
+          authtoken,
+          { id: { "!=": null } },
+          {
+            flesh: 3,
+            flesh_fields: {
+              ccmm: [
+                "org_unit",
+                "grp",
+                "copy_location",
+                "duration_rule",
+                "recurring_fine_rule",
+                "max_fine_rule",
+              ],
+              pgt: [],
+              aou: [],
+              acpl: [],
             },
-          ]
-        );
+            limit,
+            offset,
+            order_by: { ccmm: "id" },
+          },
+        ]);
 
         const policies = (response?.payload?.[0] || []).map((p: any) => {
           const extract = (obj: any, field: string, idx: number) => {
@@ -73,25 +76,53 @@ export async function GET(req: NextRequest) {
           return {
             id: extract(p, "id", 0),
             active: extract(p, "active", 1) === "t" || extract(p, "active", 1) === true,
-            orgUnit: typeof p?.org_unit === "object" ? extractNested(p.org_unit, "id", 0) : extract(p, "org_unit", 2),
-            orgUnitName: typeof p?.org_unit === "object" ? extractNested(p.org_unit, "shortname", 2) : null,
+            orgUnit:
+              typeof p?.org_unit === "object"
+                ? extractNested(p.org_unit, "id", 0)
+                : extract(p, "org_unit", 2),
+            orgUnitName:
+              typeof p?.org_unit === "object" ? extractNested(p.org_unit, "shortname", 2) : null,
             grp: typeof p?.grp === "object" ? extractNested(p.grp, "id", 0) : extract(p, "grp", 3),
             grpName: typeof p?.grp === "object" ? extractNested(p.grp, "name", 1) : null,
             circModifier: extract(p, "circ_modifier", 4),
-            copyLocation: typeof p?.copy_location === "object" ? extractNested(p.copy_location, "id", 0) : extract(p, "copy_location", 5),
-            copyLocationName: typeof p?.copy_location === "object" ? extractNested(p.copy_location, "name", 1) : null,
+            copyLocation:
+              typeof p?.copy_location === "object"
+                ? extractNested(p.copy_location, "id", 0)
+                : extract(p, "copy_location", 5),
+            copyLocationName:
+              typeof p?.copy_location === "object"
+                ? extractNested(p.copy_location, "name", 1)
+                : null,
             isRenewal: extract(p, "is_renewal", 6),
             refFlag: extract(p, "ref_flag", 7),
             usrAgeUpperBound: extract(p, "usr_age_upper_bound", 8),
             usrAgeLowerBound: extract(p, "usr_age_lower_bound", 9),
             itemAge: extract(p, "item_age", 10),
             circulate: extract(p, "circulate", 11) === "t" || extract(p, "circulate", 11) === true,
-            durationRule: typeof p?.duration_rule === "object" ? extractNested(p.duration_rule, "id", 0) : extract(p, "duration_rule", 12),
-            durationRuleName: typeof p?.duration_rule === "object" ? extractNested(p.duration_rule, "name", 1) : null,
-            recurringFineRule: typeof p?.recurring_fine_rule === "object" ? extractNested(p.recurring_fine_rule, "id", 0) : extract(p, "recurring_fine_rule", 13),
-            recurringFineRuleName: typeof p?.recurring_fine_rule === "object" ? extractNested(p.recurring_fine_rule, "name", 1) : null,
-            maxFineRule: typeof p?.max_fine_rule === "object" ? extractNested(p.max_fine_rule, "id", 0) : extract(p, "max_fine_rule", 14),
-            maxFineRuleName: typeof p?.max_fine_rule === "object" ? extractNested(p.max_fine_rule, "name", 1) : null,
+            durationRule:
+              typeof p?.duration_rule === "object"
+                ? extractNested(p.duration_rule, "id", 0)
+                : extract(p, "duration_rule", 12),
+            durationRuleName:
+              typeof p?.duration_rule === "object"
+                ? extractNested(p.duration_rule, "name", 1)
+                : null,
+            recurringFineRule:
+              typeof p?.recurring_fine_rule === "object"
+                ? extractNested(p.recurring_fine_rule, "id", 0)
+                : extract(p, "recurring_fine_rule", 13),
+            recurringFineRuleName:
+              typeof p?.recurring_fine_rule === "object"
+                ? extractNested(p.recurring_fine_rule, "name", 1)
+                : null,
+            maxFineRule:
+              typeof p?.max_fine_rule === "object"
+                ? extractNested(p.max_fine_rule, "id", 0)
+                : extract(p, "max_fine_rule", 14),
+            maxFineRuleName:
+              typeof p?.max_fine_rule === "object"
+                ? extractNested(p.max_fine_rule, "name", 1)
+                : null,
             hardDueDate: extract(p, "hard_due_date", 15),
             renewals: extract(p, "renewals", 16),
             gracePeriod: extract(p, "grace_period", 17),
@@ -107,23 +138,26 @@ export async function GET(req: NextRequest) {
 
       case "hold": {
         // Query config.hold_matrix_matchpoint
-        const response = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.search.chmm.atomic",
-          [
-            authtoken,
-            { id: { "!=": null } },
-            {
-              flesh: 2,
-              flesh_fields: {
-                chmm: ["requestor_grp", "usr_grp", "pickup_ou", "request_ou", "item_owning_ou", "item_circ_ou"],
-              },
-              limit,
-              offset,
-              order_by: { chmm: "id" },
+        const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.chmm.atomic", [
+          authtoken,
+          { id: { "!=": null } },
+          {
+            flesh: 2,
+            flesh_fields: {
+              chmm: [
+                "requestor_grp",
+                "usr_grp",
+                "pickup_ou",
+                "request_ou",
+                "item_owning_ou",
+                "item_circ_ou",
+              ],
             },
-          ]
-        );
+            limit,
+            offset,
+            order_by: { chmm: "id" },
+          },
+        ]);
 
         const policies = (response?.payload?.[0] || []).map((p: any) => {
           const extract = (obj: any, field: string, idx: number) => {
@@ -139,20 +173,52 @@ export async function GET(req: NextRequest) {
           return {
             id: extract(p, "id", 0),
             active: extract(p, "active", 1) === "t" || extract(p, "active", 1) === true,
-            strictOuMatch: extract(p, "strict_ou_match", 2) === "t" || extract(p, "strict_ou_match", 2) === true,
+            strictOuMatch:
+              extract(p, "strict_ou_match", 2) === "t" || extract(p, "strict_ou_match", 2) === true,
             userHomeOu: extract(p, "user_home_ou", 3),
-            requestorGrp: typeof p?.requestor_grp === "object" ? extractNested(p.requestor_grp, "id", 0) : extract(p, "requestor_grp", 4),
-            requestorGrpName: typeof p?.requestor_grp === "object" ? extractNested(p.requestor_grp, "name", 1) : null,
-            usrGrp: typeof p?.usr_grp === "object" ? extractNested(p.usr_grp, "id", 0) : extract(p, "usr_grp", 5),
+            requestorGrp:
+              typeof p?.requestor_grp === "object"
+                ? extractNested(p.requestor_grp, "id", 0)
+                : extract(p, "requestor_grp", 4),
+            requestorGrpName:
+              typeof p?.requestor_grp === "object"
+                ? extractNested(p.requestor_grp, "name", 1)
+                : null,
+            usrGrp:
+              typeof p?.usr_grp === "object"
+                ? extractNested(p.usr_grp, "id", 0)
+                : extract(p, "usr_grp", 5),
             usrGrpName: typeof p?.usr_grp === "object" ? extractNested(p.usr_grp, "name", 1) : null,
-            pickupOu: typeof p?.pickup_ou === "object" ? extractNested(p.pickup_ou, "id", 0) : extract(p, "pickup_ou", 6),
-            pickupOuName: typeof p?.pickup_ou === "object" ? extractNested(p.pickup_ou, "shortname", 2) : null,
-            requestOu: typeof p?.request_ou === "object" ? extractNested(p.request_ou, "id", 0) : extract(p, "request_ou", 7),
-            requestOuName: typeof p?.request_ou === "object" ? extractNested(p.request_ou, "shortname", 2) : null,
-            itemOwningOu: typeof p?.item_owning_ou === "object" ? extractNested(p.item_owning_ou, "id", 0) : extract(p, "item_owning_ou", 8),
-            itemOwningOuName: typeof p?.item_owning_ou === "object" ? extractNested(p.item_owning_ou, "shortname", 2) : null,
-            itemCircOu: typeof p?.item_circ_ou === "object" ? extractNested(p.item_circ_ou, "id", 0) : extract(p, "item_circ_ou", 9),
-            itemCircOuName: typeof p?.item_circ_ou === "object" ? extractNested(p.item_circ_ou, "shortname", 2) : null,
+            pickupOu:
+              typeof p?.pickup_ou === "object"
+                ? extractNested(p.pickup_ou, "id", 0)
+                : extract(p, "pickup_ou", 6),
+            pickupOuName:
+              typeof p?.pickup_ou === "object" ? extractNested(p.pickup_ou, "shortname", 2) : null,
+            requestOu:
+              typeof p?.request_ou === "object"
+                ? extractNested(p.request_ou, "id", 0)
+                : extract(p, "request_ou", 7),
+            requestOuName:
+              typeof p?.request_ou === "object"
+                ? extractNested(p.request_ou, "shortname", 2)
+                : null,
+            itemOwningOu:
+              typeof p?.item_owning_ou === "object"
+                ? extractNested(p.item_owning_ou, "id", 0)
+                : extract(p, "item_owning_ou", 8),
+            itemOwningOuName:
+              typeof p?.item_owning_ou === "object"
+                ? extractNested(p.item_owning_ou, "shortname", 2)
+                : null,
+            itemCircOu:
+              typeof p?.item_circ_ou === "object"
+                ? extractNested(p.item_circ_ou, "id", 0)
+                : extract(p, "item_circ_ou", 9),
+            itemCircOuName:
+              typeof p?.item_circ_ou === "object"
+                ? extractNested(p.item_circ_ou, "shortname", 2)
+                : null,
             circModifier: extract(p, "circ_modifier", 10),
             marcTypeCode: extract(p, "marc_type", 11),
             marcFormCode: extract(p, "marc_form", 12),
@@ -160,11 +226,17 @@ export async function GET(req: NextRequest) {
             refFlag: extract(p, "ref_flag", 14),
             itemAge: extract(p, "item_age", 15),
             holdable: extract(p, "holdable", 16) === "t" || extract(p, "holdable", 16) === true,
-            distanceIsFromOwning: extract(p, "distance_is_from_owning", 17) === "t" || extract(p, "distance_is_from_owning", 17) === true,
+            distanceIsFromOwning:
+              extract(p, "distance_is_from_owning", 17) === "t" ||
+              extract(p, "distance_is_from_owning", 17) === true,
             transitRange: extract(p, "transit_range", 18),
             maxHolds: extract(p, "max_holds", 19),
-            includeLocallyFrozen: extract(p, "include_frozen_holds", 20) === "t" || extract(p, "include_frozen_holds", 20) === true,
-            stopBlockedUser: extract(p, "stop_blocked_user", 21) === "t" || extract(p, "stop_blocked_user", 21) === true,
+            includeLocallyFrozen:
+              extract(p, "include_frozen_holds", 20) === "t" ||
+              extract(p, "include_frozen_holds", 20) === true,
+            stopBlockedUser:
+              extract(p, "stop_blocked_user", 21) === "t" ||
+              extract(p, "stop_blocked_user", 21) === true,
             ageProtection: extract(p, "age_hold_protect_rule", 22),
             description: extract(p, "description", 23),
           };
@@ -175,15 +247,11 @@ export async function GET(req: NextRequest) {
 
       case "duration_rules": {
         // Query config.rule_circ_duration
-        const response = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.search.crcd.atomic",
-          [
-            authtoken,
-            { id: { "!=": null } },
-            { limit: 500, order_by: { crcd: "name" } },
-          ]
-        );
+        const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.crcd.atomic", [
+          authtoken,
+          { id: { "!=": null } },
+          { limit: 500, order_by: { crcd: "name" } },
+        ]);
 
         const rules = (response?.payload?.[0] || []).map((r: any) => {
           const extract = (obj: any, field: string, idx: number) => {
@@ -207,15 +275,11 @@ export async function GET(req: NextRequest) {
 
       case "fine_rules": {
         // Query config.rule_recurring_fine
-        const response = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.search.crrf.atomic",
-          [
-            authtoken,
-            { id: { "!=": null } },
-            { limit: 500, order_by: { crrf: "name" } },
-          ]
-        );
+        const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.crrf.atomic", [
+          authtoken,
+          { id: { "!=": null } },
+          { limit: 500, order_by: { crrf: "name" } },
+        ]);
 
         const rules = (response?.payload?.[0] || []).map((r: any) => {
           const extract = (obj: any, field: string, idx: number) => {
@@ -239,15 +303,11 @@ export async function GET(req: NextRequest) {
 
       case "max_fine_rules": {
         // Query config.rule_max_fine
-        const response = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.search.crmf.atomic",
-          [
-            authtoken,
-            { id: { "!=": null } },
-            { limit: 500, order_by: { crmf: "name" } },
-          ]
-        );
+        const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.crmf.atomic", [
+          authtoken,
+          { id: { "!=": null } },
+          { limit: 500, order_by: { crmf: "name" } },
+        ]);
 
         const rules = (response?.payload?.[0] || []).map((r: any) => {
           const extract = (obj: any, field: string, idx: number) => {
@@ -259,7 +319,8 @@ export async function GET(req: NextRequest) {
             id: extract(r, "id", 0),
             name: extract(r, "name", 1),
             amount: extract(r, "amount", 2),
-            isByPercent: extract(r, "is_percent", 3) === "t" || extract(r, "is_percent", 3) === true,
+            isByPercent:
+              extract(r, "is_percent", 3) === "t" || extract(r, "is_percent", 3) === true,
           };
         });
 
@@ -267,7 +328,10 @@ export async function GET(req: NextRequest) {
       }
 
       default:
-        return errorResponse("Invalid type parameter. Use: circ, hold, duration_rules, fine_rules, or max_fine_rules", 400);
+        return errorResponse(
+          "Invalid type parameter. Use: circ, hold, duration_rules, fine_rules, or max_fine_rules",
+          400
+        );
     }
   } catch (error: any) {
     return serverErrorResponse(error, "Policies GET", req);
@@ -303,7 +367,14 @@ export async function POST(req: NextRequest) {
       requestId: requestMeta.requestId,
     };
 
-    const audit = async (event: { action: string; entity: string; entityId?: string | number; status: "success" | "failure"; details?: Record<string, unknown>; error?: string | null; }) => {
+    const audit = async (event: {
+      action: string;
+      entity: string;
+      entityId?: string | number;
+      status: "success" | "failure";
+      details?: Record<string, any>;
+      error?: string | null;
+    }) => {
       try {
         await logAuditEvent({
           ...auditBase,
@@ -356,11 +427,10 @@ export async function POST(req: NextRequest) {
             ],
           };
 
-          const response = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.create.ccmm",
-            [authtoken, newPolicy]
-          );
+          const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.ccmm", [
+            authtoken,
+            newPolicy,
+          ]);
 
           const result = response?.payload?.[0] as any as any;
 
@@ -455,11 +525,10 @@ export async function POST(req: NextRequest) {
             ],
           };
 
-          const response = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.update.ccmm",
-            [authtoken, updatePayload]
-          );
+          const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.update.ccmm", [
+            authtoken,
+            updatePayload,
+          ]);
 
           const result = response?.payload?.[0] as any as any;
 
@@ -494,11 +563,10 @@ export async function POST(req: NextRequest) {
             return errorResponse("Policy ID is required", 400);
           }
 
-          const response = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.delete.ccmm",
-            [authtoken, data.id]
-          );
+          const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.ccmm", [
+            authtoken,
+            data.id,
+          ]);
 
           const result = response?.payload?.[0] as any as any;
 
@@ -563,11 +631,10 @@ export async function POST(req: NextRequest) {
             ],
           };
 
-          const response = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.create.chmm",
-            [authtoken, newPolicy]
-          );
+          const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.chmm", [
+            authtoken,
+            newPolicy,
+          ]);
 
           const result = response?.payload?.[0] as any as any;
 
@@ -664,11 +731,10 @@ export async function POST(req: NextRequest) {
             ],
           };
 
-          const response = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.update.chmm",
-            [authtoken, updatePayload]
-          );
+          const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.update.chmm", [
+            authtoken,
+            updatePayload,
+          ]);
 
           const result = response?.payload?.[0] as any as any;
 
@@ -703,11 +769,10 @@ export async function POST(req: NextRequest) {
             return errorResponse("Policy ID is required", 400);
           }
 
-          const response = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.delete.chmm",
-            [authtoken, data.id]
-          );
+          const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.chmm", [
+            authtoken,
+            data.id,
+          ]);
 
           const result = response?.payload?.[0] as any as any;
 

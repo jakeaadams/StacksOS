@@ -6,9 +6,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Search, User, BookOpen, Loader2, ArrowRight, Barcode } from "lucide-react";
-import { fetchWithAuth } from "@/lib/client-fetch";
 import { useDebounce } from "@/hooks/use-debounce";
 import Image from "next/image";
+import {
+  searchStaffCatalog,
+  searchStaffItemsByBarcode,
+  searchStaffPatrons,
+  type StaffPatronSearchType,
+} from "@/lib/search/staff-search";
 
 interface SearchResult {
   id: string | number;
@@ -33,40 +38,42 @@ interface UniversalSearchProps {
 function detectInputType(query: string): "barcode" | "isbn" | "phone" | "email" | "text" {
   const q = query.trim();
   if (!q) return "text";
-  
+
   // Email detection
   if (q.includes("@")) return "email";
-  
+
   // Extract digits only
   const digits = q.replace(/[\s\-]/g, "");
   const isAllDigits = /^\d+$/.test(digits);
-  
+
   // ISBN-10 or ISBN-13 (may have hyphens)
   if (isAllDigits && (digits.length === 10 || digits.length === 13)) return "isbn";
-  
+
   // Library barcodes are typically 12-14 digits
   if (isAllDigits && digits.length >= 12) return "barcode";
-  
+
   // Phone numbers (7-11 digits, may have formatting)
   if (isAllDigits && digits.length >= 7 && digits.length <= 11) return "phone";
-  
+
   return "text";
 }
 
 // Highlight matching text with bold
 function highlightMatch(text: string, query: string): React.ReactNode {
   if (!query.trim()) return text;
-  
+
   const lowerText = text.toLowerCase();
   const lowerQuery = query.toLowerCase().trim();
   const index = lowerText.indexOf(lowerQuery);
-  
+
   if (index === -1) return text;
-  
+
   return (
     <>
       {text.slice(0, index)}
-      <span className="font-semibold text-foreground">{text.slice(index, index + query.length)}</span>
+      <span className="font-semibold text-foreground">
+        {text.slice(index, index + query.length)}
+      </span>
       {text.slice(index + query.length)}
     </>
   );
@@ -79,7 +86,12 @@ function getInitials(firstName?: string, lastName?: string): string {
   return (f + l).toUpperCase() || "?";
 }
 
-export function UniversalSearch({ className, placeholder, autoFocus, variant = "default" }: UniversalSearchProps) {
+export function UniversalSearch({
+  className,
+  placeholder,
+  autoFocus,
+  variant = "default",
+}: UniversalSearchProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -87,96 +99,93 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  
+
   const debouncedQuery = useDebounce(query, DEBOUNCE_DELAY_QUICK_MS);
   const inputType = useMemo(() => detectInputType(query), [query]);
-  
+
   // Fetch search results
   const fetchResults = useCallback(async (searchQuery: string) => {
     if (searchQuery.length < 2) {
       setResults([]);
       return;
     }
-    
+
     setIsLoading(true);
     const type = detectInputType(searchQuery);
     const allResults: SearchResult[] = [];
-    
+
     try {
       // Parallel fetch for patrons and catalog
       const promises: Promise<void>[] = [];
-      
+
       // Patron search (for barcode, email, phone, or text)
       if (type !== "isbn") {
+        const patronType: StaffPatronSearchType =
+          type === "barcode"
+            ? "barcode"
+            : type === "email"
+              ? "email"
+              : type === "phone"
+                ? "phone"
+                : "name";
         promises.push(
-          fetchWithAuth(`/api/evergreen/patrons?q=${encodeURIComponent(searchQuery)}&type=${type === "barcode" ? "barcode" : type === "email" ? "email" : type === "phone" ? "phone" : "name"}&limit=5`)
-            .then(res => res.json())
-            .then(data => {
-              if (data.ok && data.patrons) {
-                data.patrons.slice(0, 5).forEach((p: any) => {
-                  const firstName = p.firstName || p.first_given_name || "";
-                  const lastName = p.lastName || p.family_name || "";
-                  allResults.push({
-                    id: `patron-${p.id}`,
-                    type: "patron",
-                    title: `${lastName}, ${firstName}`.trim() || "Unknown",
-                    subtitle: p.barcode,
-                    meta: p.email || p.phone,
-                    href: `/staff/patrons/${p.id}`,
-                    avatarUrl: p.photo_url || p.photoUrl,
-                    initials: getInitials(firstName, lastName),
-                  });
+          searchStaffPatrons(searchQuery, patronType, 5)
+            .then((patrons) => {
+              patrons.forEach((patron) => {
+                allResults.push({
+                  id: `patron-${patron.id}`,
+                  type: "patron",
+                  title: `${patron.lastName}, ${patron.firstName}`.trim() || "Unknown",
+                  subtitle: patron.barcode,
+                  meta: patron.email || patron.phone,
+                  href: `/staff/patrons/${patron.id}`,
+                  avatarUrl: patron.photoUrl,
+                  initials: getInitials(patron.firstName, patron.lastName),
                 });
-              }
+              });
             })
             .catch((error) => {
               clientLogger.warn("UniversalSearch patron lookup failed", error);
             })
         );
       }
-      
+
       // Catalog search (for text or ISBN)
       if (type === "text" || type === "isbn") {
         const catalogType = type === "isbn" ? "isbn" : "keyword";
         promises.push(
-          fetchWithAuth(`/api/evergreen/catalog?q=${encodeURIComponent(searchQuery)}&type=${catalogType}&limit=5`)
-            .then(res => res.json())
-            .then(data => {
-              // FIX: API returns "records" not "results"
-              if (data.ok && data.records) {
-                data.records.slice(0, 5).forEach((r: any) => {
-                  allResults.push({
-                    id: `catalog-${r.id}`,
-                    type: "catalog",
-                    title: r.title || "Untitled",
-                    subtitle: r.author,
-                    meta: r.isbn || r.format,
-                    // FIX: Correct route to record page
-                    href: `/staff/catalog/record/${r.id}`,
-                    coverUrl: r.coverUrl,
-                  });
+          searchStaffCatalog(searchQuery, catalogType, 5)
+            .then((records) => {
+              records.forEach((record) => {
+                allResults.push({
+                  id: `catalog-${record.id}`,
+                  type: "catalog",
+                  title: record.title || "Untitled",
+                  subtitle: record.author,
+                  meta: record.isbn || record.format,
+                  href: `/staff/catalog/record/${record.id}`,
+                  coverUrl: record.coverUrl,
                 });
-              }
+              });
             })
             .catch((error) => {
               clientLogger.warn("UniversalSearch catalog lookup failed", error);
             })
         );
       }
-      
-      // Item barcode lookup - use the correct /api/evergreen/items endpoint
+
       if (type === "barcode") {
         promises.push(
-          fetchWithAuth(`/api/evergreen/items?barcode=${encodeURIComponent(searchQuery)}`)
-            .then(res => res.json())
-            .then(data => {
-              if (data.ok && data.item) {
+          searchStaffItemsByBarcode(searchQuery, 1)
+            .then((items) => {
+              if (items[0]) {
+                const item = items[0];
                 allResults.unshift({
-                  id: `item-${data.item.id}`,
+                  id: `item-${item.id}`,
                   type: "item",
-                  title: data.item.title || "Item",
+                  title: item.title || "Item",
                   subtitle: `Barcode: ${searchQuery}`,
-                  meta: data.item.statusName || data.item.status || data.item.location,
+                  meta: item.status || item.location,
                   href: `/staff/catalog/item-status?barcode=${encodeURIComponent(searchQuery)}`,
                 });
               }
@@ -186,15 +195,15 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
             })
         );
       }
-      
+
       await Promise.all(promises);
-      
+
       // Sort: items first, then patrons, then catalog
       allResults.sort((a, b) => {
         const order = { item: 0, patron: 1, catalog: 2 };
         return order[a.type] - order[b.type];
       });
-      
+
       setResults(allResults.slice(0, 10));
     } catch (err) {
       clientLogger.error("Search error:", err);
@@ -202,85 +211,102 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
       setIsLoading(false);
     }
   }, []);
-  
+
   // Trigger search on debounced query change
   useEffect(() => {
     fetchResults(debouncedQuery);
   }, [debouncedQuery, fetchResults]);
-  
+
   // Reset selection when results change
   useEffect(() => {
     setSelectedIndex(0);
   }, [results]);
-  
+
   // Handle keyboard navigation
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!isOpen) return;
-    
-    switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault();
-        setSelectedIndex(i => Math.min(i + 1, results.length - 1));
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        setSelectedIndex(i => Math.max(i - 1, 0));
-        break;
-      case "Enter":
-        e.preventDefault();
-        if (results[selectedIndex]) {
-          router.push(results[selectedIndex].href);
-          setIsOpen(false);
-          setQuery("");
-        } else if (query.trim()) {
-          // No results selected - go to full search
-          const type = detectInputType(query);
-          if (type === "barcode" || type === "email" || type === "phone") {
-            router.push(`/staff/patrons?q=${encodeURIComponent(query)}&type=${type === "barcode" ? "barcode" : type}`);
-          } else {
-            router.push(`/staff/catalog?q=${encodeURIComponent(query)}&type=keyword`);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!isOpen) return;
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setSelectedIndex((i) => Math.min(i + 1, results.length - 1));
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setSelectedIndex((i) => Math.max(i - 1, 0));
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (results[selectedIndex]) {
+            router.push(results[selectedIndex].href);
+            setIsOpen(false);
+            setQuery("");
+          } else if (query.trim()) {
+            // No results selected - go to full search
+            const type = detectInputType(query);
+            if (type === "barcode" || type === "email" || type === "phone") {
+              router.push(
+                `/staff/patrons?q=${encodeURIComponent(query)}&type=${type === "barcode" ? "barcode" : type}`
+              );
+            } else {
+              router.push(`/staff/catalog?q=${encodeURIComponent(query)}&type=keyword`);
+            }
+            setIsOpen(false);
+            setQuery("");
           }
+          break;
+        case "Escape":
+          e.preventDefault();
           setIsOpen(false);
-          setQuery("");
-        }
-        break;
-      case "Escape":
-        e.preventDefault();
-        setIsOpen(false);
-        inputRef.current?.blur();
-        break;
-    }
-  }, [isOpen, results, selectedIndex, query, router]);
-  
+          inputRef.current?.blur();
+          break;
+      }
+    },
+    [isOpen, results, selectedIndex, query, router]
+  );
+
   // Navigate to result
-  const handleSelect = useCallback((result: SearchResult) => {
-    router.push(result.href);
-    setIsOpen(false);
-    setQuery("");
-  }, [router]);
-  
+  const handleSelect = useCallback(
+    (result: SearchResult) => {
+      router.push(result.href);
+      setIsOpen(false);
+      setQuery("");
+    },
+    [router]
+  );
+
   const getIcon = (type: SearchResult["type"]) => {
     switch (type) {
-      case "patron": return User;
-      case "item": return Barcode;
-      case "catalog": return BookOpen;
+      case "patron":
+        return User;
+      case "item":
+        return Barcode;
+      case "catalog":
+        return BookOpen;
     }
   };
-  
+
   // Group results by type
   const groupedResults = useMemo(() => {
     const groups: Record<string, SearchResult[]> = {};
-    results.forEach(r => {
+    results.forEach((r) => {
       if (!groups[r.type]) groups[r.type] = [];
       groups[r.type]!.push(r);
     });
     return groups;
   }, [results]);
-  
+
   const showDropdown = isOpen && (query.length >= 2 || isLoading);
-  
+
   return (
-    <div className={cn("relative w-full", variant === "topbar" ? "max-w-none" : "max-w-2xl", className)}>
+    <div
+      className={cn(
+        "relative w-full",
+        variant === "topbar" ? "max-w-none" : "max-w-2xl",
+        className
+      )}
+    >
       <div className="relative">
         <Search
           className={cn(
@@ -315,11 +341,17 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
         )}
         {!isLoading && query && inputType !== "text" && (
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
-            {inputType === "barcode" ? "Barcode" : inputType === "isbn" ? "ISBN" : inputType === "email" ? "Email" : "Phone"}
+            {inputType === "barcode"
+              ? "Barcode"
+              : inputType === "isbn"
+                ? "ISBN"
+                : inputType === "email"
+                  ? "Email"
+                  : "Phone"}
           </span>
         )}
       </div>
-      
+
       {/* Results Dropdown */}
       {showDropdown && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-popover border border-border/50 rounded-xl shadow-xl overflow-hidden z-50">
@@ -329,14 +361,14 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
               <p className="text-xs mt-1">Press Enter to search anyway</p>
             </div>
           )}
-          
+
           {results.length === 0 && isLoading && (
             <div className="p-6 text-center text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin mx-auto" />
               <p className="text-sm mt-2">Searching...</p>
             </div>
           )}
-          
+
           {Object.entries(groupedResults).map(([type, items]) => (
             <div key={type}>
               <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30">
@@ -346,10 +378,12 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
                 const globalIdx = results.indexOf(result);
                 const Icon = getIcon(result.type);
                 const isSelected = globalIdx === selectedIndex;
-                
+
                 return (
-                  <button type="button"
+                  <button
+                    type="button"
                     key={result.id}
+                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => handleSelect(result)}
                     className={cn(
                       "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
@@ -362,7 +396,7 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
                       <div className="flex-shrink-0 w-10 h-14 rounded overflow-hidden bg-muted">
                         <Image
                           src={result.coverUrl}
-                          alt="Decorative image"
+                          alt={`Cover of ${result.title}`}
                           width={40}
                           height={56}
                           className="w-full h-full object-contain"
@@ -374,7 +408,7 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
                         <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-muted">
                           <Image
                             src={result.avatarUrl}
-                            alt="Decorative image"
+                            alt={`Photo of ${result.title}`}
                             width={40}
                             height={40}
                             className="w-full h-full object-cover"
@@ -387,12 +421,15 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
                         </div>
                       )
                     ) : (
-                      <div className={cn(
-                        "flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center",
-                        
-                        result.type === "item" ? "bg-amber-100 text-amber-600" :
-                        "bg-sky-100 text-sky-600"
-                      )}>
+                      <div
+                        className={cn(
+                          "flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center",
+
+                          result.type === "item"
+                            ? "bg-amber-100 text-amber-600"
+                            : "bg-sky-100 text-sky-600"
+                        )}
+                      >
                         <Icon className="h-5 w-5" />
                       </div>
                     )}
@@ -411,16 +448,18 @@ export function UniversalSearch({ className, placeholder, autoFocus, variant = "
                         {result.meta}
                       </div>
                     )}
-                    <ArrowRight className={cn(
-                      "flex-shrink-0 h-4 w-4 text-muted-foreground/50 transition-opacity",
-                      isSelected ? "opacity-100" : "opacity-0"
-                    )} />
+                    <ArrowRight
+                      className={cn(
+                        "flex-shrink-0 h-4 w-4 text-muted-foreground/50 transition-opacity",
+                        isSelected ? "opacity-100" : "opacity-0"
+                      )}
+                    />
                   </button>
                 );
               })}
             </div>
           ))}
-          
+
           {results.length > 0 && (
             <div className="px-4 py-2 text-xs text-muted-foreground bg-muted/30 flex items-center justify-between">
               <span>↑↓ navigate • Enter select • Esc close</span>

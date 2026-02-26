@@ -14,6 +14,7 @@ import { hashPassword } from "@/lib/password";
 import { checkRateLimit, recordSuccess } from "@/lib/rate-limit";
 import { isCookieSecure } from "@/lib/csrf";
 import { getPatronPhotoUrl } from "@/lib/db/evergreen";
+import { getSaaSSessionPayloadFromActor } from "@/lib/saas-rbac";
 import { z } from "zod";
 
 async function setStaffAuthCookies(authtoken: string, cookieSecure: boolean): Promise<void> {
@@ -69,8 +70,8 @@ async function enrichUserWithPhotoUrl(user: any): Promise<any> {
     const url = await getPatronPhotoUrl(userId);
     if (url) {
       // Evergreen-style + JS-style keys for client convenience.
-      (user as Record<string, unknown>).photo_url = url;
-      (user as Record<string, unknown>).photoUrl = url;
+      (user as Record<string, any>).photo_url = url;
+      (user as Record<string, any>).photoUrl = url;
     }
   } catch (error) {
     logger.warn({ error: String(error), userId }, "Failed to resolve user photo URL");
@@ -80,11 +81,13 @@ async function enrichUserWithPhotoUrl(user: any): Promise<any> {
 }
 
 // POST - Login
-const authPostSchema = z.object({
-  username: z.string().trim().min(1),
-  password: z.string().min(1),
-  workstation: z.string().trim().optional().nullable(),
-}).passthrough();
+const authPostSchema = z
+  .object({
+    username: z.string().trim().min(1),
+    password: z.string().min(1),
+    workstation: z.string().trim().optional().nullable(),
+  })
+  .passthrough();
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
@@ -121,7 +124,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { username: rawUsername, password, workstation: rawWorkstation } = authPostSchema.parse(await req.json());
+    const {
+      username: rawUsername,
+      password,
+      workstation: rawWorkstation,
+    } = authPostSchema.parse(await req.json());
     const username = String(rawUsername || "").trim();
     const workstation =
       rawWorkstation !== undefined && rawWorkstation !== null
@@ -168,7 +175,7 @@ export async function POST(req: NextRequest) {
     const finalHash = hashPassword(password, seed);
 
     // Step 3: Authenticate
-    const authParams: Record<string, unknown> = {
+    const authParams: Record<string, any> = {
       username,
       password: finalHash,
       type: "staff",
@@ -229,6 +236,7 @@ export async function POST(req: NextRequest) {
         ]);
         const user = await enrichUserWithPhotoUrl(userResponse?.payload?.[0]);
         const profileName = await resolveProfileName(authResult.payload.authtoken, user);
+        const saas = await getSaaSSessionPayloadFromActor(user);
 
         await logAuditEvent({
           action: "auth.login",
@@ -250,6 +258,7 @@ export async function POST(req: NextRequest) {
             user,
             needsWorkstation: true,
             profileName,
+            saas,
           },
           `Workstation "${workstation}" is not registered. Please register a workstation.`
         );
@@ -265,6 +274,7 @@ export async function POST(req: NextRequest) {
       ]);
       const user = await enrichUserWithPhotoUrl(userResponse?.payload?.[0]);
       const profileName = await resolveProfileName(authResult.payload.authtoken, user);
+      const saas = await getSaaSSessionPayloadFromActor(user);
 
       await logAuditEvent({
         action: "auth.login",
@@ -285,6 +295,7 @@ export async function POST(req: NextRequest) {
         user,
         workstation: workstation || null,
         profileName,
+        saas,
       });
     }
 
@@ -300,6 +311,12 @@ export async function POST(req: NextRequest) {
 
     return errorResponse(authResult?.textcode || authResult?.desc || "Authentication failed", 401);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return errorResponse("Username and password required", 400, { issues: error.issues });
+    }
+    if (error instanceof SyntaxError) {
+      return errorResponse("Invalid JSON body", 400);
+    }
     return serverErrorResponse(error, "Auth POST", req);
   }
 }
@@ -362,7 +379,8 @@ export async function GET(req: NextRequest) {
     if (user && !user.ilsevent) {
       const enrichedUser = await enrichUserWithPhotoUrl(user);
       const profileName = await resolveProfileName(authtoken, enrichedUser);
-      return successResponse({ authenticated: true, user: enrichedUser, profileName });
+      const saas = await getSaaSSessionPayloadFromActor(enrichedUser);
+      return successResponse({ authenticated: true, user: enrichedUser, profileName, saas });
     }
 
     cookieStore.delete("authtoken");

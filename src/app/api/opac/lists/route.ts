@@ -1,10 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  callOpenSRF,
-  successResponse,
-  errorResponse,
-  serverErrorResponse,
-} from "@/lib/api";
+import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { z } from "zod";
@@ -24,11 +19,12 @@ export async function GET(req: NextRequest) {
     const { patronToken, patronId } = await requirePatronSession();
 
     // Get user bookbags (Evergreen term for lists)
-    const bagsResponse = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.container.flesh",
-      [patronToken, "user", "biblio", patronId]
-    );
+    const bagsResponse = await callOpenSRF("open-ils.actor", "open-ils.actor.container.flesh", [
+      patronToken,
+      "user",
+      "biblio",
+      patronId,
+    ]);
 
     const bags = bagsResponse.payload?.[0] || [];
 
@@ -48,18 +44,25 @@ export async function GET(req: NextRequest) {
           })),
           createdAt: bag.create_time,
           updatedAt: bag.edit_time || bag.create_time,
-          isDefault: bag.name === "Want to Read" || bag.name === "Currently Reading" || bag.name === "Completed",
-          icon: bag.name === "Want to Read" ? "heart" 
-              : bag.name === "Currently Reading" ? "book" 
-              : bag.name === "Completed" ? "check" 
-              : "list",
+          isDefault:
+            bag.name === "Want to Read" ||
+            bag.name === "Currently Reading" ||
+            bag.name === "Completed",
+          icon:
+            bag.name === "Want to Read"
+              ? "heart"
+              : bag.name === "Currently Reading"
+                ? "book"
+                : bag.name === "Completed"
+                  ? "check"
+                  : "list",
         }))
       : [];
 
     return successResponse({ lists });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/lists GET auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/lists GET auth failed");
       return errorResponse("Authentication required", 401);
     }
     logger.error({ error: String(error) }, "Error fetching lists");
@@ -79,26 +82,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Create bookbag in Evergreen
-    const createResponse = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.container.create",
-      [
-        patronToken,
-        "biblio",
-        {
-          owner: patronId,
-          btype: "bookbag",
-          name: name.trim(),
-          description: description || "",
-          pub: visibility === "public" ? "t" : "f",
-        },
-      ]
-    );
+    const createResponse = await callOpenSRF("open-ils.actor", "open-ils.actor.container.create", [
+      patronToken,
+      "biblio",
+      {
+        owner: patronId,
+        btype: "bookbag",
+        name: name.trim(),
+        description: description || "",
+        pub: visibility === "public" ? "t" : "f",
+      },
+    ]);
 
     const result = createResponse.payload?.[0];
 
     if (result?.ilsevent) {
-      return errorResponse(result.textcode || "Failed to create list" );
+      return errorResponse(result.textcode || "Failed to create list");
     }
 
     const newList = {
@@ -117,7 +116,7 @@ export async function POST(req: NextRequest) {
     return successResponse({ list: newList });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/lists POST auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/lists POST auth failed");
       return errorResponse("Authentication required", 401);
     }
     logger.error({ error: String(error) }, "Error creating list");

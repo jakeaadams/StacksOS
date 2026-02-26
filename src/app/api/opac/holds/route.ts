@@ -108,10 +108,7 @@ function buildHoldErrorDetails(
         details,
       };
     default: {
-      nextSteps([
-        "Try again in a moment.",
-        "If this continues, contact the library for help.",
-      ]);
+      nextSteps(["Try again in a moment.", "If this continues, contact the library for help."]);
       const fallback =
         opts?.action === "cancel"
           ? "We couldn’t cancel that hold."
@@ -139,23 +136,24 @@ const cancelHoldSchema = z.object({
   holdId: z.coerce.number().int().positive(),
 });
 
-const updateHoldSchema = z.object({
-  holdId: z.coerce.number().int().positive(),
-  action: z.enum(["freeze", "thaw", "update_pickup"]).optional(),
-  suspendUntil: z.string().optional().nullable(),
-  pickupLocation: z.coerce.number().int().positive().optional(),
-}).passthrough();
+const updateHoldSchema = z
+  .object({
+    holdId: z.coerce.number().int().positive(),
+    action: z.enum(["freeze", "thaw", "update_pickup"]).optional(),
+    suspendUntil: z.string().optional().nullable(),
+    pickupLocation: z.coerce.number().int().positive().optional(),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   try {
     const { patronToken, patronId } = await requirePatronSession();
 
     // Get holds
-    const holdsResponse = await callOpenSRF(
-      "open-ils.circ",
-      "open-ils.circ.holds.retrieve",
-      [patronToken, patronId]
-    );
+    const holdsResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.holds.retrieve", [
+      patronToken,
+      patronId,
+    ]);
 
     const holdsData = holdsResponse?.payload?.[0] as any;
     const holds = Array.isArray(holdsData) ? holdsData : [];
@@ -313,7 +311,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: any) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/holds GET auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/holds GET auth failed");
       return unauthorizedResponse();
     }
     return serverErrorResponse(error, "OPAC Holds GET", req);
@@ -330,25 +328,22 @@ export async function POST(req: NextRequest) {
       return errorResponse("Record ID and pickup location are required", 400);
     }
 
-    const pickupId = typeof pickupLocation === "number" ? pickupLocation : parseInt(String(pickupLocation), 10);
+    const pickupId =
+      typeof pickupLocation === "number" ? pickupLocation : parseInt(String(pickupLocation), 10);
     if (!Number.isFinite(pickupId) || pickupId <= 0) {
       return errorResponse("Invalid pickup location", 400);
     }
 
     // Place the hold
-    const holdResponse = await callOpenSRF(
-      "open-ils.circ",
-      "open-ils.circ.holds.create",
-      [
-        patronToken,
-        {
-          patronid: patronId,
-          pickup_lib: pickupId,
-          hold_type: holdType,
-          target: recordId,
-        },
-      ]
-    );
+    const holdResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.holds.create", [
+      patronToken,
+      {
+        patronid: patronId,
+        pickup_lib: pickupId,
+        hold_type: holdType,
+        target: recordId,
+      },
+    ]);
 
     const result = holdResponse?.payload?.[0] as any;
 
@@ -372,7 +367,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/holds POST auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/holds POST auth failed");
       return unauthorizedResponse();
     }
     return serverErrorResponse(error, "OPAC Holds POST", req);
@@ -409,7 +404,7 @@ export async function DELETE(req: NextRequest) {
     });
   } catch (error: any) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/holds DELETE auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/holds DELETE auth failed");
       return unauthorizedResponse();
     }
     return serverErrorResponse(error, "OPAC Holds DELETE", req);
@@ -420,7 +415,9 @@ export async function PATCH(req: NextRequest) {
   try {
     const { patronToken, patronId } = await requirePatronSession();
 
-    const { holdId, action, suspendUntil, pickupLocation } = updateHoldSchema.parse(await req.json());
+    const { holdId, action, suspendUntil, pickupLocation } = updateHoldSchema.parse(
+      await req.json()
+    );
 
     if (!holdId || !action) {
       return errorResponse("Hold ID and action are required", 400);
@@ -430,28 +427,28 @@ export async function PATCH(req: NextRequest) {
 
     if ((action as string) === "suspend") {
       // Suspend/freeze the hold
-      result = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.hold.update",
-        [patronToken, { id: holdId, frozen: "t", thaw_date: suspendUntil || null }]
-      );
+      result = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.update", [
+        patronToken,
+        { id: holdId, frozen: "t", thaw_date: suspendUntil || null },
+      ]);
     } else if ((action as string) === "activate") {
       // Activate/thaw the hold
-      result = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.hold.update",
-        [patronToken, { id: holdId, frozen: "f", thaw_date: null }]
-      );
+      result = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.update", [
+        patronToken,
+        { id: holdId, frozen: "f", thaw_date: null },
+      ]);
     } else if ((action as string) === "change_pickup") {
-      const pickupId = typeof pickupLocation === "number" ? pickupLocation : parseInt(String(pickupLocation ?? ""), 10);
+      const pickupId =
+        typeof pickupLocation === "number"
+          ? pickupLocation
+          : parseInt(String(pickupLocation ?? ""), 10);
       if (!Number.isFinite(pickupId) || pickupId <= 0) {
         return errorResponse("pickupLocation is required", 400);
       }
-      result = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.hold.update",
-        [patronToken, { id: holdId, pickup_lib: pickupId }]
-      );
+      result = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.update", [
+        patronToken,
+        { id: holdId, pickup_lib: pickupId },
+      ]);
 
       try {
         await upsertOpacPatronPrefs(patronId, { defaultPickupLocation: pickupId });
@@ -480,7 +477,7 @@ export async function PATCH(req: NextRequest) {
     });
   } catch (error: any) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/holds PATCH auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/holds PATCH auth failed");
       return unauthorizedResponse();
     }
     return serverErrorResponse(error, "OPAC Holds PATCH", req);

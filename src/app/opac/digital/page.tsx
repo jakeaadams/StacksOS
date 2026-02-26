@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { getEContentProviders, type EContentProvider } from "@/lib/econtent-providers";
 import { useTranslations } from "next-intl";
 
@@ -32,16 +33,24 @@ const TYPE_LABELS: Record<string, { label: string; icon: React.ElementType }> = 
   emagazine: { label: "eMagazines", icon: Tablet },
 };
 
+const PROVIDER_THEME: Record<string, { shell: string; icon: string }> = {
+  overdrive: { shell: "bg-teal-500/10", icon: "text-teal-700" },
+  hoopla: { shell: "bg-orange-500/10", icon: "text-orange-700" },
+  cloudlibrary: { shell: "bg-sky-500/10", icon: "text-sky-700" },
+  kanopy: { shell: "bg-emerald-500/10", icon: "text-emerald-700" },
+};
+
 function ProviderCard({ provider }: { provider: EContentProvider }) {
+  const theme = PROVIDER_THEME[provider.id] ?? { shell: "bg-muted", icon: "text-muted-foreground" };
+
   return (
     <div className="bg-card rounded-xl border border-border p-6 hover:shadow-lg transition-shadow">
       <div className="flex items-start gap-4 mb-4">
         {/* Logo placeholder */}
         <div
-          className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0"
-          style={{ backgroundColor: provider.color + "15" }}
+          className={`w-16 h-16 rounded-xl flex items-center justify-center shrink-0 ${theme.shell}`}
         >
-          <Library className="h-8 w-8" style={{ color: provider.color }} />
+          <Library className={`h-8 w-8 ${theme.icon}`} />
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-xl font-semibold text-foreground">{provider.name}</h3>
@@ -161,23 +170,22 @@ export default function DigitalLibraryPage() {
           {/* Search bar */}
           <form onSubmit={handleSearch} className="max-w-xl">
             <div className="relative">
-              <input
+              <Input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t("searchPlaceholder")}
                 aria-label={t("searchDigitalContent")}
-                className="w-full pl-5 pr-14 py-3.5 rounded-full text-foreground placeholder:text-muted-foreground
-                         bg-white shadow-lg focus:outline-none focus:ring-4 focus:ring-white/30"
+                className="h-12 rounded-full border-0 bg-white pl-5 pr-14 text-foreground shadow-lg focus-visible:ring-4 focus-visible:ring-white/30"
               />
-              <button
+              <Button
                 type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-primary-600 text-white
-                         rounded-full hover:bg-primary-700 transition-colors"
+                size="icon"
+                className="absolute right-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full"
                 aria-label={t("searchDigitalLibrary")}
               >
                 <Search className="h-5 w-5" />
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -207,7 +215,9 @@ export default function DigitalLibraryPage() {
               <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                 <Wifi className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground">{t("alwaysAvailable")}</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+                {t("alwaysAvailable")}
+              </h2>
             </div>
             <p className="text-muted-foreground mb-6 max-w-2xl">
               No waiting, no holds. These titles are available to borrow instantly, anytime. Many

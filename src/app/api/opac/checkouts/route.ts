@@ -1,13 +1,8 @@
 import { NextRequest } from "next/server";
-import {
-  callOpenSRF,
-  successResponse,
-  serverErrorResponse,
-  unauthorizedResponse,
-} from "@/lib/api";
+import { callOpenSRF, successResponse, serverErrorResponse, unauthorizedResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 /**
  * OPAC Patron Checkouts
@@ -25,7 +20,7 @@ export async function GET(req: NextRequest) {
     );
 
     const checkoutData = checkoutsResponse?.payload?.[0];
-    
+
     // Combine all checkout types
     const allCircIds = [
       ...(checkoutData?.out || []),
@@ -43,11 +38,10 @@ export async function GET(req: NextRequest) {
     const checkouts = await Promise.all(
       allCircIds.map(async (circId: number) => {
         try {
-          const circResponse = await callOpenSRF(
-            "open-ils.circ",
-            "open-ils.circ.retrieve",
-            [patronToken, circId]
-          );
+          const circResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.retrieve", [
+            patronToken,
+            circId,
+          ]);
 
           const circ = circResponse?.payload?.[0];
           if (!circ || circ.ilsevent) return null;
@@ -91,7 +85,9 @@ export async function GET(req: NextRequest) {
                 author = bib.author || "";
                 isbn = bib.isbn;
                 const cleaned = typeof isbn === "string" ? isbn.replace(/[^0-9Xx]/g, "") : "";
-                coverUrl = cleaned ? `https://covers.openlibrary.org/b/isbn/${cleaned}-M.jpg` : null;
+                coverUrl = cleaned
+                  ? `https://covers.openlibrary.org/b/isbn/${cleaned}-M.jpg`
+                  : null;
               }
             }
           }
@@ -130,7 +126,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/checkouts auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/checkouts auth failed");
       return unauthorizedResponse();
     }
     return serverErrorResponse(error, "OPAC Checkouts GET", req);

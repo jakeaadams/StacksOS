@@ -19,15 +19,37 @@ import {
   SetupRequired,
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, ClipboardList, Eye, EyeOff, Plus, RefreshCw, Trash2, Pencil } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  BarChart3,
+  ClipboardList,
+  Eye,
+  EyeOff,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Pencil,
+} from "lucide-react";
 
 type StatKind = "copy" | "patron";
 
@@ -76,7 +98,9 @@ export default function StatCategoriesPage() {
   const [permissions, setPermissions] = useState<PermissionMap>({});
 
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<CopyCategory | PatronCategory | null>(null);
+  const [editingCategory, setEditingCategory] = useState<CopyCategory | PatronCategory | null>(
+    null
+  );
   const [categorySaving, setCategorySaving] = useState(false);
   const [categoryForm, setCategoryForm] = useState({
     name: "",
@@ -89,12 +113,18 @@ export default function StatCategoriesPage() {
   });
 
   const [deleteCategoryOpen, setDeleteCategoryOpen] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<{ kind: StatKind; id: number; name: string } | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<{
+    kind: StatKind;
+    id: number;
+    name: string;
+  } | null>(null);
   const [deletingCategory, setDeletingCategory] = useState(false);
 
   const [entriesOpen, setEntriesOpen] = useState(false);
   const [entriesKind, setEntriesKind] = useState<StatKind>("copy");
-  const [entriesCategory, setEntriesCategory] = useState<CopyCategory | PatronCategory | null>(null);
+  const [entriesCategory, setEntriesCategory] = useState<CopyCategory | PatronCategory | null>(
+    null
+  );
   const [entriesLoading, setEntriesLoading] = useState(false);
   const [entriesError, setEntriesError] = useState<string | null>(null);
   const [entries, setEntries] = useState<StatEntry[]>([]);
@@ -290,7 +320,9 @@ export default function StatCategoriesPage() {
     setEditingEntry(e);
     setEntryForm({
       value: e.value,
-      ownerId: String(e.ownerId ?? entriesCategory?.ownerId ?? user?.activeOrgId ?? orgs[0]?.id ?? ""),
+      ownerId: String(
+        e.ownerId ?? entriesCategory?.ownerId ?? user?.activeOrgId ?? orgs[0]?.id ?? ""
+      ),
     });
     setEntryDialogOpen(true);
   }
@@ -373,7 +405,8 @@ export default function StatCategoriesPage() {
       header: "Owner",
       cell: ({ row }) => {
         const ownerId = row.original.ownerId;
-        const label = row.original.ownerName || (typeof ownerId === "number" ? getOrgName(ownerId) : "—");
+        const label =
+          row.original.ownerName || (typeof ownerId === "number" ? getOrgName(ownerId) : "—");
         return (
           <Badge variant="secondary" className="rounded-full">
             {label}
@@ -416,7 +449,12 @@ export default function StatCategoriesPage() {
         const cat = row.original;
         return (
           <div className="flex items-center justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => openEntries("copy", cat)} aria-label="Manage entries">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openEntries("copy", cat)}
+              aria-label="Manage entries"
+            >
               <ClipboardList className="h-4 w-4" />
             </Button>
             <Button
@@ -459,7 +497,8 @@ export default function StatCategoriesPage() {
       header: "Owner",
       cell: ({ row }) => {
         const ownerId = row.original.ownerId;
-        const label = row.original.ownerName || (typeof ownerId === "number" ? getOrgName(ownerId) : "—");
+        const label =
+          row.original.ownerName || (typeof ownerId === "number" ? getOrgName(ownerId) : "—");
         return (
           <Badge variant="secondary" className="rounded-full">
             {label}
@@ -498,7 +537,12 @@ export default function StatCategoriesPage() {
         const cat = row.original;
         return (
           <div className="flex items-center justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => openEntries("patron", cat)} aria-label="Manage entries">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openEntries("patron", cat)}
+              aria-label="Manage entries"
+            >
               <ClipboardList className="h-4 w-4" />
             </Button>
             <Button
@@ -536,7 +580,8 @@ export default function StatCategoriesPage() {
       header: "Owner",
       cell: ({ row }) => {
         const ownerId = row.original.ownerId;
-        const label = row.original.ownerName || (typeof ownerId === "number" ? getOrgName(ownerId) : "—");
+        const label =
+          row.original.ownerName || (typeof ownerId === "number" ? getOrgName(ownerId) : "—");
         return (
           <Badge variant="secondary" className="rounded-full">
             {label}
@@ -580,10 +625,18 @@ export default function StatCategoriesPage() {
       <PageHeader
         title="Statistical Categories"
         subtitle="Copy + patron stat cats (Evergreen-backed)"
-        breadcrumbs={[{ label: "Admin", href: "/staff/admin" }, { label: "Statistical Categories" }]}
+        breadcrumbs={[
+          { label: "Admin", href: "/staff/admin" },
+          { label: "Statistical Categories" },
+        ]}
       >
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => void loadCategories()} disabled={loading}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void loadCategories()}
+            disabled={loading}
+          >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -620,8 +673,8 @@ export default function StatCategoriesPage() {
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
               <p>
-                Stat cats are used for reporting and workflows where you need controlled values (like “Program” or
-                “Collection type”).
+                Stat cats are used for reporting and workflows where you need controlled values
+                (like “Program” or “Collection type”).
               </p>
               <p className="text-xs text-muted-foreground">
                 Copy perms: <span className="font-mono">CREATE_COPY_STAT_CAT</span> +{" "}
@@ -637,7 +690,9 @@ export default function StatCategoriesPage() {
           <Card className="rounded-2xl md:col-span-2">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Manage</CardTitle>
-              <CardDescription>Create categories, then add entries for each category.</CardDescription>
+              <CardDescription>
+                Create categories, then add entries for each category.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
@@ -659,7 +714,10 @@ export default function StatCategoriesPage() {
                     isLoading={loading}
                     searchPlaceholder="Search copy stat cats..."
                     toolbar={
-                      <Button onClick={() => openCreateCategory("copy")} disabled={!canCreateCategory("copy")}>
+                      <Button
+                        onClick={() => openCreateCategory("copy")}
+                        disabled={!canCreateCategory("copy")}
+                      >
                         <Plus className="h-4 w-4 mr-2" />
                         New copy category
                       </Button>
@@ -671,12 +729,20 @@ export default function StatCategoriesPage() {
                         description="Create a copy stat category and add entry values."
                         action={
                           canCreateCategory("copy")
-                            ? { label: "Create copy category", onClick: () => openCreateCategory("copy"), icon: Plus }
+                            ? {
+                                label: "Create copy category",
+                                onClick: () => openCreateCategory("copy"),
+                                icon: Plus,
+                              }
                             : undefined
                         }
                       >
-                        <Button variant="ghost" size="sm" onClick={() => router.push("/staff/help#demo-data")}>
-                          Seed demo data
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push("/staff/help#evergreen-setup")}
+                        >
+                          Evergreen setup checklist
                         </Button>
                       </EmptyState>
                     }
@@ -690,7 +756,10 @@ export default function StatCategoriesPage() {
                     isLoading={loading}
                     searchPlaceholder="Search patron stat cats..."
                     toolbar={
-                      <Button onClick={() => openCreateCategory("patron")} disabled={!canCreateCategory("patron")}>
+                      <Button
+                        onClick={() => openCreateCategory("patron")}
+                        disabled={!canCreateCategory("patron")}
+                      >
                         <Plus className="h-4 w-4 mr-2" />
                         New patron category
                       </Button>
@@ -710,8 +779,12 @@ export default function StatCategoriesPage() {
                             : undefined
                         }
                       >
-                        <Button variant="ghost" size="sm" onClick={() => router.push("/staff/help#demo-data")}>
-                          Seed demo data
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push("/staff/help#evergreen-setup")}
+                        >
+                          Evergreen setup checklist
                         </Button>
                       </EmptyState>
                     }
@@ -726,9 +799,13 @@ export default function StatCategoriesPage() {
           <DialogContent className="sm:max-w-[560px]">
             <DialogHeader>
               <DialogTitle>
-                {editingCategory ? "Edit stat category" : `New ${activeTab === "copy" ? "copy" : "patron"} stat category`}
+                {editingCategory
+                  ? "Edit stat category"
+                  : `New ${activeTab === "copy" ? "copy" : "patron"} stat category`}
               </DialogTitle>
-              <DialogDescription>Categories define a controlled value list used in reporting and workflows.</DialogDescription>
+              <DialogDescription>
+                Categories define a controlled value list used in reporting and workflows.
+              </DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4 py-2">
@@ -744,7 +821,8 @@ export default function StatCategoriesPage() {
 
               <div className="grid gap-2">
                 <Label htmlFor="owner">Owner</Label>
-                <Select id="owner"
+                <Select
+                  id="owner"
                   value={categoryForm.ownerId}
                   onValueChange={(v) => setCategoryForm((p) => ({ ...p, ownerId: v }))}
                 >
@@ -824,7 +902,11 @@ export default function StatCategoriesPage() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCategoryDialogOpen(false)} disabled={categorySaving}>
+              <Button
+                variant="outline"
+                onClick={() => setCategoryDialogOpen(false)}
+                disabled={categorySaving}
+              >
                 Cancel
               </Button>
               <Button
@@ -843,7 +925,9 @@ export default function StatCategoriesPage() {
         <Dialog open={entriesOpen} onOpenChange={setEntriesOpen}>
           <DialogContent className="sm:max-w-[720px]">
             <DialogHeader>
-              <DialogTitle>{entriesCategory ? `Entries: ${entriesCategory.name}` : "Entries"}</DialogTitle>
+              <DialogTitle>
+                {entriesCategory ? `Entries: ${entriesCategory.name}` : "Entries"}
+              </DialogTitle>
               <DialogDescription>
                 {entriesKind === "copy" ? "Copy stat cat entries" : "Patron stat cat entries"}
               </DialogDescription>
@@ -855,7 +939,10 @@ export default function StatCategoriesPage() {
                   <SetupRequired
                     module="Stat cat entries"
                     description={entriesError}
-                    setupSteps={["Verify Evergreen permissions and that the stat cat exists.", "Try refresh."]}
+                    setupSteps={[
+                      "Verify Evergreen permissions and that the stat cat exists.",
+                      "Try refresh.",
+                    ]}
                     adminUrl="/staff/admin/stat-categories"
                   />
                 ) : null}
@@ -877,7 +964,9 @@ export default function StatCategoriesPage() {
                       title="No entries"
                       description="Create an entry value for this category."
                       action={
-                        canCreateEntry(entriesKind) ? { label: "Create entry", onClick: openCreateEntry, icon: Plus } : undefined
+                        canCreateEntry(entriesKind)
+                          ? { label: "Create entry", onClick: openCreateEntry, icon: Plus }
+                          : undefined
                       }
                     />
                   }
@@ -897,7 +986,9 @@ export default function StatCategoriesPage() {
           <DialogContent className="sm:max-w-[520px]">
             <DialogHeader>
               <DialogTitle>{editingEntry ? "Edit entry" : "New entry"}</DialogTitle>
-              <DialogDescription>Entry values are the controlled options for this category.</DialogDescription>
+              <DialogDescription>
+                Entry values are the controlled options for this category.
+              </DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4 py-2">
@@ -913,7 +1004,11 @@ export default function StatCategoriesPage() {
 
               <div className="grid gap-2">
                 <Label htmlFor="owner-2">Owner</Label>
-                <Select id="owner-2" value={entryForm.ownerId} onValueChange={(v) => setEntryForm((p) => ({ ...p, ownerId: v }))}>
+                <Select
+                  id="owner-2"
+                  value={entryForm.ownerId}
+                  onValueChange={(v) => setEntryForm((p) => ({ ...p, ownerId: v }))}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a library" />
                   </SelectTrigger>
@@ -929,7 +1024,11 @@ export default function StatCategoriesPage() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setEntryDialogOpen(false)} disabled={entrySaving}>
+              <Button
+                variant="outline"
+                onClick={() => setEntryDialogOpen(false)}
+                disabled={entrySaving}
+              >
                 Cancel
               </Button>
               <Button

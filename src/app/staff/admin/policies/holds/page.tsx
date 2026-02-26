@@ -6,14 +6,35 @@ import { RefreshCw, BookMarked, Plus, Edit3, Trash2 } from "lucide-react";
 
 import { useApi, useMutation } from "@/hooks";
 import { featureFlags } from "@/lib/feature-flags";
-import { PageContainer, PageHeader, PageContent, DataTable, EmptyState, ConfirmDialog, TableRowActions } from "@/components/shared";
+import {
+  PageContainer,
+  PageHeader,
+  PageContent,
+  DataTable,
+  EmptyState,
+  ConfirmDialog,
+  TableRowActions,
+} from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -67,7 +88,12 @@ type HoldMatchpointDraft = {
   description: string;
 };
 
-type OrgTreeNode = { id: number; name?: string | null; shortname?: string | null; children?: OrgTreeNode[] };
+type OrgTreeNode = {
+  id: number;
+  name?: string | null;
+  shortname?: string | null;
+  children?: OrgTreeNode[];
+};
 type OrgOption = { id: number; label: string; depth: number };
 type PermGroup = { id: number; name: string };
 
@@ -96,7 +122,9 @@ export default function HoldPolicyEditorPage() {
   const policyEditorsEnabled = featureFlags.policyEditors;
   const holdUrl = policyEditorsEnabled ? "/api/evergreen/policies?type=hold&limit=500" : null;
   const orgTreeUrl = policyEditorsEnabled ? "/api/evergreen/org-tree" : null;
-  const groupsUrl = policyEditorsEnabled ? "/api/evergreen/permissions?type=groups&limit=2000" : null;
+  const groupsUrl = policyEditorsEnabled
+    ? "/api/evergreen/permissions?type=groups&limit=2000"
+    : null;
   const modifiersUrl = policyEditorsEnabled ? "/api/evergreen/circ-modifiers" : null;
 
   const {
@@ -127,7 +155,9 @@ export default function HoldPolicyEditorPage() {
     revalidateOnFocus: false,
     revalidateInterval: 30 * 60_000,
   });
-  const circModifiers: { code: string; name: string }[] = Array.isArray(modifiersData?.modifiers) ? modifiersData.modifiers : [];
+  const circModifiers: { code: string; name: string }[] = Array.isArray(modifiersData?.modifiers)
+    ? modifiersData.modifiers
+    : [];
 
   const orgOptions = useMemo<OrgOption[]>(() => {
     const out: OrgOption[] = [];
@@ -141,6 +171,11 @@ export default function HoldPolicyEditorPage() {
     if (orgTree) walk(orgTree, 0);
     return out;
   }, [orgTree]);
+
+  const formatOrgOptionLabel = useCallback((option: OrgOption) => {
+    const indent = "\u00A0".repeat(Math.max(0, option.depth) * 2);
+    return `${indent}${option.label}`;
+  }, []);
 
   const toNumberOrNull = useCallback((value: unknown): number | null => {
     if (value === null || value === undefined) return null;
@@ -216,7 +251,8 @@ export default function HoldPolicyEditorPage() {
   const previewRows = useMemo(() => {
     const base = editing ? buildDraftFromMatchpoint(editing) : DEFAULT_HOLD_DRAFT;
     const rows: Array<{ label: string; from: string; to: string; changed: boolean }> = [];
-    const add = (label: string, from: string, to: string) => rows.push({ label, from, to, changed: from !== to });
+    const add = (label: string, from: string, to: string) =>
+      rows.push({ label, from, to, changed: from !== to });
     const tri = (v: boolean | null) => (v === null ? "Any" : v ? "Yes" : "No");
     const yn = (v: boolean) => (v ? "Yes" : "No");
     const id = (v: number | null) => (v === null ? "Any" : `#${v}`);
@@ -239,7 +275,7 @@ export default function HoldPolicyEditorPage() {
 
   const confirmSave = useCallback(async () => {
     const action = editorMode === "create" ? "create" : "update";
-    const data: Record<string, unknown> = {
+    const data: Record<string, any> = {
       active: draft.active,
       strictOuMatch: draft.strictOuMatch,
       requestorGrp: draft.requestorGrp,
@@ -277,7 +313,11 @@ export default function HoldPolicyEditorPage() {
   const confirmDelete = useCallback(async () => {
     if (!deleteTarget?.id) return;
     try {
-      await mutatePolicies("/api/evergreen/policies", { action: "delete", type: "hold", data: { id: deleteTarget.id } });
+      await mutatePolicies("/api/evergreen/policies", {
+        action: "delete",
+        type: "hold",
+        data: { id: deleteTarget.id },
+      });
       await refetch();
       toast.success(`Matchpoint #${deleteTarget.id} deleted.`);
       setDeleteConfirmOpen(false);
@@ -302,13 +342,17 @@ export default function HoldPolicyEditorPage() {
           row.original.active ? (
             <Badge className="rounded-full">Active</Badge>
           ) : (
-            <Badge variant="secondary" className="rounded-full">Inactive</Badge>
+            <Badge variant="secondary" className="rounded-full">
+              Inactive
+            </Badge>
           ),
       },
       {
         accessorKey: "requestorGrpName",
         header: "Requestor",
-        cell: ({ row }) => <span className="truncate">{row.original.requestorGrpName || "Any"}</span>,
+        cell: ({ row }) => (
+          <span className="truncate">{row.original.requestorGrpName || "Any"}</span>
+        ),
       },
       {
         accessorKey: "usrGrpName",
@@ -323,14 +367,18 @@ export default function HoldPolicyEditorPage() {
       {
         accessorKey: "itemOwningOuName",
         header: "Owning OU",
-        cell: ({ row }) => <span className="truncate">{row.original.itemOwningOuName || "Any"}</span>,
+        cell: ({ row }) => (
+          <span className="truncate">{row.original.itemOwningOuName || "Any"}</span>
+        ),
       },
       {
         accessorKey: "circModifier",
         header: "Circ Modifier",
         cell: ({ row }) =>
           row.original.circModifier ? (
-            <Badge variant="outline" className="rounded-full">{row.original.circModifier}</Badge>
+            <Badge variant="outline" className="rounded-full">
+              {row.original.circModifier}
+            </Badge>
           ) : (
             <span className="text-muted-foreground text-xs">Any</span>
           ),
@@ -340,20 +388,28 @@ export default function HoldPolicyEditorPage() {
         header: "Holdable",
         cell: ({ row }) =>
           row.original.holdable === false ? (
-            <Badge variant="destructive" className="rounded-full">No</Badge>
+            <Badge variant="destructive" className="rounded-full">
+              No
+            </Badge>
           ) : (
-            <Badge variant="secondary" className="rounded-full">Yes</Badge>
+            <Badge variant="secondary" className="rounded-full">
+              Yes
+            </Badge>
           ),
       },
       {
         accessorKey: "transitRange",
         header: "Transit",
-        cell: ({ row }) => <span className="font-mono text-xs">{String(row.original.transitRange ?? "—")}</span>,
+        cell: ({ row }) => (
+          <span className="font-mono text-xs">{String(row.original.transitRange ?? "—")}</span>
+        ),
       },
       {
         accessorKey: "maxHolds",
         header: "Max Holds",
-        cell: ({ row }) => <span className="font-mono text-xs">{String(row.original.maxHolds ?? "—")}</span>,
+        cell: ({ row }) => (
+          <span className="font-mono text-xs">{String(row.original.maxHolds ?? "—")}</span>
+        ),
       },
       {
         id: "actions",
@@ -363,8 +419,19 @@ export default function HoldPolicyEditorPage() {
             <TableRowActions
               quickActions={["edit"]}
               actions={[
-                { id: "edit", label: "Edit matchpoint", icon: Edit3, onClick: () => openEdit(row.original) },
-                { id: "delete", label: "Delete matchpoint", icon: Trash2, variant: "destructive", onClick: () => requestDelete(row.original) },
+                {
+                  id: "edit",
+                  label: "Edit matchpoint",
+                  icon: Edit3,
+                  onClick: () => openEdit(row.original),
+                },
+                {
+                  id: "delete",
+                  label: "Delete matchpoint",
+                  icon: Trash2,
+                  variant: "destructive",
+                  onClick: () => requestDelete(row.original),
+                },
               ]}
             />
           </div>
@@ -387,7 +454,18 @@ export default function HoldPolicyEditorPage() {
           { label: "Policy Editors" },
           { label: "Holds" },
         ]}
-        actions={policyEditorsEnabled ? [{ label: "Refresh", onClick: () => void refetch(), icon: RefreshCw, variant: "outline" }] : undefined}
+        actions={
+          policyEditorsEnabled
+            ? [
+                {
+                  label: "Refresh",
+                  onClick: () => void refetch(),
+                  icon: RefreshCw,
+                  variant: "outline",
+                },
+              ]
+            : undefined
+        }
       />
       <PageContent className="space-y-6">
         {!policyEditorsEnabled ? (
@@ -412,7 +490,8 @@ export default function HoldPolicyEditorPage() {
                       : `Edit matchpoint #${editing?.id ?? "—"}`}
                   </DialogTitle>
                   <DialogDescription>
-                    Writes apply immediately in Evergreen and are recorded in the StacksOS audit log.
+                    Writes apply immediately in Evergreen and are recorded in the StacksOS audit
+                    log.
                   </DialogDescription>
                 </DialogHeader>
 
@@ -420,33 +499,51 @@ export default function HoldPolicyEditorPage() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card p-4">
                       <div className="min-w-0">
-                        <Label htmlFor="active" className="text-sm">Active</Label>
-                        <p className="text-xs text-muted-foreground">Inactive matchpoints are ignored by Evergreen.</p>
+                        <Label htmlFor="active" className="text-sm">
+                          Active
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Inactive matchpoints are ignored by Evergreen.
+                        </p>
                       </div>
-                      <Switch id="active"
+                      <Switch
+                        id="active"
                         checked={draft.active}
-                        onCheckedChange={(checked) => setDraft((prev) => ({ ...prev, active: checked }))}
+                        onCheckedChange={(checked) =>
+                          setDraft((prev) => ({ ...prev, active: checked }))
+                        }
                       />
                     </div>
 
                     <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card p-4">
                       <div className="min-w-0">
-                        <Label htmlFor="strict-ou-match" className="text-sm">Strict OU match</Label>
-                        <p className="text-xs text-muted-foreground">If enabled, OU matching must be exact.</p>
+                        <Label htmlFor="strict-ou-match" className="text-sm">
+                          Strict OU match
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          If enabled, OU matching must be exact.
+                        </p>
                       </div>
-                      <Switch id="strict-ou-match"
+                      <Switch
+                        id="strict-ou-match"
                         checked={draft.strictOuMatch}
-                        onCheckedChange={(checked) => setDraft((prev) => ({ ...prev, strictOuMatch: checked }))}
+                        onCheckedChange={(checked) =>
+                          setDraft((prev) => ({ ...prev, strictOuMatch: checked }))
+                        }
                       />
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="requestor-group">Requestor group</Label>
-                        <Select id="requestor-group"
+                        <Select
+                          id="requestor-group"
                           value={draft.requestorGrp ? String(draft.requestorGrp) : "__any__"}
                           onValueChange={(v) =>
-                            setDraft((prev) => ({ ...prev, requestorGrp: v === "__any__" ? null : parseInt(v, 10) }))
+                            setDraft((prev) => ({
+                              ...prev,
+                              requestorGrp: v === "__any__" ? null : parseInt(v, 10),
+                            }))
                           }
                           disabled={groupsLoading}
                         >
@@ -469,10 +566,14 @@ export default function HoldPolicyEditorPage() {
 
                       <div className="space-y-2">
                         <Label htmlFor="user-group">User group</Label>
-                        <Select id="user-group"
+                        <Select
+                          id="user-group"
                           value={draft.usrGrp ? String(draft.usrGrp) : "__any__"}
                           onValueChange={(v) =>
-                            setDraft((prev) => ({ ...prev, usrGrp: v === "__any__" ? null : parseInt(v, 10) }))
+                            setDraft((prev) => ({
+                              ...prev,
+                              usrGrp: v === "__any__" ? null : parseInt(v, 10),
+                            }))
                           }
                           disabled={groupsLoading}
                         >
@@ -495,10 +596,14 @@ export default function HoldPolicyEditorPage() {
 
                       <div className="space-y-2">
                         <Label htmlFor="pickup-ou">Pickup OU</Label>
-                        <Select id="pickup-ou"
+                        <Select
+                          id="pickup-ou"
                           value={draft.pickupOu ? String(draft.pickupOu) : "__any__"}
                           onValueChange={(v) =>
-                            setDraft((prev) => ({ ...prev, pickupOu: v === "__any__" ? null : parseInt(v, 10) }))
+                            setDraft((prev) => ({
+                              ...prev,
+                              pickupOu: v === "__any__" ? null : parseInt(v, 10),
+                            }))
                           }
                           disabled={orgTreeLoading || orgOptions.length === 0}
                         >
@@ -509,9 +614,7 @@ export default function HoldPolicyEditorPage() {
                             <SelectItem value="__any__">Any</SelectItem>
                             {orgOptions.map((o) => (
                               <SelectItem key={o.id} value={String(o.id)}>
-                                <span style={{ paddingLeft: o.depth * 12 }} className="truncate">
-                                  {o.label}
-                                </span>
+                                {formatOrgOptionLabel(o)}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -520,7 +623,8 @@ export default function HoldPolicyEditorPage() {
 
                       <div className="space-y-2">
                         <Label htmlFor="owning-ou">Owning OU</Label>
-                        <Select id="owning-ou"
+                        <Select
+                          id="owning-ou"
                           value={draft.itemOwningOu ? String(draft.itemOwningOu) : "__any__"}
                           onValueChange={(v) =>
                             setDraft((prev) => ({
@@ -537,9 +641,7 @@ export default function HoldPolicyEditorPage() {
                             <SelectItem value="__any__">Any</SelectItem>
                             {orgOptions.map((o) => (
                               <SelectItem key={o.id} value={String(o.id)}>
-                                <span style={{ paddingLeft: o.depth * 12 }} className="truncate">
-                                  {o.label}
-                                </span>
+                                {formatOrgOptionLabel(o)}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -548,10 +650,14 @@ export default function HoldPolicyEditorPage() {
 
                       <div className="space-y-2">
                         <Label htmlFor="request-ou">Request OU</Label>
-                        <Select id="request-ou"
+                        <Select
+                          id="request-ou"
                           value={draft.requestOu ? String(draft.requestOu) : "__any__"}
                           onValueChange={(v) =>
-                            setDraft((prev) => ({ ...prev, requestOu: v === "__any__" ? null : parseInt(v, 10) }))
+                            setDraft((prev) => ({
+                              ...prev,
+                              requestOu: v === "__any__" ? null : parseInt(v, 10),
+                            }))
                           }
                           disabled={orgTreeLoading || orgOptions.length === 0}
                         >
@@ -562,9 +668,7 @@ export default function HoldPolicyEditorPage() {
                             <SelectItem value="__any__">Any</SelectItem>
                             {orgOptions.map((o) => (
                               <SelectItem key={o.id} value={String(o.id)}>
-                                <span style={{ paddingLeft: o.depth * 12 }} className="truncate">
-                                  {o.label}
-                                </span>
+                                {formatOrgOptionLabel(o)}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -573,10 +677,14 @@ export default function HoldPolicyEditorPage() {
 
                       <div className="space-y-2">
                         <Label htmlFor="item-circ-ou">Item circ OU</Label>
-                        <Select id="item-circ-ou"
+                        <Select
+                          id="item-circ-ou"
                           value={draft.itemCircOu ? String(draft.itemCircOu) : "__any__"}
                           onValueChange={(v) =>
-                            setDraft((prev) => ({ ...prev, itemCircOu: v === "__any__" ? null : parseInt(v, 10) }))
+                            setDraft((prev) => ({
+                              ...prev,
+                              itemCircOu: v === "__any__" ? null : parseInt(v, 10),
+                            }))
                           }
                           disabled={orgTreeLoading || orgOptions.length === 0}
                         >
@@ -587,9 +695,7 @@ export default function HoldPolicyEditorPage() {
                             <SelectItem value="__any__">Any</SelectItem>
                             {orgOptions.map((o) => (
                               <SelectItem key={o.id} value={String(o.id)}>
-                                <span style={{ paddingLeft: o.depth * 12 }} className="truncate">
-                                  {o.label}
-                                </span>
+                                {formatOrgOptionLabel(o)}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -600,10 +706,14 @@ export default function HoldPolicyEditorPage() {
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="circ-modifier">Circ modifier</Label>
-                        <Select id="circ-modifier"
+                        <Select
+                          id="circ-modifier"
                           value={draft.circModifier ?? "__any__"}
                           onValueChange={(v) =>
-                            setDraft((prev) => ({ ...prev, circModifier: v === "__any__" ? null : v }))
+                            setDraft((prev) => ({
+                              ...prev,
+                              circModifier: v === "__any__" ? null : v,
+                            }))
                           }
                           disabled={modifiersLoading}
                         >
@@ -627,10 +737,14 @@ export default function HoldPolicyEditorPage() {
 
                       <div className="space-y-2">
                         <Label htmlFor="reference">Reference</Label>
-                        <Select id="reference"
+                        <Select
+                          id="reference"
                           value={draft.refFlag === null ? "any" : draft.refFlag ? "yes" : "no"}
                           onValueChange={(v) =>
-                            setDraft((prev) => ({ ...prev, refFlag: v === "any" ? null : v === "yes" }))
+                            setDraft((prev) => ({
+                              ...prev,
+                              refFlag: v === "any" ? null : v === "yes",
+                            }))
                           }
                         >
                           <SelectTrigger>
@@ -648,28 +762,41 @@ export default function HoldPolicyEditorPage() {
                     <div className="grid gap-4 sm:grid-cols-3">
                       <div className="space-y-2">
                         <Label htmlFor="transit-range">Transit range</Label>
-                        <Input id="transit-range"
+                        <Input
+                          id="transit-range"
                           value={draft.transitRange}
-                          onChange={(e) => setDraft((prev) => ({ ...prev, transitRange: e.target.value }))}
+                          onChange={(e) =>
+                            setDraft((prev) => ({ ...prev, transitRange: e.target.value }))
+                          }
                           placeholder="e.g., 50"
                         />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="max-holds">Max holds</Label>
-                        <Input id="max-holds"
+                        <Input
+                          id="max-holds"
                           value={draft.maxHolds}
-                          onChange={(e) => setDraft((prev) => ({ ...prev, maxHolds: e.target.value }))}
+                          onChange={(e) =>
+                            setDraft((prev) => ({ ...prev, maxHolds: e.target.value }))
+                          }
                           placeholder="e.g., 25"
                         />
                       </div>
                       <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card p-4 sm:col-span-3">
                         <div className="min-w-0">
-                          <Label htmlFor="holdable" className="text-sm">Holdable</Label>
-                          <p className="text-xs text-muted-foreground">If disabled, Evergreen blocks holds.</p>
+                          <Label htmlFor="holdable" className="text-sm">
+                            Holdable
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            If disabled, Evergreen blocks holds.
+                          </p>
                         </div>
-                        <Switch id="holdable"
+                        <Switch
+                          id="holdable"
                           checked={draft.holdable}
-                          onCheckedChange={(checked) => setDraft((prev) => ({ ...prev, holdable: checked }))}
+                          onCheckedChange={(checked) =>
+                            setDraft((prev) => ({ ...prev, holdable: checked }))
+                          }
                         />
                       </div>
                     </div>
@@ -677,17 +804,23 @@ export default function HoldPolicyEditorPage() {
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="item-age">Item age</Label>
-                        <Input id="item-age"
+                        <Input
+                          id="item-age"
                           value={draft.itemAge}
-                          onChange={(e) => setDraft((prev) => ({ ...prev, itemAge: e.target.value }))}
+                          onChange={(e) =>
+                            setDraft((prev) => ({ ...prev, itemAge: e.target.value }))
+                          }
                           placeholder="Optional"
                         />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="age-protection-rule">Age protection rule</Label>
-                        <Input id="age-protection-rule"
+                        <Input
+                          id="age-protection-rule"
                           value={draft.ageProtection}
-                          onChange={(e) => setDraft((prev) => ({ ...prev, ageProtection: e.target.value }))}
+                          onChange={(e) =>
+                            setDraft((prev) => ({ ...prev, ageProtection: e.target.value }))
+                          }
                           placeholder="Optional"
                         />
                       </div>
@@ -696,10 +829,15 @@ export default function HoldPolicyEditorPage() {
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card p-4">
                         <div className="min-w-0">
-                          <Label htmlFor="include-locally-frozen" className="text-sm">Include locally frozen</Label>
-                          <p className="text-xs text-muted-foreground">Counts frozen holds in local calculations.</p>
+                          <Label htmlFor="include-locally-frozen" className="text-sm">
+                            Include locally frozen
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Counts frozen holds in local calculations.
+                          </p>
                         </div>
-                        <Switch id="include-locally-frozen"
+                        <Switch
+                          id="include-locally-frozen"
                           checked={draft.includeLocallyFrozen}
                           onCheckedChange={(checked) =>
                             setDraft((prev) => ({ ...prev, includeLocallyFrozen: checked }))
@@ -709,21 +847,31 @@ export default function HoldPolicyEditorPage() {
 
                       <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card p-4">
                         <div className="min-w-0">
-                          <Label htmlFor="stop-blocked-user" className="text-sm">Stop blocked user</Label>
-                          <p className="text-xs text-muted-foreground">Block hold placement for blocked patrons.</p>
+                          <Label htmlFor="stop-blocked-user" className="text-sm">
+                            Stop blocked user
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Block hold placement for blocked patrons.
+                          </p>
                         </div>
-                        <Switch id="stop-blocked-user"
+                        <Switch
+                          id="stop-blocked-user"
                           checked={draft.stopBlockedUser}
-                          onCheckedChange={(checked) => setDraft((prev) => ({ ...prev, stopBlockedUser: checked }))}
+                          onCheckedChange={(checked) =>
+                            setDraft((prev) => ({ ...prev, stopBlockedUser: checked }))
+                          }
                         />
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="description">Description</Label>
-                      <Textarea id="description"
+                      <Textarea
+                        id="description"
                         value={draft.description}
-                        onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))}
+                        onChange={(e) =>
+                          setDraft((prev) => ({ ...prev, description: e.target.value }))
+                        }
                         placeholder="Optional notes"
                         className="min-h-[90px]"
                       />
@@ -733,7 +881,8 @@ export default function HoldPolicyEditorPage() {
                   <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
                     <h3 className="text-sm font-semibold">Preview changes</h3>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Review before saving. Permission required: <span className="font-mono">ADMIN_CIRC_MATRIX_MATCHPOINT</span>.
+                      Review before saving. Permission required:{" "}
+                      <span className="font-mono">ADMIN_CIRC_MATRIX_MATCHPOINT</span>.
                     </p>
                     <div className="mt-4 space-y-2">
                       {previewRows.length === 0 ? (
@@ -741,17 +890,23 @@ export default function HoldPolicyEditorPage() {
                       ) : (
                         <ul className="space-y-2 text-sm">
                           {previewRows.map((r) => (
-                            <li key={r.label} className="rounded-xl border border-border/70 bg-card p-3">
+                            <li
+                              key={r.label}
+                              className="rounded-xl border border-border/70 bg-card p-3"
+                            >
                               <div className="flex items-start justify-between gap-3">
                                 <span className="font-medium">{r.label}</span>
-                                <span className="text-xs text-muted-foreground">{editorMode === "create" ? "new" : "changed"}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {editorMode === "create" ? "new" : "changed"}
+                                </span>
                               </div>
                               <div className="mt-1 text-xs text-muted-foreground">
                                 {editorMode === "create" ? (
                                   <span>{r.to}</span>
                                 ) : (
                                   <span>
-                                    <span className="line-through">{r.from}</span> → <span className="text-foreground">{r.to}</span>
+                                    <span className="line-through">{r.from}</span> →{" "}
+                                    <span className="text-foreground">{r.to}</span>
                                   </span>
                                 )}
                               </div>
@@ -764,7 +919,11 @@ export default function HoldPolicyEditorPage() {
                 </div>
 
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setEditorOpen(false)} disabled={isMutating}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditorOpen(false)}
+                    disabled={isMutating}
+                  >
                     Cancel
                   </Button>
                   <Button
@@ -780,7 +939,11 @@ export default function HoldPolicyEditorPage() {
             <ConfirmDialog
               open={saveConfirmOpen}
               onOpenChange={setSaveConfirmOpen}
-              title={editorMode === "create" ? "Create matchpoint?" : `Save changes to matchpoint #${editing?.id ?? "—"}?`}
+              title={
+                editorMode === "create"
+                  ? "Create matchpoint?"
+                  : `Save changes to matchpoint #${editing?.id ?? "—"}?`
+              }
               description="This writes directly to Evergreen policy tables. Changes are audited."
               confirmText={editorMode === "create" ? "Create" : "Save"}
               variant="warning"
@@ -795,7 +958,9 @@ export default function HoldPolicyEditorPage() {
                   {previewRows.map((r) => (
                     <li key={r.label} className="flex items-start justify-between gap-3">
                       <span className="font-medium">{r.label}</span>
-                      <span className="text-muted-foreground">{editorMode === "create" ? r.to : `${r.from} → ${r.to}`}</span>
+                      <span className="text-muted-foreground">
+                        {editorMode === "create" ? r.to : `${r.from} → ${r.to}`}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -805,7 +970,9 @@ export default function HoldPolicyEditorPage() {
             <ConfirmDialog
               open={deleteConfirmOpen}
               onOpenChange={setDeleteConfirmOpen}
-              title={deleteTarget?.id ? `Delete matchpoint #${deleteTarget.id}?` : "Delete matchpoint?"}
+              title={
+                deleteTarget?.id ? `Delete matchpoint #${deleteTarget.id}?` : "Delete matchpoint?"
+              }
               description="This permanently deletes the matchpoint from Evergreen. This action cannot be undone."
               confirmText="Delete"
               variant="danger"
@@ -843,7 +1010,9 @@ export default function HoldPolicyEditorPage() {
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Matchpoints</p>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Matchpoints
+                      </p>
                       <div className="text-2xl font-semibold mt-1">{matchpoints.length}</div>
                     </div>
                     <div className="h-10 w-10 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600">
@@ -860,7 +1029,9 @@ export default function HoldPolicyEditorPage() {
                 <CardContent className="text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Strict</span>
-                    <span className="font-medium">{matchpoints.filter((m) => m.strictOuMatch === true).length}</span>
+                    <span className="font-medium">
+                      {matchpoints.filter((m) => m.strictOuMatch === true).length}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -872,7 +1043,9 @@ export default function HoldPolicyEditorPage() {
                 <CardContent className="text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Blocked</span>
-                    <span className="font-medium">{matchpoints.filter((m) => m.holdable === false).length}</span>
+                    <span className="font-medium">
+                      {matchpoints.filter((m) => m.holdable === false).length}
+                    </span>
                   </div>
                 </CardContent>
               </Card>

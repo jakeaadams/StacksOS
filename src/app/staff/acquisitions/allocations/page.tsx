@@ -14,7 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -23,12 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { toast } from "sonner";
 import { ColumnDef } from "@tanstack/react-table";
@@ -213,7 +214,11 @@ export default function AllocationsPage() {
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    return new Date(dateStr).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
   };
 
   const columns: ColumnDef<Allocation>[] = useMemo(
@@ -234,7 +239,9 @@ export default function AllocationsPage() {
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
             <Wallet className="h-4 w-4 text-muted-foreground" />
-            <span>{row.original.fundingSourceName || `Source ${row.original.fundingSourceId}`}</span>
+            <span>
+              {row.original.fundingSourceName || `Source ${row.original.fundingSourceId}`}
+            </span>
           </div>
         ),
       },
@@ -245,8 +252,14 @@ export default function AllocationsPage() {
           <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-muted-foreground" />
             <div>
-              <div className="font-medium">{row.original.fundName || `Fund ${row.original.fundId}`}</div>
-              {row.original.fundCode && <div className="text-xs text-muted-foreground font-mono">{row.original.fundCode}</div>}
+              <div className="font-medium">
+                {row.original.fundName || `Fund ${row.original.fundId}`}
+              </div>
+              {row.original.fundCode && (
+                <div className="text-xs text-muted-foreground font-mono">
+                  {row.original.fundCode}
+                </div>
+              )}
             </div>
           </div>
         ),
@@ -254,7 +267,9 @@ export default function AllocationsPage() {
       {
         accessorKey: "amount",
         header: "Amount",
-        cell: ({ row }) => <span className="font-mono text-green-600">+{formatCurrency(row.original.amount)}</span>,
+        cell: ({ row }) => (
+          <span className="font-mono text-green-600">+{formatCurrency(row.original.amount)}</span>
+        ),
       },
       {
         accessorKey: "note",
@@ -282,8 +297,17 @@ export default function AllocationsPage() {
   if (isLoading && allocations.length === 0) {
     return (
       <PageContainer>
-        <PageHeader title="Allocations & Transfers" subtitle="Manage fund allocations and transfers." breadcrumbs={[{ label: "Acquisitions", href: "/staff/acquisitions" }, { label: "Allocations" }]} />
-        <PageContent><LoadingSpinner message="Loading allocation data..." /></PageContent>
+        <PageHeader
+          title="Allocations & Transfers"
+          subtitle="Manage fund allocations and transfers."
+          breadcrumbs={[
+            { label: "Acquisitions", href: "/staff/acquisitions" },
+            { label: "Allocations" },
+          ]}
+        />
+        <PageContent>
+          <LoadingSpinner message="Loading allocation data..." />
+        </PageContent>
       </PageContainer>
     );
   }
@@ -293,10 +317,18 @@ export default function AllocationsPage() {
       <PageHeader
         title="Allocations & Transfers"
         subtitle="Manage fund allocations and transfers."
-        breadcrumbs={[{ label: "Acquisitions", href: "/staff/acquisitions" }, { label: "Allocations" }]}
+        breadcrumbs={[
+          { label: "Acquisitions", href: "/staff/acquisitions" },
+          { label: "Allocations" },
+        ]}
         actions={[
           { label: "Refresh", onClick: loadData, icon: RefreshCw, variant: "outline" },
-          { label: "Transfer", onClick: () => setIsTransferOpen(true), icon: ArrowRightLeft, variant: "outline" },
+          {
+            label: "Transfer",
+            onClick: () => setIsTransferOpen(true),
+            icon: ArrowRightLeft,
+            variant: "outline",
+          },
           { label: "Allocate", onClick: () => setIsAllocateOpen(true), icon: Plus },
         ]}
       />
@@ -307,10 +339,14 @@ export default function AllocationsPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Funding Sources</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Funding Sources
+                  </p>
                   <div className="text-2xl font-semibold mt-1">{fundingSources.length}</div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600"><Wallet className="h-5 w-5" /></div>
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600">
+                  <Wallet className="h-5 w-5" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -321,7 +357,9 @@ export default function AllocationsPage() {
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Funds</p>
                   <div className="text-2xl font-semibold mt-1">{funds.length}</div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-green-500/10 text-green-600"><DollarSign className="h-5 w-5" /></div>
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-green-500/10 text-green-600">
+                  <DollarSign className="h-5 w-5" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -329,10 +367,14 @@ export default function AllocationsPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Allocations</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Total Allocations
+                  </p>
                   <div className="text-2xl font-semibold mt-1">{allocations.length}</div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-purple-500/10 text-purple-600"><ArrowRightLeft className="h-5 w-5" /></div>
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-indigo-500/10 text-indigo-600">
+                  <ArrowRightLeft className="h-5 w-5" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -350,7 +392,13 @@ export default function AllocationsPage() {
               isLoading={isLoading}
               searchable={true}
               paginated={allocations.length > 20}
-              emptyState={<EmptyState title="No allocations found" description="No fund allocations have been made yet." action={{ label: "Create Allocation", onClick: () => setIsAllocateOpen(true) }} />}
+              emptyState={
+                <EmptyState
+                  title="No allocations found"
+                  description="No fund allocations have been made yet."
+                  action={{ label: "Create Allocation", onClick: () => setIsAllocateOpen(true) }}
+                />
+              }
             />
           </CardContent>
         </Card>
@@ -369,29 +417,53 @@ export default function AllocationsPage() {
               <TabsContent value="sources" className="mt-4">
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {fundingSources.map((source) => (
-                    <div key={source.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div
+                      key={source.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
                       <div>
                         <div className="font-medium">{source.name}</div>
                         <div className="text-xs text-muted-foreground font-mono">{source.code}</div>
                       </div>
-                      <div className={`font-mono text-sm ${source.balance < 0 ? "text-red-600" : "text-green-600"}`}>{formatCurrency(source.balance, source.currency)}</div>
+                      <div
+                        className={`font-mono text-sm ${source.balance < 0 ? "text-red-600" : "text-green-600"}`}
+                      >
+                        {formatCurrency(source.balance, source.currency)}
+                      </div>
                     </div>
                   ))}
-                  {fundingSources.length === 0 && <p className="text-muted-foreground col-span-full text-center py-4">No funding sources available.</p>}
+                  {fundingSources.length === 0 && (
+                    <p className="text-muted-foreground col-span-full text-center py-4">
+                      No funding sources available.
+                    </p>
+                  )}
                 </div>
               </TabsContent>
               <TabsContent value="funds" className="mt-4">
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {funds.map((fund) => (
-                    <div key={fund.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div
+                      key={fund.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
                       <div>
                         <div className="font-medium">{fund.name}</div>
-                        <div className="text-xs text-muted-foreground">{fund.year} - <span className="font-mono">{fund.code}</span></div>
+                        <div className="text-xs text-muted-foreground">
+                          {fund.year} - <span className="font-mono">{fund.code}</span>
+                        </div>
                       </div>
-                      <div className={`font-mono text-sm ${fund.balance < 0 ? "text-red-600" : "text-green-600"}`}>{formatCurrency(fund.balance, fund.currency)}</div>
+                      <div
+                        className={`font-mono text-sm ${fund.balance < 0 ? "text-red-600" : "text-green-600"}`}
+                      >
+                        {formatCurrency(fund.balance, fund.currency)}
+                      </div>
                     </div>
                   ))}
-                  {funds.length === 0 && <p className="text-muted-foreground col-span-full text-center py-4">No funds available.</p>}
+                  {funds.length === 0 && (
+                    <p className="text-muted-foreground col-span-full text-center py-4">
+                      No funds available.
+                    </p>
+                  )}
                 </div>
               </TabsContent>
             </Tabs>
@@ -402,14 +474,23 @@ export default function AllocationsPage() {
       <Dialog open={isAllocateOpen} onOpenChange={setIsAllocateOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5" />Allocate Funds</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Allocate Funds
+            </DialogTitle>
             <DialogDescription>Allocate money from a funding source to a fund.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="funding-source">Funding Source *</Label>
-              <Select id="funding-source" value={allocFundingSourceId} onValueChange={setAllocFundingSourceId}>
-                <SelectTrigger><SelectValue placeholder="Select funding source" /></SelectTrigger>
+              <Select
+                id="funding-source"
+                value={allocFundingSourceId}
+                onValueChange={setAllocFundingSourceId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select funding source" />
+                </SelectTrigger>
                 <SelectContent>
                   {fundingSources.map((source) => (
                     <SelectItem key={source.id} value={String(source.id)}>
@@ -419,13 +500,18 @@ export default function AllocationsPage() {
                 </SelectContent>
               </Select>
               {selectedFundingSource && (
-                <p className="text-xs text-muted-foreground">Available: {formatCurrency(selectedFundingSource.balance, selectedFundingSource.currency)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Available:{" "}
+                  {formatCurrency(selectedFundingSource.balance, selectedFundingSource.currency)}
+                </p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="fund">Fund *</Label>
               <Select id="fund" value={allocFundId} onValueChange={setAllocFundId}>
-                <SelectTrigger><SelectValue placeholder="Select fund" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select fund" />
+                </SelectTrigger>
                 <SelectContent>
                   {funds.map((fund) => (
                     <SelectItem key={fund.id} value={String(fund.id)}>
@@ -437,16 +523,34 @@ export default function AllocationsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="amount">Amount *</Label>
-              <Input id="amount" type="number" step="0.01" min="0" value={allocAmount} onChange={(e) => setAllocAmount(e.target.value)} placeholder="0.00" />
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={allocAmount}
+                onChange={(e) => setAllocAmount(e.target.value)}
+                placeholder="0.00"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="note">Note (optional)</Label>
-              <Textarea id="note" value={allocNote} onChange={(e) => setAllocNote(e.target.value)} placeholder="e.g., FY2024 initial allocation" rows={2} />
+              <Textarea
+                id="note"
+                value={allocNote}
+                onChange={(e) => setAllocNote(e.target.value)}
+                placeholder="e.g., FY2024 initial allocation"
+                rows={2}
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAllocateOpen(false)}>Cancel</Button>
-            <Button onClick={handleAllocate} disabled={isSaving}>{isSaving ? "Allocating..." : "Allocate"}</Button>
+            <Button variant="outline" onClick={() => setIsAllocateOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAllocate} disabled={isSaving}>
+              {isSaving ? "Allocating..." : "Allocate"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -454,14 +558,23 @@ export default function AllocationsPage() {
       <Dialog open={isTransferOpen} onOpenChange={setIsTransferOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><ArrowRightLeft className="h-5 w-5" />Transfer Between Funds</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="h-5 w-5" />
+              Transfer Between Funds
+            </DialogTitle>
             <DialogDescription>Transfer money from one fund to another.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="source-fund">Source Fund *</Label>
-              <Select id="source-fund" value={transferSourceFundId} onValueChange={setTransferSourceFundId}>
-                <SelectTrigger><SelectValue placeholder="Select source fund" /></SelectTrigger>
+              <Select
+                id="source-fund"
+                value={transferSourceFundId}
+                onValueChange={setTransferSourceFundId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select source fund" />
+                </SelectTrigger>
                 <SelectContent>
                   {funds.map((fund) => (
                     <SelectItem key={fund.id} value={String(fund.id)}>
@@ -471,34 +584,63 @@ export default function AllocationsPage() {
                 </SelectContent>
               </Select>
               {selectedSourceFund && (
-                <p className="text-xs text-muted-foreground">Available: {formatCurrency(selectedSourceFund.balance, selectedSourceFund.currency)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Available:{" "}
+                  {formatCurrency(selectedSourceFund.balance, selectedSourceFund.currency)}
+                </p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="destination-fund">Destination Fund *</Label>
-              <Select id="destination-fund" value={transferDestFundId} onValueChange={setTransferDestFundId}>
-                <SelectTrigger><SelectValue placeholder="Select destination fund" /></SelectTrigger>
+              <Select
+                id="destination-fund"
+                value={transferDestFundId}
+                onValueChange={setTransferDestFundId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select destination fund" />
+                </SelectTrigger>
                 <SelectContent>
-                  {funds.filter((f) => String(f.id) !== transferSourceFundId).map((fund) => (
-                    <SelectItem key={fund.id} value={String(fund.id)}>
-                      {fund.name} ({fund.year})
-                    </SelectItem>
-                  ))}
+                  {funds
+                    .filter((f) => String(f.id) !== transferSourceFundId)
+                    .map((fund) => (
+                      <SelectItem key={fund.id} value={String(fund.id)}>
+                        {fund.name} ({fund.year})
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="amount-2">Amount *</Label>
-              <Input id="amount-2" type="number" step="0.01" min="0" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} placeholder="0.00" />
+              <Input
+                id="amount-2"
+                type="number"
+                step="0.01"
+                min="0"
+                value={transferAmount}
+                onChange={(e) => setTransferAmount(e.target.value)}
+                placeholder="0.00"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="note-2">Note (optional)</Label>
-              <Textarea id="note-2" value={transferNote} onChange={(e) => setTransferNote(e.target.value)} placeholder="e.g., Budget reallocation" rows={2} />
+              <Textarea
+                id="note-2"
+                value={transferNote}
+                onChange={(e) => setTransferNote(e.target.value)}
+                placeholder="e.g., Budget reallocation"
+                rows={2}
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsTransferOpen(false)}>Cancel</Button>
-            <Button onClick={handleTransfer} disabled={isSaving}>{isSaving ? "Transferring..." : "Transfer"}</Button>
+            <Button variant="outline" onClick={() => setIsTransferOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleTransfer} disabled={isSaving}>
+              {isSaving ? "Transferring..." : "Transfer"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

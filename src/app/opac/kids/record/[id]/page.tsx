@@ -10,6 +10,7 @@ import Link from "next/link";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { useKidsParentGate } from "@/contexts/kids-parent-gate-context";
 import { LoadingSpinner } from "@/components/shared/loading-state";
+import { Button } from "@/components/ui/button";
 import {
   BookOpen,
   User,
@@ -28,6 +29,7 @@ import {
   Smartphone,
   Film,
   AlertCircle,
+  X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -80,7 +82,11 @@ function transformBookDetail(data: any): BookDetail {
     pubDate: data.pubdate || data.pub_date,
     format: data.format || data.icon_format,
     pageCount: data.pages || data.page_count,
-    readingLevel: data.lexile ? `Lexile ${data.lexile}` : data.ar_level ? `AR ${data.ar_level}` : undefined,
+    readingLevel: data.lexile
+      ? `Lexile ${data.lexile}`
+      : data.ar_level
+        ? `AR ${data.ar_level}`
+        : undefined,
     lexile: data.lexile,
     arLevel: data.ar_level,
     series: data.series,
@@ -109,40 +115,48 @@ export default function KidsRecordDetailPage() {
   const [showHoldModal, setShowHoldModal] = useState(false);
   const [holdLoading, setHoldLoading] = useState(false);
   const [holdSuccess, setHoldSuccess] = useState(false);
-  const [holdError, setHoldError] = useState<{ message: string; nextSteps?: string[]; code?: string } | null>(null);
+  const [holdError, setHoldError] = useState<{
+    message: string;
+    nextSteps?: string[];
+    code?: string;
+  } | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [coverError, setCoverError] = useState(false);
 
-  const fetchRelatedBooks = useCallback(async (subject: string) => {
-    try {
-      const params = new URLSearchParams({
-        q: subject,
-        type: "subject",
-        audience: "juvenile",
-        limit: "6",
-        sort: "popularity",
-      });
-      const response = await fetchWithAuth(`/api/evergreen/catalog?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setRelatedBooks(
-          (data.records || [])
-            .filter((r: any) => (r.id || r.record_id) !== parseInt(recordId))
-            .slice(0, 5)
-            .map((r: any) => ({
-              id: r.id || r.record_id,
-              title: r.title || r.simple_record?.title,
-              author: r.author || r.simple_record?.author,
-              coverUrl: (r.isbn || r.simple_record?.isbn)
-                ? `https://covers.openlibrary.org/b/isbn/${r.isbn || r.simple_record?.isbn}-M.jpg`
-                : undefined,
-            }))
-        );
+  const fetchRelatedBooks = useCallback(
+    async (subject: string) => {
+      try {
+        const params = new URLSearchParams({
+          q: subject,
+          type: "subject",
+          audience: "juvenile",
+          limit: "6",
+          sort: "popularity",
+        });
+        const response = await fetchWithAuth(`/api/evergreen/catalog?${params.toString()}`);
+        if (response.ok) {
+          const data = await response.json();
+          setRelatedBooks(
+            (data.records || [])
+              .filter((r: any) => (r.id || r.record_id) !== parseInt(recordId))
+              .slice(0, 5)
+              .map((r: any) => ({
+                id: r.id || r.record_id,
+                title: r.title || r.simple_record?.title,
+                author: r.author || r.simple_record?.author,
+                coverUrl:
+                  r.isbn || r.simple_record?.isbn
+                    ? `https://covers.openlibrary.org/b/isbn/${r.isbn || r.simple_record?.isbn}-M.jpg`
+                    : undefined,
+              }))
+          );
+        }
+      } catch (err) {
+        clientLogger.error("Error fetching related books:", err);
       }
-    } catch (err) {
-      clientLogger.error("Error fetching related books:", err);
-    }
-  }, [recordId]);
+    },
+    [recordId]
+  );
 
   const fetchBookDetail = useCallback(async () => {
     if (!recordId) return;
@@ -199,7 +213,9 @@ export default function KidsRecordDetailPage() {
         setHoldSuccess(false);
       }, 2000);
     } catch (err: any) {
-      setHoldError({ message: (err instanceof Error ? err.message : String(err)) || t("holdError") });
+      setHoldError({
+        message: (err instanceof Error ? err.message : String(err)) || t("holdError"),
+      });
     } finally {
       setHoldLoading(false);
     }
@@ -210,10 +226,14 @@ export default function KidsRecordDetailPage() {
 
   const getFormatIcon = (format?: string) => {
     switch (format?.toLowerCase()) {
-      case "ebook": return Smartphone;
-      case "audiobook": return Headphones;
-      case "dvd": return Film;
-      default: return BookOpen;
+      case "ebook":
+        return Smartphone;
+      case "audiobook":
+        return Headphones;
+      case "dvd":
+        return Film;
+      default:
+        return BookOpen;
     }
   };
 
@@ -235,8 +255,7 @@ export default function KidsRecordDetailPage() {
         <p className="text-muted-foreground mb-6">{t("bookNotFoundDesc")}</p>
         <Link
           href="/opac/kids"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 
-                   text-white rounded-full font-medium"
+          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 font-medium text-white"
         >
           <ChevronLeft className="h-5 w-5" />
           Back to Kids Zone
@@ -250,13 +269,15 @@ export default function KidsRecordDetailPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Back button */}
-      <button type="button"
+      <Button
+        type="button"
+        variant="ghost"
         onClick={() => router.back()}
-        className="flex items-center gap-2 text-purple-600 hover:text-purple-700 mb-6"
+        className="mb-6 px-0 text-purple-600 hover:text-purple-700 hover:bg-transparent"
       >
         <ChevronLeft className="h-5 w-5" />
         <span className="font-medium">{t("back")}</span>
-      </button>
+      </Button>
 
       {/* Main content */}
       <div className="bg-card rounded-3xl shadow-lg overflow-hidden">
@@ -301,9 +322,7 @@ export default function KidsRecordDetailPage() {
           <div className="md:w-2/3 p-6 md:p-8">
             {/* Title and author */}
             <div className="mb-6">
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
-                {book.title}
-              </h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">{book.title}</h1>
               {book.author && (
                 <p className="text-lg text-muted-foreground flex items-center gap-2">
                   <User className="h-5 w-5 text-muted-foreground/70" />
@@ -312,7 +331,8 @@ export default function KidsRecordDetailPage() {
               )}
               {book.series && (
                 <p className="text-sm text-purple-600 mt-1">
-                  {t("partOfSeries")} <span className="font-medium">{book.series}</span> {t("series")}
+                  {t("partOfSeries")} <span className="font-medium">{book.series}</span>{" "}
+                  {t("series")}
                 </p>
               )}
             </div>
@@ -345,47 +365,53 @@ export default function KidsRecordDetailPage() {
                     </>
                   )}
                 </div>
-                
-                <button type="button"
+
+                <Button
+                  type="button"
                   onClick={() => setShowHoldModal(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white 
-                           rounded-full font-bold hover:from-purple-600 hover:to-pink-600 
-                           transition-colors shadow-lg"
+                  className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 font-bold text-white shadow-lg hover:from-purple-600 hover:to-pink-600"
                 >
                   {totalAvailable > 0 ? "Get This Book" : "Place Hold"}
-                </button>
+                </Button>
               </div>
             </div>
 
             {/* Action buttons */}
             <div className="flex flex-wrap gap-3 mb-6">
-              <button type="button"
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => setIsFavorite(!isFavorite)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-colors
-                         ${isFavorite 
-                           ? "border-pink-400 bg-pink-50 text-pink-600" 
-                           : "border-border text-muted-foreground hover:border-pink-200"
+                         ${
+                           isFavorite
+                             ? "border-pink-400 bg-pink-50 text-pink-600"
+                             : "border-border text-muted-foreground hover:border-pink-200"
                          }`}
               >
                 <Heart className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`} />
                 <span>{isFavorite ? t("saved") : t("save")}</span>
-              </button>
-              
-              <button type="button"
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
                 className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-border 
                          text-muted-foreground hover:border-purple-200"
               >
                 <BookmarkPlus className="h-5 w-5" />
                 <span>{t("addToList")}</span>
-              </button>
-              
-              <button type="button"
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
                 className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-border 
                          text-muted-foreground hover:border-purple-200"
               >
                 <Share2 className="h-5 w-5" />
                 <span>{t("share")}</span>
-              </button>
+              </Button>
             </div>
 
             {/* Summary */}
@@ -465,15 +491,17 @@ export default function KidsRecordDetailPage() {
                     <p className="font-medium text-foreground">{holding.locationName}</p>
                     <p className="text-sm text-muted-foreground">{holding.callNumber}</p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium
-                                ${holding.available > 0 
-                                  ? "bg-green-100 text-green-700" 
-                                  : "bg-orange-100 text-orange-700"
-                                }`}>
-                    {holding.available > 0 
-                      ? t("holdingAvailable", { count: holding.available }) 
-                      : t("checkedOut")
-                    }
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium
+                                ${
+                                  holding.available > 0
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-orange-100 text-orange-700"
+                                }`}
+                  >
+                    {holding.available > 0
+                      ? t("holdingAvailable", { count: holding.available })
+                      : t("checkedOut")}
                   </span>
                 </div>
               ))}
@@ -513,13 +541,16 @@ export default function KidsRecordDetailPage() {
               <>
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-bold text-foreground">{t("placeAHold")}</h3>
-                  <button type="button"
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => setShowHoldModal(false)}
-                    className="p-2 text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted/50 rounded-full"
+                    className="rounded-full text-muted-foreground/70 hover:text-muted-foreground"
                   >
                     <span className="sr-only">Close</span>
-                    ✕
-                  </button>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
 
                 {!isLoggedIn ? (
@@ -527,8 +558,7 @@ export default function KidsRecordDetailPage() {
                     <p className="text-muted-foreground mb-4">{t("loginToPlaceHold")}</p>
                     <Link
                       href={`/opac/login?redirect=/opac/kids/record/${recordId}`}
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 
-                               text-white rounded-full font-bold"
+                      className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 font-bold text-white"
                     >
                       Log In
                     </Link>
@@ -555,14 +585,18 @@ export default function KidsRecordDetailPage() {
                           </div>
                         ) : null}
                         {holdError.code ? (
-                          <div className="mt-2 text-[11px] text-red-800/80 font-mono">Code: {holdError.code}</div>
+                          <div className="mt-2 text-[11px] text-red-800/80 font-mono">
+                            Code: {holdError.code}
+                          </div>
                         ) : null}
                       </div>
                     ) : null}
 
                     <div className="space-y-2 mb-6">
                       {book.holdings.map((holding) => (
-                        <button type="button"
+                        <Button
+                          type="button"
+                          variant="outline"
                           key={holding.locationId}
                           onClick={() => handlePlaceHold(holding.locationId)}
                           disabled={holdLoading}
@@ -571,7 +605,7 @@ export default function KidsRecordDetailPage() {
                                    disabled:opacity-50"
                         >
                           <p className="font-medium text-foreground">{holding.locationName}</p>
-                        </button>
+                        </Button>
                       ))}
                     </div>
 
@@ -597,8 +631,10 @@ function RelatedBookCard({ book }: { book: RelatedBook }) {
 
   return (
     <Link href={`/opac/kids/record/${book.id}`} className="group block">
-      <div className="aspect-[2/3] relative rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
-                    shadow-md group-hover:shadow-lg transition-all group-hover:-translate-y-1">
+      <div
+        className="aspect-[2/3] relative rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
+                    shadow-md group-hover:shadow-lg transition-all group-hover:-translate-y-1"
+      >
         {book.coverUrl && !imageError ? (
           <Image
             src={book.coverUrl}

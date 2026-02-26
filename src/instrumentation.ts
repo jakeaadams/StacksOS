@@ -7,10 +7,10 @@
  *
  * @see https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
  */
-
 export async function register() {
   // Only run server-side validation (skip edge runtime and client bundles).
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { logger } = await import("@/lib/logger");
     const { validateEnv } = await import("@/lib/env-validation");
     validateEnv();
 
@@ -18,14 +18,21 @@ export async function register() {
     try {
       const result = await runMigrations();
       if (result.applied.length > 0) {
-        console.log(
+        logger.info(
+          { component: "instrumentation", appliedMigrations: result.applied },
           `[instrumentation] Applied ${result.applied.length} migration(s): ${result.applied.join(", ")}`
         );
       } else {
-        console.log("[instrumentation] Database schema is up to date.");
+        logger.info(
+          { component: "instrumentation" },
+          "[instrumentation] Database schema is up to date."
+        );
       }
     } catch (err) {
-      console.error("[instrumentation] Migration failed:", err);
+      logger.error(
+        { component: "instrumentation", error: String(err) },
+        "[instrumentation] Migration failed"
+      );
       // Do not throw - let the app start even if migrations fail, so operators
       // can inspect logs and retry. The DB layer will surface errors on first
       // query if the schema is out of date.

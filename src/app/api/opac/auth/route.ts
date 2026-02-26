@@ -1,6 +1,12 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
-import { callOpenSRF, errorResponse, getRequestMeta, successResponse, serverErrorResponse } from "@/lib/api";
+import {
+  callOpenSRF,
+  errorResponse,
+  getRequestMeta,
+  successResponse,
+  serverErrorResponse,
+} from "@/lib/api";
 import { isCookieSecure } from "@/lib/csrf";
 import { checkRateLimit, recordSuccess } from "@/lib/rate-limit";
 import { hashPassword } from "@/lib/password";
@@ -12,7 +18,7 @@ import { z } from "zod";
  * Authenticates patrons for self-checkout using barcode and PIN
  */
 
-const selfCheckoutAuthSchema = z.object({
+const _selfCheckoutAuthSchema = z.object({
   barcode: z.string().trim().min(1),
   pin: z.string().min(1),
 });
@@ -41,8 +47,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => null);
-    const barcode = String((body as Record<string, unknown>)?.barcode || "").trim();
-    const pin = String((body as Record<string, unknown>)?.pin || "").trim();
+    const barcode = String((body as Record<string, any>)?.barcode || "").trim();
+    const pin = String((body as Record<string, any>)?.pin || "").trim();
 
     if (!barcode || !pin) {
       await logAuditEvent({
@@ -58,11 +64,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 1: Get auth seed (authenticate by barcode directly; matches OPAC login).
-    const seedRes = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.authenticate.init",
-      [barcode]
-    );
+    const seedRes = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.init", [
+      barcode,
+    ]);
 
     const seed = seedRes?.payload?.[0];
     if (!seed) {
@@ -82,16 +86,14 @@ export async function POST(req: NextRequest) {
     const finalHash = hashPassword(pin, String(seed));
 
     // Step 3: Authenticate
-    const authRes = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.authenticate.complete",
-      [{
+    const authRes = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.complete", [
+      {
         barcode,
         password: finalHash,
         type: "opac",
         agent: "stacksos-self-checkout",
-      }]
-    );
+      },
+    ]);
 
     const authResult = authRes?.payload?.[0];
     if (!authResult || authResult.ilsevent || !authResult.payload?.authtoken) {
@@ -110,7 +112,9 @@ export async function POST(req: NextRequest) {
     const authtoken = authResult.payload.authtoken;
 
     // Step 4: Resolve patron session (id + basic info).
-    const sessionRes = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [authtoken]);
+    const sessionRes = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [
+      authtoken,
+    ]);
     const user = sessionRes?.payload?.[0];
     const patronId = typeof user?.id === "number" ? user.id : parseInt(String(user?.id ?? ""), 10);
     if (!Number.isFinite(patronId) || patronId <= 0) {
@@ -131,7 +135,10 @@ export async function POST(req: NextRequest) {
     let holdsReady = 0;
     try {
       const [checkoutsCountRes, holdsRes] = await Promise.all([
-        callOpenSRF("open-ils.actor", "open-ils.actor.user.checked_out.count", [authtoken, patronId]),
+        callOpenSRF("open-ils.actor", "open-ils.actor.user.checked_out.count", [
+          authtoken,
+          patronId,
+        ]),
         callOpenSRF("open-ils.circ", "open-ils.circ.holds.retrieve", [authtoken, patronId]),
       ]);
 
@@ -187,7 +194,6 @@ export async function POST(req: NextRequest) {
         holds_ready: holdsReady,
       },
     });
-
   } catch (error) {
     return serverErrorResponse(error, "Self-checkout auth", req);
   }
@@ -205,11 +211,7 @@ export async function DELETE(req: NextRequest) {
     if (authtoken) {
       // End the Evergreen session
       try {
-        await callOpenSRF(
-          "open-ils.auth",
-          "open-ils.auth.session.delete",
-          [authtoken]
-        );
+        await callOpenSRF("open-ils.auth", "open-ils.auth.session.delete", [authtoken]);
       } catch (_error) {
         // Ignore _errors during logout
       }
@@ -235,7 +237,6 @@ export async function DELETE(req: NextRequest) {
     }
 
     return successResponse({ loggedOut: true });
-
   } catch (_error) {
     return serverErrorResponse(_error, "Self-checkout logout", req);
   }

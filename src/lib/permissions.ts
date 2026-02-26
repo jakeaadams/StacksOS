@@ -22,7 +22,9 @@ export class PermissionError extends Error {
 }
 
 function resolveRbacMode(): RbacMode {
-  const raw = String(process.env.STACKSOS_RBAC_MODE || "").trim().toLowerCase();
+  const raw = String(process.env.STACKSOS_RBAC_MODE || "")
+    .trim()
+    .toLowerCase();
   if (raw === "strict" || raw === "warn" || raw === "off") return raw;
   return process.env.NODE_ENV === "production" ? "strict" : "warn";
 }
@@ -55,7 +57,7 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
     const map: Record<string, boolean> = {};
     for (const perm of perms) {
       if (perm in payload) {
-        map[perm] = Boolean((payload as Record<string, unknown>)[perm]);
+        map[perm] = Boolean((payload as Record<string, any>)[perm]);
       }
     }
     if (Object.keys(map).length > 0) return map;
@@ -93,7 +95,10 @@ async function tryPermCheck(authtoken: string, perms: string[], orgId?: number) 
   return { map: null as Record<string, boolean> | null, event: lastEvent };
 }
 
-export async function requirePermissions(perms: string[], orgId?: number): Promise<{
+export async function requirePermissions(
+  perms: string[],
+  orgId?: number
+): Promise<{
   authtoken: string;
   actor: any;
   result: PermissionCheckResult;
@@ -109,18 +114,29 @@ export async function requirePermissions(perms: string[], orgId?: number): Promi
   }
 
   const actor = await getActorFromToken(authtoken);
-  const actorId = typeof actor?.id === "number" ? actor.id : parseInt(String(actor?.id ?? ""), 10);
+  const actorRecord = actor && typeof actor === "object" ? (actor as Record<string, any>) : null;
+  const actorIdRaw = actorRecord?.id;
+  const actorId =
+    typeof actorIdRaw === "number" ? actorIdRaw : parseInt(String(actorIdRaw ?? ""), 10);
   if (Number.isFinite(actorId)) {
     await requireStaffSession(actorId);
   }
-  const resolvedOrgId = orgId ?? actor?.ws_ou ?? actor?.home_ou;
+  const wsOrg = Number.parseInt(String(actorRecord?.ws_ou ?? ""), 10);
+  const homeOrg = Number.parseInt(String(actorRecord?.home_ou ?? ""), 10);
+  const resolvedOrgId =
+    orgId ??
+    (Number.isFinite(wsOrg) ? wsOrg : undefined) ??
+    (Number.isFinite(homeOrg) ? homeOrg : undefined);
 
   const { map, event } = await tryPermCheck(authtoken, perms, resolvedOrgId);
 
   if (!map) {
     const message = event?.textcode || event?.desc || "Permission check failed";
     if (RBAC_MODE === "warn") {
-      logger.warn({ component: "rbac", orgId: resolvedOrgId, perms, message }, "RBAC warn: permission check failed");
+      logger.warn(
+        { component: "rbac", orgId: resolvedOrgId, perms, message },
+        "RBAC warn: permission check failed"
+      );
       return {
         authtoken,
         actor,
@@ -134,7 +150,10 @@ export async function requirePermissions(perms: string[], orgId?: number): Promi
 
   if (missing.length > 0) {
     if (RBAC_MODE === "warn") {
-      logger.warn({ component: "rbac", orgId: resolvedOrgId, missing }, "RBAC warn: missing permissions");
+      logger.warn(
+        { component: "rbac", orgId: resolvedOrgId, missing },
+        "RBAC warn: missing permissions"
+      );
       return {
         authtoken,
         actor,

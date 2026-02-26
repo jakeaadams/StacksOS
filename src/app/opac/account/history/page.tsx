@@ -6,6 +6,15 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { UnoptimizedImage } from "@/components/shared";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   History,
   BookOpen,
@@ -88,8 +97,8 @@ export default function ReadingHistoryPage() {
       setHistory(data.history || []);
       setStats(data.stats);
       setTotalPages(Math.ceil((data.total || 0) / itemsPerPage));
-    } catch (err: any) {
-      setError(err instanceof Error ? (err as any).message : "An error occurred");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -116,7 +125,9 @@ export default function ReadingHistoryPage() {
 
   const exportHistory = async (format: "csv" | "json") => {
     try {
-      const response = await fetch(`/api/opac/history/export?format=${format}`, { credentials: "include" });
+      const response = await fetch(`/api/opac/history/export?format=${format}`, {
+        credentials: "include",
+      });
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -128,7 +139,7 @@ export default function ReadingHistoryPage() {
         window.URL.revokeObjectURL(url);
         a.remove();
       }
-    } catch (err: any) {
+    } catch (err) {
       clientLogger.error("Export failed:", err);
     }
   };
@@ -164,14 +175,15 @@ export default function ReadingHistoryPage() {
               </div>
             </div>
             <div className="flex gap-2">
-              <button type="button"
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => exportHistory("csv")}
-                className="flex items-center gap-2 px-4 py-2 border border-border text-foreground/80
-                         rounded-lg hover:bg-muted/30 transition-colors text-sm"
+                className="flex items-center gap-2 text-foreground/80 hover:bg-muted/30 text-sm"
               >
                 <Download className="h-4 w-4" />
                 Export CSV
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -181,8 +193,8 @@ export default function ReadingHistoryPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <BookOpen className="h-5 w-5 text-blue-600" />
+                <div className="rounded-lg bg-primary-100 p-2">
+                  <BookOpen className="h-5 w-5 text-primary-600" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{stats.totalBooksRead}</p>
@@ -192,8 +204,8 @@ export default function ReadingHistoryPage() {
             </div>
             <div className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Calendar className="h-5 w-5 text-green-600" />
+                <div className="rounded-lg bg-primary-100 p-2">
+                  <Calendar className="h-5 w-5 text-primary-600" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{stats.totalThisYear}</p>
@@ -203,8 +215,8 @@ export default function ReadingHistoryPage() {
             </div>
             <div className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-purple-600" />
+                <div className="rounded-lg bg-primary-100 p-2">
+                  <TrendingUp className="h-5 w-5 text-primary-600" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{stats.averagePerMonth}</p>
@@ -214,11 +226,13 @@ export default function ReadingHistoryPage() {
             </div>
             <div className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 rounded-lg">
-                  <Star className="h-5 w-5 text-amber-600" />
+                <div className="rounded-lg bg-primary-100 p-2">
+                  <Star className="h-5 w-5 text-primary-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground truncate">{stats.favoriteAuthor || "—"}</p>
+                  <p className="text-2xl font-bold text-foreground truncate">
+                    {stats.favoriteAuthor || "—"}
+                  </p>
                   <p className="text-sm text-muted-foreground">Top Author</p>
                 </div>
               </div>
@@ -232,43 +246,50 @@ export default function ReadingHistoryPage() {
             <form onSubmit={handleSearch} className="flex-1 min-w-[200px]">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
-                <input
+                <Input
                   type="text"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder={t("searchHistory")}
-                  className="w-full pl-14 pr-4 py-2 border border-border rounded-lg
-                           focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="pl-14"
                 />
               </div>
             </form>
-            <select
+            <Select
               value={filterYear}
-              onChange={(e) => {
-                setFilterYear(e.target.value);
+              onValueChange={(value) => {
+                setFilterYear(value === "all" ? "" : value);
                 setPage(1);
               }}
-              className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <option value="">All Years</option>
-              {years.map((year: any) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-            <select
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="All Years" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Years</SelectItem>
+                {years.map((year) => (
+                  <SelectItem key={year} value={String(year)}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
               value={sortBy}
-              onChange={(e) => {
-                setSortBy(e.target.value as any);
+              onValueChange={(value) => {
+                setSortBy(value as "date" | "title" | "author");
                 setPage(1);
               }}
-              className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <option value="date">Sort by Date</option>
-              <option value="title">Sort by Title</option>
-              <option value="author">Sort by Author</option>
-            </select>
+              <SelectTrigger className="w-[170px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Sort by Date</SelectItem>
+                <SelectItem value="title">Sort by Title</SelectItem>
+                <SelectItem value="author">Sort by Author</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -288,9 +309,7 @@ export default function ReadingHistoryPage() {
         ) : history.length === 0 ? (
           <div className="bg-card rounded-xl border border-border p-12 text-center">
             <History className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">
-              {t("noHistory")} yet
-            </h2>
+            <h2 className="text-xl font-semibold text-foreground mb-2">{t("noHistory")} yet</h2>
             <p className="text-muted-foreground mb-6">
               {filterYear || searchQuery
                 ? "No items match your filters. Try adjusting your search."
@@ -298,8 +317,8 @@ export default function ReadingHistoryPage() {
             </p>
             <Link
               href="/opac"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white
-                       rounded-lg font-medium hover:bg-primary-700 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 stx-action-primary
+                       rounded-lg font-medium hover:brightness-110 transition-colors"
             >
               <Search className="h-4 w-4" />
               Browse Catalog
@@ -337,9 +356,7 @@ export default function ReadingHistoryPage() {
                     >
                       {item.title}
                     </Link>
-                    {item.author && (
-                      <p className="text-sm text-muted-foreground">{item.author}</p>
-                    )}
+                    {item.author && <p className="text-sm text-muted-foreground">{item.author}</p>}
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
@@ -352,9 +369,7 @@ export default function ReadingHistoryPage() {
                         </span>
                       )}
                       {item.renewalCount > 0 && (
-                        <span className="text-primary-600">
-                          Renewed {item.renewalCount}x
-                        </span>
+                        <span className="text-primary-600">Renewed {item.renewalCount}x</span>
                       )}
                     </div>
                   </div>
@@ -376,25 +391,29 @@ export default function ReadingHistoryPage() {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 mt-8">
-                <button type="button"
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                   className="p-2 border border-border rounded-lg disabled:opacity-50 
                            disabled:cursor-not-allowed hover:bg-muted/30"
                 >
                   <ChevronLeft className="h-5 w-5" />
-                </button>
+                </Button>
                 <span className="px-4 py-2 text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
-                <button type="button"
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
                   className="p-2 border border-border rounded-lg disabled:opacity-50 
                            disabled:cursor-not-allowed hover:bg-muted/30"
                 >
                   <ChevronRight className="h-5 w-5" />
-                </button>
+                </Button>
               </div>
             )}
           </>

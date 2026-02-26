@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 
-export interface ExportColumn<T extends Record<string, unknown> = Record<string, unknown>> {
+export interface ExportColumn<T extends Record<string, any> = Record<string, any>> {
   key: string;
   label: string;
   formatter?: (value: unknown, row: T) => string;
@@ -32,7 +32,11 @@ function escapeCSVValue(value: unknown): string {
 /**
  * Generic file download helper (browser-only).
  */
-export function downloadFile(content: BlobPart | BlobPart[], filename: string, mimeType: string): void {
+export function downloadFile(
+  content: BlobPart | BlobPart[],
+  filename: string,
+  mimeType: string
+): void {
   const blob = new Blob(Array.isArray(content) ? content : [content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -61,7 +65,7 @@ export function downloadFile(content: BlobPart | BlobPart[], filename: string, m
  * ];
  * const csv = convertToCSV(data);
  */
-export function convertToCSV<T extends Record<string, unknown>>(
+export function convertToCSV<T extends Record<string, any>>(
   data: T[],
   options?: {
     /** Custom header labels (key -> label mapping) */
@@ -79,23 +83,25 @@ export function convertToCSV<T extends Record<string, unknown>>(
   const { headers: customHeaders, columns, includeHeaders = true } = options || {};
 
   // Determine columns to include
-  const columnKeys = columns || Array.from(
-    data.reduce((set, row) => {
-      Object.keys(row).forEach((key) => set.add(key));
-      return set;
-    }, new Set<string>())
-  );
+  const columnKeys =
+    columns ||
+    Array.from(
+      data.reduce((set, row) => {
+        Object.keys(row).forEach((key) => set.add(key));
+        return set;
+      }, new Set<string>())
+    );
 
   // Build header row
-  const headerRow = columnKeys.map((key) => {
-    const label = customHeaders?.[key] || key;
-    return escapeCSVValue(label);
-  }).join(",");
+  const headerRow = columnKeys
+    .map((key) => {
+      const label = customHeaders?.[key] || key;
+      return escapeCSVValue(label);
+    })
+    .join(",");
 
   // Build data rows
-  const dataRows = data.map((row) =>
-    columnKeys.map((key) => escapeCSVValue(row[key])).join(",")
-  );
+  const dataRows = data.map((row) => columnKeys.map((key) => escapeCSVValue(row[key])).join(","));
 
   // Combine header and data
   const rows = includeHeaders ? [headerRow, ...dataRows] : dataRows;
@@ -107,7 +113,7 @@ export function convertToCSV<T extends Record<string, unknown>>(
  * Converts an array of objects to CSV using an explicit column definition
  * (useful when you need formatting or stable ordering).
  */
-export function toCSVWithColumns<T extends Record<string, unknown>>(
+export function toCSVWithColumns<T extends Record<string, any>>(
   data: T[],
   columns: ExportColumn<T>[],
   options?: { includeHeaders?: boolean }
@@ -162,7 +168,7 @@ export function downloadCSV(filename: string, csvContent: string): void {
  *   headers: { created_at: "Registration Date" }
  * });
  */
-export function exportToCSV<T extends Record<string, unknown>>(
+export function exportToCSV<T extends Record<string, any>>(
   filename: string,
   data: T[],
   options?: Parameters<typeof convertToCSV>[1]
@@ -208,7 +214,7 @@ export function useCSVExport() {
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const exportData = async <T extends Record<string, unknown>>(
+  const exportData = async <T extends Record<string, any>>(
     filename: string,
     data: T[],
     options?: Parameters<typeof convertToCSV>[1]

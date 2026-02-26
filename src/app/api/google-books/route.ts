@@ -4,7 +4,7 @@ import { errorResponse, getRequestMeta, successResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getRedisClient, redisEnabled, redisKey } from "@/lib/redis";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 /**
  * Google Books API Integration
@@ -53,7 +53,7 @@ function getLocalBackoffUntilMs(): number {
 }
 
 function setLocalBackoffUntilMs(untilMs: number): void {
-  (globalThis as Record<string, unknown>)[GLOBAL_BACKOFF_KEY] = untilMs;
+  (globalThis as Record<string, any>)[GLOBAL_BACKOFF_KEY] = untilMs;
 }
 
 async function getBackoffUntilMs(): Promise<number> {
@@ -87,7 +87,8 @@ async function setBackoffUntilMs(untilMs: number): Promise<void> {
 
 function parseRetryAfterSeconds(res: Response): number {
   const retryAfterHeader = String(res.headers.get("retry-after") || "").trim();
-  const fromHeader = retryAfterHeader && /^\d+$/.test(retryAfterHeader) ? parseInt(retryAfterHeader, 10) : NaN;
+  const fromHeader =
+    retryAfterHeader && /^\d+$/.test(retryAfterHeader) ? parseInt(retryAfterHeader, 10) : NaN;
   if (Number.isFinite(fromHeader) && fromHeader > 0) return fromHeader;
   return 60;
 }
@@ -109,10 +110,10 @@ async function fetchGoogleBook(isbn: string): Promise<{
     }
 
     const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`;
-    const res = await fetch(url, { 
-      next: { revalidate: 86400 } // Cache for 24 hours
+    const res = await fetch(url, {
+      next: { revalidate: 86400 }, // Cache for 24 hours
     });
-    
+
     if (res.status === 429) {
       const retryAfterSeconds = parseRetryAfterSeconds(res);
       await setBackoffUntilMs(Date.now() + Math.max(10, retryAfterSeconds) * 1000);
@@ -126,13 +127,13 @@ async function fetchGoogleBook(isbn: string): Promise<{
       );
       return { data: null, rateLimited: false, retryAfterSeconds: null };
     }
-    
+
     const data = await res.json();
-    
+
     if (!data.items || data.items.length === 0) {
       return { data: null, rateLimited: false, retryAfterSeconds: null };
     }
-    
+
     const book = data.items[0];
     const volumeInfo = book.volumeInfo || {};
 
@@ -159,7 +160,11 @@ async function fetchGoogleBook(isbn: string): Promise<{
   }
 }
 
-async function searchGoogleBooks(query: string, maxResults: number, startIndex: number): Promise<{
+async function searchGoogleBooks(
+  query: string,
+  maxResults: number,
+  startIndex: number
+): Promise<{
   totalItems: number;
   items: GoogleBooksSearchItem[];
   rateLimited?: boolean;
@@ -215,7 +220,8 @@ async function searchGoogleBooks(query: string, maxResults: number, startIndex: 
         id: typeof book?.id === "string" ? book.id : "",
         title: typeof volumeInfo?.title === "string" ? volumeInfo.title : null,
         authors: Array.isArray(volumeInfo?.authors) ? volumeInfo.authors.filter(Boolean) : [],
-        publishedDate: typeof volumeInfo?.publishedDate === "string" ? volumeInfo.publishedDate : null,
+        publishedDate:
+          typeof volumeInfo?.publishedDate === "string" ? volumeInfo.publishedDate : null,
         thumbnail,
         image,
         previewLink: typeof volumeInfo?.previewLink === "string" ? volumeInfo.previewLink : null,
@@ -245,7 +251,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  
+
   // Single ISBN
   const isbn = searchParams.get("isbn");
   if (isbn) {
@@ -253,20 +259,23 @@ export async function GET(request: NextRequest) {
     const { data, rateLimited, retryAfterSeconds } = await fetchGoogleBook(cleaned);
     return successResponse({ data, rateLimited, retryAfterSeconds });
   }
-  
+
   // Batch ISBNs (comma-separated)
   const isbns = searchParams.get("isbns");
   if (isbns) {
-    const isbnList = isbns.split(",").map((i: any) => i.trim().replace(/-/g, "")).filter(Boolean);
-    
+    const isbnList = isbns
+      .split(",")
+      .map((i: any) => i.trim().replace(/-/g, ""))
+      .filter(Boolean);
+
     // Limit to 20 ISBNs per request to avoid rate limiting
     const limitedList = isbnList.slice(0, 20);
-    
+
     // Fetch in parallel with small delay between requests
     const results: Record<string, GoogleBookData | null> = {};
     let rateLimited = false;
     let retryAfterSeconds: number | null = null;
-    
+
     await Promise.all(
       limitedList.map(async (isbnItem, index) => {
         // Stagger requests slightly to avoid rate limiting
@@ -279,7 +288,7 @@ export async function GET(request: NextRequest) {
         }
       })
     );
-    
+
     return successResponse({ results, rateLimited, retryAfterSeconds });
   }
 
@@ -296,6 +305,6 @@ export async function GET(request: NextRequest) {
       return errorResponse("Failed to search Google Books", 502);
     }
   }
-  
+
   return errorResponse("Missing isbn, isbns, or q parameter", 400);
 }

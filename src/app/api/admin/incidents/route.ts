@@ -1,21 +1,32 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, parseJsonBodyWithSchema, successResponse, serverErrorResponse, getRequestMeta } from "@/lib/api";
+import {
+  errorResponse,
+  parseJsonBodyWithSchema,
+  successResponse,
+  serverErrorResponse,
+  getRequestMeta,
+} from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { requireSaaSAccess } from "@/lib/saas-rbac";
 import { createIncident, listIncidents, resolveIncident } from "@/lib/db/support";
 import { logAuditEvent } from "@/lib/audit";
 
 const BodySchema = z.discriminatedUnion("action", [
-  z.object({
-    action: z.literal("create"),
-    message: z.string().min(1).max(1000),
-    severity: z.enum(["info", "warning", "error"]).default("info"),
-    endsAt: z.string().nullable().optional(),
-  }).strict(),
-  z.object({
-    action: z.literal("resolve"),
-    id: z.number().int().positive(),
-  }).strict(),
+  z
+    .object({
+      action: z.literal("create"),
+      message: z.string().min(1).max(1000),
+      severity: z.enum(["info", "warning", "error"]).default("info"),
+      endsAt: z.string().nullable().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("resolve"),
+      id: z.number().int().positive(),
+    })
+    .strict(),
 ]);
 
 export async function GET(req: NextRequest) {
@@ -32,7 +43,12 @@ export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
-    const { actor } = await requirePermissions(["ADMIN_CONFIG"]);
+    const { actor } = await requireSaaSAccess({
+      target: "platform",
+      minRole: "platform_admin",
+      evergreenPerms: ["ADMIN_CONFIG"],
+      autoBootstrapPlatformOwner: true,
+    });
     const body = await parseJsonBodyWithSchema(req, BodySchema);
     if (body instanceof Response) return body;
 
@@ -81,4 +97,3 @@ export async function POST(req: NextRequest) {
     return serverErrorResponse(error, "Incidents POST", req);
   }
 }
-

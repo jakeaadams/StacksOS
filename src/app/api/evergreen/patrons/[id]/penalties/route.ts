@@ -48,7 +48,7 @@ function getRequestMeta(req: NextRequest) {
   };
 }
 
-function parsePenaltyTypePayload(t: Record<string, unknown>): PenaltyType {
+function parsePenaltyTypePayload(t: Record<string, any>): PenaltyType {
   const rawFields = t.__p as unknown[] | undefined;
   return {
     id: (t.id as number) || (rawFields?.[0] as number) || 0,
@@ -59,12 +59,12 @@ function parsePenaltyTypePayload(t: Record<string, unknown>): PenaltyType {
   };
 }
 
-function parsePenaltyPayload(p: Record<string, unknown>, penaltyTypes: PenaltyType[]): PatronPenalty {
+function parsePenaltyPayload(p: Record<string, any>, penaltyTypes: PenaltyType[]): PatronPenalty {
   const rawFields = p.__p as unknown[] | undefined;
   const penaltyTypeId = (p.standing_penalty as number) || (rawFields?.[1] as number) || 0;
   const penaltyTypeInfo = penaltyTypes.find((t) => t.id === penaltyTypeId);
-  
-  const spData = p.standing_penalty as Record<string, unknown> | undefined;
+
+  const spData = p.standing_penalty as Record<string, any> | undefined;
   const spName = spData?.name || spData?.label || penaltyTypeInfo?.name || "";
   const spLabel = spData?.label || spData?.name || penaltyTypeInfo?.label || "Unknown Penalty";
 
@@ -86,18 +86,22 @@ function parsePenaltyPayload(p: Record<string, unknown>, penaltyTypes: PenaltyTy
  * GET /api/evergreen/patrons/[id]/penalties
  * Fetch all penalties for a patron and penalty types
  */
-const penaltyPostSchema = z.object({
-  penaltyType: z.coerce.number().int().positive().optional(),
-  standing_penalty: z.coerce.number().int().positive().optional(),
-  note: z.string().max(2048).optional(),
-  orgUnit: z.coerce.number().int().positive().optional(),
-  org_unit: z.coerce.number().int().positive().optional(),
-}).passthrough();
+const penaltyPostSchema = z
+  .object({
+    penaltyType: z.coerce.number().int().positive().optional(),
+    standing_penalty: z.coerce.number().int().positive().optional(),
+    note: z.string().max(2048).optional(),
+    orgUnit: z.coerce.number().int().positive().optional(),
+    org_unit: z.coerce.number().int().positive().optional(),
+  })
+  .passthrough();
 
-const penaltyDeleteSchema = z.object({
-  penaltyId: z.coerce.number().int().positive().optional(),
-  penalty_id: z.coerce.number().int().positive().optional(),
-}).passthrough();
+const penaltyDeleteSchema = z
+  .object({
+    penaltyId: z.coerce.number().int().positive().optional(),
+    penalty_id: z.coerce.number().int().positive().optional(),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
@@ -113,8 +117,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     // Fetch patron with standing_penalties fleshed
     const patron = await getPatronFleshed(authtoken, patronId);
-    
-    if (!patron || (patron as Record<string, unknown>).ilsevent) {
+
+    if (!patron || (patron as Record<string, any>).ilsevent) {
       return errorResponse("Patron not found", 404);
     }
 
@@ -126,15 +130,17 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         "open-ils.actor.standing_penalty.types.retrieve"
       );
       const rawTypes = typesResponse?.payload?.[0];
-      penaltyTypes = (Array.isArray(rawTypes) ? rawTypes : []).map((t) => parsePenaltyTypePayload(t)
+      penaltyTypes = (Array.isArray(rawTypes) ? rawTypes : []).map((t) =>
+        parsePenaltyTypePayload(t)
       );
     }
 
-    const rawPenalties = (patron as Record<string, unknown>).standing_penalties;
-    const penalties: PatronPenalty[] = (Array.isArray(rawPenalties) ? rawPenalties : []).map((p) => parsePenaltyPayload(p, penaltyTypes)
+    const rawPenalties = (patron as Record<string, any>).standing_penalties;
+    const penalties: PatronPenalty[] = (Array.isArray(rawPenalties) ? rawPenalties : []).map((p) =>
+      parsePenaltyPayload(p, penaltyTypes)
     );
 
-    return successResponse({ 
+    return successResponse({
       penalties,
       penaltyTypes: includeTypes ? penaltyTypes : undefined,
     });
@@ -167,7 +173,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const penaltyType = parseInt(String(body.penaltyType || body.standing_penalty || ""), 10);
     const note = String(body.note || "").trim();
     const orgUnit = parseInt(
-      String(body.orgUnit || body.org_unit || (actor as Record<string, unknown>)?.ws_ou || 1),
+      String(body.orgUnit || body.org_unit || (actor as Record<string, any>)?.ws_ou || 1),
       10
     );
 
@@ -180,19 +186,18 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       standing_penalty: penaltyType,
       org_unit: orgUnit,
       note: note || null,
-      staff: (actor as Record<string, unknown>)?.id,
+      staff: (actor as Record<string, any>)?.id,
       set_date: "now",
       isnew: 1,
     });
 
-    const response = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.user.penalty.apply",
-      [authtoken, penalty]
-    );
+    const response = await callOpenSRF("open-ils.actor", "open-ils.actor.user.penalty.apply", [
+      authtoken,
+      penalty,
+    ]);
 
     const result = response?.payload?.[0];
-    if (isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
+    if (isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to apply penalty"), 400, result);
     }
 
@@ -243,14 +248,13 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       return errorResponse("Penalty ID is required", 400);
     }
 
-    const response = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.user.penalty.remove",
-      [authtoken, penaltyId]
-    );
+    const response = await callOpenSRF("open-ils.actor", "open-ils.actor.user.penalty.remove", [
+      authtoken,
+      penaltyId,
+    ]);
 
     const result = response?.payload?.[0];
-    if (isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
+    if (isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to remove penalty"), 400, result);
     }
 

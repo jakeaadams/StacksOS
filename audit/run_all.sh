@@ -25,6 +25,7 @@ require_cmd curl
 require_cmd python3
 require_cmd awk
 require_cmd grep
+require_cmd node
 
 # Server required for API/workflow audits.
 if ! curl -fsS "$BASE_URL/api/evergreen/ping" >/dev/null 2>&1; then
@@ -77,6 +78,62 @@ banner "RBAC audit (mutation endpoints must be permission-gated)"
 banner "UI audit (dead UI heuristics)"
 "$ROOT_DIR/audit/run_ui_audit.sh"
 
+banner "OPAC audit (routes + APIs + Evergreen bridge)"
+"$ROOT_DIR/audit/run_opac_audit.sh"
+
+banner "Task benchmark (UI task completion p50/p95)"
+TASK_BENCH_STAFF_USER_EFFECTIVE="${TASK_BENCH_STAFF_USER:-${STACKSOS_BENCH_STAFF_USER:-${E2E_STAFF_USER:-}}}"
+TASK_BENCH_STAFF_PASS_EFFECTIVE="${TASK_BENCH_STAFF_PASS:-${STACKSOS_BENCH_STAFF_PASS:-${E2E_STAFF_PASS:-}}}"
+TASK_BENCH_REQUIRE_STAFF_EFFECTIVE="${TASK_BENCH_REQUIRE_STAFF:-}"
+TASK_BENCH_ENFORCE_EFFECTIVE="${TASK_BENCH_ENFORCE:-}"
+TASK_BENCH_CLEAR_RATE_LIMIT_EFFECTIVE="${TASK_BENCH_CLEAR_STAFF_AUTH_RATE_LIMIT:-}"
+if [[ -n "$TASK_BENCH_STAFF_USER_EFFECTIVE" && -n "$TASK_BENCH_STAFF_PASS_EFFECTIVE" ]]; then
+  if [[ -z "$TASK_BENCH_REQUIRE_STAFF_EFFECTIVE" ]]; then
+    TASK_BENCH_REQUIRE_STAFF_EFFECTIVE="1"
+  fi
+  if [[ -z "$TASK_BENCH_ENFORCE_EFFECTIVE" ]]; then
+    TASK_BENCH_ENFORCE_EFFECTIVE="1"
+  fi
+  if [[ -z "$TASK_BENCH_CLEAR_RATE_LIMIT_EFFECTIVE" ]]; then
+    TASK_BENCH_CLEAR_RATE_LIMIT_EFFECTIVE="1"
+  fi
+else
+  if [[ -z "$TASK_BENCH_REQUIRE_STAFF_EFFECTIVE" ]]; then
+    TASK_BENCH_REQUIRE_STAFF_EFFECTIVE="0"
+  fi
+  if [[ -z "$TASK_BENCH_ENFORCE_EFFECTIVE" ]]; then
+    TASK_BENCH_ENFORCE_EFFECTIVE="0"
+  fi
+  if [[ -z "$TASK_BENCH_CLEAR_RATE_LIMIT_EFFECTIVE" ]]; then
+    TASK_BENCH_CLEAR_RATE_LIMIT_EFFECTIVE="0"
+  fi
+  echo "NOTE: task benchmark running without dedicated staff credentials; staff metrics may be skipped." >&2
+fi
+
+if [[ "$TASK_BENCH_CLEAR_RATE_LIMIT_EFFECTIVE" == "1" ]]; then
+  if command -v redis-cli >/dev/null 2>&1; then
+    STACKSOS_REDIS_URL_EFFECTIVE="${STACKSOS_REDIS_URL:-redis://127.0.0.1:6379}"
+    STACKSOS_REDIS_PREFIX_EFFECTIVE="${STACKSOS_REDIS_PREFIX:-stacksos}"
+    if redis-cli -u "$STACKSOS_REDIS_URL_EFFECTIVE" PING >/dev/null 2>&1; then
+      RATE_LIMIT_PATTERN="${STACKSOS_REDIS_PREFIX_EFFECTIVE}:ratelimit:staff-auth:*"
+      DELETED_KEYS=$(
+        redis-cli -u "$STACKSOS_REDIS_URL_EFFECTIVE" --scan --pattern "$RATE_LIMIT_PATTERN" \
+          | xargs -r -n 100 redis-cli -u "$STACKSOS_REDIS_URL_EFFECTIVE" DEL \
+          | awk '{sum += $1} END {print sum+0}'
+      )
+      if [[ "$DELETED_KEYS" -gt 0 ]]; then
+        echo "Cleared $DELETED_KEYS stale staff-auth rate-limit key(s) before task benchmark."
+      fi
+    fi
+  fi
+fi
+
+TASK_BENCH_STAFF_USER="$TASK_BENCH_STAFF_USER_EFFECTIVE" \
+TASK_BENCH_STAFF_PASS="$TASK_BENCH_STAFF_PASS_EFFECTIVE" \
+TASK_BENCH_REQUIRE_STAFF="$TASK_BENCH_REQUIRE_STAFF_EFFECTIVE" \
+TASK_BENCH_ENFORCE="$TASK_BENCH_ENFORCE_EFFECTIVE" \
+node "$ROOT_DIR/scripts/task-benchmark.mjs"
+
 banner "API audit (adapter surface)"
 "$ROOT_DIR/audit/run_api_audit.sh"
 
@@ -85,10 +142,10 @@ API_SUMMARY="$ROOT_DIR/audit/api/summary.tsv"
 if [[ -f "$API_SUMMARY" ]]; then
   # Some API audit fixtures are intentionally negative (edge-case validation)
   # and should not fail the "all endpoints must be 200" gate.
-  NON200=$(awk 'NR>1 && $2 != "200" && $1 !~ /^(circ_checkout_block|circ_checkout_bad_patron)$/ {count++} END {print count+0}' "$API_SUMMARY")
+  NON200=$(awk 'NR>1 && $2 != "200" && $1 !~ /^(circ_checkout_block|circ_checkout_bad_patron|ai_search_probe|ai_marc_probe)$/ {count++} END {print count+0}' "$API_SUMMARY")
   if [[ "$NON200" -gt 0 ]]; then
     echo "ERROR: API audit had $NON200 non-200 endpoints. See: $API_SUMMARY" >&2
-    awk 'NR==1 || ($2 != "200" && $1 !~ /^(circ_checkout_block|circ_checkout_bad_patron)$/)' "$API_SUMMARY" | head -50 >&2
+    awk 'NR==1 || ($2 != "200" && $1 !~ /^(circ_checkout_block|circ_checkout_bad_patron|ai_search_probe|ai_marc_probe)$/)' "$API_SUMMARY" | head -50 >&2
     exit 1
   fi
 fi
@@ -106,6 +163,8 @@ api_dir = root / 'audit' / 'api'
 allowed_ok_false = {
     "circ_checkout_block.json",
     "circ_checkout_bad_patron.json",
+    "ai_search_probe.json",
+    "ai_marc_probe.json",
 }
 
 bad = []
@@ -159,4 +218,6 @@ echo "Artifacts:" \
   && echo "- $ROOT_DIR/audit/api/summary.tsv" \
   && echo "- $ROOT_DIR/audit/workflow/summary.tsv" \
   && echo "- $ROOT_DIR/audit/perf/summary.tsv" \
-  && echo "- $ROOT_DIR/audit/perf/report.json"
+  && echo "- $ROOT_DIR/audit/perf/report.json" \
+  && echo "- $ROOT_DIR/audit/task-benchmark/REPORT.md" \
+  && echo "- $ROOT_DIR/audit/task-benchmark/report.json"

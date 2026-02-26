@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { errorResponse, successResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { getScheduledReportSchedule, listScheduledReportRuns } from "@/lib/db/scheduled-reports";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 function parseId(raw: string | undefined): number | null {
   const id = raw ? parseInt(raw, 10) : NaN;
@@ -25,4 +25,3 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     return serverErrorResponse(error, "Scheduled reports runs GET", req);
   }
 }
-

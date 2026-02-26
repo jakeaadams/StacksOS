@@ -8,6 +8,9 @@ import { useKidsParentGate } from "@/contexts/kids-parent-gate-context";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePatronSession, type PatronCheckout } from "@/hooks/use-patron-session";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   BookOpen,
   Plus,
@@ -78,7 +81,7 @@ function computeCurrentStreak(entries: ReadingEntry[]): number {
 }
 
 export default function ReadingLogPage() {
-  const t = useTranslations("kidsReadingLog");
+  const _t = useTranslations("kidsReadingLog");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoggedIn, checkouts } = usePatronSession();
@@ -155,7 +158,9 @@ export default function ReadingLogPage() {
     const author = searchParams.get("author") || "";
     const isbn = searchParams.get("isbn") || "";
     const cleanIsbn = isbn.replace(/[^0-9Xx]/g, "");
-    const coverUrl = cleanIsbn ? `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-S.jpg` : undefined;
+    const coverUrl = cleanIsbn
+      ? `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-S.jpg`
+      : undefined;
 
     setPrefillBook({
       id: bibId,
@@ -183,13 +188,14 @@ export default function ReadingLogPage() {
         <p className="text-muted-foreground mb-6">
           Kids engagement features are still rolling out. Check back soon.
         </p>
-        <button
+        <Button
           type="button"
           onClick={() => router.push("/opac/kids/account")}
-          className="px-6 py-3 bg-purple-100 text-purple-700 rounded-xl font-medium hover:bg-purple-200"
+          variant="outline"
+          className="border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100"
         >
           Back to My Stuff
-        </button>
+        </Button>
       </div>
     );
   }
@@ -225,12 +231,15 @@ export default function ReadingLogPage() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <button type="button"
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => router.back()}
-          className="p-2 text-muted-foreground hover:text-foreground/80 hover:bg-muted/50 rounded-xl"
+          className="rounded-xl text-muted-foreground hover:bg-muted/50 hover:text-foreground/80"
         >
           <ChevronLeft className="h-6 w-6" />
-        </button>
+        </Button>
         <div>
           <h1 className="text-2xl font-bold text-foreground">Reading Log</h1>
           <p className="text-muted-foreground">Track your reading and earn rewards!</p>
@@ -263,20 +272,19 @@ export default function ReadingLogPage() {
       </div>
 
       {/* Add reading button */}
-      <button type="button"
+      <Button
+        type="button"
         onClick={() => setShowAddModal(true)}
-        className="w-full flex items-center justify-center gap-2 p-4 mb-8 bg-gradient-to-r 
-                 from-purple-500 to-pink-500 text-white rounded-2xl font-bold text-lg
-                 hover:from-purple-600 hover:to-pink-600 transition-colors shadow-lg"
+        className="mb-8 w-full rounded-2xl bg-[linear-gradient(125deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_88%)] py-6 text-lg font-bold text-white shadow-lg hover:brightness-110"
       >
         <Plus className="h-6 w-6" />
         Log Reading
-      </button>
+      </Button>
 
       {/* Reading entries */}
       <section>
         <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-purple-500" />
+          <Calendar className="h-5 w-5 text-primary-600" />
           Recent Reading
         </h2>
 
@@ -299,14 +307,15 @@ export default function ReadingLogPage() {
           <div className="text-center py-12 bg-card rounded-2xl">
             <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
             <p className="text-muted-foreground mb-4">No reading logged yet!</p>
-            <button type="button"
+            <Button
+              type="button"
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-purple-100 text-purple-700 
-                       rounded-xl font-medium hover:bg-purple-200"
+              variant="outline"
+              className="inline-flex items-center gap-2 border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100"
             >
               <Plus className="h-5 w-5" />
               Log Your First Book
-            </button>
+            </Button>
           </div>
         )}
       </section>
@@ -345,18 +354,22 @@ function ReadingEntryCard({
   deleteLoading: boolean;
 }) {
   const cleanIsbn = entry.isbn ? entry.isbn.replace(/[^0-9Xx]/g, "") : "";
-  const coverUrl = cleanIsbn ? `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-S.jpg` : undefined;
+  const coverUrl = cleanIsbn
+    ? `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-S.jpg`
+    : undefined;
 
   return (
     <div className="flex gap-4 p-4 bg-card rounded-2xl shadow-sm">
       {/* Book cover placeholder */}
-      <div className="w-16 h-20 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 
-                    flex items-center justify-center shrink-0">
+      <div
+        className="w-16 h-20 rounded-lg bg-gradient-to-br from-primary-100 to-primary-50 
+                    flex items-center justify-center shrink-0"
+      >
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={coverUrl} alt="" className="h-full w-full object-cover rounded-lg" />
         ) : (
-          <BookOpen className="h-6 w-6 text-purple-400" />
+          <BookOpen className="h-6 w-6 text-primary-400" />
         )}
       </div>
 
@@ -364,21 +377,27 @@ function ReadingEntryCard({
         <div className="flex items-start justify-between gap-2">
           <div>
             <h3 className="font-bold text-foreground line-clamp-1">{entry.title}</h3>
-            {entry.author && (
-              <p className="text-sm text-muted-foreground">{entry.author}</p>
-            )}
+            {entry.author && <p className="text-sm text-muted-foreground">{entry.author}</p>}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm text-muted-foreground/70">{formatRelativeDate(entry.readAt)}</span>
-            <button
+            <span className="text-sm text-muted-foreground/70">
+              {formatRelativeDate(entry.readAt)}
+            </span>
+            <Button
               type="button"
               onClick={onDelete}
               disabled={deleteLoading}
-              className="p-2 text-muted-foreground/70 hover:text-red-600 hover:bg-muted/40 rounded-xl disabled:opacity-50"
+              variant="ghost"
+              size="icon"
+              className="rounded-xl text-muted-foreground/70 hover:bg-muted/40 hover:text-destructive disabled:opacity-50"
               aria-label="Delete entry"
             >
-              {deleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-            </button>
+              {deleteLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </Button>
           </div>
         </div>
 
@@ -472,9 +491,10 @@ function AddReadingModal({
             title: r.title || r.simple_record?.title,
             author: r.author || r.simple_record?.author,
             isbn: r.isbn || r.simple_record?.isbn,
-            coverUrl: (r.isbn || r.simple_record?.isbn)
-              ? `https://covers.openlibrary.org/b/isbn/${r.isbn || r.simple_record?.isbn}-S.jpg`
-              : undefined,
+            coverUrl:
+              r.isbn || r.simple_record?.isbn
+                ? `https://covers.openlibrary.org/b/isbn/${r.isbn || r.simple_record?.isbn}-S.jpg`
+                : undefined,
           }))
         );
       }
@@ -518,7 +538,7 @@ function AddReadingModal({
           isbn: saved.isbn ? String(saved.isbn) : selectedBook.isbn,
           readAt: String(saved.readAt || toLocalISODate(new Date())),
           minutesRead: typeof saved.minutesRead === "number" ? saved.minutesRead : minutesRead,
-          pagesRead: typeof saved.pagesRead === "number" ? saved.pagesRead : pagesRead ?? null,
+          pagesRead: typeof saved.pagesRead === "number" ? saved.pagesRead : (pagesRead ?? null),
           rating: typeof saved.rating === "number" ? saved.rating : rating || null,
           notes: saved.notes ? String(saved.notes) : notes || null,
         };
@@ -538,36 +558,40 @@ function AddReadingModal({
           <h2 className="text-xl font-bold text-foreground">
             {step === "book" ? "What did you read?" : "How much did you read?"}
           </h2>
-          <button type="button"
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="p-2 text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted/50 rounded-full"
+            className="rounded-full text-muted-foreground/70 hover:bg-muted/50 hover:text-muted-foreground"
           >
             <X className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
 
         {/* Content */}
-        <div className="p-4 overflow-y-auto" style={{ maxHeight: "60vh" }}>
+        <div className="max-h-[60vh] overflow-y-auto p-4">
           {step === "book" ? (
             <>
               {/* Search */}
               <div className="relative mb-4">
-                <input
+                <Input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   placeholder="Search for a book..."
-                  className="w-full pl-4 pr-12 py-3 rounded-xl border-2 border-border 
-                           focus:border-purple-400 focus:outline-none"
+                  className="h-12 rounded-xl border-2 pr-12"
                 />
-                <button type="button"
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={handleSearch}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-muted-foreground/70 
-                           hover:text-purple-600"
+                  className="absolute right-1.5 top-1/2 h-9 w-9 -translate-y-1/2 text-muted-foreground/70 hover:text-primary-600"
                 >
                   <Search className="h-5 w-5" />
-                </button>
+                </Button>
               </div>
 
               {/* Book list */}
@@ -586,17 +610,20 @@ function AddReadingModal({
                   )}
                   <div className="space-y-2">
                     {searchResults.map((book) => (
-                      <button type="button"
+                      <Button
+                        type="button"
                         key={book.id}
                         onClick={() => {
                           setSelectedBook(book);
                           setStep("details");
                         }}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left
-                                 transition-colors hover:border-purple-400 hover:bg-purple-50
-                                 ${selectedBook?.id === book.id 
-                                   ? "border-purple-400 bg-purple-50" 
-                                   : "border-border"
+                        variant="ghost"
+                        className={`h-auto w-full justify-start gap-3 rounded-xl border-2 p-3 text-left
+                                 transition-colors hover:border-primary-400 hover:bg-primary-50/40
+                                 ${
+                                   selectedBook?.id === book.id
+                                     ? "border-primary-400 bg-primary-50/40"
+                                     : "border-border"
                                  }`}
                       >
                         <div className="w-10 h-14 rounded bg-muted/50 flex items-center justify-center shrink-0">
@@ -605,10 +632,12 @@ function AddReadingModal({
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-foreground line-clamp-1">{book.title}</p>
                           {book.author && (
-                            <p className="text-sm text-muted-foreground line-clamp-1">{book.author}</p>
+                            <p className="text-sm text-muted-foreground line-clamp-1">
+                              {book.author}
+                            </p>
                           )}
                         </div>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </>
@@ -617,9 +646,9 @@ function AddReadingModal({
           ) : (
             <>
               {/* Selected book */}
-              <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl mb-6">
-                <div className="w-10 h-14 rounded bg-purple-100 flex items-center justify-center shrink-0">
-                  <BookOpen className="h-5 w-5 text-purple-500" />
+              <div className="mb-6 flex items-center gap-3 rounded-xl bg-primary-50/60 p-3">
+                <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded bg-primary-100">
+                  <BookOpen className="h-5 w-5 text-primary-500" />
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-foreground">{selectedBook?.title}</p>
@@ -627,114 +656,134 @@ function AddReadingModal({
                     <p className="text-sm text-muted-foreground">{selectedBook.author}</p>
                   )}
                 </div>
-                <button type="button"
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setStep("book")}
-                  className="text-sm text-purple-600 hover:text-purple-700"
+                  className="text-primary-700"
                 >
                   Change
-                </button>
+                </Button>
               </div>
 
               {/* Minutes */}
               <div className="mb-6">
-                <label htmlFor="how-many-minutes-did-you-read" className="block text-sm font-medium text-foreground/80 mb-2">
+                <label
+                  htmlFor="how-many-minutes-did-you-read"
+                  className="block text-sm font-medium text-foreground/80 mb-2"
+                >
                   How many minutes did you read?
                 </label>
                 <div className="flex items-center gap-3">
                   {[10, 15, 20, 30, 45, 60].map((mins) => (
-                    <button type="button"
+                    <Button
+                      type="button"
                       key={mins}
                       onClick={() => setMinutesRead(mins)}
-                      className={`px-4 py-2 rounded-xl font-medium transition-colors
-                               ${minutesRead === mins
-                                 ? "bg-purple-500 text-white"
-                                 : "bg-muted/50 text-foreground/80 hover:bg-muted"
+                      variant={minutesRead === mins ? "default" : "outline"}
+                      className={`rounded-xl font-medium transition-colors
+                               ${
+                                 minutesRead === mins
+                                   ? "stx-action-primary text-white"
+                                   : "bg-muted/50 text-foreground/80 hover:bg-muted"
                                }`}
                     >
                       {mins}
-                    </button>
+                    </Button>
                   ))}
                 </div>
-                <input id="how-many-minutes-did-you-read"
+                <Input
+                  id="how-many-minutes-did-you-read"
                   type="number"
                   value={minutesRead}
                   onChange={(e) => setMinutesRead(parseInt(e.target.value) || 0)}
-                  className="mt-2 w-full px-4 py-2 rounded-xl border-2 border-border 
-                           focus:border-purple-400 focus:outline-none"
+                  className="mt-2 h-11 rounded-xl border-2"
                   placeholder="Or type a number..."
                 />
               </div>
 
               {/* Pages (optional) */}
               <div className="mb-6">
-                <label htmlFor="how-many-pages" className="block text-sm font-medium text-foreground/80 mb-2">
+                <label
+                  htmlFor="how-many-pages"
+                  className="block text-sm font-medium text-foreground/80 mb-2"
+                >
                   How many pages? (optional)
                 </label>
-                <input id="how-many-pages"
+                <Input
+                  id="how-many-pages"
                   type="number"
                   value={pagesRead || ""}
                   onChange={(e) => setPagesRead(parseInt(e.target.value) || undefined)}
-                  className="w-full px-4 py-2 rounded-xl border-2 border-border 
-                           focus:border-purple-400 focus:outline-none"
+                  className="h-11 rounded-xl border-2"
                   placeholder="Enter pages read..."
                 />
               </div>
 
-	              {/* Rating */}
-	              <div className="mb-6">
-	                <label htmlFor="rate-this-book" className="block text-sm font-medium text-foreground/80 mb-2">
-	                  Rate this book (optional)
-	                </label>
-	                <div className="flex items-center gap-2">
-	                  {[1, 2, 3, 4, 5].map((star) => (
-	                    <button type="button"
-	                      key={star}
-	                      onClick={() => setRating(rating === star ? 0 : star)}
-	                      className="p-1"
-	                    >
-	                      <Star
-	                        className={`h-8 w-8 transition-colors ${
-	                          star <= rating
-	                            ? "text-yellow-400 fill-current"
-	                            : "text-muted-foreground/50 hover:text-yellow-300"
-	                        }`}
-	                      />
-	                    </button>
-	                  ))}
-	                </div>
-	              </div>
-
-                {/* Notes */}
-                <div className="mb-6">
-                  <label htmlFor="notes" className="block text-sm font-medium text-foreground/80 mb-2">
-                    Notes (optional)
-                  </label>
-                  <textarea id="notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={3}
-                    placeholder="What did you like? Any new words? Favorite part?"
-                    className="w-full px-4 py-2 rounded-xl border-2 border-border focus:border-purple-400 focus:outline-none"
-                  />
+              {/* Rating */}
+              <div className="mb-6">
+                <label
+                  htmlFor="rate-this-book"
+                  className="block text-sm font-medium text-foreground/80 mb-2"
+                >
+                  Rate this book (optional)
+                </label>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 p-1"
+                      type="button"
+                      key={star}
+                      onClick={() => setRating(rating === star ? 0 : star)}
+                    >
+                      <Star
+                        className={`h-8 w-8 transition-colors ${
+                          star <= rating
+                            ? "text-yellow-400 fill-current"
+                            : "text-muted-foreground/50 hover:text-yellow-300"
+                        }`}
+                      />
+                    </Button>
+                  ))}
                 </div>
-	            </>
-	          )}
-	        </div>
+              </div>
+
+              {/* Notes */}
+              <div className="mb-6">
+                <label
+                  htmlFor="notes"
+                  className="block text-sm font-medium text-foreground/80 mb-2"
+                >
+                  Notes (optional)
+                </label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  placeholder="What did you like? Any new words? Favorite part?"
+                  className="rounded-xl border-2"
+                />
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Footer */}
         <div className="p-4 border-t border-border/50">
           {step === "details" && (
-            <button type="button"
+            <Button
+              type="button"
               onClick={handleSubmit}
               disabled={!selectedBook || minutesRead <= 0}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 
-                       bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl 
-                       font-bold hover:from-purple-600 hover:to-pink-600 transition-colors
-                       disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-xl bg-[linear-gradient(125deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_88%)] py-6 font-bold text-white hover:brightness-110 disabled:opacity-50"
             >
               <Check className="h-5 w-5" />
               Log Reading
-            </button>
+            </Button>
           )}
         </div>
       </div>

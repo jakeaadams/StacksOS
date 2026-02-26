@@ -21,7 +21,7 @@ async function anthropicMessages(args: {
     throw new Error("Anthropic is not configured (missing ANTHROPIC_API_KEY)");
   }
 
-  const model = args.config.model || "claude-3-5-sonnet-20240620";
+  const model = args.config.model || "claude-sonnet-4-6";
   const url = `${resolveBaseUrl()}/v1/messages`;
 
   const controller = new AbortController();
@@ -50,7 +50,9 @@ async function anthropicMessages(args: {
       throw new Error(msg);
     }
 
-    const text = Array.isArray(json?.content) ? json.content.map((c: any) => c?.text || "").join("") : "";
+    const text = Array.isArray(json?.content)
+      ? json.content.map((c: any) => c?.text || "").join("")
+      : "";
     if (typeof text !== "string" || !text.trim()) {
       throw new Error("Anthropic returned an empty completion");
     }
@@ -69,6 +71,11 @@ async function anthropicMessages(args: {
         : undefined,
       raw: json,
     };
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`AI provider timeout after ${args.config.timeoutMs}ms (anthropic)`);
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }
@@ -86,4 +93,3 @@ export const anthropicProvider: AiProvider = {
     return { data, completion };
   },
 };
-

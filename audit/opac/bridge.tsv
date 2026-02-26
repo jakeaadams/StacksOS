@@ -1,0 +1,5 @@
+name	status	ok	detail	pass
+evergreen_ping	200	true	ok=true required	yes
+catalog_search	200	true	count=2	yes
+catalog_record	200	true	title=present	yes
+catalog_holdings	200	true	copies=1	yes

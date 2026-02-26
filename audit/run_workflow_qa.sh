@@ -31,21 +31,64 @@ ORG_ID="${ORG_ID:-101}"
 STAFF_USERNAME="${STACKSOS_AUDIT_STAFF_USERNAME:-${E2E_STAFF_USER:-}}"
 STAFF_PASSWORD="${STACKSOS_AUDIT_STAFF_PASSWORD:-${E2E_STAFF_PASS:-}}"
 
+read_demo_value() {
+  local demo_file="$1"
+  local key="$2"
+  local fallback="${3:-}"
+  python3 - "$demo_file" "$key" "$fallback" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+demo_file, key, fallback = sys.argv[1], sys.argv[2], sys.argv[3]
+try:
+    path = Path(demo_file)
+    if not path.exists():
+        print(fallback)
+        raise SystemExit
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        print(fallback)
+        raise SystemExit
+    value = data.get(key, fallback)
+    if value is None:
+        print(fallback)
+    else:
+        text = str(value).strip()
+        print(text if text else fallback)
+except Exception:
+    print(fallback)
+PY
+}
+
 if [[ "$STACKSOS_AUDIT_MUTATE" == "1" ]]; then
   DEMO_DATA="${DEMO_DATA:-$PROJECT_DIR/audit/demo_data.json}"
   if [[ -f "$DEMO_DATA" ]]; then
+    DEMO_PATRON_BARCODE="$(read_demo_value "$DEMO_DATA" "demoPatronBarcode" "")"
+    DEMO_ITEM_BARCODE="$(read_demo_value "$DEMO_DATA" "demoItemBarcode" "")"
+    DEMO_ORG_ID="$(read_demo_value "$DEMO_DATA" "orgId" "")"
+    DEMO_WORKSTATION="$(read_demo_value "$DEMO_DATA" "workstation" "")"
+
     if [[ -z "$PATRON_BARCODE" ]]; then
-      PATRON_BARCODE="$(python3 -c "import json; print(json.load(open('${DEMO_DATA}')).get('demoPatronBarcode',''))" 2>/dev/null)" || true
+      if [[ -n "$DEMO_PATRON_BARCODE" ]]; then
+        PATRON_BARCODE="$DEMO_PATRON_BARCODE"
+      fi
     fi
     if [[ "$ITEM_BARCODE_SET" != "1" ]]; then
-      ITEM_BARCODE="$(python3 -c "import json; print(json.load(open('${DEMO_DATA}')).get('demoItemBarcode',''))" 2>/dev/null)" || true
+      if [[ -n "$DEMO_ITEM_BARCODE" ]]; then
+        ITEM_BARCODE="$DEMO_ITEM_BARCODE"
+      fi
       ITEM_BARCODE_SET="1"
     fi
     if [[ "${ORG_ID:-}" == "101" ]]; then
-      ORG_ID="$(python3 -c "import json; print(json.load(open('${DEMO_DATA}')).get('orgId', 101))" 2>/dev/null)" || true
+      if [[ "$DEMO_ORG_ID" =~ ^[0-9]+$ ]]; then
+        ORG_ID="$DEMO_ORG_ID"
+      fi
     fi
     if [[ "${WORKSTATION:-STACKSOS-QA}" == "STACKSOS-QA" ]]; then
-      WORKSTATION="$(python3 -c "import json; print(json.load(open('${DEMO_DATA}')).get('workstation', 'STACKSOS-QA'))" 2>/dev/null)" || true
+      if [[ -n "$DEMO_WORKSTATION" ]]; then
+        WORKSTATION="$DEMO_WORKSTATION"
+      fi
     fi
   fi
 fi

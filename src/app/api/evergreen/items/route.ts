@@ -20,20 +20,24 @@ import { z } from "zod";
 
 function getId(value: unknown): number | undefined {
   if (typeof value === "number") return value;
-  if (value && typeof value === "object" && typeof (value as Record<string, unknown>).id === "number") return (value as Record<string, unknown>).id as number;
+  if (value && typeof value === "object" && typeof (value as Record<string, any>).id === "number")
+    return (value as Record<string, any>).id as number;
   return undefined;
 }
 
 function getName(value: unknown): string | undefined {
   if (!value || typeof value !== "object") return undefined;
-  const v = value as Record<string, unknown>;
+  const v = value as Record<string, any>;
   return (v.name || v.label || v.shortname) as string | undefined;
 }
 
 const ORG_CACHE_TTL_MS = 5 * 60 * 1000;
-let orgCache: { loadedAt: number; map: Map<number, { name: string; shortname: string }> } | null = null;
+let orgCache: { loadedAt: number; map: Map<number, { name: string; shortname: string }> } | null =
+  null;
 
-async function getOrgMap(_authtoken: string): Promise<Map<number, { name: string; shortname: string }>> {
+async function getOrgMap(
+  _authtoken: string
+): Promise<Map<number, { name: string; shortname: string }>> {
   if (orgCache && Date.now() - orgCache.loadedAt < ORG_CACHE_TTL_MS) {
     return orgCache.map;
   }
@@ -52,11 +56,10 @@ async function getOrgName(authtoken: string, orgId?: number): Promise<string> {
     return cache.get(orgId)?.name || "";
   }
 
-  const orgResponse = await callOpenSRF(
-    "open-ils.actor",
-    "open-ils.actor.org_unit.retrieve",
-    [authtoken, orgId]
-  );
+  const orgResponse = await callOpenSRF("open-ils.actor", "open-ils.actor.org_unit.retrieve", [
+    authtoken,
+    orgId,
+  ]);
 
   const org = orgResponse?.payload?.[0];
   if (org && !org.ilsevent) {
@@ -97,16 +100,10 @@ export async function GET(req: NextRequest) {
     }
 
     const copyResponse = barcode
-      ? await callOpenSRF(
-          "open-ils.search",
-          "open-ils.search.asset.copy.find_by_barcode",
-          [barcode]
-        )
-      : await callOpenSRF(
-          "open-ils.search",
-          "open-ils.search.asset.copy.retrieve",
-          [copyId]
-        );
+      ? await callOpenSRF("open-ils.search", "open-ils.search.asset.copy.find_by_barcode", [
+          barcode,
+        ])
+      : await callOpenSRF("open-ils.search", "open-ils.search.asset.copy.retrieve", [copyId]);
 
     const copy = copyResponse?.payload?.[0];
     if (!copy || copy.ilsevent) {
@@ -114,7 +111,7 @@ export async function GET(req: NextRequest) {
     }
 
     const callNumberId = getId(copy.call_number);
-    let callNumber: Record<string, unknown> | undefined = undefined;
+    let callNumber: Record<string, any> | undefined = undefined;
     let recordId: number | undefined = undefined;
 
     if (callNumberId) {
@@ -127,7 +124,7 @@ export async function GET(req: NextRequest) {
       recordId = getId(callNumber?.record) || getId(copy.call_number?.record);
     }
 
-    let bib: Record<string, unknown> | undefined = undefined;
+    let bib: Record<string, any> | undefined = undefined;
     if (include.has("bib") && recordId) {
       const bibResponse = await callOpenSRF(
         "open-ils.search",
@@ -148,12 +145,15 @@ export async function GET(req: NextRequest) {
     const rawCircLibId = getId(copy.circ_lib) ?? copy.circ_lib;
     const rawOwningLibId = getId(callNumber?.owning_lib) ?? callNumber?.owning_lib;
     const circLibId = typeof rawCircLibId === "string" ? parseInt(rawCircLibId, 10) : rawCircLibId;
-    const owningLibId = typeof rawOwningLibId === "string" ? parseInt(rawOwningLibId, 10) : rawOwningLibId;
+    const owningLibId =
+      typeof rawOwningLibId === "string" ? parseInt(rawOwningLibId, 10) : rawOwningLibId;
 
-    const circLibName = getName(copy.circ_lib) || (await getOrgName(authtoken, circLibId as number));
-    const owningLibName = getName(callNumber?.owning_lib) || (await getOrgName(authtoken, owningLibId as number));
+    const circLibName =
+      getName(copy.circ_lib) || (await getOrgName(authtoken, circLibId as number));
+    const owningLibName =
+      getName(callNumber?.owning_lib) || (await getOrgName(authtoken, owningLibId as number));
 
-    let history: Array<Record<string, unknown>> | undefined = undefined;
+    let history: Array<Record<string, any>> | undefined = undefined;
     let historyError: string | undefined = undefined;
 
     if (include.has("history")) {
@@ -174,7 +174,8 @@ export async function GET(req: NextRequest) {
           dueDate: circ.due_date,
           checkinDate: circ.checkin_time || circ.xact_finish || null,
           status: circ.checkin_time || circ.xact_finish ? "Returned" : "Checked Out",
-          renewCount: circ.renew_count ?? circ.renewal_count ?? circ.renewals ?? circ.renewal_remaining,
+          renewCount:
+            circ.renew_count ?? circ.renewal_count ?? circ.renewals ?? circ.renewal_remaining,
           circLibId: circ.circ_lib,
           checkinLibId: circ.checkin_lib,
           billingTotal: circ.billing_total,
@@ -225,7 +226,7 @@ export async function GET(req: NextRequest) {
             // Skip on error
           }
         }
-        
+
         // Add patron barcodes to history
         history = history.map((h) => {
           const patronInfo = patronMap.get(h.patronId);
@@ -248,7 +249,8 @@ export async function GET(req: NextRequest) {
             ? parseFloat(String(priceRaw))
             : undefined;
 
-    const depositRaw = (copy as Record<string, unknown>).deposit_amount ?? (copy as Record<string, unknown>).depositAmount;
+    const depositRaw =
+      (copy as Record<string, any>).deposit_amount ?? (copy as Record<string, any>).depositAmount;
     const depositAmount =
       depositRaw === null || depositRaw === undefined || depositRaw === ""
         ? undefined
@@ -258,27 +260,27 @@ export async function GET(req: NextRequest) {
             ? parseFloat(String(depositRaw))
             : undefined;
 
-    const circModifierRaw = (copy as Record<string, unknown>).circ_modifier;
+    const circModifierRaw = (copy as Record<string, any>).circ_modifier;
     const circModifierCode =
       typeof circModifierRaw === "object" && circModifierRaw
-        ? String((circModifierRaw as Record<string, unknown>).code || "").trim() || null
+        ? String((circModifierRaw as Record<string, any>).code || "").trim() || null
         : typeof circModifierRaw === "string"
           ? circModifierRaw.trim() || null
           : null;
 
-    const loanDurationRaw = (copy as Record<string, unknown>).loan_duration;
+    const loanDurationRaw = (copy as Record<string, any>).loan_duration;
     const loanDurationParsed =
       typeof loanDurationRaw === "number"
         ? loanDurationRaw
         : parseInt(String(loanDurationRaw ?? ""), 10);
     const loanDuration = Number.isFinite(loanDurationParsed) ? loanDurationParsed : null;
 
-    const fineLevelRaw = (copy as Record<string, unknown>).fine_level;
+    const fineLevelRaw = (copy as Record<string, any>).fine_level;
     const fineLevelParsed =
       typeof fineLevelRaw === "number" ? fineLevelRaw : parseInt(String(fineLevelRaw ?? ""), 10);
     const fineLevel = Number.isFinite(fineLevelParsed) ? fineLevelParsed : null;
 
-    const floatingRaw = (copy as Record<string, unknown>).floating;
+    const floatingRaw = (copy as Record<string, any>).floating;
     const floatingGroupId =
       typeof floatingRaw === "object" && floatingRaw
         ? getId(floatingRaw)
@@ -374,10 +376,15 @@ export async function GET(req: NextRequest) {
       copyNumber: copy.copy_number || 1,
       price,
       depositAmount,
-      createDate: (copy as Record<string, unknown>).create_date ?? (copy as Record<string, unknown>).createDate,
-      editDate: (copy as Record<string, unknown>).edit_date ?? (copy as Record<string, unknown>).editDate,
-      activeDate: (copy as Record<string, unknown>).active_date ?? (copy as Record<string, unknown>).activeDate,
-      alertMessage: (copy as Record<string, unknown>).alert_message ?? (copy as Record<string, unknown>).alertMessage ?? "",
+      createDate:
+        (copy as Record<string, any>).create_date ?? (copy as Record<string, any>).createDate,
+      editDate: (copy as Record<string, any>).edit_date ?? (copy as Record<string, any>).editDate,
+      activeDate:
+        (copy as Record<string, any>).active_date ?? (copy as Record<string, any>).activeDate,
+      alertMessage:
+        (copy as Record<string, any>).alert_message ??
+        (copy as Record<string, any>).alertMessage ??
+        "",
       holdable: holdableRaw !== false,
       circulate: circulateRaw !== false,
       refItem: refRaw === true,
@@ -419,19 +426,21 @@ export async function POST(req: NextRequest) {
     const { authtoken, actor } = await requirePermissions(["CREATE_COPY", "CREATE_VOLUME"]);
     const bodyParsed = await parseJsonBodyWithSchema(
       req,
-      z.object({
-        bibId: z.coerce.number().int().positive(),
-        barcode: z.string().trim().min(1),
-        callNumber: z.string().trim().min(1),
-        circLib: z.coerce.number().int().positive(),
-        owningLib: z.coerce.number().int().positive().optional(),
-        locationId: z.coerce.number().int().positive().optional(),
-        status: z.coerce.number().int().optional().default(0),
-        price: z.union([z.number(), z.string()]).optional(),
-        holdable: z.boolean().optional().default(true),
-        circulate: z.boolean().optional().default(true),
-        opacVisible: z.boolean().optional().default(true),
-      }).passthrough()
+      z
+        .object({
+          bibId: z.coerce.number().int().positive(),
+          barcode: z.string().trim().min(1),
+          callNumber: z.string().trim().min(1),
+          circLib: z.coerce.number().int().positive(),
+          owningLib: z.coerce.number().int().positive().optional(),
+          locationId: z.coerce.number().int().positive().optional(),
+          status: z.coerce.number().int().optional().default(0),
+          price: z.union([z.number(), z.string()]).optional(),
+          holdable: z.boolean().optional().default(true),
+          circulate: z.boolean().optional().default(true),
+          opacVisible: z.boolean().optional().default(true),
+        })
+        .passthrough()
     );
     if (bodyParsed instanceof Response) return bodyParsed;
     const body = bodyParsed;
@@ -452,16 +461,25 @@ export async function POST(req: NextRequest) {
 
     const effectiveOwningLib = owningLib || circLib;
     const actorIdRaw = actor?.id ?? actor?.usr ?? actor?.user_id;
-    const actorId = typeof actorIdRaw === "number" ? actorIdRaw : parseInt(String(actorIdRaw ?? ""), 10);
+    const actorId =
+      typeof actorIdRaw === "number" ? actorIdRaw : parseInt(String(actorIdRaw ?? ""), 10);
     if (!Number.isFinite(actorId)) {
       return errorResponse("Unable to resolve staff user id for item creation", 500);
     }
     actorIdForAudit = actorId;
 
     // Verify bib exists (via OpenSRF, not direct DB; the StacksOS DB user is intentionally least-privileged).
-    const bibRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.bre", [authtoken, bibId]);
+    const bibRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.bre", [
+      authtoken,
+      bibId,
+    ]);
     const bib = bibRes?.payload?.[0];
-    if (!bib || bib.ilsevent || (bib as Record<string, unknown>)?.deleted === "t" || (bib as Record<string, unknown>)?.deleted === true) {
+    if (
+      !bib ||
+      bib.ilsevent ||
+      (bib as Record<string, any>)?.deleted === "t" ||
+      (bib as Record<string, any>)?.deleted === true
+    ) {
       await logAuditEvent({
         action: "catalog.item.create",
         status: "failure",
@@ -476,9 +494,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if barcode already exists (OpenSRF is authoritative).
-    const existingCopyRes = await callOpenSRF("open-ils.search", "open-ils.search.asset.copy.find_by_barcode", [
-      barcode,
-    ]);
+    const existingCopyRes = await callOpenSRF(
+      "open-ils.search",
+      "open-ils.search.asset.copy.find_by_barcode",
+      [barcode]
+    );
     const existingCopy = existingCopyRes?.payload?.[0];
     if (existingCopy && !existingCopy.ilsevent) {
       await logAuditEvent({
@@ -498,7 +518,9 @@ export async function POST(req: NextRequest) {
       price === null || price === undefined || price === ""
         ? null
         : typeof price === "number"
-          ? Number.isFinite(price) ? price : null
+          ? Number.isFinite(price)
+            ? price
+            : null
           : Number.isFinite(parseFloat(String(price)))
             ? parseFloat(String(price))
             : null;
@@ -509,12 +531,16 @@ export async function POST(req: NextRequest) {
       { record: bibId, owning_lib: effectiveOwningLib, label: callNumber, deleted: "f" },
       { limit: 1 },
     ]);
-    const volRows = Array.isArray(volSearchRes?.payload?.[0]) ? (volSearchRes.payload[0] as Record<string, unknown>[]) : [];
+    const volRows = Array.isArray(volSearchRes?.payload?.[0])
+      ? (volSearchRes.payload[0] as Record<string, any>[])
+      : [];
     const existingVol = volRows[0];
 
     let resolvedVolumeId: number;
     const existingVolumeId =
-      typeof existingVol?.id === "number" ? existingVol.id : parseInt(String(existingVol?.id ?? ""), 10);
+      typeof existingVol?.id === "number"
+        ? existingVol.id
+        : parseInt(String(existingVol?.id ?? ""), 10);
     if (Number.isFinite(existingVolumeId) && existingVolumeId > 0) {
       resolvedVolumeId = existingVolumeId;
     } else {
@@ -530,14 +556,17 @@ export async function POST(req: NextRequest) {
         ischanged: 1,
       });
 
-      const createVolRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acn", [authtoken, payload]);
+      const createVolRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acn", [
+        authtoken,
+        payload,
+      ]);
       const volResult = createVolRes?.payload?.[0];
       const createdId: number =
         typeof volResult === "number"
           ? volResult
-          : typeof (volResult as Record<string, unknown>)?.id === "number"
-            ? (volResult as Record<string, unknown>).id as number
-            : parseInt(String((volResult as Record<string, unknown>)?.id ?? volResult ?? ""), 10);
+          : typeof (volResult as Record<string, any>)?.id === "number"
+            ? ((volResult as Record<string, any>).id as number)
+            : parseInt(String((volResult as Record<string, any>)?.id ?? volResult ?? ""), 10);
       if (!Number.isFinite(createdId) || createdId <= 0) {
         const msg = getErrorMessage(volResult, "Failed to create call number");
         return errorResponse(msg, 400, volResult);
@@ -565,16 +594,24 @@ export async function POST(req: NextRequest) {
       ischanged: 1,
     });
 
-    const createCopyRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acp", [authtoken, copyPayload]);
+    const createCopyRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acp", [
+      authtoken,
+      copyPayload,
+    ]);
     const copyResult = createCopyRes?.payload?.[0];
     const copyId: number =
       typeof copyResult === "number"
         ? copyResult
-        : typeof (copyResult as Record<string, unknown>)?.id === "number"
-          ? (copyResult as Record<string, unknown>).id as number
-          : parseInt(String((copyResult as Record<string, unknown>)?.id ?? copyResult ?? ""), 10);
+        : typeof (copyResult as Record<string, any>)?.id === "number"
+          ? ((copyResult as Record<string, any>).id as number)
+          : parseInt(String((copyResult as Record<string, any>)?.id ?? copyResult ?? ""), 10);
 
-    if (!Number.isFinite(copyId) || copyId <= 0 || isOpenSRFEvent(copyResult) || (copyResult as Record<string, unknown>)?.ilsevent) {
+    if (
+      !Number.isFinite(copyId) ||
+      copyId <= 0 ||
+      isOpenSRFEvent(copyResult) ||
+      (copyResult as Record<string, any>)?.ilsevent
+    ) {
       const msg = getErrorMessage(copyResult, "Failed to create item");
       return errorResponse(msg, 400, copyResult);
     }
@@ -586,7 +623,14 @@ export async function POST(req: NextRequest) {
       ip,
       userAgent,
       requestId,
-      details: { barcode, bibId, circLib, owningLib: effectiveOwningLib, copyId, volumeId: resolvedVolumeId },
+      details: {
+        barcode,
+        bibId,
+        circLib,
+        owningLib: effectiveOwningLib,
+        copyId,
+        volumeId: resolvedVolumeId,
+      },
     });
 
     return successResponse({
@@ -596,7 +640,6 @@ export async function POST(req: NextRequest) {
       barcode,
       message: "Item created successfully",
     });
-
   } catch (error) {
     try {
       await logAuditEvent({

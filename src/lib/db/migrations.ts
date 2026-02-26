@@ -79,7 +79,7 @@ const migration1BaselineDDL: Migration = {
       CREATE TABLE IF NOT EXISTS library.incident_banners (
         id SERIAL PRIMARY KEY,
         message TEXT NOT NULL,
-        severity TEXT NOT NULL DEFAULT info,
+        severity TEXT NOT NULL DEFAULT 'info',
         active BOOLEAN NOT NULL DEFAULT true,
         starts_at TIMESTAMP DEFAULT NOW(),
         ends_at TIMESTAMP,
@@ -99,11 +99,11 @@ const migration1BaselineDDL: Migration = {
         created_by INTEGER,
         requester_email TEXT,
         requester_name TEXT,
-        category TEXT NOT NULL DEFAULT general,
-        priority TEXT NOT NULL DEFAULT normal,
+        category TEXT NOT NULL DEFAULT 'general',
+        priority TEXT NOT NULL DEFAULT 'normal',
         subject TEXT NOT NULL,
         body TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT open
+        status TEXT NOT NULL DEFAULT 'open'
       )
     `);
     await client.query(
@@ -136,7 +136,7 @@ const migration1BaselineDDL: Migration = {
         body_text_template TEXT,
         created_at TIMESTAMP DEFAULT NOW(),
         created_by INTEGER,
-        status TEXT NOT NULL DEFAULT inactive
+        status TEXT NOT NULL DEFAULT 'inactive'
       )
     `);
     await client.query(
@@ -166,7 +166,7 @@ const migration1BaselineDDL: Migration = {
         id SERIAL PRIMARY KEY,
         event_id TEXT NOT NULL references library.notification_events(id) on delete cascade,
         provider TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT pending,
+        status TEXT NOT NULL DEFAULT 'pending',
         attempts INTEGER NOT NULL DEFAULT 0,
         last_error TEXT,
         created_at TIMESTAMP DEFAULT NOW(),
@@ -206,7 +206,7 @@ const migration1BaselineDDL: Migration = {
         record_id INTEGER NOT NULL,
         title TEXT NOT NULL,
         body TEXT,
-        status TEXT NOT NULL DEFAULT open,
+        status TEXT NOT NULL DEFAULT 'open',
         assigned_to INTEGER,
         created_by INTEGER,
         updated_by INTEGER,
@@ -296,11 +296,218 @@ const migration2AddUpdatedAt: Migration = {
   },
 };
 
+/**
+ * Migration #3 – SaaS role bindings for platform and tenant-scoped RBAC.
+ */
+const migration3SaasRoleBindings: Migration = {
+  version: 3,
+  description: "Create library.saas_role_bindings for SaaS RBAC",
+  up: async (client: PoolClient) => {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS library.saas_role_bindings (
+        id BIGSERIAL PRIMARY KEY,
+        actor_id INTEGER,
+        username TEXT,
+        tenant_id TEXT,
+        role TEXT NOT NULL,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        created_by INTEGER,
+        updated_by INTEGER,
+        CONSTRAINT saas_role_bindings_identity_check
+          CHECK (actor_id IS NOT NULL OR (username IS NOT NULL AND btrim(username) <> '')),
+        CONSTRAINT saas_role_bindings_role_check
+          CHECK (role IN ('platform_owner', 'platform_admin', 'tenant_admin', 'tenant_operator', 'tenant_viewer')),
+        CONSTRAINT saas_role_bindings_tenant_check
+          CHECK (tenant_id IS NULL OR tenant_id ~ '^[a-z0-9][a-z0-9_-]{0,63}$')
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_saas_role_bindings_actor
+      ON library.saas_role_bindings(actor_id, active, role)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_saas_role_bindings_username
+      ON library.saas_role_bindings(lower(username), active, role)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_saas_role_bindings_tenant
+      ON library.saas_role_bindings(lower(tenant_id), active, role)
+    `);
+  },
+};
+
+/**
+ * Migration #4 - K-12 class circulation + developer platform webhooks/extensions.
+ */
+const migration4K12AndDeveloperPlatform: Migration = {
+  version: 4,
+  description: "Create K-12 class circulation and developer webhook/extension tables",
+  up: async (client: PoolClient) => {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS library.k12_classes (
+        id BIGSERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        teacher_name TEXT NOT NULL DEFAULT '',
+        grade_level TEXT,
+        home_ou INTEGER NOT NULL,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        created_by INTEGER,
+        updated_by INTEGER
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_k12_classes_home_ou
+      ON library.k12_classes(home_ou, active, id DESC)
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS library.k12_students (
+        id BIGSERIAL PRIMARY KEY,
+        class_id BIGINT NOT NULL REFERENCES library.k12_classes(id) ON DELETE CASCADE,
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        student_identifier TEXT,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        created_by INTEGER,
+        updated_by INTEGER
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_k12_students_class
+      ON library.k12_students(class_id, active, id DESC)
+    `);
+
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_k12_students_identifier_unique
+      ON library.k12_students(class_id, lower(student_identifier))
+      WHERE student_identifier IS NOT NULL AND btrim(student_identifier) <> ''
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS library.k12_class_checkouts (
+        id BIGSERIAL PRIMARY KEY,
+        class_id BIGINT NOT NULL REFERENCES library.k12_classes(id) ON DELETE CASCADE,
+        student_id BIGINT REFERENCES library.k12_students(id) ON DELETE SET NULL,
+        copy_barcode TEXT NOT NULL,
+        copy_id INTEGER,
+        title TEXT,
+        checkout_ts TIMESTAMP NOT NULL DEFAULT NOW(),
+        due_ts TIMESTAMP,
+        returned_ts TIMESTAMP,
+        created_by INTEGER,
+        notes TEXT
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_k12_class_checkouts_active
+      ON library.k12_class_checkouts(class_id, returned_ts, checkout_ts DESC)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_k12_class_checkouts_student
+      ON library.k12_class_checkouts(student_id, returned_ts, checkout_ts DESC)
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS library.webhook_subscriptions (
+        id BIGSERIAL PRIMARY KEY,
+        tenant_id TEXT NOT NULL DEFAULT 'default',
+        name TEXT NOT NULL,
+        endpoint_url TEXT NOT NULL,
+        secret TEXT NOT NULL,
+        events TEXT[] NOT NULL DEFAULT '{}',
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        last_tested_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        created_by INTEGER,
+        updated_by INTEGER,
+        CONSTRAINT webhook_subscriptions_tenant_check
+          CHECK (tenant_id ~ '^[a-z0-9][a-z0-9_-]{0,63}$'),
+        CONSTRAINT webhook_subscriptions_endpoint_check
+          CHECK (endpoint_url ~ '^https?://')
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_webhook_subscriptions_tenant_active
+      ON library.webhook_subscriptions(lower(tenant_id), active, id DESC)
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS library.webhook_deliveries (
+        id BIGSERIAL PRIMARY KEY,
+        subscription_id BIGINT NOT NULL REFERENCES library.webhook_subscriptions(id) ON DELETE CASCADE,
+        event_type TEXT NOT NULL,
+        delivery_id TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL,
+        status_code INTEGER,
+        latency_ms INTEGER,
+        request_body JSONB,
+        response_body TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        delivered_at TIMESTAMP
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_subscription
+      ON library.webhook_deliveries(subscription_id, created_at DESC)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_event
+      ON library.webhook_deliveries(event_type, created_at DESC)
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS library.extension_registrations (
+        id BIGSERIAL PRIMARY KEY,
+        tenant_id TEXT NOT NULL DEFAULT 'default',
+        extension_key TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        version TEXT,
+        status TEXT NOT NULL DEFAULT 'active',
+        capabilities TEXT[] NOT NULL DEFAULT '{}',
+        webhook_subscription_id BIGINT REFERENCES library.webhook_subscriptions(id) ON DELETE SET NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        created_by INTEGER,
+        updated_by INTEGER,
+        CONSTRAINT extension_registrations_tenant_check
+          CHECK (tenant_id ~ '^[a-z0-9][a-z0-9_-]{0,63}$')
+      )
+    `);
+
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_extension_registrations_unique
+      ON library.extension_registrations(lower(tenant_id), lower(extension_key))
+    `);
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Ordered list of all migrations.  Append new migrations at the end.
 // ---------------------------------------------------------------------------
 
-const ALL_MIGRATIONS: Migration[] = [migration1BaselineDDL, migration2AddUpdatedAt];
+const ALL_MIGRATIONS: Migration[] = [
+  migration1BaselineDDL,
+  migration2AddUpdatedAt,
+  migration3SaasRoleBindings,
+  migration4K12AndDeveloperPlatform,
+];
 
 // ---------------------------------------------------------------------------
 // Runner
@@ -315,7 +522,7 @@ async function ensureMigrationsTable(client: PoolClient): Promise<void> {
     CREATE TABLE IF NOT EXISTS library.schema_migrations (
       version INTEGER PRIMARY KEY,
       applied_at TIMESTAMP NOT NULL DEFAULT NOW(),
-      description TEXT NOT NULL DEFAULT 
+      description TEXT NOT NULL DEFAULT ''
     )
   `);
 }

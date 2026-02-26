@@ -58,18 +58,24 @@ export async function GET(req: NextRequest) {
 
     const classId = classIdFor(kind);
 
-    const response = await callOpenSRF("open-ils.pcrud", `open-ils.pcrud.search.${classId}.atomic`, [
-      authtoken,
-      { stat_cat: statCatId },
-      {
-        limit: 5000,
-        order_by: { [classId]: "value" },
-        flesh: 1,
-        flesh_fields: { [classId]: ["owner"], aou: ["shortname", "name"] },
-      },
-    ]);
+    const response = await callOpenSRF(
+      "open-ils.pcrud",
+      `open-ils.pcrud.search.${classId}.atomic`,
+      [
+        authtoken,
+        { stat_cat: statCatId },
+        {
+          limit: 5000,
+          order_by: { [classId]: "value" },
+          flesh: 1,
+          flesh_fields: { [classId]: ["owner"], aou: ["shortname", "name"] },
+        },
+      ]
+    );
 
-    const rows = Array.isArray(response?.payload?.[0]) ? (response.payload[0] as Record<string, unknown>[]) : [];
+    const rows = Array.isArray(response?.payload?.[0])
+      ? (response.payload[0] as Record<string, any>[])
+      : [];
     const entries = rows
       .map((row: any) => {
         const ownerObj = row?.owner && typeof row.owner === "object" ? row.owner : null;
@@ -130,11 +136,18 @@ export async function POST(req: Request) {
       payload,
     ]);
     const resultRow = createResponse?.payload?.[0] as any;
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
-      return errorResponse(getErrorMessage(resultRow, "Failed to create stat cat entry"), 400, resultRow);
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+      return errorResponse(
+        getErrorMessage(resultRow, "Failed to create stat cat entry"),
+        400,
+        resultRow
+      );
     }
 
-    const id = typeof resultRow === "number" ? resultRow : toNumber((resultRow as Record<string, unknown>)?.id ?? resultRow);
+    const id =
+      typeof resultRow === "number"
+        ? resultRow
+        : toNumber((resultRow as Record<string, any>)?.id ?? resultRow);
 
     return successResponse({ created: true, kind, id });
   } catch (error: any) {
@@ -169,14 +182,19 @@ export async function PUT(req: Request) {
       [authtoken, body.id]
     );
     const existing = existingResponse?.payload?.[0] as any;
-    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, unknown>)?.ilsevent) {
+    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(existing, "Entry not found"), 404, existing);
     }
 
-    const ownerId = body.ownerId ?? result.orgId ?? actor?.ws_ou ?? actor?.home_ou ?? (existing as Record<string, unknown>)?.owner;
+    const ownerId =
+      body.ownerId ??
+      result.orgId ??
+      actor?.ws_ou ??
+      actor?.home_ou ??
+      (existing as Record<string, any>)?.owner;
     if (!ownerId) return errorResponse("ownerId is required", 400);
 
-    const updateData: Record<string, unknown> = { ...(existing as Record<string, unknown>) };
+    const updateData: Record<string, any> = { ...(existing as Record<string, any>) };
     updateData.id = body.id;
     updateData.owner = ownerId;
     if (body.value !== undefined) updateData.value = body.value;
@@ -189,7 +207,7 @@ export async function PUT(req: Request) {
       payload,
     ]);
     const resultRow = updateResponse?.payload?.[0] as any;
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to update entry"), 400, resultRow);
     }
 
@@ -223,7 +241,7 @@ export async function DELETE(req: Request) {
       body.id,
     ]);
     const resultRow = delResponse?.payload?.[0] as any;
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(resultRow, "Failed to delete entry"), 400, resultRow);
     }
 

@@ -17,6 +17,17 @@ if [[ ! -d "${build_dir}" ]]; then
 fi
 
 BASE_URL="${BASE_URL:-http://127.0.0.1:3000}"
+HEALTH_CURL_OPTS=(-fsS)
+if [[ "${STACKSOS_HEALTHCHECK_INSECURE:-0}" == "1" ]]; then
+  HEALTH_CURL_OPTS+=(-k)
+elif [[ "${BASE_URL}" == https://* ]]; then
+  base_host="${BASE_URL#https://}"
+  base_host="${base_host%%/*}"
+  if [[ "$base_host" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}(:[0-9]+)?$ ]]; then
+    HEALTH_CURL_OPTS+=(-k)
+    echo "WARN: BASE_URL uses HTTPS + IP (${base_host}); health probe will use curl -k."
+  fi
+fi
 
 echo "Stopping StacksOS to prevent CSS/JS chunk mismatch during swap..."
 USED_SYSTEMD=0
@@ -85,7 +96,7 @@ fi
 
 echo "Waiting for health check..."
 for i in {1..30}; do
-  if curl -fsS "${BASE_URL}/api/health" >/dev/null 2>&1; then
+  if curl "${HEALTH_CURL_OPTS[@]}" "${BASE_URL}/api/health" >/dev/null 2>&1; then
     echo "Healthy."
     break
   fi

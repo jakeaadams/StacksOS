@@ -16,6 +16,7 @@ import {
   buildAiSearchExplanationPrompt,
   buildSemanticRerankPrompt,
 } from "@/lib/ai/prompts";
+import { getTenantConfig } from "@/lib/tenant/config";
 
 // ---------------------------------------------------------------------------
 // Zod schemas for AI responses
@@ -65,6 +66,19 @@ function getClientIp(req: NextRequest): string {
   );
 }
 
+function parsePositiveInt(value: string | null): number | null {
+  if (!value) return null;
+  const parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+function parseCopyDepth(value: string | null, fallback: number): number {
+  const parsed = parseInt(String(value || ""), 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(99, Math.max(0, parsed));
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/evergreen/ai-search?q=...
 // ---------------------------------------------------------------------------
@@ -79,6 +93,21 @@ export async function GET(req: NextRequest) {
   const rawQuery = (req.nextUrl.searchParams.get("q") || "").trim();
   const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "20", 10) || 20, 50);
   const offset = parseInt(req.nextUrl.searchParams.get("offset") || "0", 10) || 0;
+  const tenantDiscovery = getTenantConfig().discovery;
+  const searchScopeParam = String(req.nextUrl.searchParams.get("search_scope") || "")
+    .trim()
+    .toLowerCase();
+  const searchScope =
+    searchScopeParam === "local" ||
+    searchScopeParam === "system" ||
+    searchScopeParam === "consortium"
+      ? searchScopeParam
+      : tenantDiscovery.defaultSearchScope;
+  const scopeOrgId = parsePositiveInt(req.nextUrl.searchParams.get("scope_org")) || 1;
+  const copyDepth = parseCopyDepth(
+    req.nextUrl.searchParams.get("copy_depth"),
+    tenantDiscovery.defaultCopyDepth
+  );
 
   if (!rawQuery) {
     return errorResponse("Missing search query (q)", 400);
@@ -137,17 +166,18 @@ export async function GET(req: NextRequest) {
     // 2. Execute the decomposed search against Evergreen
     const searchQuery = decomposed.searchQuery;
 
-    const searchArgs: Record<string, unknown> = {
+    const searchArgs: Record<string, any> = {
       limit,
       offset,
       visibility_limit: 3000,
       default_class: "keyword",
+      copy_depth: copyDepth,
     };
 
     const searchResponse = await callOpenSRF(
       "open-ils.search",
       "open-ils.search.biblio.multiclass.query",
-      [searchArgs, searchQuery, 1]
+      [searchArgs, searchQuery, scopeOrgId]
     );
 
     const payload = searchResponse?.payload?.[0];
@@ -347,6 +377,11 @@ export async function GET(req: NextRequest) {
         format: decomposed.format,
         language: decomposed.language,
         searchQuery: decomposed.searchQuery,
+      },
+      scope: {
+        searchScope,
+        scopeOrgId,
+        copyDepth,
       },
       aiPowered: true,
     });

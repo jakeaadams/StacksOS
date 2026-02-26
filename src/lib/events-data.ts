@@ -1,3 +1,5 @@
+import { areMockEventsEnabled } from "@/lib/demo-data";
+
 /**
  * Mock Events Data for OPAC Events Calendar
  *
@@ -332,6 +334,17 @@ const MOCK_EVENTS: LibraryEvent[] = [
   },
 ];
 
+export type EventCatalogSource = "mock" | "none";
+
+export function getEventCatalogSource(): EventCatalogSource {
+  return areMockEventsEnabled() ? "mock" : "none";
+}
+
+function getConfiguredEvents(): LibraryEvent[] {
+  if (!areMockEventsEnabled()) return [];
+  return MOCK_EVENTS;
+}
+
 /**
  * Get upcoming events, optionally filtered.
  * In production, replace this with a call to LibCal API.
@@ -344,7 +357,7 @@ export function getUpcomingEvents(options?: {
   limit?: number;
   featuredOnly?: boolean;
 }): LibraryEvent[] {
-  let events = [...MOCK_EVENTS];
+  let events = [...getConfiguredEvents()];
 
   // Sort by date then time
   events.sort((a, b) => {
@@ -381,10 +394,26 @@ export function getUpcomingEvents(options?: {
 }
 
 /**
+ * Lookup a single event by ID.
+ */
+export function getEventById(eventId: string): LibraryEvent | null {
+  const target = String(eventId || "").trim();
+  if (!target) return null;
+  return getConfiguredEvents().find((event) => event.id === target) || null;
+}
+
+/**
+ * Return all known events (unsorted clone).
+ */
+export function listAllEvents(): LibraryEvent[] {
+  return [...getConfiguredEvents()];
+}
+
+/**
  * Get distinct branch names from events.
  */
 export function getEventBranches(): string[] {
-  const branches = new Set(MOCK_EVENTS.map((e) => e.branch));
+  const branches = new Set(getConfiguredEvents().map((e) => e.branch));
   return Array.from(branches).sort();
 }
 
@@ -392,14 +421,6 @@ export function getEventBranches(): string[] {
  * Get all event type values.
  */
 export function getEventTypes(): EventType[] {
-  return [
-    "Storytime",
-    "Book Club",
-    "Tech Help",
-    "Workshop",
-    "Author Visit",
-    "Teen",
-    "Kids",
-    "Adult",
-  ];
+  const types = new Set(getConfiguredEvents().map((event) => event.type));
+  return Array.from(types).sort() as EventType[];
 }

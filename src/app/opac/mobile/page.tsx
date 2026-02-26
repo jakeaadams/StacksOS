@@ -3,7 +3,7 @@ import { ArrowLeft, Smartphone, Search, CreditCard, Bell } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export default function OpacMobilePage() {
-  const t = useTranslations("mobilePage");
+  const _t = useTranslations("mobilePage");
   return (
     <div className="min-h-screen bg-muted/30">
       <section className="border-b border-border bg-card py-12">
@@ -38,7 +38,10 @@ export default function OpacMobilePage() {
           <p className="text-sm text-foreground/90">
             Browse titles, filter results, and place holds directly from mobile.
           </p>
-          <Link href="/opac/search" className="mt-4 inline-block text-sm text-primary-600 hover:underline">
+          <Link
+            href="/opac/search"
+            className="mt-4 inline-block text-sm text-primary-600 hover:underline"
+          >
             Open Mobile Search
           </Link>
         </article>
@@ -51,7 +54,10 @@ export default function OpacMobilePage() {
           <p className="text-sm text-foreground/90">
             View checkouts, renew items, and monitor fines from your account dashboard.
           </p>
-          <Link href="/opac/account" className="mt-4 inline-block text-sm text-primary-600 hover:underline">
+          <Link
+            href="/opac/account"
+            className="mt-4 inline-block text-sm text-primary-600 hover:underline"
+          >
             Go to My Account
           </Link>
         </article>
@@ -64,7 +70,10 @@ export default function OpacMobilePage() {
           <p className="text-sm text-foreground/90">
             Configure email and hold notifications so pickup and due-date reminders are timely.
           </p>
-          <Link href="/opac/account/settings" className="mt-4 inline-block text-sm text-primary-600 hover:underline">
+          <Link
+            href="/opac/account/settings"
+            className="mt-4 inline-block text-sm text-primary-600 hover:underline"
+          >
             Notification Settings
           </Link>
         </article>

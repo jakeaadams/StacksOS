@@ -1,13 +1,10 @@
 import { NextRequest } from "next/server";
 import { callOpenSRF, errorResponse, serverErrorResponse, successResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 // GET /api/opac/public-lists/[listId] - Fetch a public bookbag and its items (no auth)
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ listId: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ listId: string }> }) {
   try {
     const { listId } = await params;
     const listNumeric = parseInt(String(listId || ""), 10);
@@ -19,7 +16,7 @@ export async function GET(
     const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 200);
 
     // Verify the list is public by scanning the public bookbags.
-    let publicBags: Record<string, unknown>[] = [];
+    let publicBags: Record<string, any>[] = [];
     try {
       const searchResponse = await callOpenSRF(
         "open-ils.actor",
@@ -28,11 +25,20 @@ export async function GET(
       );
       publicBags = searchResponse?.payload?.[0] || [];
     } catch (error) {
-      logger.info({ error: String(error) }, "Public list detail not available - method not supported");
-      return successResponse({ list: null, items: [], message: "Public lists are not available on this Evergreen install." });
+      logger.info(
+        { error: String(error) },
+        "Public list detail not available - method not supported"
+      );
+      return successResponse({
+        list: null,
+        items: [],
+        message: "Public lists are not available on this Evergreen install.",
+      });
     }
 
-    const bag = Array.isArray(publicBags) ? publicBags.find((b: any) => Number(b.id) === listNumeric) : null;
+    const bag = Array.isArray(publicBags)
+      ? publicBags.find((b: any) => Number(b.id) === listNumeric)
+      : null;
     if (!bag) {
       return errorResponse("List not found", 404);
     }
@@ -67,7 +73,9 @@ export async function GET(
             bibId,
             title: bib?.title || "Unknown Title",
             author: bib?.author || "",
-            coverUrl: bib?.isbn ? `https://covers.openlibrary.org/b/isbn/${bib.isbn}-M.jpg` : undefined,
+            coverUrl: bib?.isbn
+              ? `https://covers.openlibrary.org/b/isbn/${bib.isbn}-M.jpg`
+              : undefined,
             isbn: bib?.isbn || undefined,
           };
         } catch {
@@ -92,4 +100,3 @@ export async function GET(
     return serverErrorResponse(error, "OPAC Public List Detail", req);
   }
 }
-

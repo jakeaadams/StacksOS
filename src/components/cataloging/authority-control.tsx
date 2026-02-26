@@ -5,7 +5,14 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
@@ -41,7 +48,7 @@ interface AuthorityLinkProps {
   linkedAuthority?: AuthorityRecord | null;
 }
 
-const TYPE_ICONS: Record<string, React.ComponentType<{className?: string}>> = {
+const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   personal: User,
   corporate: BookOpen,
   subject: Tag,
@@ -57,12 +64,12 @@ async function searchLC(query: string, type: string): Promise<AuthorityRecord[]>
   try {
     // Determine which LC vocabulary to search based on type
     const scheme = type === "author" ? "names" : type === "subject" ? "subjects" : "names";
-    
+
     // LC API endpoint for suggest/autocomplete
     const url = `https://id.loc.gov/authorities/${scheme}/suggest2?q=${encodeURIComponent(query)}&count=10`;
-    
+
     const response = await fetch(url, {
-      headers: { "Accept": "application/json" },
+      headers: { Accept: "application/json" },
     });
 
     if (!response.ok) {
@@ -71,7 +78,7 @@ async function searchLC(query: string, type: string): Promise<AuthorityRecord[]>
     }
 
     const data = await response.json();
-    
+
     // Parse LC suggest2 response format
     if (!data.hits || !Array.isArray(data.hits)) {
       return [];
@@ -100,9 +107,9 @@ async function searchVIAF(query: string, type: string): Promise<AuthorityRecord[
     // VIAF AutoSuggest API
     // Using JSONP-style callback for CORS, but we can also use their JSON API
     const url = `https://viaf.org/viaf/AutoSuggest?query=${encodeURIComponent(query)}`;
-    
+
     const response = await fetch(url, {
-      headers: { "Accept": "application/json" },
+      headers: { Accept: "application/json" },
     });
 
     if (!response.ok) {
@@ -111,7 +118,7 @@ async function searchVIAF(query: string, type: string): Promise<AuthorityRecord[
     }
 
     const data = await response.json();
-    
+
     // Parse VIAF response
     if (!data.result || !Array.isArray(data.result)) {
       return [];
@@ -123,9 +130,14 @@ async function searchVIAF(query: string, type: string): Promise<AuthorityRecord[
       heading: item.displayForm || item.term || query,
       variants: [],
       uri: item.viafid ? `https://viaf.org/viaf/${item.viafid}` : undefined,
-      type: item.nametype === "personal" ? "personal" : 
-            item.nametype === "corporate" ? "corporate" : 
-            type === "author" ? "personal" : "subject",
+      type:
+        item.nametype === "personal"
+          ? "personal"
+          : item.nametype === "corporate"
+            ? "corporate"
+            : type === "author"
+              ? "personal"
+              : "subject",
     }));
   } catch (err) {
     clientLogger.error("VIAF search error:", err);
@@ -150,7 +162,7 @@ export function AuthorityLink({
 
   const searchAuthorities = useCallback(async () => {
     if (!searchQuery.trim()) return;
-    
+
     setIsSearching(true);
     setResults([]);
     setSearchError(null);
@@ -161,9 +173,9 @@ export function AuthorityLink({
         selectedSource !== "viaf" ? searchLC(searchQuery, fieldType) : Promise.resolve([]),
         selectedSource !== "lc" ? searchVIAF(searchQuery, fieldType) : Promise.resolve([]),
       ]);
-      
+
       const combined = [...lcResults, ...viafResults];
-      
+
       // Sort by relevance (exact matches first)
       combined.sort((a, b) => {
         const aExact = a.heading.toLowerCase() === searchQuery.toLowerCase();
@@ -172,9 +184,9 @@ export function AuthorityLink({
         if (!aExact && bExact) return 1;
         return 0;
       });
-      
+
       setResults(combined);
-      
+
       if (combined.length === 0) {
         toast.info("No matching authorities found", {
           description: "Try a different search term or check the spelling",
@@ -207,7 +219,12 @@ export function AuthorityLink({
             {linkedAuthority.source.toUpperCase()}
           </Badge>
           {linkedAuthority.uri && (
-            <a href={linkedAuthority.uri} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+            <a
+              href={linkedAuthority.uri}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           )}
@@ -244,33 +261,37 @@ export function AuthorityLink({
                 className="flex-1"
               />
               <div className="flex rounded-lg border overflow-hidden">
-                <Button 
-                  variant={selectedSource === "all" ? "default" : "ghost"} 
-                  size="sm" 
-                  className="rounded-none" 
+                <Button
+                  variant={selectedSource === "all" ? "default" : "ghost"}
+                  size="sm"
+                  className="rounded-none"
                   onClick={() => setSelectedSource("all")}
                 >
                   All
                 </Button>
-                <Button 
-                  variant={selectedSource === "lc" ? "default" : "ghost"} 
-                  size="sm" 
-                  className="rounded-none" 
+                <Button
+                  variant={selectedSource === "lc" ? "default" : "ghost"}
+                  size="sm"
+                  className="rounded-none"
                   onClick={() => setSelectedSource("lc")}
                 >
                   LC
                 </Button>
-                <Button 
-                  variant={selectedSource === "viaf" ? "default" : "ghost"} 
-                  size="sm" 
-                  className="rounded-none" 
+                <Button
+                  variant={selectedSource === "viaf" ? "default" : "ghost"}
+                  size="sm"
+                  className="rounded-none"
                   onClick={() => setSelectedSource("viaf")}
                 >
                   VIAF
                 </Button>
               </div>
               <Button onClick={searchAuthorities} disabled={isSearching}>
-                {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                {isSearching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
               </Button>
             </div>
 
@@ -300,9 +321,9 @@ export function AuthorityLink({
                   {results.map((auth) => {
                     const TypeIcon = TYPE_ICONS[auth.type] || Tag;
                     return (
-                      <div 
-                        key={auth.id} 
-                        className="p-4 hover:bg-muted/50 cursor-pointer transition-colors" 
+                      <div
+                        key={auth.id}
+                        className="p-4 hover:bg-muted/50 cursor-pointer transition-colors"
                         onClick={() => handleLink(auth)}
                       >
                         <div className="flex items-start justify-between gap-4">
@@ -322,9 +343,13 @@ export function AuthorityLink({
                               )}
                             </div>
                           </div>
-                          <Badge 
-                            variant="outline" 
-                            className={auth.source === "lc" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"}
+                          <Badge
+                            variant="outline"
+                            className={
+                              auth.source === "lc"
+                                ? "bg-blue-50 text-blue-700"
+                                : "bg-indigo-50 text-indigo-700"
+                            }
                           >
                             {auth.source.toUpperCase()}
                           </Badge>
@@ -338,7 +363,9 @@ export function AuthorityLink({
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setIsOpen(false)}>
+              Cancel
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -351,7 +378,9 @@ export function AuthorityValidation({ unlinkedCount }: { unlinkedCount: number }
     return (
       <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
         <CheckCircle className="h-5 w-5 text-green-600" />
-        <span className="text-sm font-medium text-green-700 dark:text-green-400">All headings linked to authorities</span>
+        <span className="text-sm font-medium text-green-700 dark:text-green-400">
+          All headings linked to authorities
+        </span>
       </div>
     );
   }

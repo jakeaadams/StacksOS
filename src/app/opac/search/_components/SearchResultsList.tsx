@@ -2,9 +2,11 @@
 
 import { BookCard } from "@/components/opac/book-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { BookOpen, Sparkles, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { featureFlags } from "@/lib/feature-flags";
+import { opacDesign } from "@/lib/design-system/opac";
 import type { SearchResult } from "./search-constants";
 import type { ExplainFilter } from "@/components/opac/why-this-result-dialog";
 
@@ -17,6 +19,7 @@ export interface SearchResultsListProps {
   sort: string;
   rankingMode: "keyword" | "hybrid";
   aiSmartSearchOn: boolean;
+  recordQueryString?: string;
   explainFilters: ExplainFilter[];
   totalResults: number;
   totalPages: number;
@@ -37,8 +40,9 @@ export function SearchResultsList({
   sort,
   rankingMode,
   aiSmartSearchOn,
+  recordQueryString,
   explainFilters,
-  totalResults,
+  totalResults: _totalResults,
   totalPages,
   page,
   onPlaceHold,
@@ -54,7 +58,7 @@ export function SearchResultsList({
     return viewMode === "grid" ? (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {Array.from({ length: 10 }).map((_, i) => (
-          <div key={i} className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div key={i} className="stx-surface rounded-xl overflow-hidden">
             <Skeleton className="aspect-[2/3] w-full" />
             <div className="p-3 space-y-2">
               <Skeleton className="h-4 w-3/4" />
@@ -66,7 +70,7 @@ export function SearchResultsList({
     ) : (
       <div className="space-y-4">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex gap-4 p-4 bg-card rounded-xl shadow-sm border border-border">
+          <div key={i} className="stx-surface flex gap-4 p-4 rounded-xl">
             <Skeleton className="h-36 w-24 rounded-lg" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-5 w-3/4" />
@@ -82,7 +86,7 @@ export function SearchResultsList({
   // Error state
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+      <div className="rounded-xl border border-red-200 bg-red-50/90 p-4 flex items-start gap-3">
         <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
         <div>
           <p className="font-medium text-red-800">{t("searchError")}</p>
@@ -103,6 +107,7 @@ export function SearchResultsList({
                 <BookCard
                   isbn={result.isbn}
                   id={result.id}
+                  recordHref={`/opac/record/${result.id}${recordQueryString || ""}`}
                   title={result.title}
                   author={result.author}
                   coverUrl={result.coverUrl}
@@ -116,16 +121,24 @@ export function SearchResultsList({
                   explainQuery={explainSort ? query : undefined}
                   explainSort={explainSort || undefined}
                   explainRankingMode={rankingMode}
-                  explainRankingScore={sort === "smart" || aiSmartSearchOn ? result.rankingScore : undefined}
+                  explainRankingScore={
+                    sort === "smart" || aiSmartSearchOn ? result.rankingScore : undefined
+                  }
                   explainFilters={explainSort ? explainFilters : undefined}
-                  rankingReason={sort === "smart" || aiSmartSearchOn ? result.rankingReason : undefined}
+                  rankingReason={
+                    sort === "smart" || aiSmartSearchOn ? result.rankingReason : undefined
+                  }
                   variant="grid"
-                  onAddToList={featureFlags.opacLists ? () => onSaveToList({ id: result.id, title: result.title }) : undefined}
+                  onAddToList={
+                    featureFlags.opacLists
+                      ? () => onSaveToList({ id: result.id, title: result.title })
+                      : undefined
+                  }
                   onPlaceHold={() => onPlaceHold(result.id)}
                 />
                 {aiSmartSearchOn && result.aiExplanation && (
-                  <div className="mt-1 px-2 py-1.5 bg-purple-50 border border-purple-100 rounded-lg">
-                    <p className="text-xs text-purple-700 leading-snug">
+                  <div className={`mt-1 rounded-lg px-2 py-1.5 ${opacDesign.aiCalloutContainer}`}>
+                    <p className={`text-xs leading-snug ${opacDesign.aiCalloutText}`}>
                       <Sparkles className="h-3 w-3 inline-block mr-1 -mt-0.5" />
                       {result.aiExplanation}
                     </p>
@@ -141,6 +154,7 @@ export function SearchResultsList({
                 <BookCard
                   isbn={result.isbn}
                   id={result.id}
+                  recordHref={`/opac/record/${result.id}${recordQueryString || ""}`}
                   title={result.title}
                   author={result.author}
                   coverUrl={result.coverUrl}
@@ -154,22 +168,34 @@ export function SearchResultsList({
                   rating={result.rating}
                   reviewCount={result.reviewCount}
                   rankingLabel={
-                    (sort === "smart" || aiSmartSearchOn) && rankingMode === "hybrid" ? "AI-ranked" : undefined
+                    (sort === "smart" || aiSmartSearchOn) && rankingMode === "hybrid"
+                      ? "AI-ranked"
+                      : undefined
                   }
-                  rankingReason={sort === "smart" || aiSmartSearchOn ? result.rankingReason : undefined}
+                  rankingReason={
+                    sort === "smart" || aiSmartSearchOn ? result.rankingReason : undefined
+                  }
                   explainQuery={explainSort ? query : undefined}
                   explainSort={explainSort || undefined}
                   explainRankingMode={rankingMode}
-                  explainRankingScore={sort === "smart" || aiSmartSearchOn ? result.rankingScore : undefined}
+                  explainRankingScore={
+                    sort === "smart" || aiSmartSearchOn ? result.rankingScore : undefined
+                  }
                   explainFilters={explainSort ? explainFilters : undefined}
                   variant="list"
                   showSummary
-                  onAddToList={featureFlags.opacLists ? () => onSaveToList({ id: result.id, title: result.title }) : undefined}
+                  onAddToList={
+                    featureFlags.opacLists
+                      ? () => onSaveToList({ id: result.id, title: result.title })
+                      : undefined
+                  }
                   onPlaceHold={() => onPlaceHold(result.id)}
                 />
                 {aiSmartSearchOn && result.aiExplanation && (
-                  <div className="mt-1 ml-28 mr-4 px-3 py-2 bg-purple-50 border border-purple-100 rounded-lg">
-                    <p className="text-sm text-purple-700 leading-snug">
+                  <div
+                    className={`mt-1 mr-0 md:mr-4 md:ml-28 rounded-lg px-3 py-2 ${opacDesign.aiCalloutContainer}`}
+                  >
+                    <p className={`text-sm leading-snug ${opacDesign.aiCalloutText}`}>
                       <Sparkles className="h-3.5 w-3.5 inline-block mr-1.5 -mt-0.5" />
                       {result.aiExplanation}
                     </p>
@@ -183,25 +209,29 @@ export function SearchResultsList({
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="mt-8 flex items-center justify-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => onUpdateSearchParams({ page: (page - 1).toString() })}
               disabled={page === 1}
-              className="px-4 py-2 border border-border rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/30"
+              className="stx-pill disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/30"
             >
               Previous
-            </button>
+            </Button>
             <span className="px-4 py-2 text-sm text-foreground/80">
               Page {page} of {totalPages}
             </span>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => onUpdateSearchParams({ page: (page + 1).toString() })}
               disabled={page === totalPages}
-              className="px-4 py-2 border border-border rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/30"
+              className="stx-pill disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/30"
             >
               Next
-            </button>
+            </Button>
           </div>
         )}
       </>
@@ -219,28 +249,34 @@ export function SearchResultsList({
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           {aiSmartSearchOn && (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={onToggleAiSearch}
-              className="px-4 py-2 border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50"
+              className={`rounded-lg px-4 py-2 ${opacDesign.aiToggleOutline}`}
             >
               Try Standard Search
-            </button>
+            </Button>
           )}
           {!aiSmartSearchOn && (
-            <button
+            <Button
               type="button"
+              size="sm"
               onClick={onToggleAiSearch}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 ${opacDesign.aiToggleSolid}`}
             >
               <Sparkles className="h-4 w-4" />
               Try AI Smart Search
-            </button>
+            </Button>
           )}
-          <Link href="/opac" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
+          <Link
+            href="/opac"
+            className="rounded-lg bg-[linear-gradient(125deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_88%)] px-4 py-2 text-white hover:brightness-110"
+          >
             Browse Catalog
           </Link>
-          <Link href="/opac/help" className="px-4 py-2 border border-border rounded-lg hover:bg-muted/30">
+          <Link href="/opac/help" className={`rounded-lg px-4 py-2 ${opacDesign.subtleAction}`}>
             Search Tips
           </Link>
         </div>

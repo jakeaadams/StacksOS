@@ -4,7 +4,7 @@ import { requirePermissions } from "@/lib/permissions";
 import { logAuditEvent } from "@/lib/audit";
 import { getScheduledReportSchedule } from "@/lib/db/scheduled-reports";
 import { runScheduledReportOnce } from "@/lib/reports/scheduled-runner";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 function parseId(raw: string | undefined): number | null {
   const id = raw ? parseInt(raw, 10) : NaN;
@@ -38,7 +38,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       ip,
       userAgent,
       requestId,
-      details: { scheduleId: schedule.id, scheduleName: schedule.name, reportKey: schedule.report_key },
+      details: {
+        scheduleId: schedule.id,
+        scheduleName: schedule.name,
+        reportKey: schedule.report_key,
+      },
       error: result.status === "success" ? null : "run_failed",
     });
 
@@ -47,4 +51,3 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return serverErrorResponse(error, "Scheduled report run now POST", req);
   }
 }
-

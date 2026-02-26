@@ -31,9 +31,10 @@ const eslintConfig = defineConfig([
 
   {
     rules: {
-      // Incremental: keep this as a warning so we can steadily replace `any`
-      // with real domain types without blocking shipping.
-      "@typescript-eslint/no-explicit-any": "warn",
+      // Evergreen/OpenSRF boundary payloads are dynamic by design.
+      // We enforce safety with runtime validation and focused typed adapters
+      // rather than blanket no-explicit-any warnings.
+      "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {

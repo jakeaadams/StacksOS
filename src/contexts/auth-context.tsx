@@ -17,6 +17,9 @@ interface User {
   displayName: string;
   photoUrl?: string;
   profileName?: string;
+  saasRole?: string | null;
+  saasTenantIds?: string[];
+  isPlatformAdmin?: boolean;
   homeLibrary: string;
   homeLibraryId: number;
   activeOrgId: number;
@@ -39,6 +42,25 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 const WORKSTATION_KEY = "stacksos_workstation";
 const WORKSTATION_ORG_KEY = "stacksos_workstation_org";
+
+function normalizeSaaS(raw: any): {
+  role: string | null;
+  tenantIds: string[];
+  isPlatformAdmin: boolean;
+} {
+  const platformRole =
+    typeof raw?.platformRole === "string" && raw.platformRole.trim()
+      ? raw.platformRole.trim()
+      : null;
+  const tenantIds = Array.isArray(raw?.tenantIds)
+    ? raw.tenantIds.map((v: unknown) => String(v || "").trim()).filter(Boolean)
+    : [];
+  return {
+    role: platformRole || (tenantIds.length > 0 ? "tenant_user" : null),
+    tenantIds,
+    isPlatformAdmin: Boolean(raw?.isPlatformAdmin),
+  };
+}
 
 // Helper to flatten org tree
 function flattenOrgTree(org: any): OrgUnit[] {
@@ -98,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data.ok && data.authenticated && data.user) {
         const homeOu = data.user.home_ou || 1;
+        const saas = normalizeSaaS(data.saas);
 
         // Ensure we have an org list for name resolution.
         const orgsRes = await fetch("/api/evergreen/orgs", { credentials: "include" });
@@ -109,7 +132,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const workstationName =
           typeof window !== "undefined" ? localStorage.getItem(WORKSTATION_KEY) || "" : "";
-        const rawOrg = typeof window !== "undefined" ? localStorage.getItem(WORKSTATION_ORG_KEY) : null;
+        const rawOrg =
+          typeof window !== "undefined" ? localStorage.getItem(WORKSTATION_ORG_KEY) : null;
         const workstationOrgId = rawOrg ? parseInt(rawOrg, 10) : NaN;
 
         const activeOrgId = Number.isFinite(workstationOrgId) ? workstationOrgId : homeOu;
@@ -123,6 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             : "Staff User",
           photoUrl: data.user.photo_url || data.user.photoUrl || undefined,
           profileName: data.profileName || undefined,
+          saasRole: saas.role,
+          saasTenantIds: saas.tenantIds,
+          isPlatformAdmin: saas.isPlatformAdmin,
           homeLibrary: homeOrg?.name || `Library ${homeOu}`,
           homeLibraryId: homeOu,
           activeOrgId,
@@ -141,8 +168,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void checkSession();
   }, []);
 
-
-  const login = async (username: string, password: string, workstation?: string): Promise<boolean> => {
+  const login = async (
+    username: string,
+    password: string,
+    workstation?: string
+  ): Promise<boolean> => {
     try {
       const res = await fetchWithAuth("/api/evergreen/auth", {
         method: "POST",
@@ -155,9 +185,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.ok) {
         const homeOu = data.user?.home_ou || 1;
         const homeOrg = orgs.find((o) => o.id === homeOu);
+        const saas = normalizeSaaS(data.saas);
 
         // Best-effort: read active org from storage (login flow registers it).
-        const rawOrg = typeof window !== "undefined" ? localStorage.getItem(WORKSTATION_ORG_KEY) : null;
+        const rawOrg =
+          typeof window !== "undefined" ? localStorage.getItem(WORKSTATION_ORG_KEY) : null;
         const workstationOrgId = rawOrg ? parseInt(rawOrg, 10) : NaN;
         const activeOrgId = Number.isFinite(workstationOrgId) ? workstationOrgId : homeOu;
         const activeOrgName = getOrgName(activeOrgId);
@@ -170,6 +202,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             : username,
           photoUrl: data.user?.photo_url || data.user?.photoUrl || undefined,
           profileName: data.profileName || undefined,
+          saasRole: saas.role,
+          saasTenantIds: saas.tenantIds,
+          isPlatformAdmin: saas.isPlatformAdmin,
           homeLibrary: homeOrg?.name || `Library ${homeOu}`,
           homeLibraryId: homeOu,
           activeOrgId,

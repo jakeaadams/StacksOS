@@ -23,7 +23,7 @@ scan() {
     --exclude='*.backup_*' \
     --exclude='*.orig' \
     -E "$pattern" \
-    "$ROOT_DIR/src/app/staff" "$ROOT_DIR/src/components" 2>/dev/null || true)
+    "$ROOT_DIR/src/app" "$ROOT_DIR/src/components" 2>/dev/null || true)
 
   local count
   count=$(printf "%s" "$matches" | grep -c . || true)
@@ -82,3 +82,6 @@ else
   echo "UI audit: FAIL ($REPORT_MD)"
   exit 1
 fi
+
+# Always generate file-by-file UI drift inventory for regression tracking.
+node "$ROOT_DIR/scripts/audit-ui-drift.mjs"

@@ -5,7 +5,6 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 import { useMemo, useState, useEffect } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import {
-
   PageContainer,
   PageHeader,
   PageContent,
@@ -26,6 +25,15 @@ interface PatronGroup {
   description: string;
   parentId?: number;
   depth: number;
+}
+
+function depthPaddingClass(depth: number): string {
+  if (depth <= 0) return "pl-0";
+  if (depth === 1) return "pl-3";
+  if (depth === 2) return "pl-6";
+  if (depth === 3) return "pl-9";
+  if (depth === 4) return "pl-12";
+  return "pl-14";
 }
 
 export default function PatronGroupsPage() {
@@ -92,7 +100,7 @@ export default function PatronGroupsPage() {
         header: "Group",
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
-            <span className="font-medium" style={{ paddingLeft: row.original.depth * 12 }}>
+            <span className={`font-medium ${depthPaddingClass(row.original.depth)}`}>
               {row.getValue("name")}
             </span>
           </div>
@@ -106,7 +114,7 @@ export default function PatronGroupsPage() {
       {
         accessorKey: "parentId",
         header: "Parent",
-        cell: ({ row }) => (row.getValue("parentId") ? `#${row.getValue("parentId")}` : "-") ,
+        cell: ({ row }) => (row.getValue("parentId") ? `#${row.getValue("parentId")}` : "-"),
       },
     ],
     []
@@ -144,7 +152,8 @@ export default function PatronGroupsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Users className="h-4 w-4" />Group Hierarchy
+                <Users className="h-4 w-4" />
+                Group Hierarchy
               </CardTitle>
             </CardHeader>
             <CardContent>

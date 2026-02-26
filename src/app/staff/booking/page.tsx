@@ -7,7 +7,6 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import {
-
   PageContainer,
   PageHeader,
   PageContent,
@@ -159,16 +158,13 @@ export default function BookingPage() {
     [resourceTypes]
   );
 
-  const getStatus = useCallback(
-    (reservation: Reservation) => {
-      if (reservation.cancel_time) return { label: "Cancelled", status: "error" as const };
-      if (reservation.return_time) return { label: "Completed", status: "muted" as const };
-      if (reservation.pickup_time) return { label: "Checked Out", status: "info" as const };
-      if (reservation.capture_time) return { label: "Ready", status: "success" as const };
-      return { label: "Pending", status: "warning" as const };
-    },
-    []
-  );
+  const getStatus = useCallback((reservation: Reservation) => {
+    if (reservation.cancel_time) return { label: "Cancelled", status: "error" as const };
+    if (reservation.return_time) return { label: "Completed", status: "muted" as const };
+    if (reservation.pickup_time) return { label: "Checked Out", status: "info" as const };
+    if (reservation.capture_time) return { label: "Ready", status: "success" as const };
+    return { label: "Pending", status: "warning" as const };
+  }, []);
 
   const reservationColumns = useMemo<ColumnDef<Reservation>[]>(
     () => [
@@ -183,7 +179,9 @@ export default function BookingPage() {
         cell: ({ row }) => (
           <div className="flex flex-col">
             <span className="font-medium">Resource #{row.original.target_resource}</span>
-            <span className="text-xs text-muted-foreground">{getTypeName(row.original.target_resource_type)}</span>
+            <span className="text-xs text-muted-foreground">
+              {getTypeName(row.original.target_resource_type)}
+            </span>
           </div>
         ),
       },
@@ -378,7 +376,8 @@ export default function BookingPage() {
             className="w-44"
           />
           <Button size="sm" variant="outline" onClick={loadData}>
-            <Search className="h-4 w-4 mr-2" />Refresh
+            <Search className="h-4 w-4 mr-2" />
+            Refresh
           </Button>
         </div>
       </PageHeader>
@@ -392,13 +391,16 @@ export default function BookingPage() {
           <Tabs defaultValue="reservations" className="flex flex-col gap-4">
             <TabsList>
               <TabsTrigger value="reservations" className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />Reservations ({reservations.length})
+                <Calendar className="h-4 w-4" />
+                Reservations ({reservations.length})
               </TabsTrigger>
               <TabsTrigger value="resources" className="flex items-center gap-2">
-                <Monitor className="h-4 w-4" />Resources ({resources.length})
+                <Monitor className="h-4 w-4" />
+                Resources ({resources.length})
               </TabsTrigger>
               <TabsTrigger value="types" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />Resource Types ({resourceTypes.length})
+                <Users className="h-4 w-4" />
+                Resource Types ({resourceTypes.length})
               </TabsTrigger>
             </TabsList>
 
@@ -420,17 +422,28 @@ export default function BookingPage() {
                         description={
                           reservationsMessage ||
                           (resources.length === 0
-                            ? resourcesMessage || "Configure bookable resources in Evergreen administration"
+                            ? resourcesMessage ||
+                              "Configure bookable resources in Evergreen administration"
                             : "Create a new booking to get started.")
                         }
                         action={
                           resources.length > 0
-                            ? { label: "New booking", onClick: () => setNewBookingOpen(true), icon: Plus }
-                            : { label: "Evergreen setup checklist", onClick: () => router.push("/staff/help#evergreen-setup") }
+                            ? {
+                                label: "New booking",
+                                onClick: () => setNewBookingOpen(true),
+                                icon: Plus,
+                              }
+                            : {
+                                label: "Evergreen setup checklist",
+                                onClick: () => router.push("/staff/help#evergreen-setup"),
+                              }
                         }
                         secondaryAction={
                           resources.length === 0
-                            ? { label: "Seed demo data", onClick: () => router.push("/staff/help#demo-data") }
+                            ? {
+                                label: "Evergreen setup checklist",
+                                onClick: () => router.push("/staff/help#evergreen-setup"),
+                              }
                             : undefined
                         }
                       />
@@ -455,14 +468,17 @@ export default function BookingPage() {
                       <EmptyState
                         icon={Monitor}
                         title="No resources"
-                        description={resourcesMessage || "Create booking resources in Evergreen to enable reservations."}
+                        description={
+                          resourcesMessage ||
+                          "Create booking resources in Evergreen to enable reservations."
+                        }
                         action={{
                           label: "Evergreen setup checklist",
                           onClick: () => router.push("/staff/help#evergreen-setup"),
                         }}
                         secondaryAction={{
-                          label: "Seed demo data",
-                          onClick: () => router.push("/staff/help#demo-data"),
+                          label: "Evergreen setup checklist",
+                          onClick: () => router.push("/staff/help#evergreen-setup"),
                         }}
                       />
                     }
@@ -486,14 +502,16 @@ export default function BookingPage() {
                       <EmptyState
                         icon={Users}
                         title="No resource types"
-                        description={typesMessage || "Create resource types in Evergreen administration."}
+                        description={
+                          typesMessage || "Create resource types in Evergreen administration."
+                        }
                         action={{
                           label: "Evergreen setup checklist",
                           onClick: () => router.push("/staff/help#evergreen-setup"),
                         }}
                         secondaryAction={{
-                          label: "Seed demo data",
-                          onClick: () => router.push("/staff/help#demo-data"),
+                          label: "Evergreen setup checklist",
+                          onClick: () => router.push("/staff/help#evergreen-setup"),
                         }}
                       />
                     }
@@ -524,7 +542,13 @@ export default function BookingPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <div className="text-sm font-medium">Resource Type</div>
-                <Select value={resourceTypeId} onValueChange={(v) => { setResourceTypeId(v); setResourceId(""); }}>
+                <Select
+                  value={resourceTypeId}
+                  onValueChange={(v) => {
+                    setResourceTypeId(v);
+                    setResourceId("");
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -542,7 +566,9 @@ export default function BookingPage() {
                 <div className="text-sm font-medium">Resource</div>
                 <Select value={resourceId} onValueChange={setResourceId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={filteredResources.length ? "Select resource" : "No resources"} />
+                    <SelectValue
+                      placeholder={filteredResources.length ? "Select resource" : "No resources"}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredResources.map((r: any) => (
@@ -558,7 +584,11 @@ export default function BookingPage() {
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-2">
                 <div className="text-sm font-medium">Date</div>
-                <Input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} />
+                <Input
+                  type="date"
+                  value={bookingDate}
+                  onChange={(e) => setBookingDate(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <div className="text-sm font-medium">Start</div>

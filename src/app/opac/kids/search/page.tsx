@@ -7,6 +7,15 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Search,
   BookOpen,
@@ -53,7 +62,11 @@ function transformResults(records: any[]): SearchResult[] {
     author: record.author || record.simple_record?.author || "",
     coverUrl: getCoverUrl(record),
     format: record.format || record.icon_format,
-    readingLevel: record.lexile ? `Lexile ${record.lexile}` : record.ar_level ? `AR ${record.ar_level}` : undefined,
+    readingLevel: record.lexile
+      ? `Lexile ${record.lexile}`
+      : record.ar_level
+        ? `AR ${record.ar_level}`
+        : undefined,
     availableCopies: record.available_copies || record.availability?.available || 0,
     totalCopies: record.total_copies || record.availability?.total || 0,
   }));
@@ -84,26 +97,30 @@ function KidsSearchContent() {
     setSearchInput(query);
   }, [query]);
 
-  const updateSearchParams = useCallback((updates: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams.toString());
-    for (const [key, value] of Object.entries(updates)) {
-      if (value === null || value === "") {
-        params.delete(key);
-      } else {
-        params.set(key, value);
+  const updateSearchParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null || value === "") {
+          params.delete(key);
+        } else {
+          params.set(key, value);
+        }
       }
-    }
 
-    // Reset to page 1 when anything but page changes
-    if (!("page" in updates)) {
-      params.delete("page");
-    }
+      // Reset to page 1 when anything but page changes
+      if (!("page" in updates)) {
+        params.delete("page");
+      }
 
-    router.push(`/opac/kids/search?${params.toString()}`);
-  }, [router, searchParams]);
+      router.push(`/opac/kids/search?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
 
   const searchCatalog = useCallback(async () => {
-    const hasBrowseIntent = Boolean(query) || Boolean(format) || availableOnly || sort !== "relevance";
+    const hasBrowseIntent =
+      Boolean(query) || Boolean(format) || availableOnly || sort !== "relevance";
     if (!hasBrowseIntent) return;
 
     setIsLoading(true);
@@ -124,7 +141,8 @@ function KidsSearchContent() {
       if (response.ok) {
         const data = await response.json();
         setResults(transformResults(data.records || []));
-        const totalCount = Number(data.count) || (Array.isArray(data.records) ? data.records.length : 0);
+        const totalCount =
+          Number(data.count) || (Array.isArray(data.records) ? data.records.length : 0);
         setTotalResults(totalCount);
       }
     } catch (err) {
@@ -134,9 +152,9 @@ function KidsSearchContent() {
     }
   }, [availableOnly, format, order, page, query, sort, type]);
 
-	  useEffect(() => {
-	    void searchCatalog();
-	  }, [searchCatalog]);
+  useEffect(() => {
+    void searchCatalog();
+  }, [searchCatalog]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,7 +169,7 @@ function KidsSearchContent() {
       <div className="mb-8">
         <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-6">
           <div className="relative">
-            <input
+            <Input
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -160,13 +178,15 @@ function KidsSearchContent() {
                        text-foreground placeholder:text-muted-foreground/70 bg-card
                        focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
             />
-            <button type="submit"
+            <Button
+              type="submit"
+              size="icon"
               className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-gradient-to-r 
                        from-purple-500 to-pink-500 text-white rounded-full 
                        hover:from-purple-600 hover:to-pink-600 transition-colors"
             >
               <Search className="h-5 w-5" />
-            </button>
+            </Button>
           </div>
         </form>
 
@@ -176,7 +196,13 @@ function KidsSearchContent() {
             {totalResults > 0 && (
               <p className="text-muted-foreground">
                 Found <span className="font-bold text-purple-600">{totalResults}</span> books
-                {query && <>{` for "`}<span className="font-medium">{query}</span>{`"`}</>}
+                {query && (
+                  <>
+                    {` for "`}
+                    <span className="font-medium">{query}</span>
+                    {`"`}
+                  </>
+                )}
               </p>
             )}
           </div>
@@ -185,53 +211,62 @@ function KidsSearchContent() {
             {/* Sort */}
             <div className="hidden sm:flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Sort:</span>
-              <select
+              <Select
                 value={sort}
-                onChange={(e) => {
-                  const next = e.target.value;
+                onValueChange={(next) => {
                   updateSearchParams({
                     sort: next,
                     order: next === "create_date" ? "desc" : null,
                   });
                 }}
-                className="px-3 py-2 rounded-xl border-2 border-border bg-card text-sm
-                         focus:outline-none focus:border-purple-400"
               >
-                {SORT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-[150px] rounded-xl border-2 bg-card text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Filter toggle */}
-            <button type="button"
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-colors
-                       ${showFilters 
-                         ? "border-purple-400 bg-purple-50 text-purple-700" 
-                         : "border-border text-muted-foreground hover:border-purple-200"
+                       ${
+                         showFilters
+                           ? "border-purple-400 bg-purple-50 text-purple-700"
+                           : "border-border text-muted-foreground hover:border-purple-200"
                        }`}
             >
               <Filter className="h-4 w-4" />
               <span>Filters</span>
-            </button>
+            </Button>
 
             {/* View toggle */}
             <div className="flex bg-card rounded-xl border-2 border-border overflow-hidden">
-              <button type="button"
+              <Button
+                type="button"
+                variant="ghost"
                 onClick={() => setViewMode("grid")}
-                className={`p-2 ${viewMode === "grid" ? "bg-purple-100 text-purple-700" : "text-muted-foreground"}`}
+                className={`rounded-none p-2 ${viewMode === "grid" ? "bg-purple-100 text-purple-700" : "text-muted-foreground"}`}
               >
                 <Grid className="h-5 w-5" />
-              </button>
-              <button type="button"
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
                 onClick={() => setViewMode("list")}
-                className={`p-2 ${viewMode === "list" ? "bg-purple-100 text-purple-700" : "text-muted-foreground"}`}
+                className={`rounded-none p-2 ${viewMode === "list" ? "bg-purple-100 text-purple-700" : "text-muted-foreground"}`}
               >
                 <LayoutList className="h-5 w-5" />
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -241,38 +276,62 @@ function KidsSearchContent() {
           <div className="mt-4 p-4 bg-card rounded-2xl border-2 border-purple-100 shadow-sm">
             <div className="flex flex-wrap gap-4">
               <div>
-                <label htmlFor="format" className="block text-sm font-medium text-foreground/80 mb-1">Format</label>
-                <select id="format"
-                  value={format}
-                  onChange={(e) => updateSearchParams({ format: e.target.value || null })}
-                  className="px-3 py-2 rounded-lg border border-border focus:border-purple-400 focus:outline-none"
+                <label
+                  htmlFor="format"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  <option value="">All Formats</option>
-                  <option value="book">Books</option>
-                  <option value="ebook">eBooks</option>
-                  <option value="audiobook">Audiobooks</option>
-                  <option value="dvd">DVDs</option>
-                </select>
+                  Format
+                </label>
+                <Select
+                  value={format || "all"}
+                  onValueChange={(value) =>
+                    updateSearchParams({ format: value === "all" ? null : value })
+                  }
+                >
+                  <SelectTrigger id="format" className="w-[170px] rounded-lg border">
+                    <SelectValue placeholder="All Formats" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Formats</SelectItem>
+                    <SelectItem value="book">Books</SelectItem>
+                    <SelectItem value="ebook">eBooks</SelectItem>
+                    <SelectItem value="audiobook">Audiobooks</SelectItem>
+                    <SelectItem value="dvd">DVDs</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
-                <label htmlFor="availability" className="block text-sm font-medium text-foreground/80 mb-1">Availability</label>
-                <select id="availability"
-                  value={availableOnly ? "available" : ""}
-                  onChange={(e) => updateSearchParams({ available: e.target.value === "available" ? "true" : null })}
-                  className="px-3 py-2 rounded-lg border border-border focus:border-purple-400 focus:outline-none"
+                <label
+                  htmlFor="availability"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  <option value="">All</option>
-                  <option value="available">Available Now</option>
-                </select>
+                  Availability
+                </label>
+                <Select
+                  value={availableOnly ? "available" : "all"}
+                  onValueChange={(value) =>
+                    updateSearchParams({ available: value === "available" ? "true" : null })
+                  }
+                >
+                  <SelectTrigger id="availability" className="w-[170px] rounded-lg border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="available">Available Now</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              <button type="button"
+              <Button
+                type="button"
+                variant="ghost"
                 onClick={() => updateSearchParams({ format: null, available: null })}
                 className="self-end px-4 py-2 text-sm text-purple-600 hover:text-purple-700"
               >
                 Clear Filters
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -302,7 +361,9 @@ function KidsSearchContent() {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-4 mt-8">
-              <button type="button"
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => updateSearchParams({ page: String(Math.max(1, page - 1)) })}
                 disabled={page === 1}
                 className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border
@@ -311,13 +372,15 @@ function KidsSearchContent() {
               >
                 <ChevronLeft className="h-4 w-4" />
                 Back
-              </button>
+              </Button>
 
               <span className="text-muted-foreground">
                 Page <span className="font-bold text-purple-600">{page}</span> of {totalPages}
               </span>
 
-              <button type="button"
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => updateSearchParams({ page: String(Math.min(totalPages, page + 1)) })}
                 disabled={page === totalPages}
                 className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border
@@ -326,11 +389,11 @@ function KidsSearchContent() {
               >
                 Next
                 <ChevronRight className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
           )}
         </>
-      ) : (query || format || availableOnly || sort !== "relevance") ? (
+      ) : query || format || availableOnly || sort !== "relevance" ? (
         <div className="text-center py-20 bg-card rounded-3xl">
           <div className="w-20 h-20 mx-auto mb-4 bg-purple-100 rounded-full flex items-center justify-center">
             <Search className="h-10 w-10 text-purple-300" />
@@ -365,36 +428,43 @@ function KidsSearchResultCard({ book }: { book: SearchResult }) {
 
   return (
     <Link href={`/opac/kids/record/${book.id}`} className="group block">
-      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
-                    shadow-md group-hover:shadow-xl transition-all group-hover:-translate-y-1">
-	        {book.coverUrl && !imageError ? (
-	          <Image
-	            src={book.coverUrl}
-	            alt={book.title}
-	            fill
-	            sizes="240px"
-	            className="object-cover"
-	            onError={() => setImageError(true)}
-	          />
-	        ) : (
-	          <div className="w-full h-full flex items-center justify-center">
-	            <BookOpen className="h-12 w-12 text-purple-300" />
+      <div
+        className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
+                    shadow-md group-hover:shadow-xl transition-all group-hover:-translate-y-1"
+      >
+        {book.coverUrl && !imageError ? (
+          <Image
+            src={book.coverUrl}
+            alt={book.title}
+            fill
+            sizes="240px"
+            className="object-cover"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <BookOpen className="h-12 w-12 text-purple-300" />
           </div>
         )}
 
         {/* Availability badge */}
-        <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold shadow-sm
-                      ${isAvailable 
-                        ? "bg-green-100 text-green-700" 
-                        : "bg-orange-100 text-orange-700"
-                      }`}>
+        <div
+          className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold shadow-sm
+                      ${
+                        isAvailable
+                          ? "bg-green-100 text-green-700"
+                          : "bg-orange-100 text-orange-700"
+                      }`}
+        >
           {isAvailable ? "Available!" : "On Hold"}
         </div>
 
         {/* Reading level */}
         {book.readingLevel && (
-          <div className="absolute top-2 left-2 px-2 py-1 bg-card/90 backdrop-blur-sm 
-                        rounded-full text-xs font-medium text-purple-700">
+          <div
+            className="absolute top-2 left-2 px-2 py-1 bg-card/90 backdrop-blur-sm 
+                        rounded-full text-xs font-medium text-purple-700"
+          >
             {book.readingLevel}
           </div>
         )}
@@ -422,19 +492,19 @@ function KidsSearchResultListItem({ book }: { book: SearchResult }) {
       className="flex gap-4 p-4 bg-card rounded-2xl border-2 border-transparent 
                hover:border-purple-200 hover:shadow-md transition-all group"
     >
-	      <div className="w-20 h-28 shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100">
-	        {book.coverUrl && !imageError ? (
-	          <Image
-	            src={book.coverUrl}
-	            alt={book.title}
-	            width={80}
-	            height={112}
-	            className="w-full h-full object-cover"
-	            onError={() => setImageError(true)}
-	          />
-	        ) : (
-	          <div className="w-full h-full flex items-center justify-center">
-	            <BookOpen className="h-8 w-8 text-purple-300" />
+      <div className="w-20 h-28 shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100">
+        {book.coverUrl && !imageError ? (
+          <Image
+            src={book.coverUrl}
+            alt={book.title}
+            width={80}
+            height={112}
+            className="w-full h-full object-cover"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <BookOpen className="h-8 w-8 text-purple-300" />
           </div>
         )}
       </div>
@@ -443,19 +513,20 @@ function KidsSearchResultListItem({ book }: { book: SearchResult }) {
         <h3 className="font-bold text-foreground text-lg group-hover:text-purple-600 line-clamp-1">
           {book.title}
         </h3>
-        {book.author && (
-          <p className="text-muted-foreground text-sm">{book.author}</p>
-        )}
-        
+        {book.author && <p className="text-muted-foreground text-sm">{book.author}</p>}
+
         <div className="flex flex-wrap items-center gap-2 mt-2">
-          <span className={`px-2 py-1 rounded-full text-xs font-bold
-                        ${isAvailable 
-                          ? "bg-green-100 text-green-700" 
-                          : "bg-orange-100 text-orange-700"
-                        }`}>
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-bold
+                        ${
+                          isAvailable
+                            ? "bg-green-100 text-green-700"
+                            : "bg-orange-100 text-orange-700"
+                        }`}
+          >
             {isAvailable ? "Available!" : "On Hold"}
           </span>
-          
+
           {book.readingLevel && (
             <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
               {book.readingLevel}
@@ -474,13 +545,15 @@ function KidsSearchResultListItem({ book }: { book: SearchResult }) {
 }
 
 export default function KidsSearchPage() {
-  const t = useTranslations("kidsSearch");
+  const _t = useTranslations("kidsSearch");
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center py-20">
-        <LoadingSpinner size="lg" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20">
+          <LoadingSpinner size="lg" />
+        </div>
+      }
+    >
       <KidsSearchContent />
     </Suspense>
   );

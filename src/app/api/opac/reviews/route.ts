@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 
 /**
@@ -73,20 +74,24 @@ function calculateStats(reviews: Review[]) {
   };
 }
 
-const reviewPostSchema = z.object({
-  bibId: z.coerce.number().int().positive(),
-  rating: z.coerce.number().int().min(1).max(5),
-  title: z.string().trim().max(256).optional(),
-  content: z.string().max(4096).optional(),
-}).passthrough();
+const _reviewPostSchema = z
+  .object({
+    bibId: z.coerce.number().int().positive(),
+    rating: z.coerce.number().int().min(1).max(5),
+    title: z.string().trim().max(256).optional(),
+    content: z.string().max(4096).optional(),
+  })
+  .passthrough();
 
-const reviewPutSchema = z.object({
-  id: z.coerce.number().int().positive().optional(),
-  reviewId: z.coerce.number().int().positive().optional(),
-  rating: z.coerce.number().int().min(1).max(5).optional(),
-  title: z.string().trim().max(256).optional(),
-  content: z.string().max(4096).optional(),
-}).passthrough();
+const _reviewPutSchema = z
+  .object({
+    id: z.coerce.number().int().positive().optional(),
+    reviewId: z.coerce.number().int().positive().optional(),
+    rating: z.coerce.number().int().min(1).max(5).optional(),
+    title: z.string().trim().max(256).optional(),
+    content: z.string().max(4096).optional(),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   try {
@@ -152,7 +157,7 @@ export async function POST(req: NextRequest) {
       ({ patronToken, patronId, user } = await requirePatronSession());
     } catch (error) {
       if (error instanceof PatronAuthError) {
-        console.error("Route /api/opac/reviews auth failed:", error);
+        logger.warn({ error: String(error) }, "Route /api/opac/reviews auth failed");
         return unauthorizedResponse();
       }
       throw error;
@@ -226,7 +231,7 @@ export async function PUT(req: NextRequest) {
       ({ patronId: _patronId } = await requirePatronSession());
     } catch (error) {
       if (error instanceof PatronAuthError) {
-        console.error("Route /api/opac/reviews auth failed:", error);
+        logger.warn({ error: String(error) }, "Route /api/opac/reviews auth failed");
         return unauthorizedResponse();
       }
       throw error;
@@ -280,7 +285,7 @@ export async function DELETE(req: NextRequest) {
       ({ patronId } = await requirePatronSession());
     } catch (error) {
       if (error instanceof PatronAuthError) {
-        console.error("Route /api/opac/reviews auth failed:", error);
+        logger.warn({ error: String(error) }, "Route /api/opac/reviews auth failed");
         return unauthorizedResponse();
       }
       throw error;

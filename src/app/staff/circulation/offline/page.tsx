@@ -16,7 +16,14 @@ import {
 } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -70,11 +77,17 @@ export default function OfflineCirculationPage() {
     pendingTransactions: 0,
   });
   const [showBlockDialog, setShowBlockDialog] = useState(false);
-  const [blockedPatronInfo, setBlockedPatronInfo] = useState<{ barcode: string; reason: string } | null>(null);
+  const [blockedPatronInfo, setBlockedPatronInfo] = useState<{
+    barcode: string;
+    reason: string;
+  } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
-  const [discardConfirmDialog, setDiscardConfirmDialog] = useState<{ open: boolean; onConfirm: () => void }>({ open: false, onConfirm: () => {} });
+  const [discardConfirmDialog, setDiscardConfirmDialog] = useState<{
+    open: boolean;
+    onConfirm: () => void;
+  }>({ open: false, onConfirm: () => {} });
   const [selectedErrorTx, setSelectedErrorTx] = useState<OfflineTransaction | null>(null);
 
   const itemInputRef = useRef<HTMLInputElement>(null);
@@ -113,19 +126,25 @@ export default function OfflineCirculationPage() {
       const result = await offlineService.downloadAllOfflineData();
 
       if (result.blockList.success) {
-        toast.success("Block list downloaded", { description: `${result.blockList.count} records` });
+        toast.success("Block list downloaded", {
+          description: `${result.blockList.count} records`,
+        });
       } else if (result.blockList.error) {
         toast.error("Block list failed", { description: result.blockList.error });
       }
 
       if (result.patrons.success) {
-        toast.success("Patron cache downloaded", { description: `${result.patrons.count} records` });
+        toast.success("Patron cache downloaded", {
+          description: `${result.patrons.count} records`,
+        });
       } else if (result.patrons.error) {
         toast.error("Patron cache failed", { description: result.patrons.error });
       }
 
       if (result.policies.success) {
-        toast.success("Loan policies downloaded", { description: `${result.policies.count} policies` });
+        toast.success("Loan policies downloaded", {
+          description: `${result.policies.count} policies`,
+        });
       } else if (result.policies.error) {
         toast.error("Loan policies failed", { description: result.policies.error });
       }
@@ -143,7 +162,9 @@ export default function OfflineCirculationPage() {
       const result = await offlineService.uploadTransactions();
 
       if (result.success) {
-        toast.success("Upload complete", { description: `${result.processed} transactions processed` });
+        toast.success("Upload complete", {
+          description: `${result.processed} transactions processed`,
+        });
       } else {
         toast.warning("Upload completed with errors", {
           description: `${result.processed} processed, ${result.errors} errors`,
@@ -174,7 +195,10 @@ export default function OfflineCirculationPage() {
       );
 
       if (result.blocked && !overrideBlock) {
-        setBlockedPatronInfo({ barcode: patronBarcode, reason: result.blockReason || "Unknown block" });
+        setBlockedPatronInfo({
+          barcode: patronBarcode,
+          reason: result.blockReason || "Unknown block",
+        });
         setShowBlockDialog(true);
         setIsLoading(false);
         return;
@@ -196,7 +220,9 @@ export default function OfflineCirculationPage() {
 
       if (result.success) {
         toast.success("Checkout recorded", {
-          description: result.dueDate ? `Due: ${new Date(result.dueDate).toLocaleDateString()}` : undefined,
+          description: result.dueDate
+            ? `Due: ${new Date(result.dueDate).toLocaleDateString()}`
+            : undefined,
         });
         setItemBarcode("");
         await loadSyncStatus();
@@ -325,35 +351,44 @@ export default function OfflineCirculationPage() {
     setItemBarcode("");
   };
 
-  const handleRetryTransaction = useCallback(async (tx: OfflineTransaction) => {
-    try {
-      // Reset status to pending and retry upload
-      await offlineDB.updateTransactionStatus(tx.id, "pending");
-      toast.info("Transaction queued for retry");
-      await loadPendingTransactions();
-      await loadSyncStatus();
-    } catch (_error) {
-      toast.error("Failed to retry transaction");
-    }
-  }, [loadPendingTransactions, loadSyncStatus]);
+  const handleRetryTransaction = useCallback(
+    async (tx: OfflineTransaction) => {
+      try {
+        // Reset status to pending and retry upload
+        await offlineDB.updateTransactionStatus(tx.id, "pending");
+        toast.info("Transaction queued for retry");
+        await loadPendingTransactions();
+        await loadSyncStatus();
+      } catch (_error) {
+        toast.error("Failed to retry transaction");
+      }
+    },
+    [loadPendingTransactions, loadSyncStatus]
+  );
 
-  const handleDiscardTransaction = useCallback(async (tx: OfflineTransaction) => {
-    setDiscardConfirmDialog({
-      open: true,
-      onConfirm: () => doDiscardTransaction(tx),
-    });
-  }, []);
+  const doDiscardTransaction = useCallback(
+    async (tx: OfflineTransaction) => {
+      try {
+        await offlineDB.updateTransactionStatus(tx.id, "processed");
+        toast.success("Transaction discarded");
+        await loadPendingTransactions();
+        await loadSyncStatus();
+      } catch (_error) {
+        toast.error("Failed to discard transaction");
+      }
+    },
+    [loadPendingTransactions, loadSyncStatus]
+  );
 
-  const doDiscardTransaction = useCallback(async (tx: OfflineTransaction) => {
-    try {
-      await offlineDB.updateTransactionStatus(tx.id, "processed");
-      toast.success("Transaction discarded");
-      await loadPendingTransactions();
-      await loadSyncStatus();
-    } catch (_error) {
-      toast.error("Failed to discard transaction");
-    }
-  }, [loadPendingTransactions, loadSyncStatus]);
+  const handleDiscardTransaction = useCallback(
+    async (tx: OfflineTransaction) => {
+      setDiscardConfirmDialog({
+        open: true,
+        onConfirm: () => doDiscardTransaction(tx),
+      });
+    },
+    [doDiscardTransaction]
+  );
 
   const viewErrorDetails = useCallback((tx: OfflineTransaction) => {
     setSelectedErrorTx(tx);
@@ -385,12 +420,15 @@ export default function OfflineCirculationPage() {
       {
         accessorKey: "dueDate",
         header: "Due",
-        cell: ({ row }) => (row.original.dueDate ? new Date(row.original.dueDate).toLocaleDateString() : "—"),
+        cell: ({ row }) =>
+          row.original.dueDate ? new Date(row.original.dueDate).toLocaleDateString() : "—",
       },
       {
         accessorKey: "message",
         header: "Message",
-        cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.message}</span>,
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">{row.original.message}</span>
+        ),
       },
       {
         accessorKey: "status",
@@ -408,7 +446,9 @@ export default function OfflineCirculationPage() {
       {
         accessorKey: "timestamp",
         header: "Time",
-        cell: ({ row }) => <span className="text-xs">{row.original.timestamp.toLocaleTimeString()}</span>,
+        cell: ({ row }) => (
+          <span className="text-xs">{row.original.timestamp.toLocaleTimeString()}</span>
+        ),
       },
     ],
     []
@@ -456,7 +496,9 @@ export default function OfflineCirculationPage() {
       {
         accessorKey: "timestamp",
         header: "Timestamp",
-        cell: ({ row }) => <span className="text-xs">{formatDateTime(row.original.timestamp)}</span>,
+        cell: ({ row }) => (
+          <span className="text-xs">{formatDateTime(row.original.timestamp)}</span>
+        ),
       },
       {
         id: "actions",
@@ -466,13 +508,28 @@ export default function OfflineCirculationPage() {
           if (tx.status === "error") {
             return (
               <div className="flex gap-1">
-                <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => viewErrorDetails(tx)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => viewErrorDetails(tx)}
+                >
                   Details
                 </Button>
-                <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => handleRetryTransaction(tx)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => handleRetryTransaction(tx)}
+                >
                   Retry
                 </Button>
-                <Button variant="destructive" size="sm" className="h-7 px-2" onClick={() => handleDiscardTransaction(tx)}>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => handleDiscardTransaction(tx)}
+                >
                   Discard
                 </Button>
               </div>
@@ -563,7 +620,10 @@ export default function OfflineCirculationPage() {
                     {isOnline ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
                     Status
                   </span>
-                  <StatusBadge label={isOnline ? "Online" : "Offline"} status={isOnline ? "success" : "error"} />
+                  <StatusBadge
+                    label={isOnline ? "Online" : "Offline"}
+                    status={isOnline ? "success" : "error"}
+                  />
                 </div>
                 <div className="space-y-2 text-xs text-muted-foreground">
                   <div className="flex items-center justify-between">
@@ -668,8 +728,11 @@ export default function OfflineCirculationPage() {
                       isLoading={isLoading}
                     />
                     <div className="space-y-2">
-                      <label htmlFor="custom-due-date" className="text-sm font-medium">Custom Due Date (optional)</label>
-                      <Input id="custom-due-date"
+                      <label htmlFor="custom-due-date" className="text-sm font-medium">
+                        Custom Due Date (optional)
+                      </label>
+                      <Input
+                        id="custom-due-date"
                         type="date"
                         value={customDueDate}
                         onChange={(e) => setCustomDueDate(e.target.value)}
@@ -691,7 +754,12 @@ export default function OfflineCirculationPage() {
                       data={filteredSessionItems}
                       searchable={false}
                       paginated={false}
-                      emptyState={<EmptyState title="No checkouts" description="No offline checkouts recorded." />}
+                      emptyState={
+                        <EmptyState
+                          title="No checkouts"
+                          description="No offline checkouts recorded."
+                        />
+                      }
                     />
                   </CardContent>
                 </Card>
@@ -712,8 +780,11 @@ export default function OfflineCirculationPage() {
                       isLoading={isLoading}
                     />
                     <div className="space-y-2">
-                      <label htmlFor="backdate" className="text-sm font-medium">Backdate (optional)</label>
-                      <Input id="backdate"
+                      <label htmlFor="backdate" className="text-sm font-medium">
+                        Backdate (optional)
+                      </label>
+                      <Input
+                        id="backdate"
                         type="date"
                         value={backdateDate}
                         onChange={(e) => setBackdateDate(e.target.value)}
@@ -735,7 +806,12 @@ export default function OfflineCirculationPage() {
                       data={filteredSessionItems}
                       searchable={false}
                       paginated={false}
-                      emptyState={<EmptyState title="No checkins" description="No offline checkins recorded." />}
+                      emptyState={
+                        <EmptyState
+                          title="No checkins"
+                          description="No offline checkins recorded."
+                        />
+                      }
                     />
                   </CardContent>
                 </Card>
@@ -778,7 +854,12 @@ export default function OfflineCirculationPage() {
                       data={filteredSessionItems}
                       searchable={false}
                       paginated={false}
-                      emptyState={<EmptyState title="No renewals" description="No offline renewals recorded." />}
+                      emptyState={
+                        <EmptyState
+                          title="No renewals"
+                          description="No offline renewals recorded."
+                        />
+                      }
                     />
                   </CardContent>
                 </Card>
@@ -799,8 +880,11 @@ export default function OfflineCirculationPage() {
                       isLoading={isLoading}
                     />
                     <div className="space-y-2">
-                      <label htmlFor="use-count" className="text-sm font-medium">Use Count</label>
-                      <Input id="use-count"
+                      <label htmlFor="use-count" className="text-sm font-medium">
+                        Use Count
+                      </label>
+                      <Input
+                        id="use-count"
                         type="number"
                         min={1}
                         value={inHouseCount}
@@ -823,7 +907,12 @@ export default function OfflineCirculationPage() {
                       data={filteredSessionItems}
                       searchable={false}
                       paginated={false}
-                      emptyState={<EmptyState title="No in-house use" description="No in-house usage recorded." />}
+                      emptyState={
+                        <EmptyState
+                          title="No in-house use"
+                          description="No in-house usage recorded."
+                        />
+                      }
                     />
                   </CardContent>
                 </Card>
@@ -851,7 +940,12 @@ export default function OfflineCirculationPage() {
                       data={pendingTransactions}
                       searchable={false}
                       paginated={false}
-                      emptyState={<EmptyState title="No pending transactions" description="All transactions are synced." />}
+                      emptyState={
+                        <EmptyState
+                          title="No pending transactions"
+                          description="All transactions are synced."
+                        />
+                      }
                     />
                   </CardContent>
                 </Card>
@@ -874,8 +968,12 @@ export default function OfflineCirculationPage() {
         }}
       >
         <div className="rounded-lg border bg-muted/40 p-3 text-sm">
-          <p><strong>Patron:</strong> {blockedPatronInfo?.barcode}</p>
-          <p><strong>Reason:</strong> {blockedPatronInfo?.reason}</p>
+          <p>
+            <strong>Patron:</strong> {blockedPatronInfo?.barcode}
+          </p>
+          <p>
+            <strong>Reason:</strong> {blockedPatronInfo?.reason}
+          </p>
         </div>
       </ConfirmDialog>
 
@@ -888,13 +986,25 @@ export default function OfflineCirculationPage() {
           {selectedErrorTx && (
             <div className="space-y-4">
               <div className="rounded-lg border bg-muted/40 p-3 space-y-2 text-sm">
-                <div><strong>Type:</strong> {selectedErrorTx.type.replace("_", " ")}</div>
-                <div><strong>Item:</strong> <span className="font-mono">{selectedErrorTx.data.itemBarcode}</span></div>
+                <div>
+                  <strong>Type:</strong> {selectedErrorTx.type.replace("_", " ")}
+                </div>
+                <div>
+                  <strong>Item:</strong>{" "}
+                  <span className="font-mono">{selectedErrorTx.data.itemBarcode}</span>
+                </div>
                 {selectedErrorTx.data.patronBarcode && (
-                  <div><strong>Patron:</strong> <span className="font-mono">{selectedErrorTx.data.patronBarcode}</span></div>
+                  <div>
+                    <strong>Patron:</strong>{" "}
+                    <span className="font-mono">{selectedErrorTx.data.patronBarcode}</span>
+                  </div>
                 )}
-                <div><strong>Workstation:</strong> {selectedErrorTx.workstation}</div>
-                <div><strong>Time:</strong> {formatDateTime(selectedErrorTx.timestamp)}</div>
+                <div>
+                  <strong>Workstation:</strong> {selectedErrorTx.workstation}
+                </div>
+                <div>
+                  <strong>Time:</strong> {formatDateTime(selectedErrorTx.timestamp)}
+                </div>
               </div>
               <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
                 <strong>Error:</strong> {selectedErrorTx.errorMessage || "Unknown error"}
@@ -902,11 +1012,25 @@ export default function OfflineCirculationPage() {
             </div>
           )}
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowErrorDialog(false)}>Close</Button>
-            <Button variant="outline" onClick={() => { handleRetryTransaction(selectedErrorTx!); setShowErrorDialog(false); }}>
+            <Button variant="outline" onClick={() => setShowErrorDialog(false)}>
+              Close
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                handleRetryTransaction(selectedErrorTx!);
+                setShowErrorDialog(false);
+              }}
+            >
               Retry
             </Button>
-            <Button variant="destructive" onClick={() => { handleDiscardTransaction(selectedErrorTx!); setShowErrorDialog(false); }}>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                handleDiscardTransaction(selectedErrorTx!);
+                setShowErrorDialog(false);
+              }}
+            >
               Discard
             </Button>
           </DialogFooter>

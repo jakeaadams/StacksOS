@@ -1,13 +1,8 @@
 import { NextRequest } from "next/server";
-import {
-  callOpenSRF,
-  successResponse,
-  errorResponse,
-  serverErrorResponse,
-} from "@/lib/api";
+import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 // POST /api/opac/renew-all - Renew all eligible items
 export async function POST(req: NextRequest) {
@@ -22,10 +17,7 @@ export async function POST(req: NextRequest) {
     );
 
     const checkoutData = checkoutsResponse.payload?.[0] || {};
-    const allCircIds = [
-      ...(checkoutData.out || []),
-      ...(checkoutData.overdue || []),
-    ];
+    const allCircIds = [...(checkoutData.out || []), ...(checkoutData.overdue || [])];
 
     if (allCircIds.length === 0) {
       return successResponse({
@@ -42,10 +34,7 @@ export async function POST(req: NextRequest) {
 
     // Get circ details to get copy barcodes
     const circDetailsPromises = allCircIds.map((circId: number) =>
-      callOpenSRF("open-ils.circ", "open-ils.circ.retrieve", [
-        patronToken,
-        circId,
-      ])
+      callOpenSRF("open-ils.circ", "open-ils.circ.retrieve", [patronToken, circId])
     );
 
     const circDetails = await Promise.all(circDetailsPromises);
@@ -79,11 +68,10 @@ export async function POST(req: NextRequest) {
         }
 
         // Attempt renewal
-        const renewResponse = await callOpenSRF(
-          "open-ils.circ",
-          "open-ils.circ.renew",
-          [patronToken, { copy_barcode: barcode }]
-        );
+        const renewResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.renew", [
+          patronToken,
+          { copy_barcode: barcode },
+        ]);
 
         const result = renewResponse.payload?.[0];
 
@@ -142,7 +130,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/renew-all auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/renew-all auth failed");
       return errorResponse("Authentication required", 401);
     }
     logger.error({ error: String(error) }, "Error renewing all items");

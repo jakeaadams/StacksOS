@@ -1,15 +1,15 @@
--- StackOS Email Notification System
+-- StackOS Email/SMS Notification System
 -- Evergreen Database Setup
 --
 -- Run this SQL script in your Evergreen database to create the
--- user setting types needed for email notification preferences.
+-- user setting types needed for notification preferences.
 --
 -- Usage:
 --   psql -U evergreen -d evergreen -f setup-evergreen-settings.sql
 
 BEGIN;
 
--- Create email notification preference setting types
+-- Create notification preference setting types
 INSERT INTO config.usr_setting_type (name, opac_visible, label, description, datatype, reg_default)
 VALUES
   (
@@ -59,6 +59,54 @@ VALUES
     'Send email notification for outstanding fines or bills',
     'bool',
     'true'
+  ),
+  (
+    'stacksos.sms.notices.enabled',
+    TRUE,
+    'SMS Notices Enabled',
+    'Master switch to enable or disable all SMS notifications from the library',
+    'bool',
+    'false'
+  ),
+  (
+    'stacksos.sms.notices.hold_ready',
+    TRUE,
+    'Hold Ready SMS Notification',
+    'Send SMS notification when a hold is ready for pickup',
+    'bool',
+    'false'
+  ),
+  (
+    'stacksos.sms.notices.overdue',
+    TRUE,
+    'Overdue SMS Notification',
+    'Send SMS notification for overdue items',
+    'bool',
+    'false'
+  ),
+  (
+    'stacksos.sms.notices.pre_overdue',
+    TRUE,
+    'Pre-Overdue Courtesy SMS',
+    'Send courtesy SMS reminder when items are due soon',
+    'bool',
+    'false'
+  ),
+  (
+    'stacksos.sms.notices.card_expiration',
+    TRUE,
+    'Card Expiration SMS Notification',
+    'Send SMS reminder when library card is expiring soon',
+    'bool',
+    'false'
+  ),
+  (
+    'stacksos.sms.notices.fine_bill',
+    TRUE,
+    'Fine/Bill SMS Notification',
+    'Send SMS notification for outstanding fines or bills',
+    'bool',
+    'false'
   )
 ON CONFLICT (name) DO UPDATE
   SET
@@ -79,6 +127,7 @@ SELECT
   opac_visible
 FROM config.usr_setting_type
 WHERE name LIKE 'stacksos.email.notices.%'
+   OR name LIKE 'stacksos.sms.notices.%'
 ORDER BY name;
 
 -- Example: Set a patron's preference
@@ -93,4 +142,4 @@ ORDER BY name;
 --   value
 -- FROM actor.usr_setting
 -- WHERE usr = <patron_id>
---   AND name LIKE 'stacksos.email.notices.%';
+--   AND (name LIKE 'stacksos.email.notices.%' OR name LIKE 'stacksos.sms.notices.%');

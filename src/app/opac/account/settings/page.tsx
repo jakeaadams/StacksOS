@@ -6,6 +6,8 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import {
   User,
@@ -39,10 +41,10 @@ interface PatronSettings {
 }
 
 export default function AccountSettingsPage() {
-  const t = useTranslations("settingsPage");
+  const _t = useTranslations("settingsPage");
   const router = useRouter();
   const { patron, isLoggedIn, isLoading: sessionLoading } = usePatronSession();
-  
+
   const [settings, setSettings] = useState<PatronSettings>({
     holdNotifyEmail: true,
     holdNotifySms: false,
@@ -52,7 +54,7 @@ export default function AccountSettingsPage() {
     personalizedRecommendations: false,
     readingHistoryPersonalization: false,
   });
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -88,7 +90,7 @@ export default function AccountSettingsPage() {
       router.push("/opac/login?redirect=/opac/account/settings");
       return;
     }
-    
+
     if (isLoggedIn) {
       void fetchSettings();
     }
@@ -201,17 +203,21 @@ export default function AccountSettingsPage() {
               { id: "notifications", label: "Notifications", icon: Bell },
               { id: "privacy", label: "Privacy & Security", icon: Shield },
             ].map((tab: any) => (
-              <button type="button"
+              <Button
+                type="button"
+                variant="ghost"
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 py-4 border-b-2 font-medium text-sm transition-colors
-                  ${activeTab === tab.id
-                    ? "border-primary-600 text-primary-600"
-                    : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                className={`h-auto items-center gap-2 rounded-none border-b-2 px-0 py-4 text-sm font-medium transition-colors
+                  ${
+                    activeTab === tab.id
+                      ? "border-primary-600 text-primary-600"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
               >
                 <tab.icon className="h-4 w-4" />
                 {tab.label}
-              </button>
+              </Button>
             ))}
           </nav>
         </div>
@@ -237,11 +243,13 @@ export default function AccountSettingsPage() {
         {activeTab === "profile" && (
           <div className="bg-card rounded-xl border border-border p-6">
             <h2 className="text-lg font-semibold text-foreground mb-6">Contact Information</h2>
-            
+
             <div className="space-y-4">
               {/* Name (read-only) */}
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-foreground/80 mb-1">Name</label>
+                <label htmlFor="name" className="block text-sm font-medium text-foreground/80 mb-1">
+                  Name
+                </label>
                 <div className="px-4 py-3 bg-muted/30 rounded-lg text-foreground/80">
                   {patron?.firstName} {patron?.lastName}
                 </div>
@@ -252,23 +260,33 @@ export default function AccountSettingsPage() {
 
               {/* Card Number (read-only) */}
               <div>
-                <label htmlFor="library-card" className="block text-sm font-medium text-foreground/80 mb-1">Library Card</label>
+                <label
+                  htmlFor="library-card"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Library Card
+                </label>
                 <div className="px-4 py-3 bg-muted/30 rounded-lg text-foreground/80 font-mono">
-                  {patron?.cardNumber || ''}
+                  {patron?.cardNumber || ""}
                 </div>
               </div>
 
               {/* Email */}
               <div>
-                <label htmlFor="email-address" className="block text-sm font-medium text-foreground/80 mb-1">Email Address</label>
+                <label
+                  htmlFor="email-address"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Email Address
+                </label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/70" />
-                  <input id="email-address"
+                  <Input
+                    id="email-address"
                     type="email"
                     value={settings.email || ""}
                     onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                    className="w-full pl-14 pr-4 py-3 border border-border rounded-lg
-                             focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="h-11 rounded-lg border-border pl-14 pr-4"
                     placeholder="your@email.com"
                   />
                 </div>
@@ -276,15 +294,20 @@ export default function AccountSettingsPage() {
 
               {/* Phone */}
               <div>
-                <label htmlFor="phone-number" className="block text-sm font-medium text-foreground/80 mb-1">Phone Number</label>
+                <label
+                  htmlFor="phone-number"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Phone Number
+                </label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/70" />
-                  <input id="phone-number"
+                  <Input
+                    id="phone-number"
                     type="tel"
                     value={settings.phone || ""}
                     onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-                    className="w-full pl-14 pr-4 py-3 border border-border rounded-lg
-                             focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="h-11 rounded-lg border-border pl-14 pr-4"
                     placeholder="(555) 123-4567"
                   />
                 </div>
@@ -292,16 +315,19 @@ export default function AccountSettingsPage() {
             </div>
 
             <div className="mt-6 pt-6 border-t">
-              <button type="button"
+              <Button
+                type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium
-                         hover:bg-primary-700 transition-colors disabled:opacity-50 
-                         flex items-center gap-2"
+                className="items-center gap-2 px-6"
               >
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
                 Save Changes
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -310,17 +336,22 @@ export default function AccountSettingsPage() {
         {activeTab === "notifications" && (
           <div className="bg-card rounded-xl border border-border p-6">
             <h2 className="text-lg font-semibold text-foreground mb-6">Notification Preferences</h2>
-            
+
             <div className="space-y-6">
               {/* Hold notifications */}
               <div>
                 <h3 className="font-medium text-foreground mb-3">Hold Ready Notifications</h3>
                 <div className="space-y-3">
-                  <label htmlFor="email-me-when-holds-are-ready" className="flex items-center gap-3">
+                  <label
+                    htmlFor="email-me-when-holds-are-ready"
+                    className="flex items-center gap-3"
+                  >
                     <input
                       type="checkbox"
                       checked={settings.holdNotifyEmail}
-                      onChange={(e) => setSettings({ ...settings, holdNotifyEmail: e.target.checked })}
+                      onChange={(e) =>
+                        setSettings({ ...settings, holdNotifyEmail: e.target.checked })
+                      }
                       className="rounded border-border text-primary-600 focus:ring-primary-500"
                     />
                     <span className="text-foreground/80">Email me when holds are ready</span>
@@ -329,7 +360,9 @@ export default function AccountSettingsPage() {
                     <input
                       type="checkbox"
                       checked={settings.holdNotifyPhone}
-                      onChange={(e) => setSettings({ ...settings, holdNotifyPhone: e.target.checked })}
+                      onChange={(e) =>
+                        setSettings({ ...settings, holdNotifyPhone: e.target.checked })
+                      }
                       className="rounded border-border text-primary-600 focus:ring-primary-500"
                     />
                     <span className="text-foreground/80">Call me when holds are ready</span>
@@ -338,7 +371,9 @@ export default function AccountSettingsPage() {
                     <input
                       type="checkbox"
                       checked={settings.holdNotifySms}
-                      onChange={(e) => setSettings({ ...settings, holdNotifySms: e.target.checked })}
+                      onChange={(e) =>
+                        setSettings({ ...settings, holdNotifySms: e.target.checked })
+                      }
                       className="rounded border-border text-primary-600 focus:ring-primary-500"
                     />
                     <span className="text-foreground/80">Text me when holds are ready</span>
@@ -349,11 +384,16 @@ export default function AccountSettingsPage() {
               {/* Overdue notifications */}
               <div>
                 <h3 className="font-medium text-foreground mb-3">Overdue Reminders</h3>
-                <label htmlFor="email-me-when-items-are-overdue" className="flex items-center gap-3">
+                <label
+                  htmlFor="email-me-when-items-are-overdue"
+                  className="flex items-center gap-3"
+                >
                   <input
                     type="checkbox"
                     checked={settings.overdueNotifyEmail}
-                    onChange={(e) => setSettings({ ...settings, overdueNotifyEmail: e.target.checked })}
+                    onChange={(e) =>
+                      setSettings({ ...settings, overdueNotifyEmail: e.target.checked })
+                    }
                     className="rounded border-border text-primary-600 focus:ring-primary-500"
                   />
                   <span className="text-foreground/80">Email me when items are overdue</span>
@@ -362,16 +402,19 @@ export default function AccountSettingsPage() {
             </div>
 
             <div className="mt-6 pt-6 border-t">
-              <button type="button"
+              <Button
+                type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium
-                         hover:bg-primary-700 transition-colors disabled:opacity-50 
-                         flex items-center gap-2"
+                className="items-center gap-2 px-6"
               >
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
                 Save Changes
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -394,14 +437,15 @@ export default function AccountSettingsPage() {
               )}
 
               {!showPinChange ? (
-                <button type="button"
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setShowPinChange(true)}
-                  className="px-4 py-2 border border-border text-foreground/80 rounded-lg 
-                           hover:bg-muted/30 transition-colors flex items-center gap-2"
+                  className="items-center gap-2 px-4"
                 >
                   <Lock className="h-4 w-4" />
                   Change PIN
-                </button>
+                </Button>
               ) : (
                 <div className="space-y-4">
                   {pinError && (
@@ -411,37 +455,52 @@ export default function AccountSettingsPage() {
                   )}
 
                   <div>
-                    <label htmlFor="current-pin" className="block text-sm font-medium text-foreground/80 mb-1">Current PIN</label>
+                    <label
+                      htmlFor="current-pin"
+                      className="block text-sm font-medium text-foreground/80 mb-1"
+                    >
+                      Current PIN
+                    </label>
                     <div className="relative">
-                      <input id="current-pin"
+                      <Input
+                        id="current-pin"
                         type={showPins ? "text" : "password"}
                         value={currentPin}
                         onChange={(e) => setCurrentPin(e.target.value)}
-                        className="w-full px-4 py-2 border border-border rounded-lg
-                                 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="h-10 rounded-lg px-4"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label htmlFor="new-pin" className="block text-sm font-medium text-foreground/80 mb-1">New PIN</label>
-                    <input id="new-pin"
+                    <label
+                      htmlFor="new-pin"
+                      className="block text-sm font-medium text-foreground/80 mb-1"
+                    >
+                      New PIN
+                    </label>
+                    <Input
+                      id="new-pin"
                       type={showPins ? "text" : "password"}
                       value={newPin}
                       onChange={(e) => setNewPin(e.target.value)}
-                      className="w-full px-4 py-2 border border-border rounded-lg
-                               focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="h-10 rounded-lg px-4"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="confirm-new-pin" className="block text-sm font-medium text-foreground/80 mb-1">Confirm New PIN</label>
-                    <input id="confirm-new-pin"
+                    <label
+                      htmlFor="confirm-new-pin"
+                      className="block text-sm font-medium text-foreground/80 mb-1"
+                    >
+                      Confirm New PIN
+                    </label>
+                    <Input
+                      id="confirm-new-pin"
                       type={showPins ? "text" : "password"}
                       value={confirmPin}
                       onChange={(e) => setConfirmPin(e.target.value)}
-                      className="w-full px-4 py-2 border border-border rounded-lg
-                               focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="h-10 rounded-lg px-4"
                     />
                   </div>
 
@@ -456,15 +515,17 @@ export default function AccountSettingsPage() {
                   </label>
 
                   <div className="flex gap-3">
-                    <button type="button"
+                    <Button
+                      type="button"
                       onClick={handlePinChange}
                       disabled={isSaving}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium
-                               hover:bg-primary-700 transition-colors disabled:opacity-50"
+                      className="px-4"
                     >
                       {isSaving ? "Saving..." : "Update PIN"}
-                    </button>
-                    <button type="button"
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={() => {
                         setShowPinChange(false);
                         setCurrentPin("");
@@ -472,11 +533,10 @@ export default function AccountSettingsPage() {
                         setConfirmPin("");
                         setPinError(null);
                       }}
-                      className="px-4 py-2 border border-border text-foreground/80 rounded-lg
-                               hover:bg-muted/30 transition-colors"
+                      className="px-4"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -499,23 +559,26 @@ export default function AccountSettingsPage() {
                 <div>
                   <span className="text-foreground font-medium">Keep my reading history</span>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    When enabled, you can view your past checkouts. When disabled, 
-                    your checkout history will not be saved.
+                    When enabled, you can view your past checkouts. When disabled, your checkout
+                    history will not be saved.
                   </p>
                 </div>
               </label>
 
               <div className="mt-4">
-                <button type="button"
+                <Button
+                  type="button"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium
-                           hover:bg-primary-700 transition-colors disabled:opacity-50 
-                           flex items-center gap-2"
+                  className="items-center gap-2 px-6"
                 >
-                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
                   Save Changes
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -527,7 +590,10 @@ export default function AccountSettingsPage() {
               </p>
 
               <div className="space-y-4">
-                <label htmlFor="enable-personalized-recommendations" className="flex items-start gap-3">
+                <label
+                  htmlFor="enable-personalized-recommendations"
+                  className="flex items-start gap-3"
+                >
                   <input
                     type="checkbox"
                     checked={Boolean(settings.personalizedRecommendations)}
@@ -535,48 +601,62 @@ export default function AccountSettingsPage() {
                       setSettings({
                         ...settings,
                         personalizedRecommendations: e.target.checked,
-                        readingHistoryPersonalization: e.target.checked ? settings.readingHistoryPersonalization : false,
+                        readingHistoryPersonalization: e.target.checked
+                          ? settings.readingHistoryPersonalization
+                          : false,
                       })
                     }
                     className="mt-1 rounded border-border text-primary-600 focus:ring-primary-500"
                   />
                   <div>
-                    <span className="text-foreground font-medium">Enable personalized recommendations</span>
+                    <span className="text-foreground font-medium">
+                      Enable personalized recommendations
+                    </span>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      When enabled, recommendations may use your holds and lists. Your reading history is never used
-                      unless you explicitly enable it below.
+                      When enabled, recommendations may use your holds and lists. Your reading
+                      history is never used unless you explicitly enable it below.
                     </p>
                   </div>
                 </label>
 
-                <label htmlFor="use-my-reading-history-for-recommendations" className={`flex items-start gap-3 ${settings.personalizedRecommendations ? "" : "opacity-60"}`}>
+                <label
+                  htmlFor="use-my-reading-history-for-recommendations"
+                  className={`flex items-start gap-3 ${settings.personalizedRecommendations ? "" : "opacity-60"}`}
+                >
                   <input
                     type="checkbox"
                     checked={Boolean(settings.readingHistoryPersonalization)}
-                    onChange={(e) => setSettings({ ...settings, readingHistoryPersonalization: e.target.checked })}
+                    onChange={(e) =>
+                      setSettings({ ...settings, readingHistoryPersonalization: e.target.checked })
+                    }
                     disabled={!settings.personalizedRecommendations}
                     className="mt-1 rounded border-border text-primary-600 focus:ring-primary-500"
                   />
                   <div>
-                    <span className="text-foreground font-medium">Use my reading history for recommendations</span>
+                    <span className="text-foreground font-medium">
+                      Use my reading history for recommendations
+                    </span>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      If enabled, recommendations may use your checkout history. This requires Reading History to be
-                      enabled above.
+                      If enabled, recommendations may use your checkout history. This requires
+                      Reading History to be enabled above.
                     </p>
                   </div>
                 </label>
 
                 <div className="mt-2">
-                  <button type="button"
+                  <Button
+                    type="button"
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium
-                             hover:bg-primary-700 transition-colors disabled:opacity-50 
-                             flex items-center gap-2"
+                    className="items-center gap-2 px-6"
                   >
-                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {isSaving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
                     Save Changes
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

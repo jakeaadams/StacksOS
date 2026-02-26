@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { featureFlags } from "@/lib/feature-flags";
 import { useLibrary } from "@/hooks/use-library";
+import { Progress } from "@/components/ui/progress";
 import {
   User,
   BookOpen,
@@ -24,8 +25,8 @@ import {
   MapPin,
   Mail,
   Phone,
-	  CreditCard,
-	} from "lucide-react";
+  CreditCard,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 
 type QuickStatCardProps = {
@@ -37,18 +38,11 @@ type QuickStatCardProps = {
   alert?: boolean;
 };
 
-function QuickStatCard({
-  title,
-  value,
-  icon: Icon,
-  href,
-  color,
-  alert,
-}: QuickStatCardProps) {
+function QuickStatCard({ title, value, icon: Icon, href, color, alert }: QuickStatCardProps) {
   return (
     <Link
       href={href}
-      className={`block p-6 bg-card rounded-xl shadow-sm border border-border 
+      className={`block p-6 stx-surface rounded-xl 
                 hover:shadow-md hover:border-primary-300 transition-all group
                 ${alert ? "ring-2 ring-amber-400 ring-offset-2" : ""}`}
     >
@@ -61,8 +55,10 @@ function QuickStatCard({
           <Icon className={`h-6 w-6 ${color}`} />
         </div>
       </div>
-      <div className="mt-4 flex items-center text-sm text-primary-600 font-medium 
-                    group-hover:gap-2 transition-all">
+      <div
+        className="mt-4 flex items-center text-sm text-primary-600 font-medium 
+                    group-hover:gap-2 transition-all"
+      >
         View details
         <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
       </div>
@@ -73,9 +69,9 @@ function QuickStatCard({
 export default function AccountDashboard() {
   const t = useTranslations("accountDashboard");
   const router = useRouter();
-  const { 
-    patron, 
-    isLoggedIn, 
+  const {
+    patron,
+    isLoggedIn,
     isLoading,
     checkouts,
     holds,
@@ -86,6 +82,7 @@ export default function AccountDashboard() {
   } = usePatronSession();
   const { currentLocation } = useLibrary();
   const [listsCount, setListsCount] = useState<number | null>(null);
+  const [_eventsCount, _setEventsCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isLoggedIn) {
@@ -128,8 +125,8 @@ export default function AccountDashboard() {
     );
   }
 
-  const overdueItems = checkouts.filter(c => c.isOverdue);
-  const readyHolds = holds.filter(h => h.status === "ready");
+  const overdueItems = checkouts.filter((c) => c.isOverdue);
+  const readyHolds = holds.filter((h) => h.status === "ready");
   const totalFineBalance = fines.reduce((sum, f) => sum + (f.isPaid ? 0 : f.amount), 0);
 
   return (
@@ -137,12 +134,8 @@ export default function AccountDashboard() {
       <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">
-            Welcome, {patron?.firstName}!
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your library account
-          </p>
+          <h1 className="text-3xl font-bold text-foreground">Welcome, {patron?.firstName}!</h1>
+          <p className="text-muted-foreground mt-1">Manage your library account</p>
         </div>
 
         {/* Alerts */}
@@ -152,19 +145,21 @@ export default function AccountDashboard() {
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
                 <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
                 <p className="text-red-800">
-                  You have <strong>{overdueItems.length}</strong> overdue item{overdueItems.length !== 1 && "s"}.
+                  You have <strong>{overdueItems.length}</strong> overdue item
+                  {overdueItems.length !== 1 && "s"}.
                   <Link href="/opac/account/checkouts" className="ml-2 underline">
                     View & renew
                   </Link>
                 </p>
               </div>
             )}
-            
+
             {readyHolds.length > 0 && (
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
                 <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
                 <p className="text-green-800">
-                  <strong>{readyHolds.length}</strong> hold{readyHolds.length !== 1 && "s"} ready for pickup!
+                  <strong>{readyHolds.length}</strong> hold{readyHolds.length !== 1 && "s"} ready
+                  for pickup!
                   <Link href="/opac/account/holds" className="ml-2 underline">
                     View details
                   </Link>
@@ -201,7 +196,7 @@ export default function AccountDashboard() {
             value={holds.length}
             icon={Clock}
             href="/opac/account/holds"
-            color="text-purple-600"
+            color="text-indigo-600"
             alert={readyHolds.length > 0}
           />
           <QuickStatCard
@@ -226,21 +221,21 @@ export default function AccountDashboard() {
           {/* Account info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Recent checkouts */}
-            <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+            <div className="stx-surface rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-foreground">Recent Checkouts</h2>
-                <Link 
+                <Link
                   href="/opac/account/checkouts"
                   className="text-primary-600 hover:text-primary-700 text-sm font-medium"
                 >
                   View all →
                 </Link>
               </div>
-              
+
               {checkouts.length > 0 ? (
                 <div className="space-y-3">
                   {checkouts.slice(0, 3).map((checkout) => (
-                    <div 
+                    <div
                       key={checkout.id}
                       className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg"
                     >
@@ -262,7 +257,9 @@ export default function AccountDashboard() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-foreground truncate">{checkout.title}</p>
                         <p className="text-sm text-muted-foreground truncate">{checkout.author}</p>
-                        <p className={`text-sm ${checkout.isOverdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
+                        <p
+                          className={`text-sm ${checkout.isOverdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}
+                        >
                           {checkout.isOverdue ? "OVERDUE - " : ""}Due {checkout.dueDate}
                         </p>
                       </div>
@@ -270,7 +267,9 @@ export default function AccountDashboard() {
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground text-center py-4">No items currently checked out</p>
+                <p className="text-muted-foreground text-center py-4">
+                  No items currently checked out
+                </p>
               )}
             </div>
 
@@ -282,7 +281,7 @@ export default function AccountDashboard() {
                 </div>
                 <h2 className="text-lg font-semibold">Your Reading Stats</h2>
               </div>
-              
+
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
                   <p className="text-3xl font-bold">{patron?.booksReadThisYear || 0}</p>
@@ -294,7 +293,7 @@ export default function AccountDashboard() {
                 </div>
                 <div className="text-center">
                   <p className="text-3xl font-bold">{patron?.readingGoal || 24}</p>
-                  <p className="text-sm text-primary-100">2025 Goal</p>
+                  <p className="text-sm text-primary-100">{new Date().getFullYear()} Goal</p>
                 </div>
               </div>
 
@@ -302,14 +301,17 @@ export default function AccountDashboard() {
                 <div className="mt-4">
                   <div className="flex justify-between text-sm mb-1">
                     <span>Progress to goal</span>
-                    <span>{Math.round(((patron.booksReadThisYear || 0) / patron.readingGoal) * 100)}%</span>
+                    <span>
+                      {Math.round(((patron.booksReadThisYear || 0) / patron.readingGoal) * 100)}%
+                    </span>
                   </div>
-                  <div className="h-2 bg-card/20 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-card rounded-full transition-all"
-                      style={{ width: `${Math.min(100, ((patron.booksReadThisYear || 0) / patron.readingGoal) * 100)}%` }}
-                    />
-                  </div>
+                  <Progress
+                    className="h-2 bg-card/20 [&>div]:bg-card"
+                    value={Math.min(
+                      100,
+                      ((patron.booksReadThisYear || 0) / patron.readingGoal) * 100
+                    )}
+                  />
                 </div>
               )}
             </div>
@@ -318,7 +320,7 @@ export default function AccountDashboard() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Account info card */}
-            <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+            <div className="stx-surface rounded-xl p-6">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
                   <User className="h-8 w-8 text-primary-600" />
@@ -369,7 +371,7 @@ export default function AccountDashboard() {
             </div>
 
             {/* Quick links */}
-            <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+            <div className="stx-surface rounded-xl p-6">
               <h3 className="font-semibold text-foreground mb-4">Quick Links</h3>
               <nav className="space-y-2">
                 <Link

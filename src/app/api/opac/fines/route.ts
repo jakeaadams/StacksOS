@@ -1,10 +1,5 @@
 import { NextRequest } from "next/server";
-import {
-  callOpenSRF,
-  successResponse,
-  errorResponse,
-  serverErrorResponse,
-} from "@/lib/api";
+import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { z } from "zod";
@@ -103,7 +98,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: any) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/fines GET auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/fines GET auth failed");
       return errorResponse("Authentication required", 401);
     }
     logger.error({ error: String(error) }, "Error fetching fines");
@@ -116,7 +111,11 @@ export async function POST(req: NextRequest) {
   try {
     const { patronToken, patronId } = await requirePatronSession();
 
-    const { transactionIds, amount, paymentType = "credit_card_payment" } = payFinesSchema.parse(await req.json());
+    const {
+      transactionIds,
+      amount,
+      paymentType = "credit_card_payment",
+    } = payFinesSchema.parse(await req.json());
 
     if (!transactionIds || !Array.isArray(transactionIds) || transactionIds.length === 0) {
       return errorResponse("Transaction IDs required");
@@ -128,27 +127,20 @@ export async function POST(req: NextRequest) {
 
     // Note: Real implementation would integrate with payment processor
     // This is the Evergreen API call for recording payments
-    const paymentResponse = await callOpenSRF(
-      "open-ils.circ",
-      "open-ils.circ.money.payment",
-      [
-        patronToken,
-        {
-          userid: patronId,
-          payments: transactionIds.map((id: number) => [
-            id,
-            Number(amount) / transactionIds.length,
-          ]),
-          payment_type: paymentType,
-        },
-        patronId,
-      ]
-    );
+    const paymentResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.money.payment", [
+      patronToken,
+      {
+        userid: patronId,
+        payments: transactionIds.map((id: number) => [id, Number(amount) / transactionIds.length]),
+        payment_type: paymentType,
+      },
+      patronId,
+    ]);
 
     const result = paymentResponse.payload?.[0];
 
     if (result?.ilsevent) {
-      return errorResponse(result.textcode || "Payment failed" );
+      return errorResponse(result.textcode || "Payment failed");
     }
 
     return successResponse({
@@ -157,7 +149,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/fines POST auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/fines POST auth failed");
       return errorResponse("Authentication required", 401);
     }
     logger.error({ error: String(error) }, "Error processing payment");

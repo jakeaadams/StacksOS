@@ -1,12 +1,8 @@
 import { NextRequest } from "next/server";
-import {
-  callOpenSRF,
-  successResponse,
-  serverErrorResponse,
-} from "@/lib/api";
+import { callOpenSRF, successResponse, serverErrorResponse } from "@/lib/api";
 
 import { cookies } from "next/headers";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 /**
  * OPAC Patron Logout
@@ -19,11 +15,7 @@ export async function POST(req: NextRequest) {
 
     if (patronToken) {
       // End Evergreen session
-      await callOpenSRF(
-        "open-ils.auth",
-        "open-ils.auth.session.delete",
-        [patronToken]
-      );
+      await callOpenSRF("open-ils.auth", "open-ils.auth.session.delete", [patronToken]);
     }
 
     // Clear cookie

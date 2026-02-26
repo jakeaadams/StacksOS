@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
+import { logger } from "@/lib/logger";
 import {
   addKidsReadingLogEntry,
   deleteKidsReadingLogEntry,
@@ -14,7 +15,11 @@ const createSchema = z.object({
   title: z.string().trim().min(1).max(400),
   author: z.string().trim().max(400).optional(),
   isbn: z.string().trim().max(64).optional(),
-  minutesRead: z.number().int().min(1).max(24 * 60),
+  minutesRead: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 60),
   pagesRead: z.number().int().min(0).max(10000).optional(),
   rating: z.number().int().min(1).max(5).optional(),
   notes: z.string().trim().max(4000).optional(),
@@ -33,7 +38,7 @@ export async function GET(req: NextRequest) {
     return successResponse({ entries });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/kids/reading-log GET auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/kids/reading-log GET auth failed");
       return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(error, "Kids reading log GET", req);
@@ -69,7 +74,7 @@ export async function POST(req: NextRequest) {
     return successResponse({ entry });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/kids/reading-log POST auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/kids/reading-log POST auth failed");
       return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(error, "Kids reading log POST", req);
@@ -93,10 +98,9 @@ export async function DELETE(req: NextRequest) {
     return successResponse({ deleted: true, id });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/kids/reading-log DELETE auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/kids/reading-log DELETE auth failed");
       return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(error, "Kids reading log DELETE", req);
   }
 }
-

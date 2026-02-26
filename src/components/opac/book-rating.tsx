@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Star } from "lucide-react";
+import { Star, StarHalf } from "lucide-react";
 import { clientLogger } from "@/lib/client-logger";
 
 interface BookRatingProps {
@@ -70,18 +70,19 @@ export function BookRating({
       <div className="flex items-center">
         {[1, 2, 3, 4, 5].map((star) => {
           const filled = rating >= star;
-          const partial = !filled && rating > star - 1;
+          const partial = !filled && rating >= star - 0.5;
 
           return (
             <div key={star} className="relative">
-              <Star className={`${starSizes[size]} text-muted-foreground/50`} fill="currentColor" />
-              {(filled || partial) && (
-                <div
-                  className="absolute inset-0 overflow-hidden"
-                  style={{ width: filled ? "100%" : `${(rating - (star - 1)) * 100}%` }}
-                >
-                  <Star className={`${starSizes[size]} text-amber-400`} fill="currentColor" />
-                </div>
+              {filled ? (
+                <Star className={`${starSizes[size]} text-amber-400`} fill="currentColor" />
+              ) : partial ? (
+                <StarHalf className={`${starSizes[size]} text-amber-400`} />
+              ) : (
+                <Star
+                  className={`${starSizes[size]} text-muted-foreground/50`}
+                  fill="currentColor"
+                />
               )}
             </div>
           );

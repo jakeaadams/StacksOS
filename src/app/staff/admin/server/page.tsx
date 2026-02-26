@@ -32,10 +32,7 @@ export default function ServerAdminPage() {
         <PageHeader
           title="Server Administration"
           subtitle="Monitor Evergreen services and server health."
-          breadcrumbs={[
-            { label: "Administration", href: "/staff/admin" },
-            { label: "Server" },
-          ]}
+          breadcrumbs={[{ label: "Administration", href: "/staff/admin" }, { label: "Server" }]}
         />
         <PageContent>
           <EmptyState
@@ -91,8 +88,20 @@ export default function ServerAdminPage() {
       header: "Status",
       cell: ({ row }) => (
         <StatusBadge
-          label={row.original.status === "running" ? "Running" : row.original.status === "stopped" ? "Stopped" : "Error"}
-          status={row.original.status === "running" ? "success" : row.original.status === "stopped" ? "pending" : "error"}
+          label={
+            row.original.status === "running"
+              ? "Running"
+              : row.original.status === "stopped"
+                ? "Stopped"
+                : "Error"
+          }
+          status={
+            row.original.status === "running"
+              ? "success"
+              : row.original.status === "stopped"
+                ? "pending"
+                : "error"
+          }
         />
       ),
     },
@@ -111,10 +120,7 @@ export default function ServerAdminPage() {
       <PageHeader
         title="Server Administration"
         subtitle="Monitor Evergreen services and server health."
-        breadcrumbs={[
-          { label: "Administration", href: "/staff/admin" },
-          { label: "Server" },
-        ]}
+        breadcrumbs={[{ label: "Administration", href: "/staff/admin" }, { label: "Server" }]}
         actions={
           enabled
             ? [
@@ -135,9 +141,13 @@ export default function ServerAdminPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Gateway</p>
-                  <div className="text-lg font-semibold mt-1">{pingData?.ok ? "Online" : "Offline"}</div>
+                  <div className="text-lg font-semibold mt-1">
+                    {pingData?.ok ? "Online" : "Offline"}
+                  </div>
                 </div>
-                <div className={`h-10 w-10 rounded-full flex items-center justify-center ${pingData?.ok ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"}`}>
+                <div
+                  className={`h-10 w-10 rounded-full flex items-center justify-center ${pingData?.ok ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"}`}
+                >
                   <Activity className="h-5 w-5" />
                 </div>
               </div>
@@ -163,7 +173,9 @@ export default function ServerAdminPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Services</p>
-                  <div className="text-lg font-semibold mt-1">{services.filter(s => s.status === "running").length}/{services.length}</div>
+                  <div className="text-lg font-semibold mt-1">
+                    {services.filter((s) => s.status === "running").length}/{services.length}
+                  </div>
                 </div>
                 <div className="h-10 w-10 rounded-full flex items-center justify-center bg-amber-500/10 text-amber-600">
                   <Server className="h-5 w-5" />
@@ -179,7 +191,7 @@ export default function ServerAdminPage() {
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Storage</p>
                   <div className="text-lg font-semibold mt-1">Healthy</div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-purple-500/10 text-purple-600">
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-indigo-500/10 text-indigo-600">
                   <HardDrive className="h-5 w-5" />
                 </div>
               </div>
@@ -199,7 +211,9 @@ export default function ServerAdminPage() {
               isLoading={isLoading}
               searchable={false}
               paginated={false}
-              emptyState={<EmptyState title="No services" description="Could not retrieve service status." />}
+              emptyState={
+                <EmptyState title="No services" description="Could not retrieve service status." />
+              }
             />
           </CardContent>
         </Card>
@@ -207,12 +221,15 @@ export default function ServerAdminPage() {
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base">Server Configuration</CardTitle>
-            <CardDescription>System-level configuration is managed directly in Evergreen.</CardDescription>
+            <CardDescription>
+              System-level configuration is managed directly in Evergreen.
+            </CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             <p>
-              Advanced server configuration (OpenSRF settings, Apache config, database tuning) should be performed
-              directly on the Evergreen server. StacksOS provides a read-only view of service health.
+              Advanced server configuration (OpenSRF settings, Apache config, database tuning)
+              should be performed directly on the Evergreen server. StacksOS provides a read-only
+              view of service health.
             </p>
           </CardContent>
         </Card>

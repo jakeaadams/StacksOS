@@ -8,6 +8,8 @@ export type PromptTemplateId =
   | "policy_explain"
   | "cataloging_suggest"
   | "analytics_summary"
+  | "ops_playbooks"
+  | "staff_copilot"
   | "semantic_rerank"
   | "ai_search"
   | "ai_search_explain"
@@ -102,6 +104,76 @@ export function buildAnalyticsSummaryPrompt(inputRedacted: unknown): PromptTempl
   );
 
   return { id: "analytics_summary", version: 1, system, user };
+}
+
+export function buildOpsPlaybooksPrompt(inputRedacted: unknown): PromptTemplate {
+  const system = [
+    "You are StacksOS Ops Assistant (Kimi) for library staff.",
+    "Goal: produce concrete, high-signal operational playbooks from aggregate metrics.",
+    "Rules:",
+    "- Output JSON only, matching the schema.",
+    "- Prioritize actions with direct operational impact in the next 2 hours.",
+    "- Each action must include: title, why, impact (high|medium|low), etaMinutes, steps, deepLink.",
+    "- Do not invent patron-level details or private information.",
+    "- Use only the provided metrics and queue snapshots.",
+    "- Prefer links to existing StacksOS pages for execution.",
+  ].join("\n");
+
+  const user = JSON.stringify(
+    {
+      task: "Generate actionable cross-module ops playbooks",
+      input: inputRedacted,
+      knownPages: [
+        { label: "Circulation Desk", url: "/staff/circulation" },
+        { label: "Check In", url: "/staff/circulation/checkin" },
+        { label: "Holds Management", url: "/staff/circulation/holds-management" },
+        { label: "Holds Shelf", url: "/staff/circulation/holds-shelf" },
+        { label: "Pull List", url: "/staff/circulation/pull-list" },
+        { label: "Patrons", url: "/staff/patrons" },
+        { label: "Reports", url: "/staff/reports" },
+      ],
+    },
+    null,
+    2
+  );
+
+  return { id: "ops_playbooks", version: 1, system, user };
+}
+
+export function buildStaffCopilotPrompt(inputRedacted: unknown): PromptTemplate {
+  const system = [
+    "You are StacksOS Staff Copilot (Kimi 2.5 Pro).",
+    "Goal: produce one cross-module shift brief for library staff from aggregate live metrics.",
+    "Rules:",
+    "- Output JSON only, matching the schema.",
+    "- Include a concise summary, concrete highlights, and actionable playbooks.",
+    "- Actions must be executable in StacksOS now and include deep links.",
+    "- Prioritize next 2 hours of operational impact.",
+    "- Never include patron-level PII or fabricated facts.",
+    "- If data is incomplete, explicitly call this out in caveats.",
+  ].join("\n");
+
+  const user = JSON.stringify(
+    {
+      task: "Generate a proactive cross-module staff copilot briefing",
+      input: inputRedacted,
+      knownPages: [
+        { label: "Staff Workbench", url: "/staff" },
+        { label: "Circulation Desk", url: "/staff/circulation" },
+        { label: "Check In", url: "/staff/circulation/checkin" },
+        { label: "Holds Management", url: "/staff/circulation/holds-management" },
+        { label: "Holds Shelf", url: "/staff/circulation/holds-shelf" },
+        { label: "Pull List", url: "/staff/circulation/pull-list" },
+        { label: "Patrons", url: "/staff/patrons" },
+        { label: "Catalog", url: "/staff/catalog" },
+        { label: "Reports", url: "/staff/reports" },
+      ],
+    },
+    null,
+    2
+  );
+
+  return { id: "staff_copilot", version: 1, system, user };
 }
 
 export function buildSemanticRerankPrompt(args: {

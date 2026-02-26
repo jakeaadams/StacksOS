@@ -1,8 +1,15 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
-import { callOpenSRF, errorResponse, getRequestMeta, successResponse, serverErrorResponse } from "@/lib/api";
+import {
+  callOpenSRF,
+  errorResponse,
+  getRequestMeta,
+  successResponse,
+  serverErrorResponse,
+} from "@/lib/api";
 import { requireSelfCheckoutSession, SelfCheckoutAuthError } from "@/lib/self-checkout-auth";
 import { logAuditEvent } from "@/lib/audit";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 
 /**
@@ -10,9 +17,11 @@ import { z } from "zod";
  * Handles item checkout for authenticated self-checkout patrons
  */
 
-const selfCheckoutPostSchema = z.object({
-  action: z.string().trim().min(1),
-}).passthrough();
+const selfCheckoutPostSchema = z
+  .object({
+    action: z.string().trim().min(1),
+  })
+  .passthrough();
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
@@ -20,25 +29,21 @@ export async function POST(req: NextRequest) {
   try {
     const { selfCheckoutToken: authtoken, patronId } = await requireSelfCheckoutSession();
     const rawBody = await req.json().catch(() => null);
-    const body = rawBody ? selfCheckoutPostSchema.safeParse(rawBody).data ?? rawBody : null;
-    const itemBarcode = String((body as Record<string, unknown>)?.itemBarcode || "").trim();
+    const body = rawBody ? (selfCheckoutPostSchema.safeParse(rawBody).data ?? rawBody) : null;
+    const itemBarcode = String((body as Record<string, any>)?.itemBarcode || "").trim();
 
     if (!itemBarcode) {
       return errorResponse("Item barcode is required", 400);
     }
 
     // Perform the checkout
-    const checkoutRes = await callOpenSRF(
-      "open-ils.circ",
-      "open-ils.circ.checkout.full",
-      [
-        authtoken,
-        {
-          patron: patronId,
-          copy_barcode: itemBarcode,
-        },
-      ]
-    );
+    const checkoutRes = await callOpenSRF("open-ils.circ", "open-ils.circ.checkout.full", [
+      authtoken,
+      {
+        patron: patronId,
+        copy_barcode: itemBarcode,
+      },
+    ]);
 
     const result = checkoutRes?.payload?.[0];
 
@@ -55,10 +60,14 @@ export async function POST(req: NextRequest) {
       let message = result.desc || result.textcode || "Checkout failed";
 
       if (textCode === "COPY_NOT_AVAILABLE") message = "This item is not available for checkout";
-      else if (textCode === "PATRON_EXCEEDS_CHECKOUT_COUNT") message = "You have reached your checkout limit";
-      else if (textCode === "PATRON_EXCEEDS_FINES") message = "Please pay outstanding fines before checking out";
-      else if (textCode === "COPY_IN_TRANSIT") message = "This item is in transit to another library";
-      else if (textCode === "COPY_STATUS_LOST" || textCode === "COPY_STATUS_MISSING") message = "This item is marked as lost or missing";
+      else if (textCode === "PATRON_EXCEEDS_CHECKOUT_COUNT")
+        message = "You have reached your checkout limit";
+      else if (textCode === "PATRON_EXCEEDS_FINES")
+        message = "Please pay outstanding fines before checking out";
+      else if (textCode === "COPY_IN_TRANSIT")
+        message = "This item is in transit to another library";
+      else if (textCode === "COPY_STATUS_LOST" || textCode === "COPY_STATUS_MISSING")
+        message = "This item is marked as lost or missing";
       else if (textCode === "ITEM_NOT_CATALOGED") message = "This item is not in our catalog";
       else if (textCode === "ASSET_COPY_NOT_FOUND") {
         message = "Item not found. Please check the barcode.";
@@ -99,7 +108,9 @@ export async function POST(req: NextRequest) {
       dueDate = result.circ.due_date;
     }
     const circId =
-      typeof result?.circ?.id === "number" ? result.circ.id : parseInt(String(result?.circ?.id ?? ""), 10);
+      typeof result?.circ?.id === "number"
+        ? result.circ.id
+        : parseInt(String(result?.circ?.id ?? ""), 10);
 
     // Try to get the title from the copy/bib
     if (result.copy) {
@@ -153,15 +164,14 @@ export async function POST(req: NextRequest) {
         dueDate,
       },
     });
-
   } catch (error) {
     if (error instanceof SelfCheckoutAuthError) {
-      console.error("Route /api/opac/self-checkout auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/self-checkout auth failed");
       return errorResponse("Authentication required", 401);
     }
 
     // Best-effort audit event for unhandled failures (never blocks response).
-    console.error("Route /api/opac/self-checkout failed:", error);
+    logger.error({ error: String(error) }, "Route /api/opac/self-checkout failed");
     try {
       await logAuditEvent({
         action: "self_checkout.checkout",
@@ -191,9 +201,12 @@ export async function DELETE(req: NextRequest) {
 
     if (authtoken) {
       try {
-        const sessionRes = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [authtoken]);
+        const sessionRes = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [
+          authtoken,
+        ]);
         const user = sessionRes?.payload?.[0];
-        const parsed = typeof user?.id === "number" ? user.id : parseInt(String(user?.id ?? ""), 10);
+        const parsed =
+          typeof user?.id === "number" ? user.id : parseInt(String(user?.id ?? ""), 10);
         patronId = Number.isFinite(parsed) ? parsed : null;
       } catch {
         // ignore

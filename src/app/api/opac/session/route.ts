@@ -1,19 +1,15 @@
 import { NextRequest } from "next/server";
-import {
-  callOpenSRF,
-  successResponse,
-  serverErrorResponse,
-} from "@/lib/api";
+import { callOpenSRF, successResponse, serverErrorResponse } from "@/lib/api";
 
 import { cookies } from "next/headers";
 import { getOpacPatronPrefs } from "@/lib/db/opac";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 /**
  * OPAC Session Check
  * GET /api/opac/session
- * 
+ *
  * Checks if patron is logged in and returns patron data
  */
 export async function GET(req: NextRequest) {
@@ -28,7 +24,7 @@ export async function GET(req: NextRequest) {
       );
 
       const patron = patronResponse?.payload?.[0];
-      
+
       if (patron && !patron.ilsevent) {
         // Get checkout count
         const checkoutsResponse = await callOpenSRF(
@@ -38,15 +34,12 @@ export async function GET(req: NextRequest) {
         );
 
         // Get holds count
-        const holdsResponse = await callOpenSRF(
-          "open-ils.circ",
-          "open-ils.circ.holds.retrieve",
-          [patronToken, patronId]
-        );
+        const holdsResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.holds.retrieve", [
+          patronToken,
+          patronId,
+        ]);
 
-        const holds = Array.isArray(holdsResponse?.payload?.[0]) 
-          ? holdsResponse.payload[0] 
-          : [];
+        const holds = Array.isArray(holdsResponse?.payload?.[0]) ? holdsResponse.payload[0] : [];
 
         // Get fine balance
         const finesResponse = await callOpenSRF(

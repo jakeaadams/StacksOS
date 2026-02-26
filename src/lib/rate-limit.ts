@@ -22,28 +22,32 @@ const GLOBAL_CLEANUP_KEY = "__stacksos_rateLimitCleanupInterval";
 // In-memory store - maps IP:endpoint to attempt count.
 // Use a global singleton to avoid duplicate stores/intervals during dev HMR.
 const rateLimitStore: Map<string, RateLimitEntry> =
-  ((globalThis as Record<string, unknown>)[GLOBAL_STORE_KEY] as Map<string, RateLimitEntry> | undefined) ??
-  new Map<string, RateLimitEntry>();
+  ((globalThis as Record<string, any>)[GLOBAL_STORE_KEY] as
+    | Map<string, RateLimitEntry>
+    | undefined) ?? new Map<string, RateLimitEntry>();
 
-if (!(globalThis as Record<string, unknown>)[GLOBAL_STORE_KEY]) {
-  (globalThis as Record<string, unknown>)[GLOBAL_STORE_KEY] = rateLimitStore;
+if (!(globalThis as Record<string, any>)[GLOBAL_STORE_KEY]) {
+  (globalThis as Record<string, any>)[GLOBAL_STORE_KEY] = rateLimitStore;
 }
 
 // Cleanup old entries every 5 minutes (singleton).
-if (!(globalThis as Record<string, unknown>)[GLOBAL_CLEANUP_KEY]) {
-  const handle = setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of rateLimitStore.entries()) {
-      if (now > entry.resetTime) {
-        rateLimitStore.delete(key);
+if (!(globalThis as Record<string, any>)[GLOBAL_CLEANUP_KEY]) {
+  const handle = setInterval(
+    () => {
+      const now = Date.now();
+      for (const [_key, entry] of rateLimitStore.entries()) {
+        if (now > entry.resetTime) {
+          rateLimitStore.delete(_key);
+        }
       }
-    }
-  }, 5 * 60 * 1000);
+    },
+    5 * 60 * 1000
+  );
 
   // Best-effort: don't keep the process alive just for cleanup (useful for tests).
   (handle as any).unref?.();
 
-  (globalThis as Record<string, unknown>)[GLOBAL_CLEANUP_KEY] = handle;
+  (globalThis as Record<string, any>)[GLOBAL_CLEANUP_KEY] = handle;
 }
 
 export interface RateLimitConfig {
@@ -51,12 +55,12 @@ export interface RateLimitConfig {
    * Maximum number of attempts allowed within the window
    */
   maxAttempts: number;
-  
+
   /**
    * Time window in milliseconds
    */
   windowMs: number;
-  
+
   /**
    * Optional identifier for the endpoint (defaults to 'default')
    */
@@ -68,26 +72,32 @@ export interface RateLimitResult {
    * Whether the request is allowed
    */
   allowed: boolean;
-  
+
   /**
    * Current attempt count
    */
   currentCount: number;
-  
+
   /**
    * Maximum attempts allowed
    */
   limit: number;
-  
+
   /**
    * Time remaining until reset (milliseconds)
    */
   resetIn: number;
-  
+
   /**
    * Timestamp when the limit resets
    */
   resetTime: number;
+}
+
+function shouldBypassRateLimitForE2E(): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  const raw = String(process.env.STACKSOS_E2E_TEST_MODE || "").toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes";
 }
 
 /**
@@ -101,6 +111,17 @@ export async function checkRateLimit(
   identifier: string,
   config: RateLimitConfig
 ): Promise<RateLimitResult> {
+  if (shouldBypassRateLimitForE2E()) {
+    const now = Date.now();
+    return {
+      allowed: true,
+      currentCount: 1,
+      limit: config.maxAttempts,
+      resetIn: config.windowMs,
+      resetTime: now + config.windowMs,
+    };
+  }
+
   if (redisEnabled()) {
     const client = await getRedisClient();
     if (client) {
@@ -119,9 +140,9 @@ function checkRateLimitMemory(identifier: string, config: RateLimitConfig): Rate
   const { maxAttempts, windowMs, endpoint = "default" } = config;
   const key = `${identifier}:${endpoint}`;
   const now = Date.now();
-  
+
   let entry = rateLimitStore.get(key);
-  
+
   // No entry exists - first attempt
   if (!entry) {
     entry = {
@@ -130,7 +151,7 @@ function checkRateLimitMemory(identifier: string, config: RateLimitConfig): Rate
       firstAttempt: now,
     };
     rateLimitStore.set(key, entry);
-    
+
     return {
       allowed: true,
       currentCount: 1,
@@ -139,14 +160,14 @@ function checkRateLimitMemory(identifier: string, config: RateLimitConfig): Rate
       resetTime: entry.resetTime,
     };
   }
-  
+
   // Entry exists but window has expired - reset
   if (now > entry.resetTime) {
     entry.count = 1;
     entry.resetTime = now + windowMs;
     entry.firstAttempt = now;
     rateLimitStore.set(key, entry);
-    
+
     return {
       allowed: true,
       currentCount: 1,
@@ -155,12 +176,12 @@ function checkRateLimitMemory(identifier: string, config: RateLimitConfig): Rate
       resetTime: entry.resetTime,
     };
   }
-  
+
   // Within window - increment count
   entry.count++;
   const allowed = entry.count <= maxAttempts;
   const resetIn = entry.resetTime - now;
-  
+
   if (!allowed) {
     logger.warn(
       {
@@ -173,7 +194,7 @@ function checkRateLimitMemory(identifier: string, config: RateLimitConfig): Rate
       `Rate limit exceeded for ${identifier} on ${endpoint}`
     );
   }
-  
+
   return {
     allowed,
     currentCount: entry.count,
@@ -189,16 +210,17 @@ function checkRateLimitMemory(identifier: string, config: RateLimitConfig): Rate
  * @param identifier - Unique identifier (IP address)
  * @param endpoint - Endpoint identifier
  */
-export async function recordSuccess(identifier: string, endpoint: string = "default"): Promise<void> {
-  const key = `${identifier}:${endpoint}`;
-
+export async function recordSuccess(
+  identifier: string,
+  endpoint: string = "default"
+): Promise<void> {
   // SECURITY: Do NOT fully reset the rate-limit counter on success.
   // A full reset allows an attacker to interleave one valid login between
   // brute-force bursts, effectively bypassing the rate limit. Instead we
   // leave the counter in place so that sustained abuse within the window
   // is still tracked. The counter naturally resets when the time window
   // expires.
-  // rateLimitStore.delete(key);  // removed for security
+  // rateLimitStore.delete(_key);  // removed for security
 
   // Similarly, do not clear the Redis key on success.
   // if (redisEnabled()) { ... client.del(...) }

@@ -1,24 +1,26 @@
 import { successResponse, errorResponse } from "@/lib/api";
 import { fetchEvergreen } from "@/lib/api/evergreen-fetch";
-import { z } from "zod";
-
-const EVERGREEN_BASE = process.env.EVERGREEN_BASE_URL;
+import { getTenantConfig } from "@/lib/tenant/config";
 
 export async function GET() {
-  if (!EVERGREEN_BASE) {
-    return errorResponse("EVERGREEN_BASE_URL not set", 500);
+  const evergreenBase = getTenantConfig().evergreenBaseUrl;
+  if (!evergreenBase) {
+    return errorResponse("Evergreen base URL not configured", 500);
   }
 
+  const url = `${evergreenBase.replace(/\/+$/, "")}/eg2/`;
+
   try {
-    const res = await fetchEvergreen(`${EVERGREEN_BASE}/eg2/`, {
+    const res = await fetchEvergreen(url, {
       method: "HEAD",
       redirect: "manual",
     });
+
     return successResponse({
       status: res.status,
-      url: `${EVERGREEN_BASE}/eg2/`,
+      url,
     });
   } catch (error) {
-    return errorResponse(String(error), 502, { url: `${EVERGREEN_BASE}/eg2/` });
+    return errorResponse(String(error), 502, { url });
   }
 }

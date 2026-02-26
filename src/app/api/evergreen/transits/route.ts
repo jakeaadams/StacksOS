@@ -38,13 +38,15 @@ function normalizeRows(payload: any): any[] {
 /**
  * GET - Fetch transits to/from a location
  */
-const transitsPostSchema = z.object({
-  action: z.string().trim().min(1),
-  transit_id: z.coerce.number().int().positive().optional(),
-  copy_barcode: z.string().trim().optional(),
-  reason: z.string().max(1024).optional(),
-  notes: z.string().max(2048).optional(),
-}).passthrough();
+const transitsPostSchema = z
+  .object({
+    action: z.string().trim().min(1),
+    transit_id: z.coerce.number().int().positive().optional(),
+    copy_barcode: z.string().trim().optional(),
+    reason: z.string().max(1024).optional(),
+    notes: z.string().max(2048).optional(),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   try {
@@ -130,11 +132,14 @@ export async function POST(req: NextRequest) {
       return errorResponse("Action required", 400);
     }
 
-    const { authtoken, actor } = await requirePermissions(["ABORT_TRANSIT", "COPY_TRANSIT_RECEIVE"]);
+    const { authtoken, actor } = await requirePermissions([
+      "ABORT_TRANSIT",
+      "COPY_TRANSIT_RECEIVE",
+    ]);
 
     const audit = async (
       status: "success" | "failure",
-      details?: Record<string, unknown>,
+      details?: Record<string, any>,
       error?: string
     ) => {
       await logAuditEvent({
@@ -154,11 +159,10 @@ export async function POST(req: NextRequest) {
         return errorResponse("transit_id required", 400);
       }
 
-      const response = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.transit.abort",
-        [authtoken, { transitid: transit_id }]
-      );
+      const response = await callOpenSRF("open-ils.circ", "open-ils.circ.transit.abort", [
+        authtoken,
+        { transitid: transit_id },
+      ]);
 
       const result = response?.payload?.[0];
 
@@ -177,11 +181,10 @@ export async function POST(req: NextRequest) {
         return errorResponse("copy_barcode required", 400);
       }
 
-      const response = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.checkin",
-        [authtoken, { copy_barcode }]
-      );
+      const response = await callOpenSRF("open-ils.circ", "open-ils.circ.checkin", [
+        authtoken,
+        { copy_barcode },
+      ]);
 
       const result = response?.payload?.[0];
 
@@ -204,29 +207,28 @@ export async function POST(req: NextRequest) {
       }
 
       // Record the exception in audit log and abort the transit
-      await audit("success", { 
-        transit_id, 
+      await audit("success", {
+        transit_id,
         exception_reason: reason,
         exception_notes: notes || null,
       });
 
       // Abort the transit to remove it from active transits
-      const response = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.transit.abort",
-        [authtoken, { transitid: transit_id }]
-      );
+      const response = await callOpenSRF("open-ils.circ", "open-ils.circ.transit.abort", [
+        authtoken,
+        { transitid: transit_id },
+      ]);
 
       const result = response?.payload?.[0];
 
       if (result === 1 || result === true || (result && !result.ilsevent)) {
-        return successResponse({ 
+        return successResponse({
           result: "Transit exception recorded",
           exception: {
             transit_id,
             reason,
             notes: notes || null,
-          }
+          },
         });
       }
 

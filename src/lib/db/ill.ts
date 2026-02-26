@@ -39,68 +39,98 @@ export interface IllRequestRow {
 }
 
 let tablesReady = false;
+let tablesReadyPromise: Promise<void> | null = null;
+const ILL_TABLE_INIT_LOCK_KEY = 943_114_021;
 
 export async function ensureIllTables(): Promise<void> {
   if (tablesReady) return;
+  if (tablesReadyPromise) {
+    await tablesReadyPromise;
+    return;
+  }
 
-  await withTransaction(async (client) => {
-    await assertLibrarySchemaExists(client);
+  tablesReadyPromise = (async () => {
+    await withTransaction(async (client) => {
+      // Serialize one-time DDL across workers/processes to avoid concurrent init deadlocks.
+      await client.query("SELECT pg_advisory_xact_lock($1)", [ILL_TABLE_INIT_LOCK_KEY]);
 
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS library.ill_requests (
-        id SERIAL PRIMARY KEY,
-        request_type TEXT NOT NULL CHECK (request_type IN ('borrow', 'lend')),
-        status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'requested', 'in_transit', 'received', 'completed', 'canceled')),
-        priority TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high')),
-        patron_id INTEGER,
-        patron_barcode TEXT NOT NULL,
-        patron_name TEXT,
-        title TEXT NOT NULL,
-        author TEXT,
-        isbn TEXT,
-        source TEXT,
-        needed_by DATE,
-        notes TEXT,
-        provider TEXT,
-        provider_request_id TEXT,
-        sync_status TEXT NOT NULL DEFAULT 'manual' CHECK (sync_status IN ('manual', 'pending', 'synced', 'failed')),
-        sync_error TEXT,
-        sync_attempts INTEGER NOT NULL DEFAULT 0,
-        last_synced_at TIMESTAMP,
-        requested_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        created_by INTEGER,
-        updated_by INTEGER
-      )
-    `);
+      await assertLibrarySchemaExists(client);
 
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_ill_requests_status
-      ON library.ill_requests(status, requested_at DESC, id DESC)
-    `);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS library.ill_requests (
+          id SERIAL PRIMARY KEY,
+          request_type TEXT NOT NULL CHECK (request_type IN ('borrow', 'lend')),
+          status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'requested', 'in_transit', 'received', 'completed', 'canceled')),
+          priority TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high')),
+          patron_id INTEGER,
+          patron_barcode TEXT NOT NULL,
+          patron_name TEXT,
+          title TEXT NOT NULL,
+          author TEXT,
+          isbn TEXT,
+          source TEXT,
+          needed_by DATE,
+          notes TEXT,
+          provider TEXT,
+          provider_request_id TEXT,
+          sync_status TEXT NOT NULL DEFAULT 'manual' CHECK (sync_status IN ('manual', 'pending', 'synced', 'failed')),
+          sync_error TEXT,
+          sync_attempts INTEGER NOT NULL DEFAULT 0,
+          last_synced_at TIMESTAMP,
+          requested_at TIMESTAMP NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+          created_by INTEGER,
+          updated_by INTEGER
+        )
+      `);
 
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_ill_requests_patron_barcode
-      ON library.ill_requests(patron_barcode)
-    `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_ill_requests_status
+        ON library.ill_requests(status, requested_at DESC, id DESC)
+      `);
 
-    // Backfill columns for older databases.
-    await client.query(`ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS provider TEXT`);
-    await client.query(`ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS provider_request_id TEXT`);
-    await client.query(`ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS sync_status TEXT`);
-    await client.query(`ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS sync_error TEXT`);
-    await client.query(`ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS sync_attempts INTEGER`);
-    await client.query(`ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP`);
-    await client.query(`UPDATE library.ill_requests SET sync_status = 'manual' WHERE sync_status IS NULL`);
-    await client.query(`UPDATE library.ill_requests SET sync_attempts = 0 WHERE sync_attempts IS NULL`);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_ill_requests_patron_barcode
+        ON library.ill_requests(patron_barcode)
+      `);
 
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_ill_requests_sync_status
-      ON library.ill_requests(sync_status, updated_at DESC, id DESC)
-    `);
+      // Backfill columns for older databases.
+      await client.query(`ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS provider TEXT`);
+      await client.query(
+        `ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS provider_request_id TEXT`
+      );
+      await client.query(
+        `ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS sync_status TEXT`
+      );
+      await client.query(
+        `ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS sync_error TEXT`
+      );
+      await client.query(
+        `ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS sync_attempts INTEGER`
+      );
+      await client.query(
+        `ALTER TABLE library.ill_requests ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP`
+      );
+      await client.query(
+        `UPDATE library.ill_requests SET sync_status = 'manual' WHERE sync_status IS NULL`
+      );
+      await client.query(
+        `UPDATE library.ill_requests SET sync_attempts = 0 WHERE sync_attempts IS NULL`
+      );
+
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_ill_requests_sync_status
+        ON library.ill_requests(sync_status, updated_at DESC, id DESC)
+      `);
+    });
+
+    tablesReady = true;
+  })().catch((error) => {
+    tablesReadyPromise = null;
+    throw error;
   });
 
-  tablesReady = true;
+  await tablesReadyPromise;
 }
 
 export async function listIllRequests(args?: {
@@ -327,7 +357,12 @@ export async function getIllSyncCounts(): Promise<Record<IllSyncStatus, number>>
   };
 
   for (const row of rows) {
-    if (row.sync_status === "manual" || row.sync_status === "pending" || row.sync_status === "synced" || row.sync_status === "failed") {
+    if (
+      row.sync_status === "manual" ||
+      row.sync_status === "pending" ||
+      row.sync_status === "synced" ||
+      row.sync_status === "failed"
+    ) {
       counts[row.sync_status] = Number(row.count) || 0;
     }
   }

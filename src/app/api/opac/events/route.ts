@@ -1,63 +1,22 @@
 /**
  * OPAC Events API Route
  *
- * GET /api/opac/events - Returns library events
- *
- * Query Parameters:
- *   branch    - Filter by branch name (e.g., "Main Library")
- *   type      - Filter by event type (e.g., "Storytime", "Book Club")
- *   startDate - Filter events on or after this date (YYYY-MM-DD)
- *   endDate   - Filter events on or before this date (YYYY-MM-DD)
- *   limit     - Maximum number of events to return (default: 50)
- *   featured  - If "true", return only featured events
- *
- * LIBCAL INTEGRATION GUIDE:
- * =========================
- * To replace mock data with Springshare LibCal API:
- *
- * 1. Install LibCal OAuth credentials:
- *    - Go to LibCal Admin > API > OAuth Applications
- *    - Create a new application with "Events" scope
- *    - Store LIBCAL_CLIENT_ID and LIBCAL_CLIENT_SECRET in .env
- *
- * 2. Get an access token:
- *    POST https://api2.libcal.com/1.1/oauth/token
- *    Content-Type: application/x-www-form-urlencoded
- *    Body: grant_type=client_credentials&client_id=...&client_secret=...
- *
- * 3. Fetch events:
- *    GET https://api2.libcal.com/1.1/events
- *    Headers: Authorization: Bearer {access_token}
- *    Query: cal_id={calendarId}&days=30&limit=50
- *
- * 4. Response mapping from LibCal to LibraryEvent:
- *    {
- *      id: event.id.toString(),
- *      title: event.title,
- *      description: stripHtml(event.description),
- *      date: event.start.split("T")[0],
- *      startTime: formatTime(event.start),
- *      endTime: formatTime(event.end),
- *      branch: event.location?.name || event.campus?.name || "Main Library",
- *      type: mapCategory(event.category),
- *      ageGroup: mapAgeGroup(event.audience),
- *      registrationRequired: event.registration === true,
- *      registrationUrl: event.url?.public,
- *      spotsAvailable: event.seats ? event.seats.total - event.seats.taken : undefined,
- *      capacity: event.seats?.total,
- *      featured: event.featured === true,
- *    }
+ * GET /api/opac/events - Returns library events enriched with first-party
+ * registration lifecycle state (capacity, waitlist, viewer status).
  */
 
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { getEventRegistrationMetrics, listPatronEventRegistrations } from "@/lib/db/opac-events";
+import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import {
   getUpcomingEvents,
   getEventBranches,
+  getEventCatalogSource,
   getEventTypes,
   type EventType,
 } from "@/lib/events-data";
-import { z } from "zod";
 
 export async function GET(req: NextRequest) {
   try {
@@ -79,11 +38,80 @@ export async function GET(req: NextRequest) {
       featuredOnly: featured,
     });
 
+    const eventIds = events.map((event) => event.id);
+
+    let metrics: Record<string, { registeredCount: number; waitlistedCount: number }> = {};
+    try {
+      metrics = await getEventRegistrationMetrics(eventIds);
+    } catch (error) {
+      logger.warn({ err: String(error) }, "Failed to load OPAC event registration metrics");
+    }
+
+    let viewerAuthenticated = false;
+    const viewerByEvent = new Map<
+      string,
+      {
+        status: string;
+        waitlistPosition: number | null;
+        reminderChannel: string;
+        reminderScheduledFor: string | null;
+      }
+    >();
+
+    try {
+      const { patronId } = await requirePatronSession();
+      viewerAuthenticated = true;
+      const viewerRegs = await listPatronEventRegistrations(patronId, {
+        eventIds,
+        includeCanceled: true,
+      });
+      for (const reg of viewerRegs) {
+        viewerByEvent.set(reg.eventId, {
+          status: reg.status,
+          waitlistPosition: reg.waitlistPosition,
+          reminderChannel: reg.reminderChannel,
+          reminderScheduledFor: reg.reminderScheduledFor,
+        });
+      }
+    } catch (error) {
+      if (!(error instanceof PatronAuthError)) {
+        logger.warn({ err: String(error) }, "Failed to load viewer OPAC event registration state");
+      }
+    }
+
+    const enrichedEvents = events.map((event) => {
+      const metric = metrics[event.id] || { registeredCount: 0, waitlistedCount: 0 };
+      const viewer = viewerByEvent.get(event.id);
+      const capacity = typeof event.capacity === "number" ? event.capacity : null;
+      const computedSpots =
+        capacity !== null ? Math.max(0, capacity - metric.registeredCount) : event.spotsAvailable;
+
+      return {
+        ...event,
+        spotsAvailable: computedSpots,
+        registration: {
+          required: Boolean(event.registrationRequired),
+          capacity,
+          registeredCount: metric.registeredCount,
+          waitlistedCount: metric.waitlistedCount,
+          viewerStatus: viewer?.status || null,
+          viewerWaitlistPosition: viewer?.waitlistPosition ?? null,
+          viewerReminderChannel: viewer?.reminderChannel || null,
+          viewerReminderScheduledFor: viewer?.reminderScheduledFor || null,
+        },
+      };
+    });
+
+    const source = getEventCatalogSource();
+
     return successResponse({
-      events,
-      total: events.length,
+      events: enrichedEvents,
+      total: enrichedEvents.length,
       branches: getEventBranches(),
       types: getEventTypes(),
+      viewerAuthenticated,
+      source,
+      catalogConfigured: source !== "none",
     });
   } catch (_error) {
     return errorResponse("Failed to fetch events", 500);

@@ -20,7 +20,14 @@ import {
   SetupRequired,
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -28,7 +35,13 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { Eye, EyeOff, Link2, Plus, RefreshCw, Tag, Tags, Trash2, Pencil } from "lucide-react";
 
@@ -170,7 +183,8 @@ export default function CopyTagsPage() {
       header: "Owner",
       cell: ({ row }) => {
         const ownerId = row.original.ownerId;
-        const label = row.original.ownerName || (typeof ownerId === "number" ? getOrgName(ownerId) : "—");
+        const label =
+          row.original.ownerName || (typeof ownerId === "number" ? getOrgName(ownerId) : "—");
         return (
           <Badge variant="secondary" className="rounded-full">
             {label}
@@ -251,7 +265,8 @@ export default function CopyTagsPage() {
       header: "Owner",
       cell: ({ row }) => {
         const ownerId = row.original.ownerId;
-        const label = row.original.ownerName || (typeof ownerId === "number" ? getOrgName(ownerId) : "—");
+        const label =
+          row.original.ownerName || (typeof ownerId === "number" ? getOrgName(ownerId) : "—");
         return (
           <Badge variant="secondary" className="rounded-full">
             {label}
@@ -494,8 +509,14 @@ export default function CopyTagsPage() {
                 icon={Tag}
                 title="Feature not enabled"
                 description="Copy Tags is disabled by default. Enable experimental modules on this install to use Copy Tags."
-                action={{ label: "Open setup guide", onClick: () => router.push("/staff/help#evergreen-setup") }}
-                secondaryAction={{ label: "Open Admin hub", onClick: () => router.push("/staff/admin") }}
+                action={{
+                  label: "Open setup guide",
+                  onClick: () => router.push("/staff/help#evergreen-setup"),
+                }}
+                secondaryAction={{
+                  label: "Open Admin hub",
+                  onClick: () => router.push("/staff/admin"),
+                }}
               />
             </CardContent>
           </Card>
@@ -548,10 +569,15 @@ export default function CopyTagsPage() {
           <Card className="rounded-2xl md:col-span-1">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">What are Copy Tags?</CardTitle>
-              <CardDescription>Reusable labels attached to items (Evergreen asset.copy_tag).</CardDescription>
+              <CardDescription>
+                Reusable labels attached to items (Evergreen asset.copy_tag).
+              </CardDescription>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
-              <p>Use Copy Tags for digital bookplates, local labels, or short descriptors that travel with the copy.</p>
+              <p>
+                Use Copy Tags for digital bookplates, local labels, or short descriptors that travel
+                with the copy.
+              </p>
               <p className="text-xs text-muted-foreground">
                 Permissions: <span className="font-mono">ADMIN_COPY_TAG</span> and{" "}
                 <span className="font-mono">ADMIN_COPY_TAG_TYPES</span>.
@@ -607,12 +633,18 @@ export default function CopyTagsPage() {
                           title="No tags yet"
                           description="Create your first tag and start attaching it to items."
                           action={
-                            canManageTags ? { label: "Create tag", onClick: openCreateTag, icon: Plus } : undefined
+                            canManageTags
+                              ? { label: "Create tag", onClick: openCreateTag, icon: Plus }
+                              : undefined
                           }
                           secondaryAction={{ label: "Create tag type", onClick: openCreateType }}
                         >
-                          <Button variant="ghost" size="sm" onClick={() => router.push("/staff/help#demo-data")}>
-                            Seed demo data
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.push("/staff/help#evergreen-setup")}
+                          >
+                            Evergreen setup checklist
                           </Button>
                         </EmptyState>
                       }
@@ -643,8 +675,12 @@ export default function CopyTagsPage() {
                             : undefined
                         }
                       >
-                        <Button variant="ghost" size="sm" onClick={() => router.push("/staff/help#demo-data")}>
-                          Seed demo data
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push("/staff/help#evergreen-setup")}
+                        >
+                          Evergreen setup checklist
                         </Button>
                       </EmptyState>
                     }
@@ -668,11 +704,15 @@ export default function CopyTagsPage() {
                 <Input
                   id="type-code"
                   value={typeForm.code}
-                  onChange={(e) => setTypeForm((p) => ({ ...p, code: e.target.value.toUpperCase() }))}
+                  onChange={(e) =>
+                    setTypeForm((p) => ({ ...p, code: e.target.value.toUpperCase() }))
+                  }
                   disabled={!!editingType}
                   placeholder="BOOKPLATE"
                 />
-                <p className="text-xs text-muted-foreground">Uppercase short code used as the primary key.</p>
+                <p className="text-xs text-muted-foreground">
+                  Uppercase short code used as the primary key.
+                </p>
               </div>
 
               <div className="grid gap-2">
@@ -687,7 +727,11 @@ export default function CopyTagsPage() {
 
               <div className="grid gap-2">
                 <Label htmlFor="owner">Owner</Label>
-                <Select id="owner" value={typeForm.ownerId} onValueChange={(v) => setTypeForm((p) => ({ ...p, ownerId: v }))}>
+                <Select
+                  id="owner"
+                  value={typeForm.ownerId}
+                  onValueChange={(v) => setTypeForm((p) => ({ ...p, ownerId: v }))}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a library" />
                   </SelectTrigger>
@@ -703,7 +747,11 @@ export default function CopyTagsPage() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setTypeDialogOpen(false)} disabled={typeSaving}>
+              <Button
+                variant="outline"
+                onClick={() => setTypeDialogOpen(false)}
+                disabled={typeSaving}
+              >
                 Cancel
               </Button>
               <Button onClick={() => void saveType()} disabled={typeSaving || !canManageTypes}>
@@ -717,13 +765,19 @@ export default function CopyTagsPage() {
           <DialogContent className="sm:max-w-[560px]">
             <DialogHeader>
               <DialogTitle>{editingTag ? "Edit tag" : "New tag"}</DialogTitle>
-              <DialogDescription>Create reusable tags you can attach to item records.</DialogDescription>
+              <DialogDescription>
+                Create reusable tags you can attach to item records.
+              </DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4 py-2">
               <div className="grid gap-2">
                 <Label htmlFor="tag-type">Tag type</Label>
-                <Select id="tag-type" value={tagForm.tagType} onValueChange={(v) => setTagForm((p) => ({ ...p, tagType: v }))}>
+                <Select
+                  id="tag-type"
+                  value={tagForm.tagType}
+                  onValueChange={(v) => setTagForm((p) => ({ ...p, tagType: v }))}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a tag type" />
                   </SelectTrigger>
@@ -755,13 +809,19 @@ export default function CopyTagsPage() {
                     onChange={(e) => setTagForm((p) => ({ ...p, value: e.target.value }))}
                     placeholder="FOL-2026"
                   />
-                  <p className="text-xs text-muted-foreground">Value is what Evergreen stores and reports on.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Value is what Evergreen stores and reports on.
+                  </p>
                 </div>
               </div>
 
               <div className="grid gap-2">
                 <Label htmlFor="owner-2">Owner</Label>
-                <Select id="owner-2" value={tagForm.ownerId} onValueChange={(v) => setTagForm((p) => ({ ...p, ownerId: v }))}>
+                <Select
+                  id="owner-2"
+                  value={tagForm.ownerId}
+                  onValueChange={(v) => setTagForm((p) => ({ ...p, ownerId: v }))}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a library" />
                   </SelectTrigger>
@@ -778,9 +838,14 @@ export default function CopyTagsPage() {
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <div className="font-medium">Visible in OPAC</div>
-                  <div className="text-xs text-muted-foreground">Allow patrons to see this tag.</div>
+                  <div className="text-xs text-muted-foreground">
+                    Allow patrons to see this tag.
+                  </div>
                 </div>
-                <Switch checked={tagForm.pub} onCheckedChange={(v) => setTagForm((p) => ({ ...p, pub: v }))} />
+                <Switch
+                  checked={tagForm.pub}
+                  onCheckedChange={(v) => setTagForm((p) => ({ ...p, pub: v }))}
+                />
               </div>
 
               <div className="grid gap-2">
@@ -805,7 +870,11 @@ export default function CopyTagsPage() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setTagDialogOpen(false)} disabled={tagSaving}>
+              <Button
+                variant="outline"
+                onClick={() => setTagDialogOpen(false)}
+                disabled={tagSaving}
+              >
                 Cancel
               </Button>
               <Button onClick={() => void saveTag()} disabled={tagSaving || !canManageTags}>

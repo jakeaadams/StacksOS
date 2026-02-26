@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { UnoptimizedImage } from "@/components/shared";
+import { Button } from "@/components/ui/button";
 import {
   BookOpen,
   Smartphone,
@@ -183,14 +184,16 @@ export function GroupedWorkCard({
                 <p className="text-sm text-muted-foreground">{work.publicationYear}</p>
               )}
             </div>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => onAddToList?.(work.primaryBibId)}
-              className="p-2 text-muted-foreground/70 hover:text-red-500 transition-colors"
+              className="text-muted-foreground/70 hover:text-red-500"
               title="Add to list"
             >
               <Heart className="h-5 w-5" />
-            </button>
+            </Button>
           </div>
 
           {/* Rating */}
@@ -254,18 +257,18 @@ export function GroupedWorkCard({
 
       {/* Expandable format details */}
       <div className="border-t border-border/50">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={() => setShowFormats(!showFormats)}
-          className="w-full px-4 py-2 flex items-center justify-between text-sm text-muted-foreground 
-                   hover:bg-muted/30 transition-colors"
+          className="h-auto w-full justify-between rounded-none px-4 py-2 text-sm text-muted-foreground hover:bg-muted/30"
         >
           <span>
             {totalAvailable} of {totalCopies} copies available across {formatTypes.length} format
             {formatTypes.length !== 1 ? "s" : ""}
           </span>
           {showFormats ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
+        </Button>
 
         {showFormats && (
           <div className="px-4 pb-4 space-y-3">
@@ -308,14 +311,14 @@ export function GroupedWorkCard({
                       </p>
                       <p className="text-xs text-muted-foreground">{format.total} total copies</p>
                     </div>
-                    <button
+                    <Button
                       type="button"
+                      size="sm"
                       onClick={() => onPlaceHold?.(format.bibId)}
-                      className="px-3 py-1.5 bg-primary-600 text-white text-sm font-medium 
-                               rounded-lg hover:bg-primary-700 transition-colors"
+                      className="rounded-lg px-3 py-1.5 text-sm"
                     >
                       {format.available > 0 ? "Request" : "Place Hold"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               );

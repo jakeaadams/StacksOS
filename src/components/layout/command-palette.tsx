@@ -2,9 +2,16 @@
 import { DEBOUNCE_DELAY_MS } from "@/lib/constants";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, useRef } from "react";
-import { fetchWithAuth } from "@/lib/client-fetch";
+import { useCallback, useEffect, useState } from "react";
 import { clientLogger } from "@/lib/client-logger";
+import {
+  searchStaffCatalog,
+  searchStaffItemsByBarcode,
+  searchStaffPatrons,
+  type StaffCatalogSearchResult as CatalogResult,
+  type StaffItemSearchResult as ItemResult,
+  type StaffPatronSearchResult as PatronResult,
+} from "@/lib/search/staff-search";
 import {
   CommandDialog,
   CommandEmpty,
@@ -21,7 +28,6 @@ import {
   Package,
   Users,
   Search,
-  Settings,
   BarChart3,
   UserPlus,
   FileText,
@@ -60,36 +66,6 @@ interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void;
 }
 
-interface PatronResult {
-  id: number;
-  barcode: string;
-  firstName: string;
-  lastName: string;
-  email?: string;
-  active: boolean;
-  barred: boolean;
-  photoUrl?: string;
-}
-
-interface CatalogResult {
-  id: number;
-  title: string;
-  author?: string;
-  isbn?: string;
-  pubdate?: string;
-  format?: string;
-  coverUrl?: string;
-}
-
-interface ItemResult {
-  id: number;
-  barcode: string;
-  title: string;
-  status: string;
-  statusId: number;
-  location: string;
-}
-
 interface SearchResults {
   patrons: PatronResult[];
   catalog: CatalogResult[];
@@ -124,7 +100,6 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<SearchResults>({ patrons: [], catalog: [], items: [] });
   const debouncedQuery = useDebounce(searchQuery, DEBOUNCE_DELAY_MS);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const { theme, setTheme } = useTheme();
 
   const runCommand = useCallback(
@@ -152,82 +127,17 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       return;
     }
 
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
-
     const performSearch = async () => {
       setIsSearching(true);
 
       try {
-        const encodedQuery = encodeURIComponent(query);
-        // FIX: Use /api/evergreen/items endpoint instead of non-existent action=item-status
-        const [patronsRes, catalogRes, itemsRes] = await Promise.allSettled([
-          fetchWithAuth("/api/evergreen/patrons?q=" + encodedQuery + "&limit=5"),
-          fetchWithAuth("/api/evergreen/catalog?q=" + encodedQuery + "&type=keyword&limit=5"),
-          fetchWithAuth("/api/evergreen/items?barcode=" + encodedQuery),
+        const [patrons, catalog, items] = await Promise.all([
+          searchStaffPatrons(query, "name", 5),
+          searchStaffCatalog(query, "keyword", 5),
+          searchStaffItemsByBarcode(query, 3),
         ]);
-
-        const newResults: SearchResults = { patrons: [], catalog: [], items: [] };
-
-        if (patronsRes.status === "fulfilled") {
-          const data = await patronsRes.value.json();
-          if (data.ok && data.patrons) {
-            newResults.patrons = data.patrons.slice(0, 5).map((p: any) => ({
-              id: p.id,
-              barcode: p.barcode || p.card?.barcode || "",
-              firstName: p.first_given_name || p.firstName || "",
-              lastName: p.family_name || p.lastName || "",
-              email: p.email,
-              active: p.active === "t" || p.active === true,
-              barred: p.barred === "t" || p.barred === true,
-              photoUrl: p.photo_url || p.photoUrl,
-            }));
-          }
-        }
-
-        if (catalogRes.status === "fulfilled") {
-          const data = await catalogRes.value.json();
-          if (data.ok && data.records) {
-            newResults.catalog = data.records.slice(0, 5).map((r: any) => ({
-              id: r.id,
-              title: r.title || "Unknown Title",
-              author: r.author,
-              isbn: r.isbn,
-              pubdate: r.pubdate,
-              format: r.format,
-              coverUrl: r.coverUrl,
-            }));
-          }
-        }
-
-        if (itemsRes.status === "fulfilled") {
-          const data = await itemsRes.value.json();
-          if (data.ok && data.item) {
-            newResults.items = [{
-              id: data.item.id,
-              barcode: data.item.barcode,
-              title: data.item.title || "Unknown",
-              status: data.item.statusName || data.item.status || "Unknown",
-              statusId: data.item.statusId || 0,
-              location: data.item.location || data.item.circLib || "",
-            }];
-          } else if (data.ok && data.items) {
-            newResults.items = data.items.slice(0, 3).map((i: any) => ({
-              id: i.id,
-              barcode: i.barcode,
-              title: i.title || "Unknown",
-              status: i.statusName || i.status || "Unknown",
-              statusId: i.statusId || 0,
-              location: i.location || i.circLib || "",
-            }));
-          }
-        }
-
-        setResults(newResults);
+        setResults({ patrons, catalog, items });
       } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") return;
         clientLogger.error("Search error:", error);
       } finally {
         setIsSearching(false);
@@ -235,23 +145,32 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     };
 
     void performSearch();
-
   }, [debouncedQuery]);
 
-  const hasResults = results.patrons.length > 0 || results.catalog.length > 0 || results.items.length > 0;
+  const hasResults =
+    results.patrons.length > 0 || results.catalog.length > 0 || results.items.length > 0;
   const showNavigation = searchQuery.length < 2;
 
   const getStatusColor = (statusId: number) => {
     switch (statusId) {
-      case 0: return "text-green-600 bg-green-50";
-      case 1: return "text-blue-600 bg-blue-50";
-      case 6: return "text-amber-600 bg-amber-50";
-      default: return "text-muted-foreground bg-muted";
+      case 0:
+        return "text-green-600 bg-green-50";
+      case 1:
+        return "text-blue-600 bg-blue-50";
+      case 6:
+        return "text-amber-600 bg-amber-50";
+      default:
+        return "text-muted-foreground bg-muted";
     }
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange} className="max-w-2xl" shouldFilter={false}>
+    <CommandDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      className="max-w-2xl"
+      shouldFilter={false}
+    >
       <CommandInput
         placeholder="Search patrons, catalog, items..."
         value={searchQuery}
@@ -290,7 +209,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                       <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden bg-muted">
                         <Image
                           src={patron.photoUrl}
-                          alt="Decorative image"
+                          alt={`${patron.firstName} ${patron.lastName}`.trim() || "Patron photo"}
                           width={32}
                           height={32}
                           className="w-full h-full object-cover"
@@ -308,10 +227,14 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                           {patron.lastName}, {patron.firstName}
                         </span>
                         {patron.barred && (
-                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Barred</Badge>
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                            Barred
+                          </Badge>
                         )}
                         {!patron.active && !patron.barred && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Inactive</Badge>
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            Inactive
+                          </Badge>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground flex items-center gap-2">
@@ -328,7 +251,11 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                   </CommandItem>
                 ))}
                 <CommandItem
-                  onSelect={() => runCommand(() => router.push("/staff/patrons?q=" + encodeURIComponent(searchQuery)))}
+                  onSelect={() =>
+                    runCommand(() =>
+                      router.push("/staff/patrons?q=" + encodeURIComponent(searchQuery))
+                    )
+                  }
                   className="text-primary"
                 >
                   <Search className="h-4 w-4 mr-2" />
@@ -338,16 +265,17 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               </CommandGroup>
             )}
 
-            {results.patrons.length > 0 && (results.catalog.length > 0 || results.items.length > 0) && (
-              <CommandSeparator />
-            )}
+            {results.patrons.length > 0 &&
+              (results.catalog.length > 0 || results.items.length > 0) && <CommandSeparator />}
 
             {results.catalog.length > 0 && (
               <CommandGroup heading="Catalog">
                 {results.catalog.map((record) => (
                   <CommandItem
                     key={"catalog-" + record.id}
-                    onSelect={() => runCommand(() => router.push("/staff/catalog/record/" + record.id))}
+                    onSelect={() =>
+                      runCommand(() => router.push("/staff/catalog/record/" + record.id))
+                    }
                     className="flex items-center gap-3"
                   >
                     {/* Book cover thumbnail */}
@@ -355,7 +283,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                       <div className="flex-shrink-0 w-8 h-11 rounded overflow-hidden bg-muted">
                         <Image
                           src={record.coverUrl}
-                          alt="Decorative image"
+                          alt={`Cover of ${record.title}`}
                           width={32}
                           height={44}
                           className="w-full h-full object-cover"
@@ -378,7 +306,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                           </>
                         )}
                         {record.format && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">{record.format}</Badge>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            {record.format}
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -386,7 +316,11 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                   </CommandItem>
                 ))}
                 <CommandItem
-                  onSelect={() => runCommand(() => router.push("/staff/catalog?q=" + encodeURIComponent(searchQuery)))}
+                  onSelect={() =>
+                    runCommand(() =>
+                      router.push("/staff/catalog?q=" + encodeURIComponent(searchQuery))
+                    )
+                  }
                   className="text-primary"
                 >
                   <Search className="h-4 w-4 mr-2" />
@@ -396,16 +330,18 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               </CommandGroup>
             )}
 
-            {results.catalog.length > 0 && results.items.length > 0 && (
-              <CommandSeparator />
-            )}
+            {results.catalog.length > 0 && results.items.length > 0 && <CommandSeparator />}
 
             {results.items.length > 0 && (
               <CommandGroup heading="Items">
                 {results.items.map((item) => (
                   <CommandItem
                     key={"item-" + item.id}
-                    onSelect={() => runCommand(() => router.push("/staff/catalog/item-status?barcode=" + item.barcode))}
+                    onSelect={() =>
+                      runCommand(() =>
+                        router.push("/staff/catalog/item-status?barcode=" + item.barcode)
+                      )
+                    }
                     className="flex items-center gap-3"
                   >
                     <Hash className="h-4 w-4 text-amber-600" />
@@ -417,7 +353,10 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                         <span>{item.location}</span>
                       </div>
                     </div>
-                    <Badge variant="outline" className={"text-[10px] px-1.5 py-0 " + getStatusColor(item.statusId)}>
+                    <Badge
+                      variant="outline"
+                      className={"text-[10px] px-1.5 py-0 " + getStatusColor(item.statusId)}
+                    >
                       {item.status}
                     </Badge>
                   </CommandItem>
@@ -434,12 +373,16 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 <ArrowLeftRight className="mr-2 h-4 w-4 text-[hsl(var(--brand-1))]" />
                 <span>Circulation Desk</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/circulation/checkout"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/circulation/checkout"))}
+              >
                 <ArrowLeftRight className="mr-2 h-4 w-4 text-[hsl(var(--brand-1))]" />
                 <span>Check Out Items</span>
                 <CommandShortcut>F1</CommandShortcut>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/circulation/checkin"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/circulation/checkin"))}
+              >
                 <Package className="mr-2 h-4 w-4 text-[hsl(var(--brand-3))]" />
                 <span>Check In Items</span>
                 <CommandShortcut>F2</CommandShortcut>
@@ -449,7 +392,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 <span>Search Patrons</span>
                 <CommandShortcut>F3</CommandShortcut>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/patrons/register"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/patrons/register"))}
+              >
                 <UserPlus className="mr-2 h-4 w-4 text-amber-600" />
                 <span>Register New Patron</span>
                 <CommandShortcut>F4</CommandShortcut>
@@ -459,21 +404,29 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 <span>Search Catalog</span>
                 <CommandShortcut>F5</CommandShortcut>
               </CommandItem>
-              <CommandItem onSelect={() => {
-                onOpenChange(false);
-                setTimeout(() => {
-                  const el = document.querySelector('[data-barcode-input]') as HTMLInputElement
-                    || document.querySelector('input[name="barcode"]') as HTMLInputElement;
-                  if (el) { el.focus(); el.select(); }
-                }, 100);
-              }}>
-                <ScanBarcode className="mr-2 h-4 w-4 text-violet-600" />
+              <CommandItem
+                onSelect={() => {
+                  onOpenChange(false);
+                  setTimeout(() => {
+                    const el =
+                      (document.querySelector("[data-barcode-input]") as HTMLInputElement) ||
+                      (document.querySelector('input[name="barcode"]') as HTMLInputElement);
+                    if (el) {
+                      el.focus();
+                      el.select();
+                    }
+                  }, 100);
+                }}
+              >
+                <ScanBarcode className="mr-2 h-4 w-4 text-indigo-600" />
                 <span>Scan Barcode</span>
               </CommandItem>
-              <CommandItem onSelect={() => {
-                setTheme(theme === "dark" ? "light" : "dark");
-                onOpenChange(false);
-              }}>
+              <CommandItem
+                onSelect={() => {
+                  setTheme(theme === "dark" ? "light" : "dark");
+                  onOpenChange(false);
+                }}
+              >
                 {theme === "dark" ? (
                   <Sun className="mr-2 h-4 w-4 text-amber-500" />
                 ) : (
@@ -481,12 +434,16 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 )}
                 <span>Toggle Dark Mode</span>
               </CommandItem>
-              <CommandItem onSelect={() => {
-                onOpenChange(false);
-                setTimeout(() => {
-                  document.dispatchEvent(new KeyboardEvent("keydown", { key: "/", metaKey: true, bubbles: true }));
-                }, 100);
-              }}>
+              <CommandItem
+                onSelect={() => {
+                  onOpenChange(false);
+                  setTimeout(() => {
+                    document.dispatchEvent(
+                      new KeyboardEvent("keydown", { key: "/", metaKey: true, bubbles: true })
+                    );
+                  }, 100);
+                }}
+              >
                 <Keyboard className="mr-2 h-4 w-4 text-slate-500" />
                 <span>View Keyboard Shortcuts</span>
                 <CommandShortcut>{"\u2318/"}</CommandShortcut>
@@ -496,27 +453,41 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <CommandSeparator />
 
             <CommandGroup heading="Circulation">
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/circulation/renew"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/circulation/renew"))}
+              >
                 <Clock className="mr-2 h-4 w-4" />
                 <span>Renew Items</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/circulation/holds-management"))}>
+              <CommandItem
+                onSelect={() =>
+                  runCommand(() => router.push("/staff/circulation/holds-management"))
+                }
+              >
                 <Bookmark className="mr-2 h-4 w-4" />
                 <span>Manage Holds</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/circulation/transits"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/circulation/transits"))}
+              >
                 <Truck className="mr-2 h-4 w-4" />
                 <span>Transits</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/circulation/in-house"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/circulation/in-house"))}
+              >
                 <Library className="mr-2 h-4 w-4" />
                 <span>In-House Use</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/circulation/bills"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/circulation/bills"))}
+              >
                 <CreditCard className="mr-2 h-4 w-4" />
                 <span>Bills & Payments</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/circulation/offline"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/circulation/offline"))}
+              >
                 <WifiOff className="mr-2 h-4 w-4" />
                 <span>Offline Mode</span>
               </CommandItem>
@@ -529,7 +500,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 <Search className="mr-2 h-4 w-4" />
                 <span>Search Catalog</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/cataloging/marc-editor"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/cataloging/marc-editor"))}
+              >
                 <Edit3 className="mr-2 h-4 w-4" />
                 <span>MARC Editor</span>
               </CommandItem>
@@ -537,15 +510,21 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 <FileText className="mr-2 h-4 w-4" />
                 <span>Create New Record</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/cataloging/z3950"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/cataloging/z3950"))}
+              >
                 <Globe className="mr-2 h-4 w-4" />
                 <span>Import Records (Z39.50)</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/cataloging/authority"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/cataloging/authority"))}
+              >
                 <Share2 className="mr-2 h-4 w-4" />
                 <span>Authorities</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/catalog/item-status"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/catalog/item-status"))}
+              >
                 <Tag className="mr-2 h-4 w-4" />
                 <span>Item Status</span>
               </CommandItem>
@@ -558,7 +537,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 <Search className="mr-2 h-4 w-4" />
                 <span>Search Patrons</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/patrons/register"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/patrons/register"))}
+              >
                 <UserPlus className="mr-2 h-4 w-4" />
                 <span>Register Patron</span>
               </CommandItem>
@@ -571,19 +552,27 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <CommandSeparator />
 
             <CommandGroup heading="Acquisitions">
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/acquisitions/orders"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/acquisitions/orders"))}
+              >
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 <span>Purchase Orders</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/acquisitions/invoices"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/acquisitions/invoices"))}
+              >
                 <Receipt className="mr-2 h-4 w-4" />
                 <span>Invoices</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/acquisitions/claims"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/acquisitions/claims"))}
+              >
                 <AlertCircle className="mr-2 h-4 w-4" />
                 <span>Claims</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/acquisitions/funds"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/acquisitions/funds"))}
+              >
                 <CreditCard className="mr-2 h-4 w-4" />
                 <span>Funds</span>
               </CommandItem>
@@ -604,11 +593,15 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 <Building className="mr-2 h-4 w-4" />
                 <span>Locations</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/admin/permissions"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/admin/permissions"))}
+              >
                 <KeyRound className="mr-2 h-4 w-4" />
                 <span>Permissions</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/admin/policy-inspector"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/admin/policy-inspector"))}
+              >
                 <Database className="mr-2 h-4 w-4" />
                 <span>Org Units</span>
               </CommandItem>
@@ -621,11 +614,15 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 <BarChart3 className="mr-2 h-4 w-4" />
                 <span>Run Reports</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/reports/my-reports"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/reports/my-reports"))}
+              >
                 <FolderOpen className="mr-2 h-4 w-4" />
                 <span>Saved Reports</span>
               </CommandItem>
-              <CommandItem onSelect={() => runCommand(() => router.push("/staff/reports/templates"))}>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/staff/reports/templates"))}
+              >
                 <FileText className="mr-2 h-4 w-4" />
                 <span>Report Templates</span>
               </CommandItem>

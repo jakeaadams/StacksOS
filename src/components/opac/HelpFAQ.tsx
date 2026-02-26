@@ -12,6 +12,8 @@ import {
   ChevronUp,
   AlertCircle,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface FAQItem {
   question: string;
@@ -166,13 +168,12 @@ export function HelpFAQ() {
       <div className="max-w-xl mx-auto">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/70" />
-          <input
+          <Input
             type="text"
             placeholder="Search help topics..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 border border-border rounded-lg
-                     focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="h-12 pl-12 pr-4"
           />
         </div>
       </div>
@@ -184,27 +185,27 @@ export function HelpFAQ() {
           <div className="md:col-span-1">
             <h2 className="font-semibold text-foreground mb-4">Categories</h2>
             <nav className="space-y-1">
-              <button
-                type="button"
+              <Button
                 onClick={() => setActiveCategory(null)}
-                className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                variant="ghost"
+                className={`w-full justify-start px-4 py-2 rounded-lg text-sm font-medium transition-colors
                   ${!activeCategory ? "bg-primary-100 text-primary-700" : "text-foreground/80 hover:bg-muted/50"}`}
               >
                 All Topics
-              </button>
+              </Button>
               {categories.map((category) => {
                 const Icon = categoryIcons[category] || HelpCircle;
                 return (
-                  <button
-                    type="button"
+                  <Button
                     key={category}
                     onClick={() => setActiveCategory(category)}
-                    className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2
+                    variant="ghost"
+                    className={`w-full justify-start px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2
                       ${activeCategory === category ? "bg-primary-100 text-primary-700" : "text-foreground/80 hover:bg-muted/50"}`}
                   >
                     <Icon className="h-4 w-4" />
                     {category}
-                  </button>
+                  </Button>
                 );
               })}
             </nav>
@@ -218,13 +219,13 @@ export function HelpFAQ() {
                 <p className="text-muted-foreground">
                   No results found for &quot;{searchQuery}&quot;
                 </p>
-                <button
-                  type="button"
+                <Button
                   onClick={() => setSearchQuery("")}
-                  className="mt-4 text-primary-600 hover:underline"
+                  variant="link"
+                  className="mt-4 text-primary-600"
                 >
                   Clear search
-                </button>
+                </Button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -233,11 +234,10 @@ export function HelpFAQ() {
                     key={index}
                     className="bg-card rounded-xl border border-border overflow-hidden"
                   >
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
                       onClick={() => toggleItem(index)}
-                      className="w-full px-6 py-4 text-left flex items-center justify-between gap-4
-                               hover:bg-muted/30 transition-colors"
+                      className="h-auto w-full justify-between px-6 py-4 text-left flex items-center gap-4 hover:bg-muted/30 transition-colors"
                     >
                       <span className="font-medium text-foreground">{faq.question}</span>
                       {expandedItems.has(index) ? (
@@ -245,7 +245,7 @@ export function HelpFAQ() {
                       ) : (
                         <ChevronDown className="h-5 w-5 text-muted-foreground/70 shrink-0" />
                       )}
-                    </button>
+                    </Button>
                     {expandedItems.has(index) && (
                       <div className="px-6 pb-4">
                         <p className="text-muted-foreground">{faq.answer}</p>

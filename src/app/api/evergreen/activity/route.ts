@@ -1,12 +1,7 @@
 import { NextRequest } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import {
-  callOpenSRF,
-  successResponse,
-  errorResponse,
-  serverErrorResponse,
-} from "@/lib/api";
+import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { listPatronChangeEvents } from "@/lib/db/patron-change";
@@ -38,16 +33,16 @@ interface Activity {
     id: number | string;
     label: string;
   };
-  details: Record<string, unknown>;
+  details: Record<string, any>;
   workstation?: string;
 }
 
 // Helper to safely extract fieldmapper values
 function fmGet(value: unknown, key: string, index?: number): any {
   if (!value || typeof value !== "object") return undefined;
-  const direct = (value as Record<string, unknown>)[key];
+  const direct = (value as Record<string, any>)[key];
   if (direct !== undefined) return direct;
-  const arr = (value as Record<string, unknown>).__p;
+  const arr = (value as Record<string, any>).__p;
   if (Array.isArray(arr) && typeof index === "number") {
     return arr[index];
   }
@@ -68,15 +63,19 @@ function fmString(value: unknown, key: string, index?: number): string | undefin
 }
 
 // Build date range filter for pcrud queries
-function buildDateFilter(startDate?: string, endDate?: string, fieldName: string = "event_time"): Record<string, unknown> {
-  const filter: Record<string, unknown> = {};
+function buildDateFilter(
+  startDate?: string,
+  endDate?: string,
+  fieldName: string = "event_time"
+): Record<string, any> {
+  const filter: Record<string, any> = {};
 
   if (startDate && endDate) {
-    filter[fieldName] = { "between": [startDate, endDate] };
+    filter[fieldName] = { between: [startDate, endDate] };
   } else if (startDate) {
-    filter[fieldName] = { ">=" : startDate };
+    filter[fieldName] = { ">=": startDate };
   } else if (endDate) {
-    filter[fieldName] = { "<=" : endDate };
+    filter[fieldName] = { "<=": endDate };
   }
 
   return filter;
@@ -90,22 +89,26 @@ const userCache = new Map<number, { username: string; name: string }>();
 let patronChangeEvergreenCapability: "unknown" | "supported" | "unsupported" = "unknown";
 let patronChangeStacksosCapability: "unknown" | "supported" | "unsupported" = "unknown";
 
-async function getUserInfo(authtoken: string, userId: number): Promise<{ username: string; name: string } | null> {
+async function getUserInfo(
+  authtoken: string,
+  userId: number
+): Promise<{ username: string; name: string } | null> {
   if (userCache.has(userId)) {
     return userCache.get(userId)!;
   }
 
   try {
-    const response = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.user.retrieve",
-      [authtoken, userId]
-    );
+    const response = await callOpenSRF("open-ils.actor", "open-ils.actor.user.retrieve", [
+      authtoken,
+      userId,
+    ]);
     const user = response?.payload?.[0];
     if (user && !user.ilsevent) {
       const info = {
         username: fmString(user, "usrname", 23) || user.usrname || "unknown",
-        name: `${fmString(user, "first_given_name", 26) || user.first_given_name || ""} ${fmString(user, "family_name", 25) || user.family_name || ""}`.trim() || "Unknown",
+        name:
+          `${fmString(user, "first_given_name", 26) || user.first_given_name || ""} ${fmString(user, "family_name", 25) || user.family_name || ""}`.trim() ||
+          "Unknown",
       };
       userCache.set(userId, info);
       return info;
@@ -125,7 +128,7 @@ async function fetchLoginActivities(
   startDate?: string,
   endDate?: string
 ): Promise<Activity[]> {
-  const filter: Record<string, unknown> = { id: { "!=" : null } };
+  const filter: Record<string, any> = { id: { "!=": null } };
 
   if (userId) {
     filter.usr = userId;
@@ -134,11 +137,11 @@ async function fetchLoginActivities(
   Object.assign(filter, buildDateFilter(startDate, endDate, "event_time"));
 
   try {
-    const response = await callOpenSRF(
-      "open-ils.pcrud",
-      "open-ils.pcrud.search.auact.atomic",
-      [authtoken, filter, { limit, offset, order_by: { auact: "event_time DESC" } }]
-    );
+    const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.auact.atomic", [
+      authtoken,
+      filter,
+      { limit, offset, order_by: { auact: "event_time DESC" } },
+    ]);
 
     const activities = response?.payload?.[0];
     if (!Array.isArray(activities)) return [];
@@ -181,7 +184,7 @@ async function fetchCirculationActivities(
   startDate?: string,
   endDate?: string
 ): Promise<Activity[]> {
-  const filter: Record<string, unknown> = { id: { "!=" : null } };
+  const filter: Record<string, any> = { id: { "!=": null } };
 
   if (userId) {
     filter.usr = userId;
@@ -189,7 +192,7 @@ async function fetchCirculationActivities(
 
   // For checkouts, use xact_start; for checkins, use checkin_time
   if (activityType === "checkin") {
-    filter.checkin_time = { "!=" : null };
+    filter.checkin_time = { "!=": null };
     Object.assign(filter, buildDateFilter(startDate, endDate, "checkin_time"));
   } else if (activityType === "checkout") {
     Object.assign(filter, buildDateFilter(startDate, endDate, "xact_start"));
@@ -200,17 +203,17 @@ async function fetchCirculationActivities(
 
   try {
     const orderField = activityType === "checkin" ? "checkin_time" : "xact_start";
-    const response = await callOpenSRF(
-      "open-ils.pcrud",
-      "open-ils.pcrud.search.circ.atomic",
-      [authtoken, filter, {
+    const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.circ.atomic", [
+      authtoken,
+      filter,
+      {
         limit,
         offset,
         order_by: { circ: `${orderField} DESC` },
         flesh: 1,
-        flesh_fields: { circ: ["target_copy"] }
-      }]
-    );
+        flesh_fields: { circ: ["target_copy"] },
+      },
+    ]);
 
     const circs = response?.payload?.[0];
     if (!Array.isArray(circs)) return [];
@@ -219,7 +222,8 @@ async function fetchCirculationActivities(
     for (const circ of circs) {
       const patronId = fmNumber(circ, "usr", 5);
       const userInfo = patronId ? await getUserInfo(authtoken, patronId) : null;
-      const copyBarcode = fmString(circ.target_copy, "barcode", 2) || circ.target_copy?.barcode || "Unknown";
+      const copyBarcode =
+        fmString(circ.target_copy, "barcode", 2) || circ.target_copy?.barcode || "Unknown";
       const copyId = fmNumber(circ, "target_copy", 12) || circ.target_copy?.id;
 
       const checkinTime = fmString(circ, "checkin_time", 2) || circ.checkin_time;
@@ -274,7 +278,7 @@ async function fetchHoldActivities(
   startDate?: string,
   endDate?: string
 ): Promise<Activity[]> {
-  const filter: Record<string, unknown> = { id: { "!=" : null } };
+  const filter: Record<string, any> = { id: { "!=": null } };
 
   if (userId) {
     filter.usr = userId;
@@ -283,15 +287,15 @@ async function fetchHoldActivities(
   Object.assign(filter, buildDateFilter(startDate, endDate, "request_time"));
 
   try {
-    const response = await callOpenSRF(
-      "open-ils.pcrud",
-      "open-ils.pcrud.search.ahr.atomic",
-      [authtoken, filter, {
+    const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.ahr.atomic", [
+      authtoken,
+      filter,
+      {
         limit,
         offset,
-        order_by: { ahr: "request_time DESC" }
-      }]
-    );
+        order_by: { ahr: "request_time DESC" },
+      },
+    ]);
 
     const holds = response?.payload?.[0];
     if (!Array.isArray(holds)) return [];
@@ -306,14 +310,22 @@ async function fetchHoldActivities(
       results.push({
         id: `hold-${fmNumber(hold, "id", 0) || hold.id}`,
         type: "hold",
-        timestamp: fmString(hold, "request_time", 1) || hold.request_time || new Date().toISOString(),
+        timestamp:
+          fmString(hold, "request_time", 1) || hold.request_time || new Date().toISOString(),
         actor: {
           id: patronId || null,
           username: userInfo?.username || null,
           name: userInfo?.name || null,
         },
         target: {
-          type: holdType === "T" ? "title" : holdType === "C" ? "copy" : holdType === "V" ? "volume" : "item",
+          type:
+            holdType === "T"
+              ? "title"
+              : holdType === "C"
+                ? "copy"
+                : holdType === "V"
+                  ? "volume"
+                  : "item",
           id: targetId || 0,
           label: `${holdType} hold #${fmNumber(hold, "id", 0) || hold.id}`,
         },
@@ -345,7 +357,7 @@ async function fetchPaymentActivities(
   startDate?: string,
   endDate?: string
 ): Promise<Activity[]> {
-  const filter: Record<string, unknown> = { id: { "!=" : null } };
+  const filter: Record<string, any> = { id: { "!=": null } };
 
   // Payments link to xact (transaction), which links to usr
   // We'll filter by xact if user specified
@@ -353,17 +365,17 @@ async function fetchPaymentActivities(
   Object.assign(filter, buildDateFilter(startDate, endDate, "payment_ts"));
 
   try {
-    const response = await callOpenSRF(
-      "open-ils.pcrud",
-      "open-ils.pcrud.search.mp.atomic",
-      [authtoken, filter, {
+    const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.mp.atomic", [
+      authtoken,
+      filter,
+      {
         limit,
         offset,
         order_by: { mp: "payment_ts DESC" },
         flesh: 1,
-        flesh_fields: { mp: ["xact"] }
-      }]
-    );
+        flesh_fields: { mp: ["xact"] },
+      },
+    ]);
 
     const payments = response?.payload?.[0];
     if (!Array.isArray(payments)) return [];
@@ -371,7 +383,7 @@ async function fetchPaymentActivities(
     const results: Activity[] = [];
     for (const payment of payments) {
       const xact = payment.xact;
-      const patronId = xact ? (fmNumber(xact, "usr", 5) || xact.usr) : null;
+      const patronId = xact ? fmNumber(xact, "usr", 5) || xact.usr : null;
 
       // Skip if filtering by user and this doesn't match
       if (userId && patronId !== userId) continue;
@@ -383,7 +395,8 @@ async function fetchPaymentActivities(
       results.push({
         id: `payment-${fmNumber(payment, "id", 0) || payment.id}`,
         type: "payment",
-        timestamp: fmString(payment, "payment_ts", 2) || payment.payment_ts || new Date().toISOString(),
+        timestamp:
+          fmString(payment, "payment_ts", 2) || payment.payment_ts || new Date().toISOString(),
         actor: {
           id: patronId || null,
           username: userInfo?.username || null,
@@ -425,10 +438,7 @@ async function fetchPatronChangeActivities(
   const evergreenSupported = patronChangeEvergreenCapability !== "unsupported";
 
   function auditLogPath(): string {
-    return (
-      process.env.STACKSOS_AUDIT_LOG_PATH ||
-      path.join(process.cwd(), ".logs", "audit.log")
-    );
+    return process.env.STACKSOS_AUDIT_LOG_PATH || path.join(process.cwd(), ".logs", "audit.log");
   }
 
   async function fetchStacksosFromAuditLog(): Promise<Activity[]> {
@@ -459,7 +469,8 @@ async function fetchPatronChangeActivities(
           continue;
         }
 
-        if (rec?.channel !== "audit" || rec?.status !== "success" || rec?.entity !== "patron") continue;
+        if (rec?.channel !== "audit" || rec?.status !== "success" || rec?.entity !== "patron")
+          continue;
 
         const rawId = rec?.entityId;
         const patronId = typeof rawId === "number" ? rawId : parseInt(String(rawId ?? ""), 10);
@@ -532,7 +543,9 @@ async function fetchPatronChangeActivities(
         results.push({
           id: `patron_change-stacksos-${row.id}`,
           type: "patron_change",
-          timestamp: row.occurred_at ? new Date(row.occurred_at).toISOString() : new Date().toISOString(),
+          timestamp: row.occurred_at
+            ? new Date(row.occurred_at).toISOString()
+            : new Date().toISOString(),
           actor: {
             id: row.actor_id ?? null,
             username: row.actor_username ?? null,
@@ -576,7 +589,7 @@ async function fetchPatronChangeActivities(
   async function fetchEvergreen(): Promise<Activity[]> {
     if (!evergreenSupported) return [];
 
-    const filter: Record<string, unknown> = { id: { "!=": null } };
+    const filter: Record<string, any> = { id: { "!=": null } };
 
     if (userId) {
       filter.id = userId; // In history table, id is the user id
@@ -587,10 +600,23 @@ async function fetchPatronChangeActivities(
     try {
       let response: any;
       try {
-        response = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.search.auacth.atomic",
-          [
+        response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.auacth.atomic", [
+          authtoken,
+          filter,
+          {
+            limit: desiredWindow,
+            offset: 0,
+            order_by: { auacth: "audit_time DESC" },
+          },
+        ]);
+      } catch (error: any) {
+        const code =
+          typeof (error as Record<string, any>)?.code === "string"
+            ? String((error as Record<string, any>).code)
+            : "";
+        // Some Evergreen installs expose the non-atomic variant only.
+        if (code === "OSRF_METHOD_NOT_FOUND") {
+          response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.auacth", [
             authtoken,
             filter,
             {
@@ -598,25 +624,7 @@ async function fetchPatronChangeActivities(
               offset: 0,
               order_by: { auacth: "audit_time DESC" },
             },
-          ]
-        );
-      } catch (error: any) {
-        const code = typeof (error as Record<string, unknown>)?.code === "string" ? String((error as Record<string, unknown>).code) : "";
-        // Some Evergreen installs expose the non-atomic variant only.
-        if (code === "OSRF_METHOD_NOT_FOUND") {
-          response = await callOpenSRF(
-            "open-ils.pcrud",
-            "open-ils.pcrud.search.auacth",
-            [
-              authtoken,
-              filter,
-              {
-                limit: desiredWindow,
-                offset: 0,
-                order_by: { auacth: "audit_time DESC" },
-              },
-            ]
-          );
+          ]);
         } else {
           throw error;
         }
@@ -635,7 +643,8 @@ async function fetchPatronChangeActivities(
         results.push({
           id: `patron_change-${record.audit_id || fmNumber(record, "audit_id")}-${patronId}`,
           type: "patron_change",
-          timestamp: fmString(record, "audit_time") || record.audit_time || new Date().toISOString(),
+          timestamp:
+            fmString(record, "audit_time") || record.audit_time || new Date().toISOString(),
           // Evergreen-side payloads vary by version/install. When we don't have a reliable staff actor
           // column, treat this as a patron-targeted audit row and surface the patron as the primary label.
           actor: {
@@ -659,7 +668,10 @@ async function fetchPatronChangeActivities(
 
       return [];
     } catch (error: any) {
-      const code = typeof (error as Record<string, unknown>)?.code === "string" ? String((error as Record<string, unknown>).code) : "";
+      const code =
+        typeof (error as Record<string, any>)?.code === "string"
+          ? String((error as Record<string, any>).code)
+          : "";
       if (code === "OSRF_METHOD_NOT_FOUND") {
         patronChangeEvergreenCapability = "unsupported";
         return [];
@@ -680,9 +692,19 @@ async function fetchPatronChangeActivities(
 }
 
 // Extract meaningful changes from patron history record
-function extractPatronChanges(record: any): Record<string, unknown> {
-  const changes: Record<string, unknown> = {};
-  const fields = ["email", "day_phone", "evening_phone", "other_phone", "home_ou", "profile", "expire_date", "barred", "active"];
+function extractPatronChanges(record: any): Record<string, any> {
+  const changes: Record<string, any> = {};
+  const fields = [
+    "email",
+    "day_phone",
+    "evening_phone",
+    "other_phone",
+    "home_ou",
+    "profile",
+    "expire_date",
+    "barred",
+    "active",
+  ];
 
   for (const field of fields) {
     const value = fmGet(record, field) || record[field];
@@ -708,18 +730,30 @@ export async function GET(req: NextRequest) {
     const startDate = searchParams.get("start_date") || undefined;
     const endDate = searchParams.get("end_date") || undefined;
 
-    logger.debug({
-      route: "api.evergreen.activity",
-      type,
-      limit,
-      offset,
-      userId,
-      startDate,
-      endDate
-    }, "Activity log request");
+    logger.debug(
+      {
+        route: "api.evergreen.activity",
+        type,
+        limit,
+        offset,
+        userId,
+        startDate,
+        endDate,
+      },
+      "Activity log request"
+    );
 
     // Validate type parameter
-    const validTypes = ["login", "circulation", "checkout", "checkin", "hold", "payment", "patron_change", "all"];
+    const validTypes = [
+      "login",
+      "circulation",
+      "checkout",
+      "checkin",
+      "hold",
+      "payment",
+      "patron_change",
+      "all",
+    ];
     if (!validTypes.includes(type)) {
       return errorResponse(`Invalid type. Must be one of: ${validTypes.join(", ")}`, 400);
     }
@@ -747,17 +781,55 @@ export async function GET(req: NextRequest) {
     } else if (type === "login") {
       activities = await fetchLoginActivities(authtoken, limit, offset, userId, startDate, endDate);
     } else if (type === "circulation") {
-      activities = await fetchCirculationActivities(authtoken, limit, offset, "all", userId, startDate, endDate);
+      activities = await fetchCirculationActivities(
+        authtoken,
+        limit,
+        offset,
+        "all",
+        userId,
+        startDate,
+        endDate
+      );
     } else if (type === "checkout") {
-      activities = await fetchCirculationActivities(authtoken, limit, offset, "checkout", userId, startDate, endDate);
+      activities = await fetchCirculationActivities(
+        authtoken,
+        limit,
+        offset,
+        "checkout",
+        userId,
+        startDate,
+        endDate
+      );
     } else if (type === "checkin") {
-      activities = await fetchCirculationActivities(authtoken, limit, offset, "checkin", userId, startDate, endDate);
+      activities = await fetchCirculationActivities(
+        authtoken,
+        limit,
+        offset,
+        "checkin",
+        userId,
+        startDate,
+        endDate
+      );
     } else if (type === "hold") {
       activities = await fetchHoldActivities(authtoken, limit, offset, userId, startDate, endDate);
     } else if (type === "payment") {
-      activities = await fetchPaymentActivities(authtoken, limit, offset, userId, startDate, endDate);
+      activities = await fetchPaymentActivities(
+        authtoken,
+        limit,
+        offset,
+        userId,
+        startDate,
+        endDate
+      );
     } else if (type === "patron_change") {
-      activities = await fetchPatronChangeActivities(authtoken, limit, offset, userId, startDate, endDate);
+      activities = await fetchPatronChangeActivities(
+        authtoken,
+        limit,
+        offset,
+        userId,
+        startDate,
+        endDate
+      );
     }
 
     // Sort all activities by timestamp (newest first)

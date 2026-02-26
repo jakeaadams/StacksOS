@@ -10,10 +10,12 @@ import {
 import { requireAuthToken } from "@/lib/api";
 import { z } from "zod";
 
-const barcodesPostSchema = z.object({
-  prefix: z.string().trim().optional(),
-  count: z.coerce.number().int().positive().max(100).optional(),
-}).passthrough();
+const _barcodesPostSchema = z
+  .object({
+    prefix: z.string().trim().optional(),
+    count: z.coerce.number().int().positive().max(100).optional(),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   try {

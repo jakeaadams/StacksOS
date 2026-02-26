@@ -18,7 +18,13 @@ import {
 } from "@/components/shared";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/contexts/auth-context";
 import { ApiError, useApi } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
@@ -64,15 +70,13 @@ export default function PolicyInspectorPage() {
 
   const url = orgId ? `/api/evergreen/settings?org_id=${orgId}` : null;
 
-  const {
-    data,
-    error,
-    isLoading,
-    refetch,
-  } = useApi<{ orgId: number; settings: PolicySetting[] }>(url, {
-    immediate: !!orgId,
-    deps: [orgId],
-  });
+  const { data, error, isLoading, refetch } = useApi<{ orgId: number; settings: PolicySetting[] }>(
+    url,
+    {
+      immediate: !!orgId,
+      deps: [orgId],
+    }
+  );
 
   const rows = useMemo(() => data?.settings || [], [data]);
 
@@ -99,7 +103,9 @@ export default function PolicyInspectorPage() {
         accessorKey: "value",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Value" />,
         cell: ({ row }) => (
-          <span className="text-xs font-mono text-muted-foreground">{formatValue(row.original.value)}</span>
+          <span className="text-xs font-mono text-muted-foreground">
+            {formatValue(row.original.value)}
+          </span>
         ),
       },
       {
@@ -135,19 +141,23 @@ export default function PolicyInspectorPage() {
   );
 
   const apiError = error instanceof ApiError ? error : null;
-  const missingPerms = Array.isArray((apiError?.details as Record<string, unknown>)?.missing)
-    ? ((apiError?.details as Record<string, unknown>).missing as string[])
+  const missingPerms = Array.isArray((apiError?.details as Record<string, any>)?.missing)
+    ? ((apiError?.details as Record<string, any>).missing as string[])
     : [];
-  const requestId = typeof (apiError?.details as Record<string, unknown>)?.requestId === "string"
-    ? ((apiError?.details as Record<string, unknown>).requestId as string)
-    : null;
+  const requestId =
+    typeof (apiError?.details as Record<string, any>)?.requestId === "string"
+      ? ((apiError?.details as Record<string, any>).requestId as string)
+      : null;
 
   return (
     <PageContainer>
       <PageHeader
         title="Policy Inspector"
         subtitle="Read-only view of key Evergreen org settings (resolved via ancestor defaults)."
-        breadcrumbs={[{ label: "Administration", href: "/staff/admin" }, { label: "Policy Inspector" }]}
+        breadcrumbs={[
+          { label: "Administration", href: "/staff/admin" },
+          { label: "Policy Inspector" },
+        ]}
         actions={[
           {
             label: "Back",
@@ -208,8 +218,12 @@ export default function PolicyInspectorPage() {
             <div className="space-y-2">
               <div className="text-xs text-muted-foreground">Staff Session</div>
               <div className="text-sm">
-                <div className="font-medium">{user?.displayName || user?.username || "(unknown)"}</div>
-                <div className="text-xs text-muted-foreground">{user?.workstation || "(no workstation)"}</div>
+                <div className="font-medium">
+                  {user?.displayName || user?.username || "(unknown)"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {user?.workstation || "(no workstation)"}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -250,18 +264,23 @@ export default function PolicyInspectorPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Where do I change these?</CardTitle>
             <CardDescription>
-              This inspector is read-only in P1 starter mode. To change policies today, use the Evergreen admin tools.
+              This inspector is read-only in P1 starter mode. To change policies today, use the
+              Evergreen admin tools.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <div>
-              Evergreen staff client: <span className="font-mono">https://&lt;evergreen-ip&gt;/eg/staff/</span>
+              Evergreen staff client:{" "}
+              <span className="font-mono">https://&lt;evergreen-ip&gt;/eg/staff/</span>
             </div>
             <div>
-              Typical path: Administration -&gt; Local Administration -&gt; Organizational Units / Settings
+              Typical path: Administration -&gt; Local Administration -&gt; Organizational Units /
+              Settings
             </div>
             <div className="pt-2">
-              <Button variant="outline" onClick={() => router.push("/staff/help#evergreen-setup")}>Open setup guide</Button>
+              <Button variant="outline" onClick={() => router.push("/staff/help#evergreen-setup")}>
+                Open setup guide
+              </Button>
             </div>
           </CardContent>
         </Card>

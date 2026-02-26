@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import {
-
   callOpenSRF,
   successResponse,
   errorResponse,
@@ -12,13 +11,14 @@ import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { z } from "zod";
 
-
 /**
  * POST - Booking workflow actions: capture, pickup, return
  */
-const bookingActionsPostSchema = z.object({
-  action: z.string().trim().min(1),
-}).passthrough();
+const bookingActionsPostSchema = z
+  .object({
+    action: z.string().trim().min(1),
+  })
+  .passthrough();
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     const audit = async (
       status: "success" | "failure",
-      details?: Record<string, unknown>,
+      details?: Record<string, any>,
       error?: string
     ) => {
       await logAuditEvent({
@@ -129,11 +129,10 @@ export async function POST(req: NextRequest) {
         return errorResponse("resource_barcode required", 400);
       }
 
-      const response = await callOpenSRF(
-        "open-ils.booking",
-        "open-ils.booking.resources.return",
-        [authtoken, resource_barcode]
-      );
+      const response = await callOpenSRF("open-ils.booking", "open-ils.booking.resources.return", [
+        authtoken,
+        resource_barcode,
+      ]);
 
       const result = response?.payload?.[0];
 

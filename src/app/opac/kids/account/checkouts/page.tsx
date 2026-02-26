@@ -7,6 +7,7 @@ import { featureFlags } from "@/lib/feature-flags";
 import { usePatronSession, type PatronCheckout } from "@/hooks/use-patron-session";
 import { useKidsParentGate } from "@/contexts/kids-parent-gate-context";
 import { UnoptimizedImage } from "@/components/shared";
+import { Button } from "@/components/ui/button";
 import {
   AlertCircle,
   BookOpen,
@@ -122,27 +123,35 @@ export default function KidsCheckoutsPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="flex items-center gap-3 mb-6">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => router.back()}
-          className="p-2 rounded-xl text-muted-foreground hover:text-foreground/80 hover:bg-muted/50"
+          className="rounded-xl"
         >
           <ChevronLeft className="h-6 w-6" />
-        </button>
+        </Button>
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground truncate">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("booksCount", { count: checkouts.length })}</p>
+          <p className="text-sm text-muted-foreground">
+            {t("booksCount", { count: checkouts.length })}
+          </p>
         </div>
         {checkouts.length > 0 ? (
-          <button
+          <Button
             type="button"
             onClick={handleRenewAll}
             disabled={renewAllLoading}
-            className="ml-auto inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2 text-white font-bold shadow-md hover:from-purple-600 hover:to-pink-600 disabled:opacity-50"
+            className="ml-auto rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2 text-white shadow-md hover:from-purple-600 hover:to-pink-600"
           >
-            {renewAllLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            {renewAllLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
             Renew all
-          </button>
+          </Button>
         ) : null}
       </div>
 
@@ -157,7 +166,11 @@ export default function KidsCheckoutsPage() {
           ) : (
             <AlertCircle className="h-5 w-5 text-red-600" />
           )}
-          <p className={message.type === "success" ? "text-green-800 font-medium" : "text-red-800 font-medium"}>
+          <p
+            className={
+              message.type === "success" ? "text-green-800 font-medium" : "text-red-800 font-medium"
+            }
+          >
             {message.text}
           </p>
         </div>
@@ -173,7 +186,9 @@ export default function KidsCheckoutsPage() {
             <BookOpen className="h-7 w-7 text-purple-600" />
           </div>
           <h2 className="text-xl font-bold text-foreground">{t("noCheckouts")}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Let’s find something awesome to read!</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Let’s find something awesome to read!
+          </p>
           <div className="mt-6 flex items-center justify-center gap-3">
             <Link
               href="/opac/kids"
@@ -215,7 +230,9 @@ export default function KidsCheckoutsPage() {
           {currentItems.length > 0 ? (
             <section>
               {overdueItems.length > 0 ? (
-                <h2 className="text-lg font-bold text-foreground/80 mb-3">{t("notOverdue", { count: currentItems.length })}</h2>
+                <h2 className="text-lg font-bold text-foreground/80 mb-3">
+                  {t("notOverdue", { count: currentItems.length })}
+                </h2>
               ) : null}
               <div className="space-y-3">
                 {currentItems.map((checkout) => (
@@ -270,7 +287,11 @@ function KidsCheckoutCard({
         >
           <div className="h-24 w-16 rounded-2xl bg-muted overflow-hidden">
             {checkout.coverUrl ? (
-              <UnoptimizedImage src={checkout.coverUrl} alt={checkout.title} className="h-full w-full object-cover" />
+              <UnoptimizedImage
+                src={checkout.coverUrl}
+                alt={checkout.title}
+                className="h-full w-full object-cover"
+              />
             ) : (
               <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-purple-100 to-pink-100">
                 <BookOpen className="h-8 w-8 text-purple-300" />
@@ -285,36 +306,49 @@ function KidsCheckoutCard({
               {checkout.title}
             </h3>
           </Link>
-          {checkout.author ? <p className="text-sm text-muted-foreground truncate">{checkout.author}</p> : null}
+          {checkout.author ? (
+            <p className="text-sm text-muted-foreground truncate">{checkout.author}</p>
+          ) : null}
 
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-            <span className={`font-medium ${checkout.isOverdue ? "text-red-700" : "text-muted-foreground"}`}>
-              {checkout.isOverdue ? t("overdueDate", { date: dueDate }) : t("dueDate", { date: dueDate })}
+            <span
+              className={`font-medium ${checkout.isOverdue ? "text-red-700" : "text-muted-foreground"}`}
+            >
+              {checkout.isOverdue
+                ? t("overdueDate", { date: dueDate })
+                : t("dueDate", { date: dueDate })}
             </span>
             <span className="text-muted-foreground/60">•</span>
             <span className="text-muted-foreground">{renewalsLabel}</span>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={onRenew}
               disabled={!canRenew || isRenewing}
-              className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2 text-sm font-bold hover:bg-muted/50 disabled:opacity-50"
+              className="rounded-2xl px-4 font-bold"
             >
-              {isRenewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              {isRenewing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
               {canRenew ? "Renew" : "No renewals"}
-            </button>
+            </Button>
 
             {featureFlags.kidsEngagementV1 ? (
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={onLogReading}
-                className="inline-flex items-center gap-2 rounded-2xl bg-purple-100 px-4 py-2 text-sm font-bold text-purple-700 hover:bg-purple-200"
+                className="rounded-2xl bg-purple-100 px-4 font-bold text-purple-700 hover:bg-purple-200"
               >
-                <Star className="h-4 w-4" />
-                I read it!
-              </button>
+                <Star className="h-4 w-4" />I read it!
+              </Button>
             ) : null}
           </div>
         </div>

@@ -122,9 +122,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           setCurrentLocation((prev) => {
             if (prev) return prev;
 
-            const savedLocationId = typeof window !== "undefined"
-              ? localStorage.getItem("preferredLocationId")
-              : null;
+            const savedLocationId =
+              typeof window !== "undefined" ? localStorage.getItem("preferredLocationId") : null;
             const savedLocation = savedLocationId
               ? libraryInfo.locations.find((l) => l.id === parseInt(savedLocationId, 10))
               : null;
@@ -138,9 +137,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
       // Set fallback library info
       setLibrary({
-        id: 1,
-        name: "Library",
-        shortName: "LIB",
+        id: 0,
+        name: "Library data unavailable",
+        shortName: "N/A",
         locations: [],
       });
     } finally {
@@ -250,21 +249,9 @@ function formatAddress(org: any): string | undefined {
 
 function parseHours(hoursString?: string): LibraryHours[] | undefined {
   if (!hoursString) return undefined;
-
-  // Default hours structure
-  const defaultHours: LibraryHours[] = [
-    { day: "Monday", hours: "9 AM - 8 PM" },
-    { day: "Tuesday", hours: "9 AM - 8 PM" },
-    { day: "Wednesday", hours: "9 AM - 8 PM" },
-    { day: "Thursday", hours: "9 AM - 8 PM" },
-    { day: "Friday", hours: "9 AM - 6 PM" },
-    { day: "Saturday", hours: "10 AM - 5 PM" },
-    { day: "Sunday", hours: "Closed" },
-  ];
-
-  // Try to parse the hours string if it's in a known format
-  // For now, return defaults
-  return defaultHours;
+  // Evergreen stores hours in multiple formats. Until we support each format,
+  // avoid fabricating values and render only raw text.
+  return undefined;
 }
 
 export default useLibrary;

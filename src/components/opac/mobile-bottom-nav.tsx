@@ -62,8 +62,7 @@ export function MobileBottomNav() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border shadow-[0_-2px_10px_rgba(0,0,0,0.05)]"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      className="stx-safe-bottom md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-card/92 backdrop-blur-md shadow-[0_-10px_28px_-20px_hsl(var(--shadow-tint)/0.9)]"
       aria-label="Mobile navigation"
     >
       <div className="flex items-center justify-around h-16">

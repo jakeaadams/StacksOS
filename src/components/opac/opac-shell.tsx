@@ -28,7 +28,7 @@ export function OpacShell({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={cn(
-        "min-h-screen flex flex-col bg-muted/30",
+        "app-shell min-h-screen flex flex-col",
         dyslexiaFriendly ? "stacksos-dyslexia" : ""
       )}
     >

@@ -9,6 +9,14 @@ import { useKidsParentGate } from "@/contexts/kids-parent-gate-context";
 import { useLibrary } from "@/hooks/use-library";
 import { UnoptimizedImage } from "@/components/shared";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertCircle,
   CalendarDays,
@@ -154,7 +162,13 @@ export default function KidsHoldsPage() {
             : ""
         }
         variant={confirmAction?.action === "cancel" ? "destructive" : "default"}
-        confirmText={confirmAction?.action === "cancel" ? "Cancel hold" : confirmAction?.action === "suspend" ? "Pause" : "Resume"}
+        confirmText={
+          confirmAction?.action === "cancel"
+            ? "Cancel hold"
+            : confirmAction?.action === "suspend"
+              ? "Pause"
+              : "Resume"
+        }
         onConfirm={() => {
           if (!confirmAction) return;
           return handleAction(confirmAction.hold, confirmAction.action);
@@ -162,16 +176,20 @@ export default function KidsHoldsPage() {
       />
 
       <div className="flex items-center gap-3 mb-6">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => router.back()}
-          className="p-2 rounded-xl text-muted-foreground hover:text-foreground/80 hover:bg-muted/50"
+          className="rounded-xl text-muted-foreground hover:text-foreground/80 hover:bg-muted/50"
         >
           <ChevronLeft className="h-6 w-6" />
-        </button>
+        </Button>
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground truncate">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("holdsCount", { count: holds.length })}</p>
+          <p className="text-sm text-muted-foreground">
+            {t("holdsCount", { count: holds.length })}
+          </p>
         </div>
       </div>
 
@@ -186,7 +204,11 @@ export default function KidsHoldsPage() {
           ) : (
             <AlertCircle className="h-5 w-5 text-red-600" />
           )}
-          <p className={message.type === "success" ? "text-green-800 font-medium" : "text-red-800 font-medium"}>
+          <p
+            className={
+              message.type === "success" ? "text-green-800 font-medium" : "text-red-800 font-medium"
+            }
+          >
             {message.text}
           </p>
         </div>
@@ -252,7 +274,9 @@ export default function KidsHoldsPage() {
                     hold={hold}
                     isLoading={actionLoading === hold.id}
                     onCancel={() => setConfirmAction({ hold, action: "cancel" })}
-                    onChangePickup={featureFlags.opacHoldsUXV2 ? () => openChangePickup(hold) : undefined}
+                    onChangePickup={
+                      featureFlags.opacHoldsUXV2 ? () => openChangePickup(hold) : undefined
+                    }
                   />
                 ))}
               </div>
@@ -261,7 +285,9 @@ export default function KidsHoldsPage() {
 
           {pendingHolds.length > 0 ? (
             <section>
-              <h2 className="text-lg font-bold text-foreground/80 mb-3">{t("waiting", { count: pendingHolds.length })}</h2>
+              <h2 className="text-lg font-bold text-foreground/80 mb-3">
+                {t("waiting", { count: pendingHolds.length })}
+              </h2>
               <div className="space-y-3">
                 {pendingHolds.map((hold) => (
                   <KidsHoldCard
@@ -270,7 +296,9 @@ export default function KidsHoldsPage() {
                     isLoading={actionLoading === hold.id}
                     onCancel={() => setConfirmAction({ hold, action: "cancel" })}
                     onSuspend={() => setConfirmAction({ hold, action: "suspend" })}
-                    onChangePickup={featureFlags.opacHoldsUXV2 ? () => openChangePickup(hold) : undefined}
+                    onChangePickup={
+                      featureFlags.opacHoldsUXV2 ? () => openChangePickup(hold) : undefined
+                    }
                   />
                 ))}
               </div>
@@ -291,7 +319,9 @@ export default function KidsHoldsPage() {
                     isLoading={actionLoading === hold.id}
                     onCancel={() => setConfirmAction({ hold, action: "cancel" })}
                     onActivate={() => setConfirmAction({ hold, action: "activate" })}
-                    onChangePickup={featureFlags.opacHoldsUXV2 ? () => openChangePickup(hold) : undefined}
+                    onChangePickup={
+                      featureFlags.opacHoldsUXV2 ? () => openChangePickup(hold) : undefined
+                    }
                   />
                 ))}
               </div>
@@ -306,38 +336,50 @@ export default function KidsHoldsPage() {
             <h2 className="text-xl font-bold text-foreground mb-2">{t("changePickupLibrary")}</h2>
             <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{pickupHold.title}</p>
 
-            <label htmlFor="new-pickup-location" className="block text-sm font-medium text-foreground/80 mb-2">{t("newPickupLocation")}</label>
-            <select id="new-pickup-location"
-              value={pickupLocationId || ""}
-              onChange={(e) => setPickupLocationId(parseInt(e.target.value, 10) || null)}
-              className="w-full px-3 py-2 border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-400"
+            <label
+              htmlFor="new-pickup-location"
+              className="block text-sm font-medium text-foreground/80 mb-2"
+            >
+              {t("newPickupLocation")}
+            </label>
+            <Select
+              value={pickupLocationId ? String(pickupLocationId) : "none"}
+              onValueChange={(value) =>
+                setPickupLocationId(value === "none" ? null : parseInt(value, 10))
+              }
               disabled={pickupLoading}
             >
-              <option value="">{t("select")}</option>
-              {pickupLocations.map((loc) => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="new-pickup-location" className="w-full rounded-2xl">
+                <SelectValue placeholder={t("select")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t("select")}</SelectItem>
+                {pickupLocations.map((loc) => (
+                  <SelectItem key={loc.id} value={String(loc.id)}>
+                    {loc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <div className="mt-5 flex gap-3">
-              <button
+              <Button
                 type="button"
                 onClick={() => setPickupHold(null)}
                 disabled={pickupLoading}
-                className="flex-1 py-2 rounded-2xl border border-border bg-card font-medium hover:bg-muted/50 disabled:opacity-50"
+                variant="outline"
+                className="flex-1 rounded-2xl font-medium hover:bg-muted/50 disabled:opacity-50"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={handleChangePickup}
                 disabled={pickupLoading || !pickupLocationId}
-                className="flex-1 py-2 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold shadow-md hover:from-purple-600 hover:to-pink-600 disabled:opacity-50"
+                className="flex-1 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold shadow-md hover:from-purple-600 hover:to-pink-600 disabled:opacity-50"
               >
                 {pickupLoading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Save"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -383,12 +425,18 @@ function KidsHoldCard({
   const expiration = hold.expirationDate ? formatMaybeDate(hold.expirationDate) : null;
 
   return (
-    <div className={`rounded-3xl border-2 bg-card p-4 shadow-sm ${hold.status === "ready" ? "border-green-200 bg-green-50/40" : "border-border"}`}>
+    <div
+      className={`rounded-3xl border-2 bg-card p-4 shadow-sm ${hold.status === "ready" ? "border-green-200 bg-green-50/40" : "border-border"}`}
+    >
       <div className="flex gap-4">
         <Link href={`/opac/kids/record/${hold.recordId}`} className="shrink-0">
           <div className="h-24 w-16 rounded-2xl bg-muted overflow-hidden">
             {hold.coverUrl ? (
-              <UnoptimizedImage src={hold.coverUrl} alt={hold.title} className="h-full w-full object-cover" />
+              <UnoptimizedImage
+                src={hold.coverUrl}
+                alt={hold.title}
+                className="h-full w-full object-cover"
+              />
             ) : (
               <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-sky-100 to-purple-100">
                 <Gift className="h-8 w-8 text-purple-300" />
@@ -408,7 +456,9 @@ function KidsHoldCard({
               {statusLabel}
             </span>
           </div>
-          {hold.author ? <p className="text-sm text-muted-foreground truncate">{hold.author}</p> : null}
+          {hold.author ? (
+            <p className="text-sm text-muted-foreground truncate">{hold.author}</p>
+          ) : null}
 
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
@@ -444,50 +494,61 @@ function KidsHoldCard({
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {onChangePickup && hold.status !== "ready" ? (
-              <button
+              <Button
                 type="button"
                 onClick={onChangePickup}
                 disabled={isLoading}
-                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2 text-sm font-bold hover:bg-muted/50 disabled:opacity-50"
+                variant="outline"
+                className="inline-flex items-center gap-2 rounded-2xl text-sm font-bold hover:bg-muted/50 disabled:opacity-50"
               >
                 <MapPin className="h-4 w-4" />
                 {t("changePickup")}
-              </button>
+              </Button>
             ) : null}
 
             {onActivate ? (
-              <button
+              <Button
                 type="button"
                 onClick={onActivate}
                 disabled={isLoading}
-                className="inline-flex items-center gap-2 rounded-2xl bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-2xl bg-primary-600 px-4 py-2 text-sm font-bold text-white hover:bg-primary-700 disabled:opacity-50"
               >
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
                 {t("resume")}
-              </button>
+              </Button>
             ) : null}
 
             {onSuspend ? (
-              <button
+              <Button
                 type="button"
                 onClick={onSuspend}
                 disabled={isLoading}
-                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2 text-sm font-bold hover:bg-muted/50 disabled:opacity-50"
+                variant="outline"
+                className="inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-bold hover:bg-muted/50 disabled:opacity-50"
               >
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="h-4 w-4" />}
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Pause className="h-4 w-4" />
+                )}
                 {t("pause")}
-              </button>
+              </Button>
             ) : null}
 
-            <button
+            <Button
               type="button"
               onClick={onCancel}
               disabled={isLoading}
-              className="inline-flex items-center gap-2 rounded-2xl border border-red-300 bg-card px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
+              variant="outline"
+              className="inline-flex items-center gap-2 rounded-2xl border-red-300 bg-card px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
               {t("cancel")}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

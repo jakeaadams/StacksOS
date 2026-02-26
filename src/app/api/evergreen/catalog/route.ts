@@ -16,6 +16,7 @@ import { z } from "zod";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { generateAiJson, safeUserText } from "@/lib/ai";
 import { buildSemanticRerankPrompt } from "@/lib/ai/prompts";
+import { getTenantConfig } from "@/lib/tenant/config";
 
 const semanticRerankSchema = z.object({
   ranked: z
@@ -28,6 +29,84 @@ const semanticRerankSchema = z.object({
     )
     .min(1),
 });
+
+type CopyAvailability = { total: number; available: number };
+const AVAILABLE_COPY_STATUS_IDS = new Set(["0", "7"]);
+
+let copyCountsCapability: "unknown" | "supported" | "unsupported" = "unknown";
+let copyLocationsCapability: "unknown" | "supported" | "unsupported" = "unknown";
+
+function isMethodNotFoundError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as Record<string, any>).code;
+  return typeof code === "string" && code === "OSRF_METHOD_NOT_FOUND";
+}
+
+async function fetchCopyCountsSummary(
+  bibId: number,
+  requestId: string | null,
+  scopeOrgId: number,
+  copyDepth: number
+): Promise<unknown | null> {
+  if (copyCountsCapability === "unsupported") {
+    return null;
+  }
+
+  try {
+    const response = await callOpenSRF(
+      "open-ils.search",
+      "open-ils.search.biblio.copy_counts.location.summary.retrieve",
+      [bibId, scopeOrgId, copyDepth]
+    );
+    copyCountsCapability = "supported";
+    return response?.payload?.[0] ?? null;
+  } catch (error) {
+    if (isMethodNotFoundError(error)) {
+      logger.info(
+        {
+          requestId,
+          route: "api.evergreen.catalog",
+          method: "open-ils.search.biblio.copy_counts.location.summary.retrieve",
+        },
+        "Catalog copy-counts method unavailable; using fallback availability behavior"
+      );
+      copyCountsCapability = "unsupported";
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function fetchCopyLocations(requestId: string | null): Promise<Array<Record<string, any>>> {
+  if (copyLocationsCapability === "unsupported") {
+    return [];
+  }
+
+  try {
+    const locResponse = await callOpenSRF(
+      "open-ils.search",
+      "open-ils.search.asset.copy_location.retrieve.all",
+      []
+    );
+    copyLocationsCapability = "supported";
+    const payload = locResponse?.payload;
+    return Array.isArray(payload) ? payload : [];
+  } catch (error) {
+    if (isMethodNotFoundError(error)) {
+      logger.info(
+        {
+          requestId,
+          route: "api.evergreen.catalog",
+          method: "open-ils.search.asset.copy_location.retrieve.all",
+        },
+        "Catalog copy-locations method unavailable; returning empty list"
+      );
+      copyLocationsCapability = "unsupported";
+      return [];
+    }
+    throw error;
+  }
+}
 
 function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
@@ -126,13 +205,30 @@ function extractAudienceFromMARC(marcXml: string | null): string {
   if (!marcXml) return "general";
 
   // Check 521 field first (Target Audience Note)
-  const audienceMatch = marcXml.match(/<datafield tag="521"[^>]*>[\s\S]*?<subfield code="a">([^<]+)<\/subfield>/);
+  const audienceMatch = marcXml.match(
+    /<datafield tag="521"[^>]*>[\s\S]*?<subfield code="a">([^<]+)<\/subfield>/
+  );
   if (audienceMatch) {
     const audience = audienceMatch[1]!.toLowerCase();
-    if (audience.includes("juvenile") || audience.includes("children") || audience.includes("ages 4") || audience.includes("ages 5") || audience.includes("ages 6") || audience.includes("ages 7") || audience.includes("ages 8")) {
+    if (
+      audience.includes("juvenile") ||
+      audience.includes("children") ||
+      audience.includes("ages 4") ||
+      audience.includes("ages 5") ||
+      audience.includes("ages 6") ||
+      audience.includes("ages 7") ||
+      audience.includes("ages 8")
+    ) {
       return "juvenile";
     }
-    if (audience.includes("young adult") || audience.includes("teen") || audience.includes("ages 12") || audience.includes("ages 13") || audience.includes("ages 14") || audience.includes("ages 15")) {
+    if (
+      audience.includes("young adult") ||
+      audience.includes("teen") ||
+      audience.includes("ages 12") ||
+      audience.includes("ages 13") ||
+      audience.includes("ages 14") ||
+      audience.includes("ages 15")
+    ) {
       return "young_adult";
     }
   }
@@ -218,6 +314,19 @@ function parseMultiParam(value: string | null): string[] {
     .filter(Boolean);
 }
 
+function parsePositiveInt(value: string | null): number | null {
+  if (!value) return null;
+  const parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+function parseCopyDepth(value: string | null, fallback: number): number {
+  const parsed = parseInt(String(value || ""), 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(99, Math.max(0, parsed));
+}
+
 function extractLanguageFromMARC(marcXml: string | null): string | null {
   if (!marcXml) return null;
   const controlMatch = marcXml.match(/<controlfield tag="008">([^<]+)<\/controlfield>/);
@@ -271,10 +380,17 @@ function parseCopyCountsLocationSummary(
   const availability = { total: 0, available: 0 };
   if (!Array.isArray(raw)) {
     if (raw && typeof raw === "object" && locationFilter === null) {
-      const countRaw = (raw as Record<string, unknown>).total ?? (raw as Record<string, unknown>).count ?? (raw as Record<string, unknown>).copy_count ?? 0;
-      const availRaw = (raw as Record<string, unknown>).available ?? (raw as Record<string, unknown>).available_count ?? 0;
-      const countParsed = typeof countRaw === "number" ? countRaw : parseInt(String(countRaw ?? ""), 10);
-      const availParsed = typeof availRaw === "number" ? availRaw : parseInt(String(availRaw ?? ""), 10);
+      const countRaw =
+        (raw as Record<string, any>).total ??
+        (raw as Record<string, any>).count ??
+        (raw as Record<string, any>).copy_count ??
+        0;
+      const availRaw =
+        (raw as Record<string, any>).available ?? (raw as Record<string, any>).available_count ?? 0;
+      const countParsed =
+        typeof countRaw === "number" ? countRaw : parseInt(String(countRaw ?? ""), 10);
+      const availParsed =
+        typeof availRaw === "number" ? availRaw : parseInt(String(availRaw ?? ""), 10);
       return {
         total: Number.isFinite(countParsed) ? countParsed : 0,
         available: Number.isFinite(availParsed) ? availParsed : 0,
@@ -289,24 +405,30 @@ function parseCopyCountsLocationSummary(
     let available: number | null = null;
 
     if (entry && typeof entry === "object" && !Array.isArray(entry)) {
-      const orgRaw = (entry as Record<string, unknown>).org_unit ?? (entry as Record<string, unknown>).orgId ?? (entry as Record<string, unknown>).org_id ?? (entry as Record<string, unknown>).org;
+      const orgRaw =
+        (entry as Record<string, any>).org_unit ??
+        (entry as Record<string, any>).orgId ??
+        (entry as Record<string, any>).org_id ??
+        (entry as Record<string, any>).org;
       const orgParsed = typeof orgRaw === "number" ? orgRaw : parseInt(String(orgRaw ?? ""), 10);
       orgId = Number.isFinite(orgParsed) ? orgParsed : null;
 
       const countRaw =
-        (entry as Record<string, unknown>).count ??
-        (entry as Record<string, unknown>).total ??
-        (entry as Record<string, unknown>).copy_count ??
-        (entry as Record<string, unknown>).copies ??
-        (entry as Record<string, unknown>).total_count;
+        (entry as Record<string, any>).count ??
+        (entry as Record<string, any>).total ??
+        (entry as Record<string, any>).copy_count ??
+        (entry as Record<string, any>).copies ??
+        (entry as Record<string, any>).total_count;
       const availRaw =
-        (entry as Record<string, unknown>).available ??
-        (entry as Record<string, unknown>).available_count ??
-        (entry as Record<string, unknown>).avail ??
-        (entry as Record<string, unknown>).count_available;
+        (entry as Record<string, any>).available ??
+        (entry as Record<string, any>).available_count ??
+        (entry as Record<string, any>).avail ??
+        (entry as Record<string, any>).count_available;
 
-      const countParsed = typeof countRaw === "number" ? countRaw : parseInt(String(countRaw ?? ""), 10);
-      const availParsed = typeof availRaw === "number" ? availRaw : parseInt(String(availRaw ?? ""), 10);
+      const countParsed =
+        typeof countRaw === "number" ? countRaw : parseInt(String(countRaw ?? ""), 10);
+      const availParsed =
+        typeof availRaw === "number" ? availRaw : parseInt(String(availRaw ?? ""), 10);
       total = Number.isFinite(countParsed) ? countParsed : null;
       available = Number.isFinite(availParsed) ? availParsed : null;
     } else if (Array.isArray(entry)) {
@@ -314,13 +436,13 @@ function parseCopyCountsLocationSummary(
       const orgParsed = typeof orgRaw === "number" ? orgRaw : parseInt(String(orgRaw ?? ""), 10);
       orgId = Number.isFinite(orgParsed) ? orgParsed : null;
 
-      let statusMap: Record<string, unknown> | null = null;
+      let statusMap: Record<string, any> | null = null;
       for (let i = entry.length - 1; i >= 0; i -= 1) {
         const v = entry[i];
         if (v && typeof v === "object" && !Array.isArray(v)) {
-          const values = Object.values(v as Record<string, unknown>);
+          const values = Object.values(v as Record<string, any>);
           if (values.some((x) => typeof x === "number")) {
-            statusMap = v as Record<string, unknown>;
+            statusMap = v as Record<string, any>;
             break;
           }
         }
@@ -333,12 +455,13 @@ function parseCopyCountsLocationSummary(
         }
         total = totalCount;
 
-        const avail =
-          typeof (statusMap as Record<string, unknown>)["0"] === "number"
-            ? (statusMap as Record<string, unknown>)["0"] as number
-            : typeof (statusMap as Record<string, unknown>)[0] === "number"
-              ? (statusMap as Record<string, unknown>)[0] as number
-              : 0;
+        let avail = 0;
+        for (const [statusCode, statusCount] of Object.entries(statusMap)) {
+          if (typeof statusCount !== "number") continue;
+          if (AVAILABLE_COPY_STATUS_IDS.has(String(statusCode))) {
+            avail += statusCount;
+          }
+        }
         available = avail;
       }
     }
@@ -354,6 +477,26 @@ function parseCopyCountsLocationSummary(
   return availability;
 }
 
+function computeAvailabilityFromCopies(
+  copies: Array<{ isAvailable: boolean; orgId: number | null }>,
+  locationFilter: number | null
+): CopyAvailability {
+  let total = 0;
+  let available = 0;
+
+  for (const copy of copies) {
+    if (locationFilter !== null && copy.orgId !== locationFilter) {
+      continue;
+    }
+    total += 1;
+    if (copy.isAvailable) {
+      available += 1;
+    }
+  }
+
+  return { total, available };
+}
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const action = searchParams.get("action") || "search";
@@ -364,7 +507,9 @@ export async function GET(req: NextRequest) {
   const bibId = searchParams.get("id");
   const sort = searchParams.get("sort");
   const orderDir = (searchParams.get("order") || searchParams.get("sort_dir") || "").toLowerCase();
-  const semantic = ["1", "true", "yes"].includes(String(searchParams.get("semantic") || "").toLowerCase());
+  const semantic = ["1", "true", "yes"].includes(
+    String(searchParams.get("semantic") || "").toLowerCase()
+  );
 
   // Facet filters
   const formatFilters = parseMultiParam(searchParams.get("format")).map((v) => v.toLowerCase());
@@ -376,18 +521,35 @@ export async function GET(req: NextRequest) {
     .map((v) => v.toLowerCase());
   const locationFilterRaw = searchParams.get("location") || null;
   const locationParsed = locationFilterRaw ? parseInt(locationFilterRaw, 10) : NaN;
-  const locationFilter = Number.isFinite(locationParsed) && locationParsed > 0 ? locationParsed : null;
+  const locationFilter =
+    Number.isFinite(locationParsed) && locationParsed > 0 ? locationParsed : null;
   const pubdateFromRaw = searchParams.get("pubdate_from") || searchParams.get("pubdateFrom") || "";
   const pubdateToRaw = searchParams.get("pubdate_to") || searchParams.get("pubdateTo") || "";
   const pubdateFromParsed = pubdateFromRaw ? parseInt(pubdateFromRaw, 10) : NaN;
   const pubdateToParsed = pubdateToRaw ? parseInt(pubdateToRaw, 10) : NaN;
   const pubdateFrom = Number.isFinite(pubdateFromParsed) ? pubdateFromParsed : null;
   const pubdateTo = Number.isFinite(pubdateToParsed) ? pubdateToParsed : null;
+  const tenantDiscovery = getTenantConfig().discovery;
+  const searchScopeParam = String(searchParams.get("search_scope") || "")
+    .trim()
+    .toLowerCase();
+  const searchScope =
+    searchScopeParam === "local" ||
+    searchScopeParam === "system" ||
+    searchScopeParam === "consortium"
+      ? searchScopeParam
+      : tenantDiscovery.defaultSearchScope;
+  const scopeOrgFromParam = parsePositiveInt(searchParams.get("scope_org"));
+  const copyDepth = parseCopyDepth(
+    searchParams.get("copy_depth"),
+    tenantDiscovery.defaultCopyDepth
+  );
+  const scopeOrgId = scopeOrgFromParam || locationFilter || 1;
+  const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
     // Get a specific bib record
     if (action === "record" && bibId) {
-      const requestId = req.headers.get("x-request-id") || null;
       logger.debug(
         { requestId, route: "api.evergreen.catalog", action: "record", bibId },
         "Catalog record fetch"
@@ -435,19 +597,16 @@ export async function GET(req: NextRequest) {
     // Get holdings for a bib record
     // Get copy locations for the Add Item dialog
     if (action === "copy_locations") {
-      const locResponse = await callOpenSRF(
-        "open-ils.search",
-        "open-ils.search.asset.copy_location.retrieve.all",
-        []
-      );
-      const locations = (locResponse?.payload || [])// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Evergreen location data
-      .filter((loc) => !loc.ilsevent).map((loc) => ({
-        id: loc.id,
-        name: loc.name,
-        owningLib: loc.owning_lib,
-        holdable: loc.holdable === "t",
-        opacVisible: loc.opac_visible === "t",
-      }));
+      const payload = await fetchCopyLocations(requestId);
+      const locations = payload
+        .filter((loc) => !loc.ilsevent)
+        .map((loc) => ({
+          id: loc.id,
+          name: loc.name,
+          owningLib: loc.owning_lib,
+          holdable: loc.holdable === "t",
+          opacVisible: loc.opac_visible === "t",
+        }));
       return successResponse({ ok: true, locations });
     }
 
@@ -457,13 +616,7 @@ export async function GET(req: NextRequest) {
         return errorResponse("Invalid bib id", 400);
       }
 
-      const holdingsResponse = await callOpenSRF(
-        "open-ils.search",
-        "open-ils.search.biblio.copy_counts.location.summary.retrieve",
-        [bibNumeric, 1, 0]
-      );
-
-      const counts = holdingsResponse?.payload?.[0];
+      const counts = await fetchCopyCountsSummary(bibNumeric, requestId, scopeOrgId, copyDepth);
 
       const treeResponse = await callOpenSRF(
         "open-ils.cat",
@@ -479,17 +632,15 @@ export async function GET(req: NextRequest) {
 
       for (const volume of volumes) {
         const prefix =
-          volume?.prefix && typeof volume.prefix === "object"
-            ? volume.prefix.label || ""
-            : "";
+          volume?.prefix && typeof volume.prefix === "object" ? volume.prefix.label || "" : "";
         const suffix =
-          volume?.suffix && typeof volume.suffix === "object"
-            ? volume.suffix.label || ""
-            : "";
+          volume?.suffix && typeof volume.suffix === "object" ? volume.suffix.label || "" : "";
         const label = volume?.label || "";
         const callNumber =
-          [prefix, label, suffix].filter((v: string) => v).join(" ").trim() ||
-          label;
+          [prefix, label, suffix]
+            .filter((v: string) => v)
+            .join(" ")
+            .trim() || label;
 
         const copies = Array.isArray(volume?.copies) ? volume.copies : [];
         for (const copy of copies) {
@@ -502,7 +653,12 @@ export async function GET(req: NextRequest) {
       }
 
       if (copyIds.length === 0) {
-        return successResponse({ bibId, copyCounts: counts, copies: [], summary: [] });
+        return successResponse({
+          bibId,
+          copyCounts: counts ?? { total: 0, available: 0 },
+          copies: [],
+          summary: [],
+        });
       }
 
       const fleshedResponse = await callOpenSRF(
@@ -514,12 +670,12 @@ export async function GET(req: NextRequest) {
       const fleshed = fleshedResponse?.payload?.[0];
       const fleshedCopies = Array.isArray(fleshed) ? fleshed : [];
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fleshed copy data
       const holdings = fleshedCopies.map((copy) => {
         const statusObj = copy.status && typeof copy.status === "object" ? copy.status : null;
         const locObj = copy.location && typeof copy.location === "object" ? copy.location : null;
-        const circObj =
-          copy.circ_lib && typeof copy.circ_lib === "object" ? copy.circ_lib : null;
+        const circObj = copy.circ_lib && typeof copy.circ_lib === "object" ? copy.circ_lib : null;
+        const orgRaw = circObj?.id ?? copy.circ_lib;
+        const orgId = typeof orgRaw === "number" ? orgRaw : parseInt(String(orgRaw ?? ""), 10);
 
         const copyId = typeof copy.id === "number" ? copy.id : parseInt(String(copy.id || ""), 10);
 
@@ -534,13 +690,11 @@ export async function GET(req: NextRequest) {
           id: copyId,
           barcode: copy.barcode || "",
           callNumber:
-            callNumberByCopyId.get(copyId) ||
-            copy.call_number_label ||
-            copy.call_number ||
-            "",
+            callNumberByCopyId.get(copyId) || copy.call_number_label || copy.call_number || "",
           status: statusObj?.name || "Unknown",
           statusId: statusObj?.id ?? copy.status,
           location: locObj?.name || "",
+          orgId: Number.isFinite(orgId) ? orgId : null,
           circLib: circObj?.shortname || circObj?.name || "",
           createDate: copy.create_date || "",
           price: copy.price ? parseFloat(copy.price) : 0,
@@ -551,21 +705,26 @@ export async function GET(req: NextRequest) {
 
       const summaryMap = new Map<
         string,
-        { library: string; location: string; call_number: string; copy_count: number; available_count: number }
+        {
+          library: string;
+          location: string;
+          call_number: string;
+          copy_count: number;
+          available_count: number;
+        }
       >();
       for (const c of holdings) {
         const library = c.circLib || "—";
         const location = c.location || "—";
         const callNumber = c.callNumber || "—";
         const key = `${library}||${location}||${callNumber}`;
-        const existing =
-          summaryMap.get(key) || {
-            library,
-            location,
-            call_number: callNumber,
-            copy_count: 0,
-            available_count: 0,
-          };
+        const existing = summaryMap.get(key) || {
+          library,
+          location,
+          call_number: callNumber,
+          copy_count: 0,
+          available_count: 0,
+        };
         existing.copy_count += 1;
         if (c.isAvailable) existing.available_count += 1;
         summaryMap.set(key, existing);
@@ -579,37 +738,41 @@ export async function GET(req: NextRequest) {
         return a.call_number.localeCompare(b.call_number);
       });
 
-      const copies = holdings.map(({ isAvailable: _isAvailable, ...rest }) => rest);
-      return successResponse({ bibId, copyCounts: counts, copies, summary });
+      const derivedCounts = computeAvailabilityFromCopies(holdings, null);
+      const parsedCounts = counts ? parseCopyCountsLocationSummary(counts, null) : null;
+      const normalizedCounts =
+        derivedCounts.total > 0 ? derivedCounts : parsedCounts || derivedCounts;
+      const copies = holdings.map(({ isAvailable: _isAvailable, orgId: _orgId, ...rest }) => rest);
+      return successResponse({ bibId, copyCounts: normalizedCounts, copies, summary });
     }
 
     // Search for bib records
-    // Search for bib records - allow empty query for browse    const isEmptySearch = !query || query.trim() === "";
-
-    const { ip, userAgent, requestId } = getRequestMeta(req);
     const evergreenQuery = buildEvergreenQuery(query, searchType);
     const sortOptions = buildSortOptions(sort);
 
-	    logger.debug(
-	      {
-	        requestId,
-	        route: "api.evergreen.catalog",
-	        action: "search",
-	        searchType,
-	        query: evergreenQuery,
-	        sort,
-	        filters: {
-	          format: formatFilters,
-	          audience: audienceFilters,
-	          language: languageFilters,
-	          available: availableOnly,
-	          location: locationFilter,
-	          pubdateFrom,
-	          pubdateTo,
-	        },
-	      },
-	      "Catalog search"
-	    );
+    logger.debug(
+      {
+        requestId,
+        route: "api.evergreen.catalog",
+        action: "search",
+        searchType,
+        query: evergreenQuery,
+        sort,
+        filters: {
+          format: formatFilters,
+          audience: audienceFilters,
+          language: languageFilters,
+          available: availableOnly,
+          location: locationFilter,
+          pubdateFrom,
+          pubdateTo,
+          searchScope,
+          scopeOrgId,
+          copyDepth,
+        },
+      },
+      "Catalog search"
+    );
 
     const hasLocalFilters =
       formatFilters.length > 0 ||
@@ -622,10 +785,8 @@ export async function GET(req: NextRequest) {
 
     // Build search options
     // If local facet filters are active, over-fetch from Evergreen and apply our own pagination after filtering.
-    const searchOpts: Record<string, unknown> = {
-      limit: hasLocalFilters
-        ? Math.min(500, Math.max(limit * 10, offset + limit * 5))
-        : limit * 2,
+    const searchOpts: Record<string, any> = {
+      limit: hasLocalFilters ? Math.min(500, Math.max(limit * 10, offset + limit * 5)) : limit * 2,
       offset: hasLocalFilters ? 0 : offset,
     };
     // Add sort if specified - separate sort and sort_dir
@@ -642,7 +803,14 @@ export async function GET(req: NextRequest) {
     const searchResponse = await callOpenSRF(
       "open-ils.search",
       "open-ils.search.biblio.multiclass.query",
-      [searchOpts, evergreenQuery, 1]
+      [
+        {
+          ...searchOpts,
+          copy_depth: copyDepth,
+        },
+        evergreenQuery,
+        scopeOrgId,
+      ]
     );
 
     const results = searchResponse?.payload?.[0];
@@ -653,7 +821,7 @@ export async function GET(req: NextRequest) {
     };
 
     if (results && Array.isArray(results.ids)) {
-      const candidateIds = results.ids
+      const candidateIds: number[] = results.ids
         .map((idArray: unknown) => (Array.isArray(idArray) ? idArray[0] : idArray))
         .map((id: unknown) => (typeof id === "number" ? id : parseInt(String(id ?? ""), 10)))
         .filter((id: number) => Number.isFinite(id) && id > 0);
@@ -661,16 +829,10 @@ export async function GET(req: NextRequest) {
       const processed = await mapWithConcurrency(candidateIds, 6, async (id) => {
         try {
           const [modsResponse, marcResponse] = await Promise.all([
-            callOpenSRF(
-              "open-ils.search",
-              "open-ils.search.biblio.record.mods_slim.retrieve",
-              [id]
-            ),
-            callOpenSRF(
-              "open-ils.supercat",
-              "open-ils.supercat.record.marcxml.retrieve",
-              [id]
-            ),
+            callOpenSRF("open-ils.search", "open-ils.search.biblio.record.mods_slim.retrieve", [
+              id,
+            ]),
+            callOpenSRF("open-ils.supercat", "open-ils.supercat.record.marcxml.retrieve", [id]),
           ]);
 
           const mods = modsResponse?.payload?.[0];
@@ -690,21 +852,27 @@ export async function GET(req: NextRequest) {
 
           if (formatFilters.length > 0 && !formatFilters.includes(formatKey)) return null;
           if (audienceFilters.length > 0 && !audienceFilters.includes(audienceKey)) return null;
-          if (languageFilters.length > 0 && (!languageKey || !languageFilters.includes(languageKey))) return null;
+          if (
+            languageFilters.length > 0 &&
+            (!languageKey || !languageFilters.includes(languageKey))
+          )
+            return null;
 
           const pubYear = parseInt(String(mods.pubdate || ""), 10);
-          if ((pubdateFrom !== null || pubdateTo !== null) && !Number.isFinite(pubYear)) return null;
+          if ((pubdateFrom !== null || pubdateTo !== null) && !Number.isFinite(pubYear))
+            return null;
           if (pubdateFrom !== null && pubYear < pubdateFrom) return null;
           if (pubdateTo !== null && pubYear > pubdateTo) return null;
 
-          const countsResponse = await callOpenSRF(
-            "open-ils.search",
-            "open-ils.search.biblio.copy_counts.location.summary.retrieve",
-            [id, 1, 0]
-          );
+          const counts = await fetchCopyCountsSummary(id, requestId, scopeOrgId, copyDepth);
+          if (!counts && (availableOnly || locationFilter !== null)) {
+            // Cannot satisfy availability/location filtering without copy-count capability.
+            return null;
+          }
 
-          const counts = countsResponse?.payload?.[0];
-          const availability = parseCopyCountsLocationSummary(counts, locationFilter);
+          const availability = counts
+            ? parseCopyCountsLocationSummary(counts, locationFilter)
+            : { total: 0, available: 0 };
 
           if (availableOnly && availability.available === 0) return null;
           if (locationFilter !== null && availability.total === 0) return null;
@@ -732,7 +900,7 @@ export async function GET(req: NextRequest) {
         }
       });
 
-      const filtered = processed.filter(Boolean) as Record<string, unknown>[];
+      const filtered = processed.filter(Boolean) as Record<string, any>[];
 
       for (const r of filtered) {
         const format = String(r.format || "");
@@ -790,11 +958,16 @@ export async function GET(req: NextRequest) {
               promptVersion: prompt.version,
             });
 
-            const ranked = Array.isArray((out.data as Record<string, unknown>)?.ranked) ? ((out.data as Record<string, unknown>).ranked as Record<string, unknown>[]) : [];
+            const ranked = Array.isArray((out.data as Record<string, any>)?.ranked)
+              ? ((out.data as Record<string, any>).ranked as Record<string, any>[])
+              : [];
             const order = new Map<number, { score: number; reason: string }>();
             for (const entry of ranked) {
               if (!entry || typeof entry.id !== "number") continue;
-              order.set(entry.id as number, { score: entry.score as number, reason: entry.reason as string });
+              order.set(entry.id as number, {
+                score: entry.score as number,
+                reason: entry.reason as string,
+              });
             }
 
             if (order.size > 0) {
@@ -811,7 +984,7 @@ export async function GET(req: NextRequest) {
               for (const r of bibRecords) {
                 const meta = order.get(r.id as number);
                 if (meta) {
-                  (r as Record<string, unknown>).ranking = {
+                  (r as Record<string, any>).ranking = {
                     mode: "hybrid",
                     semanticScore: meta.score,
                     semanticReason: meta.reason,
@@ -829,29 +1002,31 @@ export async function GET(req: NextRequest) {
         typeof results.count === "number"
           ? results.count
           : parseInt(String(results.count ?? ""), 10);
-      const count =
-        hasLocalFilters
-          ? filtered.length
-          : Number.isFinite(resultsCountParsed)
-            ? resultsCountParsed
-            : bibRecords.length;
+      const count = hasLocalFilters
+        ? filtered.length
+        : Number.isFinite(resultsCountParsed)
+          ? resultsCountParsed
+          : bibRecords.length;
 
       return successResponse({
         count,
         records: bibRecords,
-	        facets: facetCounts,
-	        rankingMode,
-	        filters: {
-	          available: availableOnly,
-	          format: formatFilters,
-	          audience: audienceFilters,
-	          language: languageFilters,
-	          location: locationFilter,
-	          pubdateFrom,
-	          pubdateTo,
-	          sort,
-	        },
-	      });
+        facets: facetCounts,
+        rankingMode,
+        filters: {
+          available: availableOnly,
+          format: formatFilters,
+          audience: audienceFilters,
+          language: languageFilters,
+          location: locationFilter,
+          pubdateFrom,
+          pubdateTo,
+          searchScope,
+          copyDepth,
+          scopeOrgId,
+          sort,
+        },
+      });
     }
 
     return successResponse({ count: 0, records: [], facets: facetCounts });
@@ -870,21 +1045,22 @@ export async function POST(req: NextRequest) {
   try {
     const bodyParsed = await parseJsonBodyWithSchema(
       req,
-      z.object({
-        action: z.literal("create"),
-        marcXml: z.string().min(1).optional(),
-        simplified: z
-          .object({
-            title: z.string().trim().min(1),
-            author: z.string().trim().optional(),
-            isbn: z.string().trim().optional(),
-            publisher: z.string().trim().optional(),
-            pubYear: z.string().trim().optional(),
-            subjects: z.array(z.string()).optional(),
-            format: z.string().trim().optional(),
-          })
-          .optional(),
-      })
+      z
+        .object({
+          action: z.literal("create"),
+          marcXml: z.string().min(1).optional(),
+          simplified: z
+            .object({
+              title: z.string().trim().min(1),
+              author: z.string().trim().optional(),
+              isbn: z.string().trim().optional(),
+              publisher: z.string().trim().optional(),
+              pubYear: z.string().trim().optional(),
+              subjects: z.array(z.string()).optional(),
+              format: z.string().trim().optional(),
+            })
+            .optional(),
+        })
         .refine((b) => Boolean(b.marcXml) || Boolean(b.simplified), {
           message: "Either marcXml or simplified form data required",
           path: ["marcXml"],
@@ -926,7 +1102,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Validate MARC XML has required fields
-      if (!finalMarcXml.includes("<datafield tag=\"245\"")) {
+      if (!finalMarcXml.includes('<datafield tag="245"')) {
         return errorResponse("MARC record must include 245 (title) field", 400);
       }
 
@@ -949,9 +1125,9 @@ export async function POST(req: NextRequest) {
 
       logger.info({ requestId, recordId, actor: actor?.id }, "Created bibliographic record");
 
-      return successResponse({ 
-        id: recordId, 
-        message: "Record created successfully" 
+      return successResponse({
+        id: recordId,
+        message: "Record created successfully",
       });
     }
 
@@ -973,18 +1149,21 @@ function buildSimpleMarcXml(data: {
   subjects?: string[];
   format?: string;
 }): string {
-  const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  
+  const escape = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
   const lines: string[] = [
-    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
-    "<record xmlns=\"http://www.loc.gov/MARC21/slim\">",
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<record xmlns="http://www.loc.gov/MARC21/slim">',
     "  <leader>00000nam a2200000 a 4500</leader>",
   ];
 
   // 008 - Fixed length data
   const year = data.pubYear || new Date().getFullYear().toString();
   const date008 = new Date().toISOString().slice(2, 8).replace(/-/g, "");
-  lines.push(`  <controlfield tag="008">${date008}s${year}    xx            000 0 eng d</controlfield>`);
+  lines.push(
+    `  <controlfield tag="008">${date008}s${year}    xx            000 0 eng d</controlfield>`
+  );
 
   // 020 - ISBN
   if (data.isbn) {

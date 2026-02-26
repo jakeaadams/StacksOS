@@ -17,7 +17,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { FolderOpen, Plus, Trash2, Edit2, Share2, RefreshCw, Loader2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -96,7 +103,7 @@ export default function RecordBucketsPage() {
       const data = await response.json();
 
       if (data.ok && data.bucket) {
-        setBuckets(prev => [data.bucket, ...prev]);
+        setBuckets((prev) => [data.bucket, ...prev]);
         setShowCreateDialog(false);
         setNewBucketName("");
         setNewBucketDescription("");
@@ -123,7 +130,7 @@ export default function RecordBucketsPage() {
       const data = await response.json();
 
       if (data.ok) {
-        setBuckets(prev => prev.filter(b => b.id !== bucketId));
+        setBuckets((prev) => prev.filter((b) => b.id !== bucketId));
         toast.success("Bucket deleted");
       } else {
         toast.error(data.error || "Failed to delete bucket");
@@ -193,95 +200,104 @@ export default function RecordBucketsPage() {
     }
   };
 
-  const columns: ColumnDef<Bucket>[] = useMemo(() => [
-    {
-      accessorKey: "name",
-      header: "Bucket Name",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <FolderOpen className="h-4 w-4 text-muted-foreground" />
-          <div>
-            <div className="font-medium">{row.original.name}</div>
-            {row.original.description && (
-              <div className="text-xs text-muted-foreground">{row.original.description}</div>
-            )}
+  const columns: ColumnDef<Bucket>[] = useMemo(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Bucket Name",
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <FolderOpen className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <div className="font-medium">{row.original.name}</div>
+              {row.original.description && (
+                <div className="text-xs text-muted-foreground">{row.original.description}</div>
+              )}
+            </div>
           </div>
-        </div>
-      ),
-    },
-    {
-      accessorKey: "itemCount",
-      header: "Records",
-      cell: ({ row }) => <span className="font-mono">{row.original.itemCount}</span>,
-    },
-    {
-      accessorKey: "pub",
-      header: "Shared",
-      cell: ({ row }) => row.original.pub ? (
-        <span className="inline-flex items-center gap-1 text-emerald-600">
-          <Share2 className="h-3 w-3" /> Yes
-        </span>
-      ) : "No",
-    },
-    {
-      accessorKey: "createTime",
-      header: "Created",
-      cell: ({ row }) => {
-        const date = row.original.createTime;
-        if (!date) return "—";
-        return new Date(date).toLocaleDateString();
+        ),
       },
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => (
-        <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            title="Edit bucket"
-            onClick={() => handleOpenEdit(row.original)}
-            disabled={updatingId === row.original.id || deletingId === row.original.id}
-          >
-            <Edit2 className="h-4 w-4" />
-            <span className="sr-only">Edit bucket</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-rose-600"
-            onClick={() => handleDelete(row.original.id)}
-            disabled={deletingId === row.original.id}
-            title="Delete bucket"
-          >
-            {deletingId === row.original.id ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4" />
-            )}
-            <span className="sr-only">Delete bucket</span>
-          </Button>
-        </div>
-      ),
-    },
-  ], [deletingId, updatingId]);
+      {
+        accessorKey: "itemCount",
+        header: "Records",
+        cell: ({ row }) => <span className="font-mono">{row.original.itemCount}</span>,
+      },
+      {
+        accessorKey: "pub",
+        header: "Shared",
+        cell: ({ row }) =>
+          row.original.pub ? (
+            <span className="inline-flex items-center gap-1 text-emerald-600">
+              <Share2 className="h-3 w-3" /> Yes
+            </span>
+          ) : (
+            "No"
+          ),
+      },
+      {
+        accessorKey: "createTime",
+        header: "Created",
+        cell: ({ row }) => {
+          const date = row.original.createTime;
+          if (!date) return "—";
+          return new Date(date).toLocaleDateString();
+        },
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              title="Edit bucket"
+              onClick={() => handleOpenEdit(row.original)}
+              disabled={updatingId === row.original.id || deletingId === row.original.id}
+            >
+              <Edit2 className="h-4 w-4" />
+              <span className="sr-only">Edit bucket</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-rose-600"
+              onClick={() => handleDelete(row.original.id)}
+              disabled={deletingId === row.original.id}
+              title="Delete bucket"
+            >
+              {deletingId === row.original.id ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              <span className="sr-only">Delete bucket</span>
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [deletingId, updatingId]
+  );
 
-  const pageActions = useMemo(() => [
-    {
-      label: "Refresh",
-      icon: RefreshCw,
-      variant: "outline" as const,
-      onClick: fetchBuckets,
-      loading: isLoading,
-    },
-    {
-      label: "New Bucket",
-      icon: Plus,
-      onClick: () => setShowCreateDialog(true),
-    },
-	  ], [fetchBuckets, isLoading]);
+  const pageActions = useMemo(
+    () => [
+      {
+        label: "Refresh",
+        icon: RefreshCw,
+        variant: "outline" as const,
+        onClick: fetchBuckets,
+        loading: isLoading,
+      },
+      {
+        label: "New Bucket",
+        icon: Plus,
+        onClick: () => setShowCreateDialog(true),
+      },
+    ],
+    [fetchBuckets, isLoading]
+  );
 
   if (!enabled) {
     return (
@@ -289,10 +305,7 @@ export default function RecordBucketsPage() {
         <PageHeader
           title="Record Buckets"
           subtitle="Buckets are behind a feature flag until bulk workflows are fully validated."
-          breadcrumbs={[
-            { label: "Catalog", href: "/staff/catalog" },
-            { label: "Record Buckets" },
-          ]}
+          breadcrumbs={[{ label: "Catalog", href: "/staff/catalog" }, { label: "Record Buckets" }]}
         />
         <PageContent>
           <EmptyState
@@ -330,15 +343,17 @@ export default function RecordBucketsPage() {
               icon: Plus,
             }}
             secondaryAction={{
-              label: "Seed demo data",
-              onClick: () => window.location.assign("/staff/help#demo-data"),
+              label: "Evergreen setup checklist",
+              onClick: () => window.location.assign("/staff/help#evergreen-setup"),
             }}
           />
         ) : (
           <Card>
             <CardHeader>
               <CardTitle>Your Buckets</CardTitle>
-              <CardDescription>{buckets.length} bucket{buckets.length !== 1 ? "s" : ""}</CardDescription>
+              <CardDescription>
+                {buckets.length} bucket{buckets.length !== 1 ? "s" : ""}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <DataTable columns={columns} data={buckets} />
@@ -352,9 +367,7 @@ export default function RecordBucketsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New Bucket</DialogTitle>
-            <DialogDescription>
-              Create a new bucket to organize catalog records.
-            </DialogDescription>
+            <DialogDescription>Create a new bucket to organize catalog records.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -379,13 +392,11 @@ export default function RecordBucketsPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="shared">Share with others</Label>
-                <p className="text-xs text-muted-foreground">Allow other staff to view this bucket</p>
+                <p className="text-xs text-muted-foreground">
+                  Allow other staff to view this bucket
+                </p>
               </div>
-              <Switch
-                id="shared"
-                checked={newBucketShared}
-                onCheckedChange={setNewBucketShared}
-              />
+              <Switch id="shared" checked={newBucketShared} onCheckedChange={setNewBucketShared} />
             </div>
           </div>
           <DialogFooter>
@@ -419,9 +430,7 @@ export default function RecordBucketsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Bucket</DialogTitle>
-            <DialogDescription>
-              Update bucket details and sharing settings.
-            </DialogDescription>
+            <DialogDescription>Update bucket details and sharing settings.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -446,7 +455,9 @@ export default function RecordBucketsPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="edit-shared">Share with others</Label>
-                <p className="text-xs text-muted-foreground">Allow other staff to view this bucket</p>
+                <p className="text-xs text-muted-foreground">
+                  Allow other staff to view this bucket
+                </p>
               </div>
               <Switch
                 id="edit-shared"
@@ -465,10 +476,7 @@ export default function RecordBucketsPage() {
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleUpdate}
-              disabled={updatingId !== null || !editingBucket}
-            >
+            <Button onClick={handleUpdate} disabled={updatingId !== null || !editingBucket}>
               {updatingId !== null ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

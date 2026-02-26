@@ -11,6 +11,7 @@ import {
   type KidsReadingLogEntry,
 } from "@/lib/kids-engagement";
 import { usePatronSession } from "@/hooks/use-patron-session";
+import { Button } from "@/components/ui/button";
 import {
   Award,
   BookOpen,
@@ -58,8 +59,28 @@ function monthEndLabel(d: Date): string {
   return end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+function progressWidthClass(current: number, target: number): string {
+  if (target <= 0) return "w-0";
+  const pct = Math.max(0, Math.min(100, Math.round((current / target) * 100)));
+  const step = Math.round(pct / 10) * 10;
+  const widthByStep: Record<number, string> = {
+    0: "w-0",
+    10: "w-[10%]",
+    20: "w-[20%]",
+    30: "w-[30%]",
+    40: "w-[40%]",
+    50: "w-1/2",
+    60: "w-[60%]",
+    70: "w-[70%]",
+    80: "w-[80%]",
+    90: "w-[90%]",
+    100: "w-full",
+  };
+  return widthByStep[step] || "w-full";
+}
+
 export default function KidsChallengesPage() {
-  const t = useTranslations("kidsChallenges");
+  const _t = useTranslations("kidsChallenges");
   const router = useRouter();
   const { isLoggedIn } = usePatronSession();
 
@@ -85,7 +106,9 @@ export default function KidsChallengesPage() {
     void (async () => {
       const res = await fetchWithAuth("/api/opac/kids/reading-log?limit=500");
       const data = await res.json().catch(() => ({}));
-      const raw = Array.isArray((data as Record<string, any>)?.entries) ? (data as Record<string, any>).entries : [];
+      const raw = Array.isArray((data as Record<string, any>)?.entries)
+        ? (data as Record<string, any>).entries
+        : [];
       const normalized: KidsReadingLogEntry[] = raw
         .filter((e: any) => e && typeof e.id === "number")
         .map((e: any) => ({
@@ -125,13 +148,15 @@ export default function KidsChallengesPage() {
         <p className="text-muted-foreground mb-6">
           Kids engagement features are still rolling out. Check back soon.
         </p>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => router.push("/opac/kids")}
-          className="px-6 py-3 bg-purple-100 text-purple-700 rounded-xl font-medium hover:bg-purple-200"
+          className="h-12 w-auto px-6 text-purple-700 bg-purple-100 hover:bg-purple-200"
         >
           Back to Kids Home
-        </button>
+        </Button>
       </div>
     );
   }
@@ -245,17 +270,21 @@ export default function KidsChallengesPage() {
     <div className="max-w-5xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => router.back()}
-          className="p-2 text-muted-foreground hover:text-foreground/80 hover:bg-muted/50 rounded-xl"
+          className="text-muted-foreground hover:text-foreground/80 hover:bg-muted/50 rounded-xl"
           aria-label="Back"
         >
           <ChevronLeft className="h-6 w-6" />
-        </button>
+        </Button>
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">Challenges & badges</h1>
-          <p className="text-muted-foreground">Keep a streak and earn rewards by logging reading.</p>
+          <p className="text-muted-foreground">
+            Keep a streak and earn rewards by logging reading.
+          </p>
         </div>
         <div className="ml-auto">
           <Link
@@ -295,24 +324,28 @@ export default function KidsChallengesPage() {
 
       {/* Tabs */}
       <div className="flex items-center gap-2 mb-6">
-        <button
+        <Button
           type="button"
+          variant={activeTab === "challenges" ? "default" : "outline"}
+          size="sm"
           onClick={() => setActiveTab("challenges")}
-          className={`px-4 py-2 rounded-xl font-medium text-sm transition-colors ${
-            activeTab === "challenges" ? "bg-purple-100 text-purple-700" : "text-muted-foreground hover:bg-muted/50"
-          }`}
+          className={
+            activeTab === "challenges" ? "bg-purple-100 text-purple-700 hover:bg-purple-200" : ""
+          }
         >
           Challenges
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant={activeTab === "badges" ? "default" : "outline"}
+          size="sm"
           onClick={() => setActiveTab("badges")}
-          className={`px-4 py-2 rounded-xl font-medium text-sm transition-colors ${
-            activeTab === "badges" ? "bg-purple-100 text-purple-700" : "text-muted-foreground hover:bg-muted/50"
-          }`}
+          className={
+            activeTab === "badges" ? "bg-purple-100 text-purple-700 hover:bg-purple-200" : ""
+          }
         >
           Badges
-        </button>
+        </Button>
         <div className="ml-auto text-xs text-muted-foreground">
           Next book badge: {progress.progressPct}% (target {progress.nextTarget})
         </div>
@@ -327,7 +360,9 @@ export default function KidsChallengesPage() {
           {challenges.map((c: any) => (
             <div key={c.id} className="bg-card rounded-3xl border border-border p-5 shadow-sm">
               <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${c.bgColor}`}>
+                <div
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center ${c.bgColor}`}
+                >
                   <c.icon className={`h-6 w-6 ${c.color}`} />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -354,8 +389,7 @@ export default function KidsChallengesPage() {
                     </div>
                     <div className="h-3 bg-muted/50 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all"
-                        style={{ width: `${Math.min(100, Math.round((c.current / c.target) * 100))}%` }}
+                        className={`h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all ${progressWidthClass(c.current, c.target)}`}
                       />
                     </div>
                   </div>
@@ -386,7 +420,9 @@ export default function KidsChallengesPage() {
               }`}
             >
               <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${b.bgColor}`}>
+                <div
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center ${b.bgColor}`}
+                >
                   <b.icon className={`h-6 w-6 ${b.color}`} />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -413,4 +449,3 @@ export default function KidsChallengesPage() {
     </div>
   );
 }
-

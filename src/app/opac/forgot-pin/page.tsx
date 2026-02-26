@@ -95,12 +95,17 @@ export default function ForgotPinPage() {
                 {error && (
                   <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                     <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-                    <p id="forgot-pin-error" role="alert" className="text-red-700 text-sm">{error}</p>
+                    <p id="forgot-pin-error" role="alert" className="text-red-700 text-sm">
+                      {error}
+                    </p>
                   </div>
                 )}
 
                 <div>
-                  <label htmlFor="identifier" className="block text-sm font-medium text-foreground/80 mb-2">
+                  <label
+                    htmlFor="identifier"
+                    className="block text-sm font-medium text-foreground/80 mb-2"
+                  >
                     Library Card Number or Username
                   </label>
                   <div className="relative">
@@ -124,10 +129,11 @@ export default function ForgotPinPage() {
                   </p>
                 </div>
 
-                <button type="submit"
+                <button
+                  type="submit"
                   disabled={isLoading}
-                  className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium
-                           hover:bg-primary-700 transition-colors disabled:opacity-50 
+                  className="w-full py-3 stx-action-primary rounded-lg font-medium
+                           hover:brightness-110 transition-colors disabled:opacity-50 
                            disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
@@ -148,8 +154,8 @@ export default function ForgotPinPage() {
               <div className="mt-6 p-4 border border-amber-200 bg-amber-50 rounded-lg">
                 <h2 className="font-medium text-amber-800 text-sm">No email on file?</h2>
                 <p className="text-sm text-amber-700 mt-1">
-                  If you don&apos;t have an email address on your account, 
-                  please visit or call your local library branch to reset your PIN.
+                  If you don&apos;t have an email address on your account, please visit or call your
+                  local library branch to reset your PIN.
                 </p>
               </div>
             </>
@@ -173,7 +179,8 @@ export default function ForgotPinPage() {
                 </ul>
               </div>
               <div className="space-y-3">
-                <button type="button"
+                <button
+                  type="button"
                   onClick={() => {
                     setStep("request");
                     setIdentifier("");
@@ -186,8 +193,8 @@ export default function ForgotPinPage() {
                 </button>
                 <Link
                   href="/opac/login"
-                  className="block w-full py-3 bg-primary-600 text-white rounded-lg font-medium
-                           hover:bg-primary-700 transition-colors text-center"
+                  className="block w-full py-3 stx-action-primary rounded-lg font-medium
+                           hover:brightness-110 transition-colors text-center"
                 >
                   Return to Sign In
                 </Link>

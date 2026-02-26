@@ -1,10 +1,7 @@
 import { NextRequest } from "next/server";
-import {
-  callOpenSRF,
-  successResponse,
-} from "@/lib/api";
+import { callOpenSRF, successResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 interface StaffPick {
   id: number;
@@ -35,17 +32,21 @@ export async function GET(req: NextRequest) {
       bookbags = searchResponse?.payload?.[0] || [];
     } catch (error: any) {
       // Method may not exist or may require auth - return empty picks
-      logger.info({ error: String(error) }, "Staff picks not available - method not supported or not configured");
-      return successResponse({ 
-        picks: [], 
-        message: "Staff picks not configured. Create public bookbags with staff pick in the name to enable this feature." 
+      logger.info(
+        { error: String(error) },
+        "Staff picks not available - method not supported or not configured"
+      );
+      return successResponse({
+        picks: [],
+        message:
+          "Staff picks not configured. Create public bookbags with staff pick in the name to enable this feature.",
       });
     }
 
     if (!Array.isArray(bookbags) || bookbags.length === 0) {
-      return successResponse({ 
-        picks: [], 
-        message: "No staff picks configured" 
+      return successResponse({
+        picks: [],
+        message: "No staff picks configured",
       });
     }
 
@@ -56,14 +57,15 @@ export async function GET(req: NextRequest) {
     });
 
     if (staffPickBags.length === 0) {
-      return successResponse({ 
-        picks: [], 
-        message: "No staff picks bookbags found. Create public bookbags with staff pick in the name." 
+      return successResponse({
+        picks: [],
+        message:
+          "No staff picks bookbags found. Create public bookbags with staff pick in the name.",
       });
     }
 
     const picks: StaffPick[] = [];
-    
+
     for (const bag of staffPickBags.slice(0, 5)) {
       try {
         const itemsResponse = await callOpenSRF(
@@ -98,7 +100,9 @@ export async function GET(req: NextRequest) {
               recordId,
               title: bib.title || "Unknown Title",
               author: bib.author || "",
-              coverUrl: bib.isbn ? `https://covers.openlibrary.org/b/isbn/${bib.isbn}-M.jpg` : undefined,
+              coverUrl: bib.isbn
+                ? `https://covers.openlibrary.org/b/isbn/${bib.isbn}-M.jpg`
+                : undefined,
               staffName: bag.owner_name || "Library Staff",
               staffBranch,
               review: item.notes || undefined,
@@ -119,9 +123,9 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     logger.error({ error: String(error) }, "Error fetching staff picks");
     // Return empty picks on _error rather than failing
-    return successResponse({ 
-      picks: [], 
-      message: "Unable to fetch staff picks" 
+    return successResponse({
+      picks: [],
+      message: "Unable to fetch staff picks",
     });
   }
 }

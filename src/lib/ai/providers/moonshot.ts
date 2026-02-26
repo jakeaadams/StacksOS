@@ -84,6 +84,11 @@ async function moonshotChatCompletion(args: {
         : undefined,
       raw: json,
     };
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`AI provider timeout after ${args.config.timeoutMs}ms (moonshot)`);
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }

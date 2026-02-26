@@ -1,10 +1,12 @@
 import { getRequestMeta, successResponse, withErrorHandling } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
-import { z } from "zod";
+import { z as _z } from "zod";
+import { getTenantConfig } from "@/lib/tenant/config";
 
 export const GET = withErrorHandling(async (req: Request) => {
   await requirePermissions(["STAFF_LOGIN"]);
 
+  const tenant = getTenantConfig();
   const label = String(process.env.STACKSOS_ENV_LABEL || "").trim();
   const tone = String(process.env.STACKSOS_ENV_TONE || "")
     .trim()
@@ -55,6 +57,12 @@ export const GET = withErrorHandling(async (req: Request) => {
       scheduledReports: {
         runnerConfigured: scheduledReportsRunnerConfigured,
         publicBaseUrlConfigured,
+      },
+      tenant: {
+        tenantId: tenant.tenantId,
+        displayName: tenant.displayName,
+        profile: tenant.profile?.type || "public",
+        region: tenant.region || null,
       },
     },
   });

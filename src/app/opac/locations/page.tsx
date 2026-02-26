@@ -6,6 +6,7 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { LoadingSpinner } from "@/components/shared/loading-state";
+import { Button } from "@/components/ui/button";
 import {
   MapPin,
   Clock,
@@ -80,13 +81,16 @@ function transformOrgTree(tree: any): LibraryLocation[] {
         name: node.name,
         shortName: node.shortname || node.short_name || node.name,
         type: node.ou_type?.name || "Branch",
-        address: node.billing_address || node.mailing_address ? {
-          street1: node.billing_address?.street1 || node.mailing_address?.street1,
-          street2: node.billing_address?.street2 || node.mailing_address?.street2,
-          city: node.billing_address?.city || node.mailing_address?.city,
-          state: node.billing_address?.state || node.mailing_address?.state,
-          zip: node.billing_address?.post_code || node.mailing_address?.post_code,
-        } : undefined,
+        address:
+          node.billing_address || node.mailing_address
+            ? {
+                street1: node.billing_address?.street1 || node.mailing_address?.street1,
+                street2: node.billing_address?.street2 || node.mailing_address?.street2,
+                city: node.billing_address?.city || node.mailing_address?.city,
+                state: node.billing_address?.state || node.mailing_address?.state,
+                zip: node.billing_address?.post_code || node.mailing_address?.post_code,
+              }
+            : undefined,
         phone: node.phone,
         email: node.email,
         hours: parseHours(node.hours_of_operation),
@@ -159,9 +163,8 @@ export default function LocationsPage() {
     void fetchLocations();
   }, [fetchLocations]);
 
-  const filteredLocations = filter === "open" 
-    ? locations.filter(loc => isCurrentlyOpen(loc.hours))
-    : locations;
+  const filteredLocations =
+    filter === "open" ? locations.filter((loc) => isCurrentlyOpen(loc.hours)) : locations;
 
   if (isLoading) {
     return (
@@ -180,27 +183,37 @@ export default function LocationsPage() {
           <p className="mt-2 text-muted-foreground">
             Find a branch near you, check hours, and get directions.
           </p>
-          
+
           {/* Filter buttons */}
           <div className="mt-6 flex gap-2">
-            <button type="button"
+            <Button
+              type="button"
+              variant={filter === "all" ? "default" : "outline"}
+              size="sm"
               onClick={() => setFilter("all")}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors
-                ${filter === "all" 
-                  ? "bg-primary-600 text-white" 
-                  : "bg-muted/50 text-foreground/80 hover:bg-muted"}`}
+                ${
+                  filter === "all"
+                    ? "stx-action-primary"
+                    : "bg-muted/50 text-foreground/80 hover:bg-muted"
+                }`}
             >
               All Locations ({locations.length})
-            </button>
-            <button type="button"
+            </Button>
+            <Button
+              type="button"
+              variant={filter === "open" ? "default" : "outline"}
+              size="sm"
               onClick={() => setFilter("open")}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors
-                ${filter === "open" 
-                  ? "bg-green-600 text-white" 
-                  : "bg-muted/50 text-foreground/80 hover:bg-muted"}`}
+                ${
+                  filter === "open"
+                    ? "bg-green-600 text-white"
+                    : "bg-muted/50 text-foreground/80 hover:bg-muted"
+                }`}
             >
               Open Now
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -212,7 +225,9 @@ export default function LocationsPage() {
             <Building2 className="mx-auto h-12 w-12 text-muted-foreground/70" />
             <h3 className="mt-4 text-lg font-medium text-foreground">No locations found</h3>
             <p className="mt-2 text-muted-foreground">
-              {filter === "open" ? "No branches are currently open." : "No branch information available."}
+              {filter === "open"
+                ? "No branches are currently open."
+                : "No branch information available."}
             </p>
           </div>
         ) : (
@@ -220,20 +235,23 @@ export default function LocationsPage() {
             {filteredLocations.map((location) => {
               const isOpen = isCurrentlyOpen(location.hours);
               const isExpanded = expandedLocation === location.id;
-              
+
               return (
-                <div
-                  key={location.id}
-                  className="bg-card rounded-xl shadow-sm border border-border overflow-hidden"
-                >
+                <div key={location.id} className="stx-surface rounded-xl overflow-hidden">
                   {/* Header */}
-                  <button type="button"
+                  <Button
+                    type="button"
+                    variant="ghost"
                     onClick={() => setExpandedLocation(isExpanded ? null : location.id)}
-                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
+                    className="h-auto w-full px-6 py-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`p-3 rounded-lg ${location.isMainBranch ? "bg-primary-100" : "bg-muted/50"}`}>
-                        <Building2 className={`h-6 w-6 ${location.isMainBranch ? "text-primary-600" : "text-muted-foreground"}`} />
+                      <div
+                        className={`p-3 rounded-lg ${location.isMainBranch ? "bg-primary-100" : "bg-muted/50"}`}
+                      >
+                        <Building2
+                          className={`h-6 w-6 ${location.isMainBranch ? "text-primary-600" : "text-muted-foreground"}`}
+                        />
                       </div>
                       <div className="text-left">
                         <h2 className="font-semibold text-foreground flex items-center gap-2">
@@ -251,10 +269,12 @@ export default function LocationsPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-4">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium
-                        ${isOpen ? "bg-green-100 text-green-700" : "bg-muted/50 text-muted-foreground"}`}>
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-medium
+                        ${isOpen ? "bg-green-100 text-green-700" : "bg-muted/50 text-muted-foreground"}`}
+                      >
                         {isOpen ? "Open" : t("closed")}
                       </span>
                       {isExpanded ? (
@@ -263,7 +283,7 @@ export default function LocationsPage() {
                         <ChevronDown className="h-5 w-5 text-muted-foreground/70" />
                       )}
                     </div>
-                  </button>
+                  </Button>
 
                   {/* Expanded content */}
                   {isExpanded && (
@@ -280,11 +300,13 @@ export default function LocationsPage() {
                                   <p className="text-foreground">{location.address.street2}</p>
                                 )}
                                 <p className="text-foreground">
-                                  {location.address.city}, {location.address.state} {location.address.zip}
+                                  {location.address.city}, {location.address.state}{" "}
+                                  {location.address.zip}
                                 </p>
                                 <a
                                   href={getDirectionsUrl(location)}
-                                  target="_blank" rel="noopener noreferrer"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 text-sm mt-2"
                                 >
                                   <Navigation className="h-4 w-4" />
@@ -293,20 +315,26 @@ export default function LocationsPage() {
                               </div>
                             </div>
                           )}
-                          
+
                           {location.phone && (
                             <div className="flex items-center gap-3">
                               <Phone className="h-5 w-5 text-muted-foreground/70" />
-                              <a href={`tel:${location.phone}`} className="text-primary-600 hover:text-primary-700">
+                              <a
+                                href={`tel:${location.phone}`}
+                                className="text-primary-600 hover:text-primary-700"
+                              >
                                 {location.phone}
                               </a>
                             </div>
                           )}
-                          
+
                           {location.email && (
                             <div className="flex items-center gap-3">
                               <Mail className="h-5 w-5 text-muted-foreground/70" />
-                              <a href={`mailto:${location.email}`} className="text-primary-600 hover:text-primary-700">
+                              <a
+                                href={`mailto:${location.email}`}
+                                className="text-primary-600 hover:text-primary-700"
+                              >
                                 {location.email}
                               </a>
                             </div>
@@ -323,19 +351,26 @@ export default function LocationsPage() {
                             <div className="space-y-1">
                               {DAYS.map((day) => {
                                 const dayHours = location.hours?.[day];
-                                const today = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
+                                const today =
+                                  DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
                                 const isToday = day === today;
-                                
+
                                 return (
                                   <div
                                     key={day}
                                     className={`flex justify-between text-sm py-1 px-2 rounded
                                       ${isToday ? "bg-primary-50 font-medium" : ""}`}
                                   >
-                                    <span className={isToday ? "text-primary-700" : "text-muted-foreground"}>
+                                    <span
+                                      className={
+                                        isToday ? "text-primary-700" : "text-muted-foreground"
+                                      }
+                                    >
                                       {DAY_LABELS[day]}
                                     </span>
-                                    <span className={isToday ? "text-primary-700" : "text-foreground"}>
+                                    <span
+                                      className={isToday ? "text-primary-700" : "text-foreground"}
+                                    >
                                       {dayHours === "closed" || !dayHours
                                         ? t("closed")
                                         : `${dayHours.open} - ${dayHours.close}`}
@@ -352,7 +387,7 @@ export default function LocationsPage() {
                       <div className="mt-6 flex flex-wrap gap-3">
                         <Link
                           href={`/opac/search?location=${location.id}`}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                          className="inline-flex items-center gap-2 px-4 py-2 stx-action-primary rounded-lg hover:brightness-110 transition-colors"
                         >
                           <BookOpen className="h-4 w-4" />
                           Search This Branch

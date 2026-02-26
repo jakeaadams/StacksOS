@@ -3,10 +3,28 @@
 import * as React from "react";
 import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -53,7 +71,7 @@ function StarRating({
   rating,
   size = "md",
   interactive = false,
-  onRate
+  onRate,
 }: {
   rating: number;
   size?: "sm" | "md" | "lg";
@@ -77,10 +95,13 @@ function StarRating({
         const half = !filled && star - 0.5 <= displayRating;
 
         return (
-          <button type="button"
+          <Button
+            type="button"
             key={star}
-             disabled={!interactive}
-            className={interactive ? "cursor-pointer hover:scale-110 transition-transform" : "cursor-default"}
+            variant="ghost"
+            size="icon"
+            disabled={!interactive}
+            className={`h-auto w-auto p-0.5 ${interactive ? "cursor-pointer hover:scale-110" : "cursor-default"}`}
             onMouseEnter={() => interactive && setHoverRating(star)}
             onMouseLeave={() => interactive && setHoverRating(0)}
             onClick={() => interactive && onRate?.(star)}
@@ -92,7 +113,7 @@ function StarRating({
             ) : (
               <Star className={`${sizeClasses[size]} text-muted-foreground/50`} />
             )}
-          </button>
+          </Button>
         );
       })}
     </div>
@@ -113,19 +134,16 @@ function RatingBreakdown({ stats }: { stats: ReviewStats }) {
       <div className="text-center">
         <div className="text-4xl font-bold">{averageRating.toFixed(1)}</div>
         <StarRating rating={averageRating} size="md" />
-        <div className="text-sm text-muted-foreground mt-1">{totalReviews} review{totalReviews !== 1 ? "s" : ""}</div>
+        <div className="text-sm text-muted-foreground mt-1">
+          {totalReviews} review{totalReviews !== 1 ? "s" : ""}
+        </div>
       </div>
       <div className="space-y-1.5">
         {breakdown.map(({ rating, count, percentage }) => (
           <div key={rating} className="flex items-center gap-2 text-sm">
             <span className="w-3">{rating}</span>
             <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-yellow-400 rounded-full transition-all"
-                style={{ width: `${percentage}%` }}
-              />
-            </div>
+            <Progress className="h-2 flex-1 bg-muted" value={percentage} />
             <span className="w-8 text-muted-foreground text-right">{count}</span>
           </div>
         ))}
@@ -147,7 +165,12 @@ function ReviewCard({
   onDelete?: () => void;
   onReport?: () => void;
 }) {
-  const initials = review.patronName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  const initials = review.patronName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
   const formattedDate = new Date(review.createdAt).toLocaleDateString();
 
   return (
@@ -180,7 +203,12 @@ function ReviewCard({
               Helpful ({review.helpful})
             </Button>
             {isOwn ? (
-              <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive" onClick={onDelete}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-destructive"
+                onClick={onDelete}
+              >
                 <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                 Delete
               </Button>
@@ -220,11 +248,13 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
 
       if (data.ok) {
         setReviews(data.reviews || []);
-        setStats(data.stats || {
-          averageRating: 0,
-          totalReviews: 0,
-          ratingDistribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
-        });
+        setStats(
+          data.stats || {
+            averageRating: 0,
+            totalReviews: 0,
+            ratingDistribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+          }
+        );
       }
     } catch (err) {
       clientLogger.error("Error fetching reviews:", err);
@@ -239,7 +269,7 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
 
   const hasReviewed = currentPatronId ? reviews.some((r) => r.patronId === currentPatronId) : false;
 
-	  const submitReview = async () => {
+  const submitReview = async () => {
     if (newRating === 0) {
       toast.error("Please select a rating");
       return;
@@ -249,14 +279,14 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
       return;
     }
 
-	    setIsSubmitting(true);
-	    try {
-	      const response = await fetchWithAuth("/api/opac/reviews", {
-	        method: "POST",
-	        headers: { "Content-Type": "application/json" },
-	        body: JSON.stringify({
-	          bibId: recordId,
-	          rating: newRating,
+    setIsSubmitting(true);
+    try {
+      const response = await fetchWithAuth("/api/opac/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bibId: recordId,
+          rating: newRating,
           title: newTitle.trim(),
           text: newContent.trim(),
         }),
@@ -282,18 +312,16 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
     }
   };
 
-	  const markHelpful = async (reviewId: number) => {
-	    try {
-	      const response = await fetchWithAuth("/api/opac/reviews", {
-	        method: "PUT",
-	        headers: { "Content-Type": "application/json" },
-	        body: JSON.stringify({ reviewId, action: "helpful" }),
-	      });
+  const markHelpful = async (reviewId: number) => {
+    try {
+      const response = await fetchWithAuth("/api/opac/reviews", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewId, action: "helpful" }),
+      });
 
       if (response.ok) {
-        setReviews(reviews.map((r) =>
-          r.id === reviewId ? { ...r, helpful: r.helpful + 1 } : r
-        ));
+        setReviews(reviews.map((r) => (r.id === reviewId ? { ...r, helpful: r.helpful + 1 } : r)));
         toast.success("Marked as helpful");
       }
     } catch (_error) {
@@ -301,11 +329,11 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
     }
   };
 
-	  const deleteReview = async (reviewId: number) => {
-	    try {
-	      const response = await fetchWithAuth(`/api/opac/reviews?id=${reviewId}`, {
-	        method: "DELETE",
-	      });
+  const deleteReview = async (reviewId: number) => {
+    try {
+      const response = await fetchWithAuth(`/api/opac/reviews?id=${reviewId}`, {
+        method: "DELETE",
+      });
 
       if (response.ok) {
         setReviews(reviews.filter((r) => r.id !== reviewId));
@@ -317,13 +345,13 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
     }
   };
 
-	  const reportReview = async (reviewId: number) => {
-	    try {
-	      await fetchWithAuth("/api/opac/reviews", {
-	        method: "PUT",
-	        headers: { "Content-Type": "application/json" },
-	        body: JSON.stringify({ reviewId, action: "report" }),
-	      });
+  const reportReview = async (reviewId: number) => {
+    try {
+      await fetchWithAuth("/api/opac/reviews", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewId, action: "report" }),
+      });
       toast.success("Review reported. Our team will review it.");
     } catch (_error) {
       toast.error("Failed to report review");
@@ -371,21 +399,31 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Your Rating</label>
+                    <Label className="text-sm font-medium">Your Rating</Label>
                     <div className="flex items-center gap-3">
                       <StarRating rating={newRating} size="lg" interactive onRate={setNewRating} />
                       {newRating > 0 && (
                         <span className="text-sm text-muted-foreground">
-                          {newRating === 5 ? "Excellent!" : newRating === 4 ? "Good" : newRating === 3 ? "Average" : newRating === 2 ? "Below Average" : "Poor"}
+                          {newRating === 5
+                            ? "Excellent!"
+                            : newRating === 4
+                              ? "Good"
+                              : newRating === 3
+                                ? "Average"
+                                : newRating === 2
+                                  ? "Below Average"
+                                  : "Poor"}
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Review Title (optional)</label>
-                    <input
+                    <Label htmlFor="review-title" className="text-sm font-medium">
+                      Review Title (optional)
+                    </Label>
+                    <Input
+                      id="review-title"
                       type="text"
-                      className="w-full px-3 py-2 border rounded-md"
                       placeholder="Summarize your review"
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.target.value)}
@@ -393,19 +431,26 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Your Review</label>
+                    <Label htmlFor="review-content" className="text-sm font-medium">
+                      Your Review
+                    </Label>
                     <Textarea
+                      id="review-content"
                       placeholder="What did you like or dislike? Would you recommend this to others?"
                       value={newContent}
                       onChange={(e) => setNewContent(e.target.value)}
                       rows={4}
                       maxLength={2000}
                     />
-                    <p className="text-xs text-muted-foreground text-right">{newContent.length}/2000</p>
+                    <p className="text-xs text-muted-foreground text-right">
+                      {newContent.length}/2000
+                    </p>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsWriteOpen(false)}>Cancel</Button>
+                  <Button variant="outline" onClick={() => setIsWriteOpen(false)}>
+                    Cancel
+                  </Button>
                   <Button onClick={submitReview} disabled={isSubmitting}>
                     {isSubmitting ? (
                       <>
@@ -436,15 +481,16 @@ export function ReviewsRatings({ recordId, title, currentPatronId }: ReviewsRati
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Sort by:</span>
-                <select
-                  className="text-sm border rounded-md px-2 py-1"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                >
-                  <option value="recent">Most Recent</option>
-                  <option value="helpful">Most Helpful</option>
-                  <option value="rating">Highest Rated</option>
-                </select>
+                <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
+                  <SelectTrigger className="h-8 w-[160px] text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recent">Most Recent</SelectItem>
+                    <SelectItem value="helpful">Most Helpful</SelectItem>
+                    <SelectItem value="rating">Highest Rated</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

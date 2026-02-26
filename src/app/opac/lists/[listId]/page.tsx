@@ -83,7 +83,7 @@ export default function PublicListPage() {
     return () => {
       cancelled = true;
     };
-  }, [enabled, listId]);
+  }, [enabled, listId, t]);
 
   const handleShare = React.useCallback(async () => {
     const url = window.location.href;

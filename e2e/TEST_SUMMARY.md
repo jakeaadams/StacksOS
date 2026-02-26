@@ -2,74 +2,63 @@
 
 ## Test Suite Overview
 
-Comprehensive Playwright E2E tests for StacksOS with 33 test cases across 3 test files.
+Comprehensive Playwright E2E tests for StacksOS covering staff workflows, OPAC patron flows, circulation, catalog search, accessibility, and API validation.
 
-### Test Files Created
+### Test Files (14 spec files)
 
-1. **smoke.spec.ts** (9 tests) - Basic smoke tests
-2. **circulation.spec.ts** (11 tests) - Circulation workflows
-3. **catalog.spec.ts** (13 tests) - Catalog workflows
+1. **smoke.spec.ts** - Core smoke tests
+2. **smoke-auth.spec.ts** - Authentication smoke tests
+3. **smoke-public.spec.ts** - Public OPAC smoke tests (no auth required)
+4. **circulation.spec.ts** - Circulation workflows (checkout, checkin, renew)
+5. **catalog.spec.ts** - Catalog search and browse workflows
+6. **item-detail.spec.ts** - Record detail page and holds
+7. **opac-holds.spec.ts** - OPAC hold placement and management
+8. **opac-kids.spec.ts** - Kids catalog and reading challenges
+9. **patrons-ux.spec.ts** - Patron account UX flows
+10. **a11y.spec.ts** - Accessibility compliance tests
+11. **keyboard.spec.ts** - Keyboard navigation tests
+12. **api.spec.ts** - API endpoint validation
+13. **activity.spec.ts** - Activity and event workflows
+14. **ux-smoke.spec.ts** - UX smoke tests across key pages
 
 ### Supporting Files
 
 - **auth.setup.ts** - Authentication setup for shared login state
 - **helpers.ts** - Reusable helper functions
 - **playwright.config.ts** - Playwright configuration
-- **README.md** - Documentation on running tests
 
-## Test Results
+## Latest Test Results (2026-02-26)
 
-### Current Status
-- **10/33 tests passing** in development environment
-- Tests properly configured and executable
-
-### Test Features
-
-1. **Proper Test Patterns**
-   - beforeEach hooks for authentication
-   - Async/await for all operations
-   - Proper error handling
-   - Configurable timeouts
-
-2. **Comprehensive Assertions**
-   - URL verification
-   - Element visibility checks
-   - Content validation
-   - Form state verification
+- **61 passed, 2 skipped** across 14 spec files
+- Tests run against live Evergreen instance via VM (192.168.1.233)
 
 ## Running the Tests
 
+### Prerequisites
+
+- Live Evergreen ILS connectivity
+- Valid staff credentials (`E2E_STAFF_USER`, `E2E_STAFF_PASS`)
+
 ### Run All Tests
+
 ```bash
-npx playwright test
+E2E_STAFF_USER=<user> E2E_STAFF_PASS=<pass> npm run test:e2e
 ```
 
 ### Run Specific Test File
+
 ```bash
 npx playwright test smoke.spec.ts
 ```
 
 ### Run in UI Mode
+
 ```bash
 npx playwright test --ui
 ```
 
 ### View Test Report
+
 ```bash
 npx playwright show-report
-```
-
-## File Structure
-
-```
-/home/jake/projects/stacksos/
-├── e2e/
-│   ├── smoke.spec.ts
-│   ├── circulation.spec.ts
-│   ├── catalog.spec.ts
-│   ├── auth.setup.ts
-│   ├── helpers.ts
-│   ├── README.md
-│   └── TEST_SUMMARY.md
-└── playwright.config.ts
 ```

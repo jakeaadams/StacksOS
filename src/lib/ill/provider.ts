@@ -107,7 +107,9 @@ export function getIllProviderStatus(): IllProviderStatus {
 
   const endpointConfigured = Boolean(config.endpointUrl);
   const authConfigured =
-    config.provider === "custom-webhook" ? true : Boolean(config.apiKey || (config.username && config.password));
+    config.provider === "custom-webhook"
+      ? true
+      : Boolean(config.apiKey || (config.username && config.password));
 
   const missing: string[] = [];
   if (!endpointConfigured) missing.push("STACKSOS_ILL_API_URL");
@@ -180,7 +182,7 @@ function buildAuthHeaders(config: IllProviderConfig): Record<string, string> {
 
 function extractProviderRequestId(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
-  const source = payload as Record<string, unknown>;
+  const source = payload as Record<string, any>;
   const value = source.providerRequestId ?? source.requestId ?? source.transactionId ?? source.id;
   if (value === null || value === undefined) return null;
   const out = String(value).trim();
@@ -245,18 +247,27 @@ export async function syncIllRequestToProvider(
     });
 
     const text = await response.text();
-    const payload = text ? (() => {
-      try {
-        return JSON.parse(text);
-      } catch {
-        return null;
-      }
-    })() : null;
+    const payload = text
+      ? (() => {
+          try {
+            return JSON.parse(text);
+          } catch {
+            return null;
+          }
+        })()
+      : null;
 
     if (!response.ok) {
-      const message = normalizeError(`Provider sync failed (${response.status}): ${text || response.statusText}`);
+      const message = normalizeError(
+        `Provider sync failed (${response.status}): ${text || response.statusText}`
+      );
       logger.warn(
-        { component: "ill-provider", provider, illRequestId: request.requestId, status: response.status },
+        {
+          component: "ill-provider",
+          provider,
+          illRequestId: request.requestId,
+          status: response.status,
+        },
         "ILL provider sync failed"
       );
       return {

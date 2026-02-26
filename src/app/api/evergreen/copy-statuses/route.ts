@@ -25,7 +25,7 @@ function toNumber(value: unknown): number {
 function toString(value: unknown): string {
   if (typeof value === "string") return value;
   if (value && typeof value === "object") {
-    const v = value as Record<string, unknown>;
+    const v = value as Record<string, any>;
     if (typeof v.name === "string") return v.name;
     if (typeof v.label === "string") return v.label;
   }
@@ -46,9 +46,12 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
 
     if (payload.length > 0 && typeof payload[0] === "object") {
       const map: Record<string, boolean> = {};
-      (payload as Record<string, unknown>[]).forEach((entry) => {
+      (payload as Record<string, any>[]).forEach((entry) => {
         const key = String(entry.perm || entry.code || entry.name);
-        if (key) map[key as string] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
+        if (key)
+          map[key as string] = Boolean(
+            entry.value ?? entry.allowed ?? entry.granted ?? entry.result
+          );
       });
       if (Object.keys(map).length > 0) return map;
     }
@@ -57,8 +60,8 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
   if (typeof payload === "object") {
     const map: Record<string, boolean> = {};
     for (const perm of perms) {
-      if (perm in (payload as Record<string, unknown>)) {
-        map[perm] = Boolean((payload as Record<string, unknown>)[perm]);
+      if (perm in (payload as Record<string, any>)) {
+        map[perm] = Boolean((payload as Record<string, any>)[perm]);
       }
     }
     if (Object.keys(map).length > 0) return map;
@@ -67,7 +70,11 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
   return null;
 }
 
-async function checkPerms(authtoken: string, perms: string[], orgId?: number): Promise<Record<string, boolean> | null> {
+async function checkPerms(
+  authtoken: string,
+  perms: string[],
+  orgId?: number
+): Promise<Record<string, boolean> | null> {
   const attempts: unknown[][] = [];
   attempts.push([authtoken, perms]);
   if (orgId) {
@@ -114,16 +121,23 @@ export async function GET(req: Request) {
         // Index order for ccs (config.copy_status):
         // [holdable, id, name, opac_visible, copy_active, restrict_copy_delete, is_available, hopeless_prone]
         id: fmNumber(s, "id", 1) ?? toNumber(s?.id ?? s?.[1]),
-        name: fmString(s, "name", 2) ?? fmString(s, "label", 2) ?? toString(s?.name ?? s?.label ?? s?.[2]),
+        name:
+          fmString(s, "name", 2) ??
+          fmString(s, "label", 2) ??
+          toString(s?.name ?? s?.label ?? s?.[2]),
         holdable: fmBoolean(s, "holdable", 0) ?? fmBoolean(s, "holdable") ?? false,
         opacVisible: fmBoolean(s, "opac_visible", 3) ?? fmBoolean(s, "opac_visible") ?? false,
         copyActive: fmBoolean(s, "copy_active", 4) ?? fmBoolean(s, "copy_active") ?? false,
-        restrictCopyDelete: fmBoolean(s, "restrict_copy_delete", 5) ?? fmBoolean(s, "restrict_copy_delete") ?? false,
+        restrictCopyDelete:
+          fmBoolean(s, "restrict_copy_delete", 5) ?? fmBoolean(s, "restrict_copy_delete") ?? false,
         isAvailable: fmBoolean(s, "is_available", 6) ?? fmBoolean(s, "is_available") ?? false,
         hopelessProne: fmBoolean(s, "hopeless_prone", 7) ?? fmBoolean(s, "hopeless_prone") ?? false,
       }))
       // Include core status id=0 ("Available").
-      .filter((s: { id: number; name: string }) => Number.isFinite(s.id) && s.id >= 0 && s.name.trim().length > 0)
+      .filter(
+        (s: { id: number; name: string }) =>
+          Number.isFinite(s.id) && s.id >= 0 && s.name.trim().length > 0
+      )
       .sort((a: { id: number }, b: { id: number }) => a.id - b.id);
 
     return successResponse({
@@ -137,7 +151,11 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { authtoken, actor, result: permResult } = await requirePermissions(["CREATE_COPY_STATUS"]);
+    const {
+      authtoken,
+      actor,
+      result: permResult,
+    } = await requirePermissions(["CREATE_COPY_STATUS"]);
     const orgId = permResult.orgId;
     const body = await parseJsonBodyWithSchema(
       req,
@@ -171,8 +189,8 @@ export async function POST(req: Request) {
       restrict_copy_delete: boolToEg(body.restrictCopyDelete ?? body.restrict_copy_delete ?? false),
       hopeless_prone: boolToEg(body.hopelessProne ?? body.hopeless_prone ?? false),
     });
-    (payload as Record<string, unknown>)._isnew = true;
-    (payload as Record<string, unknown>)._ischanged = true;
+    (payload as Record<string, any>)._isnew = true;
+    (payload as Record<string, any>)._ischanged = true;
 
     const createResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.ccs", [
       authtoken,
@@ -180,15 +198,18 @@ export async function POST(req: Request) {
     ]);
 
     const result = createResponse?.payload?.[0];
-    if (!result || isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
+    if (!result || isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to create copy status"), 400, result);
     }
 
     return successResponse({
       created: true,
-      id: typeof result === "number" ? result : toNumber((result as Record<string, unknown>)?.id ?? result),
+      id:
+        typeof result === "number"
+          ? result
+          : toNumber((result as Record<string, any>)?.id ?? result),
       orgId,
-      actorId: (actor as Record<string, unknown>)?.id,
+      actorId: (actor as Record<string, any>)?.id,
     });
   } catch (error) {
     return serverErrorResponse(error, "POST /api/evergreen/copy-statuses", req);
@@ -228,9 +249,12 @@ export async function PUT(req: Request) {
       return errorResponse("Refusing to edit a core status without force=true", 400, { id });
     }
 
-    const existingResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.ccs", [authtoken, id]);
+    const existingResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.ccs", [
+      authtoken,
+      id,
+    ]);
     const existing = existingResponse?.payload?.[0];
-    if (!existing || (existing as Record<string, unknown>)?.ilsevent) {
+    if (!existing || (existing as Record<string, any>)?.ilsevent) {
       return errorResponse("Status not found", 404);
     }
     const nameRaw = body.name !== undefined ? String(body.name).trim() : undefined;
@@ -238,7 +262,7 @@ export async function PUT(req: Request) {
       return errorResponse("name cannot be empty", 400);
     }
 
-    const updateData: Record<string, unknown> = { ...(existing as Record<string, unknown>) };
+    const updateData: Record<string, any> = { ...(existing as Record<string, any>) };
     updateData.id = id;
     if (nameRaw !== undefined) updateData.name = nameRaw;
 
@@ -253,15 +277,17 @@ export async function PUT(req: Request) {
       updateData.is_available = boolToEg(body.isAvailable ?? body.is_available);
     }
     if (body.restrictCopyDelete !== undefined || body.restrict_copy_delete !== undefined) {
-      updateData.restrict_copy_delete = boolToEg(body.restrictCopyDelete ?? body.restrict_copy_delete);
+      updateData.restrict_copy_delete = boolToEg(
+        body.restrictCopyDelete ?? body.restrict_copy_delete
+      );
     }
     if (body.hopelessProne !== undefined || body.hopeless_prone !== undefined) {
       updateData.hopeless_prone = boolToEg(body.hopelessProne ?? body.hopeless_prone);
     }
 
     const payload = encodeFieldmapper("ccs", updateData);
-    (payload as Record<string, unknown>)._isnew = false;
-    (payload as Record<string, unknown>)._ischanged = true;
+    (payload as Record<string, any>)._isnew = false;
+    (payload as Record<string, any>)._ischanged = true;
 
     const updateResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.update.ccs", [
       authtoken,
@@ -269,7 +295,7 @@ export async function PUT(req: Request) {
     ]);
 
     const result = updateResponse?.payload?.[0];
-    if (!result || isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
+    if (!result || isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to update copy status"), 400, result);
     }
 
@@ -300,9 +326,12 @@ export async function DELETE(req: Request) {
       return errorResponse("Refusing to delete a core status without force=true", 400, { id });
     }
 
-    const delResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.ccs", [authtoken, id]);
+    const delResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.ccs", [
+      authtoken,
+      id,
+    ]);
     const result = delResponse?.payload?.[0];
-    if (!result || isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
+    if (!result || isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to delete copy status"), 400, result);
     }
 

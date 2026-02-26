@@ -35,7 +35,7 @@ function getRequestMeta(req: NextRequest) {
   };
 }
 
-function parseNotePayload(n: Record<string, unknown>): PatronNote {
+function parseNotePayload(n: Record<string, any>): PatronNote {
   const rawFields = n.__p as unknown[] | undefined;
   return {
     id: (n.id as number) || (rawFields?.[0] as number) || 0,
@@ -51,18 +51,22 @@ function parseNotePayload(n: Record<string, unknown>): PatronNote {
  * GET /api/evergreen/patrons/[id]/notes
  * Fetch all notes for a patron
  */
-const notePostSchema = z.object({
-  title: z.string().trim().max(512).optional(),
-  value: z.string().optional(),
-  note: z.string().optional(),
-  public: z.boolean().optional(),
-  pub: z.union([z.boolean(), z.literal("t"), z.literal("f")]).optional(),
-}).passthrough();
+const notePostSchema = z
+  .object({
+    title: z.string().trim().max(512).optional(),
+    value: z.string().optional(),
+    note: z.string().optional(),
+    public: z.boolean().optional(),
+    pub: z.union([z.boolean(), z.literal("t"), z.literal("f")]).optional(),
+  })
+  .passthrough();
 
-const noteDeleteSchema = z.object({
-  noteId: z.coerce.number().int().positive().optional(),
-  note_id: z.coerce.number().int().positive().optional(),
-}).passthrough();
+const noteDeleteSchema = z
+  .object({
+    noteId: z.coerce.number().int().positive().optional(),
+    note_id: z.coerce.number().int().positive().optional(),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
@@ -74,14 +78,14 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       return errorResponse("Invalid patron ID", 400);
     }
 
-    const response = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.note.retrieve.all",
-      [authtoken, { usr: patronId }]
-    );
+    const response = await callOpenSRF("open-ils.actor", "open-ils.actor.note.retrieve.all", [
+      authtoken,
+      { usr: patronId },
+    ]);
 
     const rawNotes = response?.payload?.[0];
-    const notes: PatronNote[] = (Array.isArray(rawNotes) ? rawNotes : []).map((n) => parseNotePayload(n)
+    const notes: PatronNote[] = (Array.isArray(rawNotes) ? rawNotes : []).map((n) =>
+      parseNotePayload(n)
     );
 
     return successResponse({ notes });
@@ -121,7 +125,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     const note = encodeFieldmapper("aun", {
       usr: patronId,
-      creator: (actor as Record<string, unknown>)?.id,
+      creator: (actor as Record<string, any>)?.id,
       title,
       value,
       pub: isPublic,
@@ -129,14 +133,13 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       isnew: 1,
     });
 
-    const response = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.note.create",
-      [authtoken, note]
-    );
+    const response = await callOpenSRF("open-ils.actor", "open-ils.actor.note.create", [
+      authtoken,
+      note,
+    ]);
 
     const result = response?.payload?.[0];
-    if (isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
+    if (isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to create note"), 400, result);
     }
 
@@ -187,14 +190,13 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       return errorResponse("Note ID is required", 400);
     }
 
-    const response = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.note.delete",
-      [authtoken, noteId]
-    );
+    const response = await callOpenSRF("open-ils.actor", "open-ils.actor.note.delete", [
+      authtoken,
+      noteId,
+    ]);
 
     const result = response?.payload?.[0];
-    if (isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
+    if (isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to delete note"), 400, result);
     }
 

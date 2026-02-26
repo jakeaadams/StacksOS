@@ -1,6 +1,6 @@
 /**
  * Centralized Permission Mappings
- * 
+ *
  * Maps actions to required Evergreen permissions.
  * Used across multiple API routes to ensure consistent RBAC enforcement.
  */
@@ -138,7 +138,7 @@ export function getPermissionsForAction(
   category: string,
   action: string
 ): readonly string[] | undefined {
-  const maps: Record<string, unknown> = {
+  const maps: Record<string, any> = {
     circulation: CIRCULATION_PERMS,
     claims: CLAIMS_PERMS,
     lost: LOST_PERMS,

@@ -26,7 +26,9 @@ export async function GET(_req: NextRequest) {
       { order_by: { ccm: "code" }, limit: 500 },
     ]);
 
-    const rows = Array.isArray(response?.payload?.[0]) ? (response.payload[0] as Record<string, unknown>[]) : [];
+    const rows = Array.isArray(response?.payload?.[0])
+      ? (response.payload[0] as Record<string, any>[])
+      : [];
     const modifiers = rows
       .map((row) => ({
         code: toString(row?.code).trim(),
@@ -64,9 +66,12 @@ export async function POST(req: Request) {
 
     // If it already exists, treat as success (seed scripts should be idempotent).
     try {
-      const existing = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.ccm", [authtoken, body.code]);
+      const existing = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.ccm", [
+        authtoken,
+        body.code,
+      ]);
       const row = existing?.payload?.[0];
-      if (row && !isOpenSRFEvent(row) && !(row as Record<string, unknown>)?.ilsevent) {
+      if (row && !isOpenSRFEvent(row) && !(row as Record<string, any>)?.ilsevent) {
         return successResponse({ created: false, code: body.code });
       }
     } catch {
@@ -83,10 +88,17 @@ export async function POST(req: Request) {
       ischanged: 1,
     });
 
-    const createResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.ccm", [authtoken, payload]);
+    const createResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.ccm", [
+      authtoken,
+      payload,
+    ]);
     const resultRow = createResponse?.payload?.[0];
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, unknown>)?.ilsevent) {
-      return errorResponse(getErrorMessage(resultRow, "Failed to create circ modifier"), 400, resultRow);
+    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+      return errorResponse(
+        getErrorMessage(resultRow, "Failed to create circ modifier"),
+        400,
+        resultRow
+      );
     }
 
     return successResponse({ created: true, code: body.code });

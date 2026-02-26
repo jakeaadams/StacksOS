@@ -1,4 +1,4 @@
-import { escapeHtml, printHtml } from "@/lib/print";
+import { escapeHtml, printHtml as _printHtml } from "@/lib/print";
 
 export type ViewMode = "outstanding" | "all";
 
@@ -62,11 +62,7 @@ export function extractBarcode(entry: any): string {
 
 export function extractType(entry: any): string {
   return (
-    entry?.xact?.xact_type ||
-    entry?.xact_type ||
-    entry?.billing_type ||
-    entry?.type ||
-    "other"
+    entry?.xact?.xact_type || entry?.xact_type || entry?.billing_type || entry?.type || "other"
   );
 }
 
@@ -76,23 +72,25 @@ export function normalizeTransactions(raw: any[]): TransactionRow[] {
   for (const entry of Array.isArray(raw) ? raw : []) {
     const xact = entry?.xact || entry;
 
-    const xactId =
-      Number.isFinite(Number(xact?.id))
-        ? Number(xact.id)
-        : Number.isFinite(Number(entry?.xactId))
-          ? Number(entry.xactId)
-          : Number.isFinite(Number(entry?.id))
-            ? Number(entry.id)
-            : NaN;
+    const xactId = Number.isFinite(Number(xact?.id))
+      ? Number(xact.id)
+      : Number.isFinite(Number(entry?.xactId))
+        ? Number(entry.xactId)
+        : Number.isFinite(Number(entry?.id))
+          ? Number(entry.id)
+          : NaN;
 
     if (!Number.isFinite(xactId) || xactId <= 0) continue;
 
     const paid = safeNumber(xact?.total_paid ?? entry?.total_paid ?? entry?.xact?.total_paid);
-    const balance = safeNumber(xact?.balance_owed ?? entry?.balance_owed ?? entry?.xact?.balance_owed);
+    const balance = safeNumber(
+      xact?.balance_owed ?? entry?.balance_owed ?? entry?.xact?.balance_owed
+    );
 
     // Prefer total_owed if available; else infer.
     const totalOwedRaw = xact?.total_owed ?? entry?.total_owed;
-    const amount = totalOwedRaw !== undefined ? safeNumber(totalOwedRaw) : safeNumber(paid + balance);
+    const amount =
+      totalOwedRaw !== undefined ? safeNumber(totalOwedRaw) : safeNumber(paid + balance);
 
     const billedDate =
       formatDate(entry?.billing_ts) ||
@@ -128,7 +126,9 @@ export function normalizeTransactions(raw: any[]): TransactionRow[] {
     }
   }
 
-  return Array.from(byId.values()).sort((a, b) => (b.billedDate || "").localeCompare(a.billedDate || ""));
+  return Array.from(byId.values()).sort((a, b) =>
+    (b.billedDate || "").localeCompare(a.billedDate || "")
+  );
 }
 
 export function buildPaymentReceiptHtml(args: {
@@ -237,4 +237,3 @@ export function buildRefundReceiptHtml(args: {
     </div>
   `;
 }
-

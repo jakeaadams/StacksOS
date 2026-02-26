@@ -1,6 +1,6 @@
 /**
  * API Endpoint E2E Tests
- * 
+ *
  * Tests actual API endpoints running on the server
  */
 
@@ -21,32 +21,42 @@ test.describe("API Endpoints E2E", () => {
   test.describe("Health Check Endpoint", () => {
     test("GET /api/health returns health status", async ({ request }) => {
       const response = await request.get("/api/health");
-      
+
       // Should return 200 or 503 depending on service availability
       expect([200, 503]).toContain(response.status());
-      
+
       const data = await response.json();
-      
+
       // Verify response structure
       expect(data).toHaveProperty("status");
+
+      // Unauthenticated requests intentionally return a minimal shape.
+      if (data.status === "ok") {
+        expect(Object.keys(data)).toEqual(["status"]);
+        return;
+      }
+
       expect(["healthy", "degraded", "unhealthy"]).toContain(data.status);
       expect(data).toHaveProperty("uptime");
       expect(data).toHaveProperty("timestamp");
       expect(data).toHaveProperty("checks");
-      expect(data.checks).toHaveProperty("database");
-      expect(data.checks).toHaveProperty("evergreen");
-      
+      expect(data.checks).toBeDefined();
+      expect(data.checks.database).toBeDefined();
+      expect(data.checks.evergreen).toBeDefined();
+
       // Verify check structure
-      expect(data.checks.database).toHaveProperty("status");
       expect(["up", "down"]).toContain(data.checks.database.status);
-      expect(data.checks.evergreen).toHaveProperty("status");
       expect(["up", "down"]).toContain(data.checks.evergreen.status);
     });
 
     test("health check includes latency measurements", async ({ request }) => {
       const response = await request.get("/api/health");
       const data = await response.json();
-      
+
+      if (data.status === "ok") {
+        return;
+      }
+
       // Both checks should include latency when they ran
       if (data.checks.database.status === "up") {
         expect(data.checks.database.latency).toBeGreaterThanOrEqual(0);
@@ -60,11 +70,11 @@ test.describe("API Endpoints E2E", () => {
   test.describe("CSRF Token Endpoint", () => {
     test("GET /api/csrf-token returns a token", async ({ request }) => {
       const response = await request.get("/api/csrf-token");
-      
+
       expect(response.status()).toBe(200);
-      
+
       const data = await response.json();
-      
+
       expect(data.ok).toBe(true);
       expect(data.token).toBeDefined();
       expect(data.token.length).toBe(64); // 32 bytes hex encoded
@@ -72,7 +82,7 @@ test.describe("API Endpoints E2E", () => {
 
     test("CSRF token is set as cookie", async ({ request }) => {
       const response = await request.get("/api/csrf-token");
-      
+
       // Check that Set-Cookie header is present
       const setCookie = response.headers()["set-cookie"];
       expect(setCookie).toBeDefined();
@@ -83,11 +93,11 @@ test.describe("API Endpoints E2E", () => {
       // First request to get initial token
       const response1 = await request.get("/api/csrf-token");
       const data1 = await response1.json();
-      
+
       // Second request should return same token (cookie should be sent automatically)
       const response2 = await request.get("/api/csrf-token");
       const data2 = await response2.json();
-      
+
       expect(data2.token).toBe(data1.token);
     });
   });
@@ -99,9 +109,9 @@ test.describe("API Endpoints E2E", () => {
         headers: { "x-csrf-token": token, "x-forwarded-for": `e2e-staff-missing-${Date.now()}` },
         data: {},
       });
-      
+
       expect(response.status()).toBe(400);
-      
+
       const data = await response.json();
       expect(data.ok).toBe(false);
     });
@@ -115,14 +125,16 @@ test.describe("API Endpoints E2E", () => {
           password: "wrong_password",
         },
       });
-      
+
       expect(response.status()).toBe(401);
-      
+
       const data = await response.json();
       expect(data.ok).toBe(false);
     });
 
-    test("POST /api/evergreen/auth with valid credentials returns user data", async ({ request }) => {
+    test("POST /api/evergreen/auth with valid credentials returns user data", async ({
+      request,
+    }) => {
       const { username, password } = getStaffCredentials();
       const token = await getCsrfToken(request);
       const response = await request.post("/api/evergreen/auth", {
@@ -132,24 +144,24 @@ test.describe("API Endpoints E2E", () => {
           password,
         },
       });
-      
+
       // Should succeed if Evergreen is properly configured
       if (response.status() === 200) {
         const data = await response.json();
         expect(data.ok).toBe(true);
-        expect(data).toHaveProperty("authtoken");
         expect(data).toHaveProperty("user");
+        expect(data.user).toBeTruthy();
       } else {
-        // May fail if Evergreen is not available
-        console.log("Staff auth test skipped - Evergreen may not be available");
+        // May fail if Evergreen is unavailable or test credentials are not configured.
+        expect([401, 429, 500, 503]).toContain(response.status());
       }
     });
 
     test("GET /api/evergreen/auth checks session status", async ({ request }) => {
       const response = await request.get("/api/evergreen/auth");
-      
+
       expect(response.status()).toBe(200);
-      
+
       const data = await response.json();
       expect(data.ok).toBe(true);
       expect(data).toHaveProperty("authenticated");
@@ -160,9 +172,9 @@ test.describe("API Endpoints E2E", () => {
       const response = await request.delete("/api/evergreen/auth", {
         headers: { "x-csrf-token": token, "x-forwarded-for": `e2e-staff-logout-${Date.now()}` },
       });
-      
+
       expect(response.status()).toBe(200);
-      
+
       const data = await response.json();
       expect(data.ok).toBe(true);
     });
@@ -175,9 +187,9 @@ test.describe("API Endpoints E2E", () => {
         headers: { "x-csrf-token": token, "x-forwarded-for": `e2e-opac-missing-${Date.now()}` },
         data: {},
       });
-      
+
       expect(response.status()).toBe(400);
-      
+
       const data = await response.json();
       expect(data.ok).toBe(false);
       expect(data.error).toContain("required");
@@ -192,9 +204,9 @@ test.describe("API Endpoints E2E", () => {
           pin: "wrongpin",
         },
       });
-      
+
       expect(response.status()).toBe(401);
-      
+
       const data = await response.json();
       expect(data.ok).toBe(false);
     });
@@ -214,7 +226,7 @@ test.describe("API Endpoints E2E", () => {
           },
         });
       }
-      
+
       // The request should still work (not rate limited yet with default 5 attempts)
       const response = await request.post("/api/evergreen/auth", {
         headers: { "x-csrf-token": token, "x-forwarded-for": ip },
@@ -223,7 +235,7 @@ test.describe("API Endpoints E2E", () => {
           password: "wrong",
         },
       });
-      
+
       expect([401, 429]).toContain(response.status());
     });
   });

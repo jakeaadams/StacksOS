@@ -84,18 +84,16 @@ export async function handleAcquisitionsGet(
       case "orders":
       case "purchase_orders": {
         // Get purchase orders
-        const response = await callOpenSRF(
-          "open-ils.acq",
-          "open-ils.acq.purchase_order.search",
-          [
-            authtoken,
-            { state: ["on-order", "pending", "received", "approved"] },
-            { flesh: 2, flesh_fields: { acqpo: ["lineitems", "provider"] } },
-          ]
-        );
+        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.purchase_order.search", [
+          authtoken,
+          { state: ["on-order", "pending", "received", "approved"] },
+          { flesh: 2, flesh_fields: { acqpo: ["lineitems", "provider"] } },
+        ]);
 
         const ordersPayload = response?.payload || [];
-        const orders = Array.isArray((ordersPayload as unknown[])?.[0]) ? (ordersPayload as unknown[])[0] : ordersPayload;
+        const orders = Array.isArray((ordersPayload as unknown[])?.[0])
+          ? (ordersPayload as unknown[])[0]
+          : ordersPayload;
 
         const mappedOrders = (Array.isArray(orders) ? orders : []).map((po) => {
           const providerId = typeof po.provider === "object" ? po.provider.id : po.provider;
@@ -104,7 +102,7 @@ export async function handleAcquisitionsGet(
           const createTime = po.create_time || null;
           const lineitemCount = Array.isArray(po.lineitems)
             ? po.lineitems.length
-            : (po.lineitem_count || 0);
+            : po.lineitem_count || 0;
 
           return {
             id: po.id,
@@ -132,14 +130,16 @@ export async function handleAcquisitionsGet(
       case "vendors":
       case "providers": {
         // Get vendors/providers
-        const response = await callOpenSRF(
-          "open-ils.acq",
-          "open-ils.acq.provider.org.retrieve",
-          [authtoken, [], { limit_perm: "VIEW_PROVIDER" }]
-        );
+        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.provider.org.retrieve", [
+          authtoken,
+          [],
+          { limit_perm: "VIEW_PROVIDER" },
+        ]);
 
         const vendorsPayload = response?.payload || [];
-        const vendors = Array.isArray((vendorsPayload as unknown[])?.[0]) ? (vendorsPayload as unknown[])[0] : vendorsPayload;
+        const vendors = Array.isArray((vendorsPayload as unknown[])?.[0])
+          ? (vendorsPayload as unknown[])[0]
+          : vendorsPayload;
 
         const mappedVendors = (Array.isArray(vendors) ? vendors : []).map((v) => ({
           id: v.id,
@@ -164,14 +164,16 @@ export async function handleAcquisitionsGet(
 
       case "funds": {
         // Get funds (Evergreen exposes org-scoped fund retrieval)
-        const response = await callOpenSRF(
-          "open-ils.acq",
-          "open-ils.acq.fund.org.retrieve",
-          [authtoken, { active: "t" }, { limit: 500, limit_perm: "VIEW_FUND" }]
-        );
+        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund.org.retrieve", [
+          authtoken,
+          { active: "t" },
+          { limit: 500, limit_perm: "VIEW_FUND" },
+        ]);
 
         const fundsPayload = response?.payload || [];
-        const funds = Array.isArray((fundsPayload as unknown[])?.[0]) ? (fundsPayload as unknown[])[0] : fundsPayload;
+        const funds = Array.isArray((fundsPayload as unknown[])?.[0])
+          ? (fundsPayload as unknown[])[0]
+          : fundsPayload;
 
         const mappedFunds = (Array.isArray(funds) ? funds : []).map((f) => ({
           id: f.id,
@@ -195,36 +197,54 @@ export async function handleAcquisitionsGet(
       case "invoices": {
         // Get invoices (Evergreen 3.16 has no open-ils.acq.invoice.search)
         const receiverOrgId =
-          parsePositiveIntId((_actor as Record<string, unknown>)?.ws_ou ?? (_actor as Record<string, unknown>)?.home_ou) ?? 1;
+          parsePositiveIntId(
+            (_actor as Record<string, any>)?.ws_ou ?? (_actor as Record<string, any>)?.home_ou
+          ) ?? 1;
         let response: any = null;
 
         try {
           response = await callOpenSRF(
             "open-ils.cstore",
             "open-ils.cstore.direct.acqinv.search.atomic",
-            [authtoken, { receiver: receiverOrgId }, { limit: 200, order_by: { acqinv: "recv_date DESC" } }]
+            [
+              authtoken,
+              { receiver: receiverOrgId },
+              { limit: 200, order_by: { acqinv: "recv_date DESC" } },
+            ]
           );
         } catch (_error: any) {
           try {
             response = await callOpenSRF(
               "open-ils.cstore",
               "open-ils.cstore.direct.acqinv.search",
-              [authtoken, { receiver: receiverOrgId }, { limit: 200, order_by: { acqinv: "recv_date DESC" } }]
+              [
+                authtoken,
+                { receiver: receiverOrgId },
+                { limit: 200, order_by: { acqinv: "recv_date DESC" } },
+              ]
             );
           } catch (_error2: any) {
             // Some Evergreen installs do not expose cstore direct methods for acquisitions.
             // Fall back to pcrud search before treating this as "not available".
             try {
-                response = await callPcrud(
-                  "open-ils.pcrud.search.acqinv",
-                  [authtoken, { receiver: receiverOrgId }, { limit: 200, order_by: { acqinv: "recv_date DESC" } }]
-                );
-              } catch (err: any) {
-              const code = err && typeof err === "object" ? (err as Record<string, unknown>).code : undefined;
+              response = await callPcrud("open-ils.pcrud.search.acqinv", [
+                authtoken,
+                { receiver: receiverOrgId },
+                { limit: 200, order_by: { acqinv: "recv_date DESC" } },
+              ]);
+            } catch (err: any) {
+              const code =
+                err && typeof err === "object" ? (err as Record<string, any>).code : undefined;
               if (code === "OSRF_METHOD_NOT_FOUND") {
-                logger.info({ route: "api.evergreen.acquisitions", action }, "Invoices lookup not supported on this Evergreen install");
+                logger.info(
+                  { route: "api.evergreen.acquisitions", action },
+                  "Invoices lookup not supported on this Evergreen install"
+                );
               } else {
-                logger.warn({ route: "api.evergreen.acquisitions", action, err: String(err) }, "Invoices lookup failed");
+                logger.warn(
+                  { route: "api.evergreen.acquisitions", action, err: String(err) },
+                  "Invoices lookup failed"
+                );
               }
               return successResponse({
                 invoices: [],
@@ -235,7 +255,9 @@ export async function handleAcquisitionsGet(
         }
 
         const invoicesPayload = response?.payload || [];
-        const invoices = Array.isArray((invoicesPayload as unknown[])?.[0]) ? (invoicesPayload as unknown[])[0] : invoicesPayload;
+        const invoices = Array.isArray((invoicesPayload as unknown[])?.[0])
+          ? (invoicesPayload as unknown[])[0]
+          : invoicesPayload;
 
         const mappedInvoices = (Array.isArray(invoices) ? invoices : []).map((inv) => ({
           id: inv.id,
@@ -258,15 +280,17 @@ export async function handleAcquisitionsGet(
       case "invoice_methods": {
         // Receive methods for invoices (acq.im)
         await requirePermissions(["CREATE_INVOICE"]);
-        const response = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.search.acqim.atomic",
-          [authtoken, { code: { "!=": null } }, { order_by: { acqim: "name" }, limit: 100 }]
-        );
-        const methods = (response?.payload?.[0] || []).map((m: any) => ({
-          code: m?.code ?? m?.__p?.[0],
-          name: m?.name ?? m?.__p?.[1],
-        })).filter((m: any) => m.code);
+        const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.acqim.atomic", [
+          authtoken,
+          { code: { "!=": null } },
+          { order_by: { acqim: "name" }, limit: 100 },
+        ]);
+        const methods = (response?.payload?.[0] || [])
+          .map((m: any) => ({
+            code: m?.code ?? m?.__p?.[0],
+            name: m?.name ?? m?.__p?.[1],
+          }))
+          .filter((m: any) => m.code);
         return successResponse({ methods });
       }
 
@@ -276,11 +300,10 @@ export async function handleAcquisitionsGet(
         const invoiceId = parseInt(String(id), 10);
         if (!Number.isFinite(invoiceId)) return errorResponse("Invalid invoice id", 400);
 
-        const invRes = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.retrieve.acqinv",
-          [authtoken, invoiceId]
-        );
+        const invRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.acqinv", [
+          authtoken,
+          invoiceId,
+        ]);
         const invoice = invRes?.payload?.[0];
         if (!invoice || invoice.ilsevent) return notFoundResponse("Invoice not found");
 
@@ -336,17 +359,24 @@ export async function handleAcquisitionsGet(
           invoice: {
             id: invoice.id,
             inv_ident: invoice.inv_ident || invoice.vendor_invoice_id || null,
-            provider: typeof invoice.provider === "object" ? invoice.provider?.id : invoice.provider,
-            receiver: typeof invoice.receiver === "object" ? invoice.receiver?.id : invoice.receiver,
+            provider:
+              typeof invoice.provider === "object" ? invoice.provider?.id : invoice.provider,
+            receiver:
+              typeof invoice.receiver === "object" ? invoice.receiver?.id : invoice.receiver,
             recv_date: invoice.recv_date,
-            recv_method: typeof invoice.recv_method === "object" ? invoice.recv_method?.code : invoice.recv_method,
+            recv_method:
+              typeof invoice.recv_method === "object"
+                ? invoice.recv_method?.code
+                : invoice.recv_method,
             close_date: invoice.close_date,
-            closed_by: typeof invoice.closed_by === "object" ? invoice.closed_by?.id : invoice.closed_by,
+            closed_by:
+              typeof invoice.closed_by === "object" ? invoice.closed_by?.id : invoice.closed_by,
           },
           entries: Array.isArray(entries)
             ? entries.map((e) => ({
                 id: e.id,
-                purchase_order: typeof e.purchase_order === "object" ? e.purchase_order?.id : e.purchase_order,
+                purchase_order:
+                  typeof e.purchase_order === "object" ? e.purchase_order?.id : e.purchase_order,
                 lineitem: typeof e.lineitem === "object" ? e.lineitem?.id : e.lineitem,
                 inv_item_count: e.inv_item_count,
                 cost_billed: e.cost_billed,
@@ -364,22 +394,18 @@ export async function handleAcquisitionsGet(
         }
 
         const poId = parseInt(id, 10);
-        const response = await callOpenSRF(
-          "open-ils.acq",
-          "open-ils.acq.purchase_order.retrieve",
-          [
-            authtoken,
-            poId,
-            {
-              flesh: 3,
-              flesh_fields: {
-                acqpo: ["lineitems", "provider"],
-                jub: ["lineitem_details", "attributes"],
-                acqlid: ["fund", "owning_lib", "location"],
-              },
+        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.purchase_order.retrieve", [
+          authtoken,
+          poId,
+          {
+            flesh: 3,
+            flesh_fields: {
+              acqpo: ["lineitems", "provider"],
+              jub: ["lineitem_details", "attributes"],
+              acqlid: ["fund", "owning_lib", "location"],
             },
-          ]
-        );
+          },
+        ]);
 
         const po = response?.payload?.[0];
         if (!po || po.ilsevent) {

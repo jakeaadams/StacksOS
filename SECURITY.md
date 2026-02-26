@@ -36,6 +36,7 @@ StacksOS uses Evergreen credentials for staff auth, but MFA can be layered at th
 - **SSO (future):** OIDC/SAML front-door for staff, with Evergreen session issued server-side.
 
 Operational guidance:
+
 - Start with MFA optional per tenant, then make it mandatory for admins.
 - Never log OTP codes or MFA secrets.
 - Ensure break-glass procedure exists (two admin users, offline doc, audited disable flow).
@@ -46,8 +47,8 @@ Last Updated: February 5, 2026
 
 ## Database least privilege (recommended)
 
-StacksOS stores small amounts of product data directly in PostgreSQL (schema `library.*`) and may read limited fields
-from Evergreen core tables (example: `actor.usr.usrname`, `actor.usr.photo_url`).
+StacksOS stores product data in PostgreSQL schema `library.*` and reads limited fields from Evergreen core tables
+(example: `actor.usr.usrname`, `actor.usr.photo_url`).
 
 Do **not** run StacksOS with the Evergreen database owner role. Create a dedicated role (example: `stacksos_app`) with
 only the minimum privileges required.
@@ -72,12 +73,16 @@ ALTER DEFAULT PRIVILEGES FOR ROLE evergreen IN SCHEMA library
 ALTER DEFAULT PRIVILEGES FOR ROLE evergreen IN SCHEMA library
   GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO stacksos_app;
 
--- Minimal read/write access needed for select features (avoid granting blanket table privileges).
+-- Minimal read access needed for select features (avoid granting blanket table privileges).
 GRANT SELECT (id, usrname, photo_url) ON actor.usr TO stacksos_app;
-GRANT UPDATE (photo_url) ON actor.usr TO stacksos_app;
+
+-- Optional only if STACKSOS_SYNC_PATRON_PHOTO_TO_EVERGREEN=1.
+-- Keep this disabled by default to minimize Evergreen core-table writes.
+-- GRANT UPDATE (photo_url) ON actor.usr TO stacksos_app;
 ```
 
 Then set:
+
 - `EVERGREEN_DB_USER=stacksos_app`
 - `EVERGREEN_DB_PASSWORD=...`
 
@@ -92,6 +97,7 @@ If you run a persistent SSH tunnel from StacksOS → Evergreen (example: local p
 Evergreen PostgreSQL), restrict the tunnel key on the Evergreen side.
 
 Recommended `authorized_keys` options for the tunnel key:
+
 - `permitopen="127.0.0.1:5432"` (only allow forwarding to PostgreSQL on localhost)
 - `no-pty`, `no-agent-forwarding`, `no-X11-forwarding`
 - optional: a forced command that does not grant shell access (for port-forward-only keys)

@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { featureFlags } from "@/lib/feature-flags";
+import { Button } from "@/components/ui/button";
 
 interface FormatFilter {
   value: string;
@@ -69,97 +70,109 @@ export function ActiveFilterChips({
           className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
         >
           {formatFilters.find((x) => x.value === f)?.label || f}
-          <button
+          <Button
             type="button"
             onClick={() => {
               if (featureFlags.opacFacetsV2) onToggleCsvParam("format", f);
               else onUpdateSearchParams({ format: null });
             }}
-            className="hover:text-primary-900"
+            variant="ghost"
+            size="icon"
+            className="h-4 w-4 rounded-full p-0 hover:bg-transparent hover:text-primary-900"
             aria-label={`Remove format ${f}`}
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </span>
       ))}
 
       {selectedAudiences.map((a) => (
         <span
           key={`audience:${a}`}
-          className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm"
+          className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
         >
           {audienceFilters.find((x) => x.value === a)?.label || a}
-          <button
+          <Button
             type="button"
             onClick={() => onToggleCsvParam("audience", a)}
-            className="hover:text-indigo-900"
+            variant="ghost"
+            size="icon"
+            className="h-4 w-4 rounded-full p-0 hover:bg-transparent hover:text-primary-900"
             aria-label={`Remove audience ${a}`}
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </span>
       ))}
 
       {selectedLanguages.map((code) => (
         <span
           key={`language:${code}`}
-          className="inline-flex items-center gap-1 px-3 py-1 bg-slate-100 text-slate-800 rounded-full text-sm"
+          className="inline-flex items-center gap-1 px-3 py-1 bg-muted text-foreground/80 rounded-full text-sm"
         >
           {languageLabels[code] || code}
-          <button
+          <Button
             type="button"
             onClick={() => onToggleCsvParam("language", code)}
-            className="hover:text-slate-900"
+            variant="ghost"
+            size="icon"
+            className="h-4 w-4 rounded-full p-0 hover:bg-transparent hover:text-foreground"
             aria-label={`Remove language ${code}`}
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </span>
       ))}
 
       {(pubdateFrom || pubdateTo) && (
-        <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm">
+        <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm">
           Year {pubdateFrom || "\u2026"}\u2013{pubdateTo || "\u2026"}
-          <button
+          <Button
             type="button"
             onClick={() => onUpdateSearchParams({ pubdate_from: null, pubdate_to: null })}
-            className="hover:text-amber-900"
+            variant="ghost"
+            size="icon"
+            className="h-4 w-4 rounded-full p-0 hover:bg-transparent hover:text-primary-900"
             aria-label="Remove publication year filter"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </span>
       )}
 
       {location ? (
         <span className="inline-flex items-center gap-1 px-3 py-1 bg-muted text-foreground/80 rounded-full text-sm">
           {locations?.find((l) => String(l.id) === location)?.name || `Location ${location}`}
-          <button
+          <Button
             type="button"
             onClick={() => onUpdateSearchParams({ location: null })}
-            className="hover:text-foreground"
+            variant="ghost"
+            size="icon"
+            className="h-4 w-4 rounded-full p-0 hover:bg-transparent hover:text-foreground"
             aria-label="Remove location filter"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </span>
       ) : null}
 
       {available && (
-        <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+        <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm">
           Available now
-          <button
+          <Button
             type="button"
             onClick={() => onUpdateSearchParams({ available: null })}
-            className="hover:text-green-900"
+            variant="ghost"
+            size="icon"
+            className="h-4 w-4 rounded-full p-0 hover:bg-transparent hover:text-primary-900"
             aria-label="Remove availability filter"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </span>
       )}
 
-      <button
+      <Button
         type="button"
         onClick={() =>
           onUpdateSearchParams({
@@ -172,10 +185,12 @@ export function ActiveFilterChips({
             location: null,
           })
         }
+        variant="ghost"
+        size="sm"
         className="text-sm text-muted-foreground hover:text-foreground/80"
       >
         Clear all
-      </button>
+      </Button>
     </div>
   );
 }

@@ -13,15 +13,17 @@ const ALLOWED_ACTIONS = new Set([
   "mark_damaged",
 ]);
 
-const receivingPostSchema = z.object({
-  action: z.string().trim().min(1),
-}).passthrough();
+const _receivingPostSchema = z
+  .object({
+    action: z.string().trim().min(1),
+  })
+  .passthrough();
 
 export async function POST(req: NextRequest) {
   // Guardrail: only allow receiving-related actions on this route.
   const clone = req.clone();
   const body = await clone.json().catch(() => null);
-  const action = String((body as Record<string, unknown>)?.action || "").trim();
+  const action = String((body as Record<string, any>)?.action || "").trim();
 
   if (!ALLOWED_ACTIONS.has(action)) {
     return errorResponse("Invalid action for receiving route", 400, {
@@ -32,4 +34,3 @@ export async function POST(req: NextRequest) {
 
   return handleAcquisitionsPost(req);
 }
-

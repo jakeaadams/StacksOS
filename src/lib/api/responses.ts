@@ -16,7 +16,7 @@ import { ZodType } from "zod";
 /**
  * Return a success response with data
  */
-export function successResponse<T extends Record<string, unknown>>(data: T, message?: string) {
+export function successResponse<T extends Record<string, any>>(data: T, message?: string) {
   return NextResponse.json({
     ok: true,
     ...data,
@@ -38,12 +38,13 @@ export function okResponse(message: string) {
 /**
  * Return an error response
  */
-export function errorResponse(error: string, status: number = 400, details?: any) {
-  const body: Record<string, unknown> = { ok: false, error };
+export function errorResponse(error: string, status: number = 400, details?: unknown) {
+  const body: Record<string, any> = { ok: false, error };
   if (details !== undefined) body.details = details;
-  const headers = (details && typeof details === "object" && (details as Record<string, unknown>).retryAfter)
-    ? { "retry-after": String((details as Record<string, unknown>).retryAfter) }
-    : undefined;
+  const headers =
+    details && typeof details === "object" && (details as Record<string, any>).retryAfter
+      ? { "retry-after": String((details as Record<string, any>).retryAfter) }
+      : undefined;
   return NextResponse.json(body, { status, headers });
 }
 
@@ -113,9 +114,15 @@ export function serverErrorResponse(error: unknown, context: string, req?: Reque
   }
 
   // Avoid importing PermissionError to prevent circular imports. Match by name.
-  if (error && typeof error === "object" && (error as Record<string, unknown>).name === "PermissionError") {
-    const message = String((error as Record<string, unknown>).message || "Permission denied");
-    const missing = Array.isArray((error as Record<string, unknown>).missing) ? (error as Record<string, unknown>).missing : [];
+  if (
+    error &&
+    typeof error === "object" &&
+    (error as Record<string, any>).name === "PermissionError"
+  ) {
+    const message = String((error as Record<string, any>).message || "Permission denied");
+    const missing = Array.isArray((error as Record<string, any>).missing)
+      ? (error as Record<string, any>).missing
+      : [];
     const requestId = getRequestId(req);
 
     logger.warn({ requestId, route: context, missing }, "Permission denied");
@@ -145,18 +152,21 @@ export function serverErrorResponse(error: unknown, context: string, req?: Reque
  * Handle OpenSRF result - return error response if failed
  */
 export function handleOpenSRFResult(
-  result: any,
-  successData: Record<string, unknown>,
+  result: unknown,
+  successData: Record<string, any>,
   errorFallback: string,
   successMessage?: string
 ): NextResponse {
+  const resultRecord =
+    result && typeof result === "object" ? (result as Record<string, any>) : null;
+
   // Check for success conditions
   if (
     result === 1 ||
     result === true ||
     (typeof result === "number" && result > 0) ||
-    (result && !result.ilsevent) ||
-    result?.ilsevent === 0
+    (resultRecord && !resultRecord.ilsevent) ||
+    resultRecord?.ilsevent === 0
   ) {
     return successResponse(successData, successMessage);
   }
@@ -172,7 +182,7 @@ export function handleOpenSRFResult(
 /**
  * Parse JSON body with error handling
  */
-export async function parseJsonBody<T = any>(request: Request): Promise<T | NextResponse> {
+export async function parseJsonBody<T = unknown>(request: Request): Promise<T | NextResponse> {
   try {
     return await request.json();
   } catch (_error) {
@@ -204,7 +214,7 @@ export async function parseJsonBodyWithSchema<T>(
 /**
  * Require specific fields in request body
  */
-export function requireFields(body: Record<string, unknown>, fields: string[]): NextResponse | null {
+export function requireFields(body: Record<string, any>, fields: string[]): NextResponse | null {
   const missing = fields.filter((f) => body[f] === undefined || body[f] === null);
   if (missing.length > 0) {
     return errorResponse("Missing required fields: " + missing.join(", "), 400);
@@ -219,7 +229,10 @@ export function requireFields(body: Record<string, unknown>, fields: string[]): 
 /**
  * Wrap a route handler with standard error handling
  */
-export function withErrorHandling(handler: (req: Request) => Promise<NextResponse>, context: string) {
+export function withErrorHandling(
+  handler: (req: Request) => Promise<NextResponse>,
+  context: string
+) {
   return async (req: Request): Promise<NextResponse> => {
     try {
       return await handler(req);

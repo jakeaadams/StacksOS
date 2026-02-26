@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import {
-
   callOpenSRF,
   requireAuthToken,
   successResponse,
@@ -13,7 +12,6 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { z } from "zod";
-
 
 function normalizeSerialItem(i: any) {
   return {
@@ -29,21 +27,23 @@ function normalizeSerialItem(i: any) {
 
 /**
  * GET /api/evergreen/serials
- * 
+ *
  * Handles serial-related read operations
- * 
+ *
  * Actions:
  * - subscriptions: List all subscriptions (currently not configured)
  * - items: List receivable items for a subscription (requires subscription_id param)
  * - routing: Get routing list for a stream (requires stream_id param)
  * - distributions: List distributions (currently not configured)
  */
-const serialsPostSchema = z.object({
-  action: z.string().trim().min(1),
-  item_id: z.coerce.number().int().positive().optional(),
-  item_ids: z.array(z.coerce.number().int().positive()).optional(),
-  claim_type: z.coerce.number().int().positive().optional(),
-}).passthrough();
+const serialsPostSchema = z
+  .object({
+    action: z.string().trim().min(1),
+    item_id: z.coerce.number().int().positive().optional(),
+    item_ids: z.array(z.coerce.number().int().positive()).optional(),
+    claim_type: z.coerce.number().int().positive().optional(),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -58,26 +58,22 @@ export async function GET(req: NextRequest) {
       const orgId = actor?.ws_ou ?? actor?.home_ou ?? 1;
       const limit = parseInt(searchParams.get("limit") || "50", 10);
       const offset = parseInt(searchParams.get("offset") || "0", 10);
-      
-      const response = await callOpenSRF(
-        "open-ils.pcrud",
-        "open-ils.pcrud.search.ssub.atomic",
-        [
-          authtoken,
-          { owning_lib: orgId },
-          {
-            flesh: 2,
-            flesh_fields: {
-              ssub: ["owning_lib", "record_entry"],
-              aou: ["name"],
-              bre: ["simple_record"],
-            },
-            limit,
-            offset,
-            order_by: { ssub: "start_date DESC" },
+
+      const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.ssub.atomic", [
+        authtoken,
+        { owning_lib: orgId },
+        {
+          flesh: 2,
+          flesh_fields: {
+            ssub: ["owning_lib", "record_entry"],
+            aou: ["name"],
+            bre: ["simple_record"],
           },
-        ]
-      );
+          limit,
+          offset,
+          order_by: { ssub: "start_date DESC" },
+        },
+      ]);
 
       const subscriptions = (response?.payload?.[0] || []).map((sub: any) => ({
         id: sub?.id,
@@ -117,10 +113,7 @@ export async function GET(req: NextRequest) {
     if (action === "routing") {
       const streamId = searchParams.get("stream_id");
       if (!streamId) {
-        return successResponse(
-          { routing: [] },
-          "Provide stream_id to load a routing list"
-        );
+        return successResponse({ routing: [] }, "Provide stream_id to load a routing list");
       }
 
       const routingResponse = await callOpenSRF(
@@ -143,19 +136,15 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      const response = await callOpenSRF(
-        "open-ils.pcrud",
-        "open-ils.pcrud.search.sdist.atomic",
-        [
-          authtoken,
-          { subscription: parseInt(subscriptionId, 10) },
-          {
-            flesh: 1,
-            flesh_fields: { sdist: ["holding_lib"] },
-            order_by: { sdist: "label" },
-          },
-        ]
-      );
+      const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.sdist.atomic", [
+        authtoken,
+        { subscription: parseInt(subscriptionId, 10) },
+        {
+          flesh: 1,
+          flesh_fields: { sdist: ["holding_lib"] },
+          order_by: { sdist: "label" },
+        },
+      ]);
 
       const distributions = (response?.payload?.[0] || []).map((dist: any) => ({
         id: dist?.id,
@@ -169,10 +158,7 @@ export async function GET(req: NextRequest) {
       return successResponse({ distributions, count: distributions.length });
     }
 
-    return errorResponse(
-      "Invalid action. Use: subscriptions, items, routing, distributions",
-      400
-    );
+    return errorResponse("Invalid action. Use: subscriptions, items, routing, distributions", 400);
   } catch (error) {
     return serverErrorResponse(error, "Serials GET", req);
   }
@@ -180,9 +166,9 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/evergreen/serials
- * 
+ *
  * Handles serial-related write operations
- * 
+ *
  * Actions:
  * - receive: Mark serial items as received (requires item_id in body)
  * - claim: Claim serial items (currently view-only, managed in Evergreen)
@@ -200,7 +186,11 @@ export async function POST(req: NextRequest) {
 
     const { authtoken, actor } = await requirePermissions(["RECEIVE_SERIAL"]);
 
-    const audit = async (status: "success" | "failure", details?: Record<string, unknown>, error?: string) => {
+    const audit = async (
+      status: "success" | "failure",
+      details?: Record<string, any>,
+      error?: string
+    ) => {
       await logAuditEvent({
         action: `serials.${action}`,
         status,
@@ -220,11 +210,10 @@ export async function POST(req: NextRequest) {
         return errorResponse("item_id required", 400);
       }
 
-      const response = await callOpenSRF(
-        "open-ils.serial",
-        "open-ils.serial.receive_items",
-        [authtoken, [itemId]]
-      );
+      const response = await callOpenSRF("open-ils.serial", "open-ils.serial.receive_items", [
+        authtoken,
+        [itemId],
+      ]);
 
       const result = response?.payload?.[0];
       if (isOpenSRFEvent(result) || result?.ilsevent) {
@@ -242,7 +231,7 @@ export async function POST(req: NextRequest) {
       const itemIds = body?.item_ids;
       const claimType = body?.claim_type || 1;
       const note = body?.note || "";
-      
+
       if (!Array.isArray(itemIds) || itemIds.length === 0) {
         await audit("failure", { itemIds }, "Missing or invalid item_ids array");
         return errorResponse("item_ids array required", 400);
@@ -276,9 +265,9 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const successCount = results.filter(r => r.success).length;
+      const successCount = results.filter((r) => r.success).length;
       const failureCount = results.length - successCount;
-      
+
       await audit("success", {
         itemIds,
         claimType,
@@ -288,11 +277,14 @@ export async function POST(req: NextRequest) {
         results,
       });
 
-      return successResponse({
-        results,
-        successCount,
-        failureCount,
-      }, `Created ${successCount} claim(s), ${failureCount} failed`);
+      return successResponse(
+        {
+          results,
+          successCount,
+          failureCount,
+        },
+        `Created ${successCount} claim(s), ${failureCount} failed`
+      );
     }
 
     return errorResponse("Invalid action. Use: receive", 400);

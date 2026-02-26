@@ -5,8 +5,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, Loader2, Lock, User, Building2, CheckCircle2, Sparkles, Shield, Zap } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertCircle,
+  Loader2,
+  Lock,
+  User,
+  Building2,
+  CheckCircle2,
+  Sparkles,
+  Shield,
+  Zap,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { clientLogger } from "@/lib/client-logger";
 import { fetchWithAuth } from "@/lib/client-fetch";
@@ -28,11 +44,23 @@ function flattenOrgTree(org: OrgUnit, depth = 0): Array<OrgUnit & { depth: numbe
   return result;
 }
 
+function depthPaddingClass(depth: number): string {
+  if (depth <= 0) return "pl-0";
+  if (depth === 1) return "pl-3";
+  if (depth === 2) return "pl-6";
+  if (depth === 3) return "pl-9";
+  if (depth === 4) return "pl-12";
+  return "pl-14";
+}
+
 const DEVICE_KEY = "stacksos_device_id";
 const WORKSTATION_KEY = "stacksos_workstation";
 const WORKSTATION_ORG_KEY = "stacksos_workstation_org";
 const USERNAME_KEY = "stacksos_username";
 const LOGIN_ORG_OVERRIDE_KEY = "stacksos_login_org_override";
+
+type SetupStage = "auth" | "register" | "fallback" | "relogin";
+const setupStageOrder: Array<Exclude<SetupStage, "fallback">> = ["auth", "register", "relogin"];
 
 function slug(value: string) {
   return value
@@ -62,6 +90,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [autoSetupMessage, setAutoSetupMessage] = useState("");
+  const [setupStage, setSetupStage] = useState<SetupStage | null>(null);
   const [orgs, setOrgs] = useState<Array<OrgUnit & { depth: number }>>([]);
   const [orgOverride, setOrgOverride] = useState("");
   const [deviceId, setDeviceId] = useState("");
@@ -105,18 +134,25 @@ export default function LoginPage() {
     return orgs.find((o) => o.id === id);
   };
 
-  const getStoredWorkstation = () => {
-    if (typeof window === "undefined") return "";
-    const stored = localStorage.getItem(WORKSTATION_KEY);
-    if (stored) return stored;
-
-    return "";
+  const getStoredWorkstation = (): { name: string; orgId: number | null } => {
+    if (typeof window === "undefined") return { name: "", orgId: null };
+    const name = localStorage.getItem(WORKSTATION_KEY) || "";
+    const rawOrgId = localStorage.getItem(WORKSTATION_ORG_KEY);
+    const parsedOrgId = rawOrgId ? parseInt(rawOrgId, 10) : NaN;
+    return {
+      name,
+      orgId: Number.isFinite(parsedOrgId) && parsedOrgId > 0 ? parsedOrgId : null,
+    };
   };
 
   const saveWorkstation = (name: string, orgId?: number) => {
     if (typeof window === "undefined") return;
     localStorage.setItem(WORKSTATION_KEY, name);
-    if (orgId) localStorage.setItem(WORKSTATION_ORG_KEY, String(orgId));
+    if (typeof orgId === "number" && Number.isFinite(orgId) && orgId > 0) {
+      localStorage.setItem(WORKSTATION_ORG_KEY, String(orgId));
+    } else {
+      localStorage.removeItem(WORKSTATION_ORG_KEY);
+    }
     localStorage.setItem(USERNAME_KEY, username);
   };
 
@@ -165,6 +201,68 @@ export default function LoginPage() {
     return { ok: false, data };
   };
 
+  const listOrgWorkstations = async (orgId: number): Promise<string[]> => {
+    try {
+      const res = await fetchWithAuth("/api/evergreen/workstations?org_id=" + orgId);
+      if (!res.ok) return [];
+
+      const data = await res.json();
+      const workstations: unknown[] = Array.isArray(data?.workstations) ? data.workstations : [];
+      const names: string[] = [];
+
+      for (const ws of workstations) {
+        if (ws && typeof ws === "object" && !Array.isArray(ws)) {
+          const name = (ws as { name?: unknown }).name;
+          if (typeof name === "string" && name.trim()) names.push(name.trim());
+          continue;
+        }
+
+        if (Array.isArray(ws) && typeof ws[1] === "string" && ws[1].trim()) {
+          names.push(ws[1].trim());
+        }
+      }
+
+      return Array.from(new Set(names));
+    } catch (fetchError) {
+      clientLogger.warn("Failed to list workstations", { fetchError, orgId });
+      return [];
+    }
+  };
+
+  const resolveFallbackWorkstation = async (
+    orgId: number,
+    preferredName: string
+  ): Promise<string | null> => {
+    const candidates = await listOrgWorkstations(orgId);
+    if (candidates.length === 0) return null;
+
+    const exact = candidates.find((name) => name === preferredName);
+    if (exact) return exact;
+
+    const org = getOrgById(orgId);
+    const orgShort = slug(org?.shortname || "ORG" + orgId);
+    const familyPrefix = "STACKSOS-" + orgShort + "-";
+
+    const family = candidates.find((name) => name.startsWith(familyPrefix));
+    if (family) return family;
+
+    const anyStacksos = candidates.find((name) => name.startsWith("STACKSOS-"));
+    if (anyStacksos) return anyStacksos;
+
+    return candidates[0] || null;
+  };
+
+  const effectiveSetupStage: Exclude<SetupStage, "fallback"> | null =
+    setupStage === "fallback" ? "register" : setupStage;
+  const setupStageIndex = effectiveSetupStage ? setupStageOrder.indexOf(effectiveSetupStage) : -1;
+  const setupMilestones = ["Verify account", "Prepare workstation", "Start secure session"];
+  const loadingLabel =
+    setupStage === "register" || setupStage === "fallback"
+      ? "Preparing workstation..."
+      : setupStage === "relogin"
+        ? "Finalizing session..."
+        : "Signing in...";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUsername = username.trim();
@@ -178,6 +276,8 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
     setAutoSetupMessage("");
+    setSetupStage("auth");
+    setAutoSetupMessage("Verifying your Evergreen credentials...");
 
     try {
       const requestedNext =
@@ -187,7 +287,7 @@ export default function LoginPage() {
       const nextPath = requestedNext.startsWith("/") ? requestedNext : "/staff";
 
       const storedWorkstation = getStoredWorkstation();
-      const loginResult = await attemptLogin(storedWorkstation || undefined, {
+      const loginResult = await attemptLogin(storedWorkstation.name || undefined, {
         username: cleanUsername,
         password: cleanPassword,
       });
@@ -197,11 +297,8 @@ export default function LoginPage() {
         return;
       }
 
-      if (storedWorkstation && !loginResult.data.needsWorkstation) {
-        saveWorkstation(
-          storedWorkstation,
-          parseInt(localStorage.getItem(WORKSTATION_ORG_KEY) || "", 10)
-        );
+      if (storedWorkstation.name && !loginResult.data.needsWorkstation) {
+        saveWorkstation(storedWorkstation.name, storedWorkstation.orgId ?? undefined);
         // Full reload ensures the AuthProvider session check runs with the new cookie.
         window.location.assign(nextPath);
         return;
@@ -212,13 +309,52 @@ export default function LoginPage() {
       const orgId = overrideOrgId || userHomeOu || orgs[0]?.id || 1;
       const workstationName = buildWorkstationName(orgId);
 
-      setAutoSetupMessage("Setting up this device for your library...");
+      setSetupStage("fallback");
+      setAutoSetupMessage("Checking for an existing workstation at this branch...");
+
+      const reusableWorkstation = await resolveFallbackWorkstation(orgId, workstationName);
+      if (reusableWorkstation) {
+        const reusableLogin = await attemptLogin(reusableWorkstation, {
+          username: cleanUsername,
+          password: cleanPassword,
+        });
+        if (reusableLogin.ok) {
+          saveWorkstation(reusableWorkstation, orgId);
+          window.location.assign(nextPath);
+          return;
+        }
+      }
+
+      setSetupStage("register");
+      setAutoSetupMessage("Registering this workstation for your branch...");
 
       const registerResult = await registerWorkstation(workstationName, orgId);
       if (!registerResult.ok) {
-        setError(registerResult.data?.error || "Failed to register this device. Please try again.");
+        setSetupStage("fallback");
+        setAutoSetupMessage("Trying a fallback workstation for this branch...");
+
+        const fallbackWorkstation = await resolveFallbackWorkstation(orgId, workstationName);
+        if (fallbackWorkstation) {
+          const fallbackLogin = await attemptLogin(fallbackWorkstation, {
+            username: cleanUsername,
+            password: cleanPassword,
+          });
+          if (fallbackLogin.ok) {
+            saveWorkstation(fallbackWorkstation, orgId);
+            window.location.assign(nextPath);
+            return;
+          }
+        }
+
+        setError(
+          registerResult.data?.error ||
+            "Could not prepare a workstation automatically. Ask an admin to grant REGISTER_WORKSTATION or pre-create one."
+        );
         return;
       }
+
+      setSetupStage("relogin");
+      setAutoSetupMessage("Finalizing secure session...");
 
       const relogin = await attemptLogin(workstationName, {
         username: cleanUsername,
@@ -236,6 +372,7 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
       setAutoSetupMessage("");
+      setSetupStage(null);
     }
   };
 
@@ -256,13 +393,19 @@ export default function LoginPage() {
                 </div>
                 <div>
                   <h1 className="text-2xl font-semibold">StacksOS</h1>
-                  <p className="text-sm text-muted-foreground">Modern library operations, built on Evergreen</p>
+                  <p className="text-sm text-muted-foreground">
+                    Modern library operations, built on Evergreen
+                  </p>
                 </div>
               </div>
 
               <div className="mt-6 flex flex-wrap gap-2">
-                <Badge variant="secondary" className="rounded-full">Evergreen Connected</Badge>
-                <Badge variant="secondary" className="rounded-full">Multi‑Branch Ready</Badge>
+                <Badge variant="secondary" className="rounded-full">
+                  Evergreen Connected
+                </Badge>
+                <Badge variant="secondary" className="rounded-full">
+                  Multi‑Branch Ready
+                </Badge>
               </div>
 
               <div className="mt-8 space-y-4 text-sm text-muted-foreground">
@@ -296,7 +439,9 @@ export default function LoginPage() {
               </div>
 
               <div className="mt-8 text-xs text-muted-foreground">
-                Powered by Evergreen ILS<br /><span className="opacity-70">Built by the Adams Group of Companies</span>
+                Powered by Evergreen ILS
+                <br />
+                <span className="opacity-70">Built by the Adams Group of Companies</span>
               </div>
             </div>
           </div>
@@ -309,10 +454,40 @@ export default function LoginPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {autoSetupMessage && (
-                <div className="mb-4 flex items-center gap-2 rounded-xl border border-[hsl(var(--brand-1))]/20 bg-[hsl(var(--brand-1))]/10 px-3 py-2 text-[hsl(var(--brand-1))] text-sm">
-                  <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-                  {autoSetupMessage}
+              {(autoSetupMessage || setupStage) && (
+                <div className="mb-4 rounded-xl border border-[hsl(var(--brand-1))]/20 bg-[hsl(var(--brand-1))]/10 px-3 py-3">
+                  <div className="flex items-center gap-2 text-[hsl(var(--brand-1))] text-sm">
+                    <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin" />
+                    <span>{autoSetupMessage || "Preparing secure session..."}</span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {setupMilestones.map((step, index) => {
+                      const state =
+                        setupStageIndex > index
+                          ? "done"
+                          : setupStageIndex === index
+                            ? "active"
+                            : "pending";
+                      return (
+                        <div key={step} className="flex items-center gap-1.5 text-[11px]">
+                          {state === "done" ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          ) : state === "active" ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-[hsl(var(--brand-1))]" />
+                          ) : (
+                            <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+                          )}
+                          <span
+                            className={
+                              state === "pending" ? "text-muted-foreground" : "text-foreground"
+                            }
+                          >
+                            {step}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
@@ -368,7 +543,7 @@ export default function LoginPage() {
                         <SelectContent className="max-h-64">
                           {orgs.map((org) => (
                             <SelectItem key={org.id} value={String(org.id)}>
-                              <span style={{ paddingLeft: `${org.depth * 12}px` }}>
+                              <span className={`block truncate ${depthPaddingClass(org.depth)}`}>
                                 {org.shortname} - {org.name}
                               </span>
                             </SelectItem>
@@ -382,7 +557,6 @@ export default function LoginPage() {
                   </div>
                 )}
 
-
                 <Button
                   type="submit"
                   className="w-full rounded-full"
@@ -391,7 +565,7 @@ export default function LoginPage() {
                   {isLoading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Signing in...
+                      {loadingLabel}
                     </>
                   ) : (
                     "Sign In"

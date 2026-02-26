@@ -1,10 +1,8 @@
-const EMAIL_RE =
-  /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
+const EMAIL_RE = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 
 // US-centric phone redaction (good enough for audit safety; not perfect).
 // Avoid `\b` because many phone formats start with "(" which is not a word char.
-const PHONE_RE =
-  /(?<!\d)(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)/g;
+const PHONE_RE = /(?<!\d)(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)/g;
 
 // Evergreen-style barcodes are often long digit sequences. Avoid redacting years, etc.
 const LONG_DIGITS_RE = /\b\d{12,20}\b/g;
@@ -53,7 +51,7 @@ export function redactObject<T>(value: T): T {
     return value.map((v: any) => redactObject(v)) as any;
   }
 
-  const out: Record<string, unknown> = {};
+  const out: Record<string, any> = {};
   for (const [k, v] of Object.entries(value as any)) {
     const keyed = redactValueForKey(k, v);
     out[k] = redactObject(keyed);

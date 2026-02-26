@@ -1,9 +1,21 @@
 "use client";
 import { clientLogger } from "@/lib/client-logger";
 import { fetchWithAuth } from "@/lib/client-fetch";
+import Link from "next/link";
 
 import { useCallback, useEffect, useState } from "react";
 import { usePatronSession } from "@/hooks/use-patron-session";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Star,
   ThumbsUp,
@@ -73,7 +85,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
         setReviews(data.reviews || []);
         setStats(data.stats);
       }
-    } catch (err: any) {
+    } catch (err) {
       clientLogger.error("Error fetching reviews:", err);
     } finally {
       setIsLoading(false);
@@ -117,8 +129,8 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
       setReviewTitle("");
       setReviewText("");
       fetchReviews();
-    } catch (err: any) {
-      setSubmitError(err instanceof Error ? (err as any).message : "An error occurred");
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsSubmitting(false);
     }
@@ -151,7 +163,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
     return (
       <div className="flex items-center gap-0.5">
         {[1, 2, 3, 4, 5].map((star) => (
-          <button
+          <Button
             type="button"
             key={star}
             disabled={readonly}
@@ -159,8 +171,11 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
             onMouseEnter={() => !readonly && setHoverRating(star)}
             onMouseLeave={() => !readonly && setHoverRating(0)}
             className={
-              readonly ? "cursor-default" : "cursor-pointer transition-transform hover:scale-110"
+              readonly
+                ? "h-auto w-auto p-0 hover:bg-transparent"
+                : "h-auto w-auto p-0 transition-transform hover:scale-110 hover:bg-transparent"
             }
+            variant="ghost"
           >
             <Star
               className={`${sizeClasses[size]} ${
@@ -169,7 +184,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
                   : "text-muted-foreground/50"
               }`}
             />
-          </button>
+          </Button>
         ))}
       </div>
     );
@@ -189,9 +204,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
       <div className="flex items-center gap-2 text-sm">
         <span className="w-3 text-muted-foreground">{rating}</span>
         <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-          <div className="h-full bg-amber-400 rounded-full" style={{ width: `${percentage}%` }} />
-        </div>
+        <Progress className="h-2 flex-1" value={percentage} />
         <span className="w-8 text-muted-foreground text-right">{count}</span>
       </div>
     );
@@ -235,25 +248,24 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
           {/* Write review button */}
           <div className="flex items-center justify-center md:justify-end">
             {isLoggedIn ? (
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowWriteReview(true)}
-                className="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium
-                         hover:bg-primary-700 transition-colors flex items-center gap-2"
+                className="stx-action-primary flex items-center gap-2"
               >
                 <Edit3 className="h-4 w-4" />
                 Write a Review
-              </button>
+              </Button>
             ) : (
               <div className="text-center">
                 <p className="text-sm text-muted-foreground mb-2">Log in to write a review</p>
-                <a
-                  href="/opac/login"
-                  className="px-6 py-2 border border-primary-600 text-primary-600 rounded-lg
-                           font-medium hover:bg-primary-50 transition-colors inline-block"
+                <Button
+                  asChild
+                  variant="outline"
+                  className="border-primary-600 text-primary-600 hover:bg-primary-50"
                 >
-                  Log In
-                </a>
+                  <Link href="/opac/login">Log In</Link>
+                </Button>
               </div>
             )}
           </div>
@@ -286,13 +298,11 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
               <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Review Title
               </label>
-              <input
+              <Input
                 type="text"
                 value={reviewTitle}
                 onChange={(e) => setReviewTitle(e.target.value)}
                 placeholder="Summarize your thoughts..."
-                className="w-full px-4 py-2 border border-border rounded-lg
-                         focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
@@ -300,31 +310,27 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
               <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Your Review
               </label>
-              <textarea
+              <Textarea
                 value={reviewText}
                 onChange={(e) => setReviewText(e.target.value)}
                 placeholder="Tell others what you thought about this book..."
                 rows={4}
-                className="w-full px-4 py-2 border border-border rounded-lg
-                         focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
             <div className="flex justify-end gap-3">
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowWriteReview(false)}
-                className="px-4 py-2 border border-border text-foreground/80 rounded-lg
-                         hover:bg-muted/30 transition-colors"
+                variant="outline"
+                className="text-foreground/80 hover:bg-muted/30"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={isSubmitting || !rating}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium
-                         hover:bg-primary-700 transition-colors disabled:opacity-50
-                         disabled:cursor-not-allowed flex items-center gap-2"
+                className="stx-action-primary flex items-center gap-2 disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
@@ -334,7 +340,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
                 ) : (
                   "Submit Review"
                 )}
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -345,13 +351,14 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
           <CheckCircle className="h-5 w-5 text-green-600" />
           <p className="text-green-700">Your review has been submitted. Thank you for sharing!</p>
-          <button
+          <Button
             type="button"
             onClick={() => setSubmitSuccess(false)}
-            className="ml-auto text-green-600 hover:text-green-800"
+            className="ml-auto h-auto w-auto p-0 text-green-600 hover:bg-transparent hover:text-green-800"
+            variant="ghost"
           >
             ×
-          </button>
+          </Button>
         </div>
       )}
 
@@ -361,16 +368,19 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
           <p className="text-sm text-muted-foreground">
             Showing {reviews.length} {reviews.length === 1 ? "review" : "reviews"}
           </p>
-          <select
+          <Select
             value={sort}
-            onChange={(e) => setSort(e.target.value as any)}
-            className="px-3 py-2 border border-border rounded-lg text-sm
-                     focus:outline-none focus:ring-2 focus:ring-primary-500"
+            onValueChange={(value) => setSort(value as "recent" | "helpful" | "rating")}
           >
-            <option value="recent">Most Recent</option>
-            <option value="helpful">Most Helpful</option>
-            <option value="rating">Highest Rated</option>
-          </select>
+            <SelectTrigger className="w-[170px] text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Most Recent</SelectItem>
+              <SelectItem value="helpful">Most Helpful</SelectItem>
+              <SelectItem value="rating">Highest Rated</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       )}
 
@@ -431,7 +441,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
               )}
 
               {review.text && review.text.length > 300 && (
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     setExpandedReviews((prev) => {
@@ -444,21 +454,23 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
                       return next;
                     });
                   }}
-                  className="text-primary-600 text-sm font-medium mt-2 hover:underline"
+                  className="mt-2 h-auto w-auto p-0 text-sm font-medium text-primary-600 hover:bg-transparent hover:underline"
+                  variant="ghost"
                 >
                   {expandedReviews.has(review.id) ? "Show less" : "Read more"}
-                </button>
+                </Button>
               )}
 
               <div className="mt-4 flex items-center gap-4">
-                <button
+                <Button
                   type="button"
                   onClick={() => handleHelpful(review.id)}
-                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground/80"
+                  className="h-auto p-0 text-sm text-muted-foreground hover:bg-transparent hover:text-foreground/80"
+                  variant="ghost"
                 >
                   <ThumbsUp className="h-4 w-4" />
                   Helpful ({review.helpful})
-                </button>
+                </Button>
               </div>
             </div>
           ))}

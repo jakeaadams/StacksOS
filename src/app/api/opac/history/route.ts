@@ -1,13 +1,8 @@
 import { NextRequest } from "next/server";
-import {
-  callOpenSRF,
-  successResponse,
-  errorResponse,
-  serverErrorResponse,
-} from "@/lib/api";
+import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 // GET /api/opac/history - Get patron reading history
 export async function GET(req: NextRequest) {
@@ -72,9 +67,7 @@ export async function GET(req: NextRequest) {
               title = mods.title || title;
               author = mods.author || "";
               isbn = mods.isbn || "";
-              coverUrl = isbn
-                ? `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`
-                : null;
+              coverUrl = isbn ? `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg` : null;
             }
           } catch (_error) {
             // Continue with unknown title
@@ -91,9 +84,7 @@ export async function GET(req: NextRequest) {
           checkoutDate: circ.xact_start,
           returnDate: circ.checkin_time,
           dueDate: circ.due_date,
-          renewalCount: circ.renewal_remaining
-            ? 3 - circ.renewal_remaining
-            : 0,
+          renewalCount: circ.renewal_remaining ? 3 - circ.renewal_remaining : 0,
         };
       })
     );
@@ -111,9 +102,7 @@ export async function GET(req: NextRequest) {
     if (query) {
       const q = query.toLowerCase();
       filteredHistory = filteredHistory.filter(
-        (item) =>
-          item.title.toLowerCase().includes(q) ||
-          item.author.toLowerCase().includes(q)
+        (item) => item.title.toLowerCase().includes(q) || item.author.toLowerCase().includes(q)
       );
     }
 
@@ -125,8 +114,7 @@ export async function GET(req: NextRequest) {
     } else {
       // Default: date (most recent first)
       filteredHistory.sort(
-        (a, b) =>
-          new Date(b.checkoutDate).getTime() - new Date(a.checkoutDate).getTime()
+        (a, b) => new Date(b.checkoutDate).getTime() - new Date(a.checkoutDate).getTime()
       );
     }
 
@@ -142,8 +130,7 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    const favoriteAuthor = Object.entries(authorCounts)
-      .sort((a, b) => b[1] - a[1])[0]?.[0];
+    const favoriteAuthor = Object.entries(authorCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
 
     const thisYearItems = processedHistory.filter(
       (item) => new Date(item.checkoutDate).getFullYear() === thisYear
@@ -156,17 +143,14 @@ export async function GET(req: NextRequest) {
 
     // Calculate months since first checkout
     const sortedByDate = [...processedHistory].sort(
-      (a, b) =>
-        new Date(a.checkoutDate).getTime() - new Date(b.checkoutDate).getTime()
+      (a, b) => new Date(a.checkoutDate).getTime() - new Date(b.checkoutDate).getTime()
     );
     const firstCheckout = sortedByDate[0]?.checkoutDate
       ? new Date(sortedByDate[0].checkoutDate)
       : now;
     const monthsActive = Math.max(
       1,
-      Math.ceil(
-        (now.getTime() - firstCheckout.getTime()) / (30 * 24 * 60 * 60 * 1000)
-      )
+      Math.ceil((now.getTime() - firstCheckout.getTime()) / (30 * 24 * 60 * 60 * 1000))
     );
 
     const stats = {
@@ -190,7 +174,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/history auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/history auth failed");
       return errorResponse("Authentication required", 401);
     }
     logger.error({ error: String(error) }, "Error fetching history");

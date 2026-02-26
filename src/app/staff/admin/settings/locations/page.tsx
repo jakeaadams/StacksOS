@@ -9,7 +9,6 @@ import {
   DataTable,
   EmptyState,
   LoadingSpinner,
-
   ConfirmDialog,
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +16,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -98,7 +103,7 @@ export default function CopyLocationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrgId, setSelectedOrgId] = useState<number | "all">("all");
-  
+
   // Dialog states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<CopyLocation | null>(null);
@@ -203,10 +208,9 @@ export default function CopyLocationsPage() {
       const data = await response.json();
 
       if (data.ok) {
-        toast.success(
-          editingLocation ? "Location updated" : "Location created",
-          { description: formData.name }
-        );
+        toast.success(editingLocation ? "Location updated" : "Location created", {
+          description: formData.name,
+        });
         setIsFormOpen(false);
         await loadLocations();
       } else {
@@ -281,7 +285,7 @@ export default function CopyLocationsPage() {
       {
         accessorKey: "opacVisible",
         header: "OPAC Visible",
-        cell: ({ row }) => (
+        cell: ({ row }) =>
           row.original.opacVisible ? (
             <div className="flex items-center gap-1 text-emerald-600">
               <Eye className="h-4 w-4" />
@@ -292,13 +296,12 @@ export default function CopyLocationsPage() {
               <EyeOff className="h-4 w-4" />
               <span className="text-xs">Hidden</span>
             </div>
-          )
-        ),
+          ),
       },
       {
         accessorKey: "holdable",
         header: "Holdable",
-        cell: ({ row }) => (
+        cell: ({ row }) =>
           row.original.holdable ? (
             <div className="flex items-center gap-1 text-emerald-600">
               <Hand className="h-4 w-4" />
@@ -309,41 +312,34 @@ export default function CopyLocationsPage() {
               <XCircle className="h-4 w-4" />
               <span className="text-xs">No</span>
             </div>
-          )
-        ),
+          ),
       },
       {
         accessorKey: "circulate",
         header: "Circulates",
-        cell: ({ row }) => (
+        cell: ({ row }) =>
           row.original.circulate ? (
             <CheckCircle className="h-4 w-4 text-emerald-600" />
           ) : (
             <XCircle className="h-4 w-4 text-red-600" />
-          )
-        ),
+          ),
       },
       {
         accessorKey: "checkInAlert",
         header: "Alert",
-        cell: ({ row }) => (
+        cell: ({ row }) =>
           row.original.checkInAlert ? (
             <AlertTriangle className="h-4 w-4 text-amber-600" />
           ) : (
             <span className="text-muted-foreground text-xs">-</span>
-          )
-        ),
+          ),
       },
       {
         id: "actions",
         header: "",
         cell: ({ row }) => (
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleOpenEdit(row.original)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(row.original)}>
               <Edit className="h-4 w-4" />
             </Button>
             <Button
@@ -412,7 +408,9 @@ export default function CopyLocationsPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Locations</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Total Locations
+                  </p>
                   <div className="text-2xl font-semibold mt-1">{locations.length}</div>
                 </div>
                 <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600">
@@ -426,7 +424,9 @@ export default function CopyLocationsPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">OPAC Visible</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    OPAC Visible
+                  </p>
                   <div className="text-2xl font-semibold mt-1">{stats.visible}</div>
                 </div>
                 <div className="h-10 w-10 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600">
@@ -443,7 +443,7 @@ export default function CopyLocationsPage() {
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Holdable</p>
                   <div className="text-2xl font-semibold mt-1">{stats.holdable}</div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-purple-500/10 text-purple-600">
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-indigo-500/10 text-indigo-600">
                   <Hand className="h-5 w-5" />
                 </div>
               </div>
@@ -454,7 +454,9 @@ export default function CopyLocationsPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">With Alerts</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    With Alerts
+                  </p>
                   <div className="text-2xl font-semibold mt-1">{stats.withAlerts}</div>
                 </div>
                 <div className="h-10 w-10 rounded-full flex items-center justify-center bg-amber-500/10 text-amber-600">
@@ -623,10 +625,13 @@ export default function CopyLocationsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
-                  <Label htmlFor="opac-visible" className="text-sm">OPAC Visible</Label>
+                  <Label htmlFor="opac-visible" className="text-sm">
+                    OPAC Visible
+                  </Label>
                   <p className="text-xs text-muted-foreground">Show in public catalog</p>
                 </div>
-                <Switch id="opac-visible"
+                <Switch
+                  id="opac-visible"
                   checked={formData.opacVisible}
                   onCheckedChange={(checked) =>
                     setFormData((prev) => ({ ...prev, opacVisible: checked }))
@@ -636,10 +641,13 @@ export default function CopyLocationsPage() {
 
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
-                  <Label htmlFor="holdable" className="text-sm">Holdable</Label>
+                  <Label htmlFor="holdable" className="text-sm">
+                    Holdable
+                  </Label>
                   <p className="text-xs text-muted-foreground">Allow holds on items</p>
                 </div>
-                <Switch id="holdable"
+                <Switch
+                  id="holdable"
                   checked={formData.holdable}
                   onCheckedChange={(checked) =>
                     setFormData((prev) => ({ ...prev, holdable: checked }))
@@ -649,10 +657,13 @@ export default function CopyLocationsPage() {
 
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
-                  <Label htmlFor="circulates" className="text-sm">Circulates</Label>
+                  <Label htmlFor="circulates" className="text-sm">
+                    Circulates
+                  </Label>
                   <p className="text-xs text-muted-foreground">Items can be checked out</p>
                 </div>
-                <Switch id="circulates"
+                <Switch
+                  id="circulates"
                   checked={formData.circulate}
                   onCheckedChange={(checked) =>
                     setFormData((prev) => ({ ...prev, circulate: checked }))
@@ -662,10 +673,13 @@ export default function CopyLocationsPage() {
 
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
-                  <Label htmlFor="check-in-alert" className="text-sm">Check-in Alert</Label>
+                  <Label htmlFor="check-in-alert" className="text-sm">
+                    Check-in Alert
+                  </Label>
                   <p className="text-xs text-muted-foreground">Alert on check-in</p>
                 </div>
-                <Switch id="check-in-alert"
+                <Switch
+                  id="check-in-alert"
                   checked={formData.checkInAlert}
                   onCheckedChange={(checked) =>
                     setFormData((prev) => ({ ...prev, checkInAlert: checked }))
@@ -676,10 +690,13 @@ export default function CopyLocationsPage() {
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
-                <Label htmlFor="hold-verify" className="text-sm">Hold Verify</Label>
+                <Label htmlFor="hold-verify" className="text-sm">
+                  Hold Verify
+                </Label>
                 <p className="text-xs text-muted-foreground">Require verification for holds</p>
               </div>
-              <Switch id="hold-verify"
+              <Switch
+                id="hold-verify"
                 checked={formData.holdVerify}
                 onCheckedChange={(checked) =>
                   setFormData((prev) => ({ ...prev, holdVerify: checked }))
@@ -703,7 +720,9 @@ export default function CopyLocationsPage() {
                 <Input
                   id="labelPrefix"
                   value={formData.labelPrefix}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, labelPrefix: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, labelPrefix: e.target.value }))
+                  }
                   placeholder="e.g., REF"
                 />
               </div>
@@ -712,7 +731,9 @@ export default function CopyLocationsPage() {
                 <Input
                   id="labelSuffix"
                   value={formData.labelSuffix}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, labelSuffix: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, labelSuffix: e.target.value }))
+                  }
                   placeholder="e.g., c.1"
                 />
               </div>

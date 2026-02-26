@@ -9,18 +9,18 @@ import {
   successResponse,
 } from "@/lib/api";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 
 // POST /api/opac/lists/[listId]/items - Add an item to a list (bookbag)
-const addListItemSchema = z.object({
-  recordId: z.coerce.number().int().positive().optional(),
-  bibId: z.coerce.number().int().positive().optional(),
-}).passthrough();
+const addListItemSchema = z
+  .object({
+    recordId: z.coerce.number().int().positive().optional(),
+    bibId: z.coerce.number().int().positive().optional(),
+  })
+  .passthrough();
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ listId: string }> }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ listId: string }> }) {
   try {
     const { patronToken } = await requirePatronSession();
     const { listId } = await params;
@@ -31,42 +31,40 @@ export async function POST(
     }
 
     const body = addListItemSchema.parse(await req.json().catch(() => ({})));
-    const bibIdRaw = (body as Record<string, unknown>)?.bibId;
+    const bibIdRaw = (body as Record<string, any>)?.bibId;
     const bibId = typeof bibIdRaw === "number" ? bibIdRaw : parseInt(String(bibIdRaw ?? ""), 10);
     if (!Number.isFinite(bibId) || bibId <= 0) {
       return errorResponse("bibId is required", 400);
     }
 
-    const notes = typeof (body as Record<string, unknown>)?.notes === "string" ? String((body as Record<string, unknown>).notes) : "";
+    const notes =
+      typeof (body as Record<string, any>)?.notes === "string"
+        ? String((body as Record<string, any>).notes)
+        : "";
 
-    const addRes = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.container.item.create",
-      [
-        patronToken,
-        "biblio",
-        encodeFieldmapper("cbrebi", {
-          bucket: listNumeric,
-          target_biblio_record_entry: bibId,
-          notes,
-          isnew: 1,
-          ischanged: 1,
-        }),
-      ]
-    );
+    const addRes = await callOpenSRF("open-ils.actor", "open-ils.actor.container.item.create", [
+      patronToken,
+      "biblio",
+      encodeFieldmapper("cbrebi", {
+        bucket: listNumeric,
+        target_biblio_record_entry: bibId,
+        notes,
+        isnew: 1,
+        ischanged: 1,
+      }),
+    ]);
 
     const result = addRes?.payload?.[0];
-    if (!result || isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
+    if (!result || isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to add item to list"), 400, result);
     }
 
     return successResponse({ itemId: result });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/lists/[listId]/items auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/lists/[listId]/items auth failed");
       return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(error, "OPAC Lists Add Item", req);
   }
 }
-

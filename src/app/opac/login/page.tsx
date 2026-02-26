@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { useLibrary } from "@/hooks/use-library";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   BookOpen,
   CreditCard,
@@ -59,7 +62,7 @@ function LoginForm() {
 
     try {
       const success = await login(cardNumber.trim(), pin.trim());
-      
+
       if (success) {
         router.push(redirectUrl);
       } else {
@@ -81,13 +84,17 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 
-                  flex items-center justify-center p-4">
+    <div
+      className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 
+                  flex items-center justify-center p-4"
+    >
       <div className="w-full max-w-md">
         {/* Logo and title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 
-                        rounded-2xl shadow-lg mb-4">
+          <div
+            className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 
+                        rounded-2xl shadow-lg mb-4"
+          >
             <BookOpen className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">
@@ -105,29 +112,29 @@ function LoginForm() {
             {error && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-                <p id="login-error" role="alert" className="text-red-700 text-sm">{error}</p>
+                <p id="login-error" role="alert" className="text-red-700 text-sm">
+                  {error}
+                </p>
               </div>
             )}
 
             {/* Card number field */}
             <div>
-              <label 
-                htmlFor="cardNumber" 
+              <Label
+                htmlFor="cardNumber"
                 className="block text-sm font-medium text-foreground/80 mb-2"
               >
                 Library Card Number
-              </label>
+              </Label>
               <div className="relative">
                 <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/70" />
-                <input
+                <Input
                   type="text"
                   id="cardNumber"
                   value={cardNumber}
                   onChange={(e) => setCardNumber(e.target.value)}
                   placeholder={t("cardNumberPlaceholder")}
-                  className="w-full pl-14 pr-4 py-3 border border-border rounded-lg
-                           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
-                           text-foreground placeholder:text-muted-foreground"
+                  className="h-12 pl-14 pr-4"
                   aria-invalid={!!error}
                   aria-describedby={error ? "login-error" : undefined}
                   autoComplete="username"
@@ -138,35 +145,32 @@ function LoginForm() {
 
             {/* PIN field */}
             <div>
-              <label 
-                htmlFor="pin" 
-                className="block text-sm font-medium text-foreground/80 mb-2"
-              >
+              <Label htmlFor="pin" className="block text-sm font-medium text-foreground/80 mb-2">
                 PIN
-              </label>
+              </Label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/70" />
-                <input
+                <Input
                   type={showPin ? "text" : "password"}
                   id="pin"
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
                   placeholder={t("pinPlaceholder")}
-                  className="w-full pl-14 pr-12 py-3 border border-border rounded-lg
-                           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
-                           text-foreground placeholder:text-muted-foreground"
+                  className="h-12 pl-14 pr-12"
                   aria-invalid={!!error}
                   aria-describedby={error ? "login-error" : undefined}
                   autoComplete="current-password"
                 />
-                <button type="button"
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setShowPin(!showPin)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 
-                           hover:text-muted-foreground transition-colors"
+                  className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground/70 hover:text-muted-foreground"
                   aria-label={showPin ? t("hidePin") : t("showPin")}
                 >
                   {showPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -181,7 +185,7 @@ function LoginForm() {
                 />
                 <span className="text-sm text-foreground/80">{t("rememberMe")}</span>
               </label>
-              <Link 
+              <Link
                 href="/opac/help/forgot-pin"
                 className="text-sm text-primary-600 hover:text-primary-700"
               >
@@ -190,12 +194,7 @@ function LoginForm() {
             </div>
 
             {/* Submit button */}
-            <button type="submit"
-              disabled={isLoading}
-              className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium
-                       hover:bg-primary-700 transition-colors disabled:opacity-50 
-                       disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
+            <Button type="submit" disabled={isLoading} className="w-full h-12">
               {isLoading ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -207,7 +206,7 @@ function LoginForm() {
                   <ArrowRight className="h-5 w-5" />
                 </>
               )}
-            </button>
+            </Button>
           </form>
 
           {/* Divider */}
@@ -221,18 +220,14 @@ function LoginForm() {
           </div>
 
           {/* Get a card link */}
-          <Link
-            href="/opac/register"
-            className="block w-full py-3 border-2 border-primary-600 text-primary-600 
-                     rounded-lg font-medium text-center hover:bg-primary-50 transition-colors"
-          >
-            Get a Library Card
-          </Link>
+          <Button asChild variant="outline" className="w-full h-12">
+            <Link href="/opac/register">Get a Library Card</Link>
+          </Button>
         </div>
 
         {/* Help text */}
         <div className="mt-6 text-center">
-          <Link 
+          <Link
             href="/opac/help"
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm"
           >
@@ -246,8 +241,8 @@ function LoginForm() {
           By signing in, you agree to our{" "}
           <Link href="/opac/privacy" className="text-primary-600 hover:underline">
             Privacy Policy
-          </Link>
-          {" "}and{" "}
+          </Link>{" "}
+          and{" "}
           <Link href="/opac/terms" className="text-primary-600 hover:underline">
             Terms of Use
           </Link>
@@ -259,11 +254,13 @@ function LoginForm() {
 
 export default function OPACLoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
   );

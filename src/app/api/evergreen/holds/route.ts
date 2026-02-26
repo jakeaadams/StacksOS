@@ -12,19 +12,29 @@ import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { z } from "zod";
 
-const holdsPostSchema = z.object({
-  action: z.enum(["create", "place_hold", "cancel", "cancel_hold", "freeze", "thaw", "update_pickup_lib"]),
-  patronId: z.union([z.coerce.number().int().positive(), z.string().min(1)]).optional(),
-  holdType: z.string().optional(),
-  target: z.union([z.coerce.number(), z.string()]).optional(),
-  targetId: z.union([z.coerce.number(), z.string()]).optional(),
-  pickupLib: z.union([z.coerce.number().int().positive(), z.string().min(1)]).optional(),
-  holdId: z.union([z.coerce.number().int().positive(), z.string().min(1)]).optional(),
-  cause: z.union([z.number(), z.string()]).optional(),
-  reason: z.union([z.number(), z.string()]).optional(),
-  note: z.string().max(1024).optional().nullable(),
-  thawDate: z.string().optional().nullable(),
-}).passthrough();
+const holdsPostSchema = z
+  .object({
+    action: z.enum([
+      "create",
+      "place_hold",
+      "cancel",
+      "cancel_hold",
+      "freeze",
+      "thaw",
+      "update_pickup_lib",
+    ]),
+    patronId: z.union([z.coerce.number().int().positive(), z.string().min(1)]).optional(),
+    holdType: z.string().optional(),
+    target: z.union([z.coerce.number(), z.string()]).optional(),
+    targetId: z.union([z.coerce.number(), z.string()]).optional(),
+    pickupLib: z.union([z.coerce.number().int().positive(), z.string().min(1)]).optional(),
+    holdId: z.union([z.coerce.number().int().positive(), z.string().min(1)]).optional(),
+    cause: z.union([z.number(), z.string()]).optional(),
+    reason: z.union([z.number(), z.string()]).optional(),
+    note: z.string().max(1024).optional().nullable(),
+    thawDate: z.string().optional().nullable(),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   try {
@@ -55,7 +65,8 @@ export async function GET(req: NextRequest) {
     const limit = parseIntMaybe(limitRaw) ?? 50;
     const offset = parseIntMaybe(offsetRaw) ?? 0;
 
-    const defaultOrgId = (actor as Record<string, unknown>)?.ws_ou ?? (actor as Record<string, unknown>)?.home_ou ?? 1;
+    const defaultOrgId =
+      (actor as Record<string, any>)?.ws_ou ?? (actor as Record<string, any>)?.home_ou ?? 1;
 
     const normalizeListPayload = (payload: any): any[] => {
       if (!Array.isArray(payload)) return [];
@@ -63,7 +74,7 @@ export async function GET(req: NextRequest) {
       return payload;
     };
 
-    const mapHold = (hold: any, extra: Record<string, unknown> = {}) => {
+    const mapHold = (hold: any, extra: Record<string, any> = {}) => {
       return {
         id: hold?.id,
         holdType: hold?.hold_type,
@@ -268,8 +279,8 @@ export async function GET(req: NextRequest) {
           { hold_type: "T", hold_target: titleId, org_unit: orgUnit },
         ]);
 
-        const result = res?.payload?.[0] as any || {};
-        const possible = Boolean((result as Record<string, unknown>)?.copy);
+        const result = (res?.payload?.[0] as any) || {};
+        const possible = Boolean((result as Record<string, any>)?.copy);
         return successResponse({ possible, result });
       }
 
@@ -310,7 +321,7 @@ export async function POST(req: NextRequest) {
 
     const audit = async (
       status: "success" | "failure",
-      details?: Record<string, unknown>,
+      details?: Record<string, any>,
       error?: string
     ) => {
       await logAuditEvent({
@@ -354,11 +365,13 @@ export async function POST(req: NextRequest) {
       const createdHoldId =
         typeof result === "number"
           ? result
-          : result && typeof result === "object" && typeof (result as Record<string, unknown>).result === "number"
-            ? (result as Record<string, unknown>).result
+          : result &&
+              typeof result === "object" &&
+              typeof (result as Record<string, any>).result === "number"
+            ? (result as Record<string, any>).result
             : null;
 
-      if (createdHoldId && !(result as Record<string, unknown>)?.ilsevent) {
+      if (createdHoldId && !(result as Record<string, any>)?.ilsevent) {
         await audit("success", {
           patronId,
           holdType,

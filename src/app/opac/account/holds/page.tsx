@@ -8,6 +8,14 @@ import { useLibrary } from "@/hooks/use-library";
 import { UnoptimizedImage } from "@/components/shared";
 import { featureFlags } from "@/lib/feature-flags";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   BookOpen,
   Clock,
@@ -34,11 +42,11 @@ const formatIcons: Record<string, React.ElementType> = {
 };
 
 export default function HoldsPage() {
-  const t = useTranslations("holdsPage");
+  const _t = useTranslations("holdsPage");
   const router = useRouter();
   const { library } = useLibrary();
-  const { 
-    isLoggedIn, 
+  const {
+    isLoggedIn,
     isLoading: sessionLoading,
     holds,
     fetchHolds,
@@ -72,13 +80,10 @@ export default function HoldsPage() {
     }
   }, [fetchHolds, isLoggedIn]);
 
-  const handleAction = async (
-    holdId: number, 
-    action: "cancel" | "suspend" | "activate"
-  ) => {
+  const handleAction = async (holdId: number, action: "cancel" | "suspend" | "activate") => {
     setActionLoading(holdId);
     setMessage(null);
-    
+
     let result;
     switch (action) {
       case "cancel":
@@ -91,12 +96,12 @@ export default function HoldsPage() {
         result = await activateHold(holdId);
         break;
     }
-    
+
     setMessage({
       type: result.success ? "success" : "error",
       text: result.message,
     });
-    
+
     setActionLoading(null);
     setTimeout(() => setMessage(null), 5000);
   };
@@ -136,10 +141,10 @@ export default function HoldsPage() {
     );
   }
 
-  const readyHolds = holds.filter(h => h.status === "ready");
-  const inTransitHolds = holds.filter(h => h.status === "in_transit");
-  const pendingHolds = holds.filter(h => h.status === "pending");
-  const suspendedHolds = holds.filter(h => h.status === "suspended");
+  const readyHolds = holds.filter((h) => h.status === "ready");
+  const inTransitHolds = holds.filter((h) => h.status === "in_transit");
+  const pendingHolds = holds.filter((h) => h.status === "pending");
+  const suspendedHolds = holds.filter((h) => h.status === "suspended");
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">
@@ -174,7 +179,7 @@ export default function HoldsPage() {
         }}
       />
       <div className="max-w-4xl mx-auto px-4">
-        <Link 
+        <Link
           href="/opac/account"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6"
         >
@@ -184,18 +189,25 @@ export default function HoldsPage() {
 
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">My Holds</h1>
-          <p className="text-muted-foreground">{holds.length} hold{holds.length !== 1 && "s"}</p>
+          <p className="text-muted-foreground">
+            {holds.length} hold{holds.length !== 1 && "s"}
+          </p>
         </div>
 
         {message && (
-          <div className={`mb-6 p-4 rounded-lg flex items-center gap-3
-                        ${message.type === "success" 
-                          ? "bg-green-50 border border-green-200" 
-                          : "bg-red-50 border border-red-200"}`}>
-            {message.type === "success" 
-              ? <CheckCircle className="h-5 w-5 text-green-600" />
-              : <AlertCircle className="h-5 w-5 text-red-600" />
-            }
+          <div
+            className={`mb-6 p-4 rounded-lg flex items-center gap-3
+                        ${
+                          message.type === "success"
+                            ? "bg-green-50 border border-green-200"
+                            : "bg-red-50 border border-red-200"
+                        }`}
+          >
+            {message.type === "success" ? (
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-red-600" />
+            )}
             <p className={message.type === "success" ? "text-green-800" : "text-red-800"}>
               {message.text}
             </p>
@@ -207,14 +219,14 @@ export default function HoldsPage() {
             <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
           </div>
         ) : holds.length === 0 ? (
-          <div className="bg-card rounded-xl shadow-sm border border-border p-12 text-center">
+          <div className="stx-surface rounded-xl p-12 text-center">
             <Clock className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">No holds</h2>
             <p className="text-muted-foreground mb-6">You don&apos;t have any items on hold.</p>
             <Link
               href="/opac/search"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white 
-                       rounded-lg font-medium hover:bg-primary-700 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 stx-action-primary 
+                       rounded-lg font-medium hover:brightness-110 transition-colors"
             >
               Browse Catalog
             </Link>
@@ -230,8 +242,8 @@ export default function HoldsPage() {
                 </h2>
                 <div className="space-y-3">
                   {readyHolds.map((hold) => (
-                    <HoldCard 
-                      key={hold.id} 
+                    <HoldCard
+                      key={hold.id}
                       hold={hold}
                       onCancel={() => setConfirmAction({ hold, action: "cancel" })}
                       isLoading={actionLoading === hold.id}
@@ -250,8 +262,8 @@ export default function HoldsPage() {
                 </h2>
                 <div className="space-y-3">
                   {inTransitHolds.map((hold) => (
-                    <HoldCard 
-                      key={hold.id} 
+                    <HoldCard
+                      key={hold.id}
                       hold={hold}
                       onCancel={() => setConfirmAction({ hold, action: "cancel" })}
                       onChangePickup={
@@ -272,8 +284,8 @@ export default function HoldsPage() {
                 </h2>
                 <div className="space-y-3">
                   {pendingHolds.map((hold) => (
-                    <HoldCard 
-                      key={hold.id} 
+                    <HoldCard
+                      key={hold.id}
                       hold={hold}
                       onCancel={() => setConfirmAction({ hold, action: "cancel" })}
                       onSuspend={() => setConfirmAction({ hold, action: "suspend" })}
@@ -296,8 +308,8 @@ export default function HoldsPage() {
                 </h2>
                 <div className="space-y-3">
                   {suspendedHolds.map((hold) => (
-                    <HoldCard 
-                      key={hold.id} 
+                    <HoldCard
+                      key={hold.id}
                       hold={hold}
                       onCancel={() => setConfirmAction({ hold, action: "cancel" })}
                       onActivate={() => setConfirmAction({ hold, action: "activate" })}
@@ -318,44 +330,52 @@ export default function HoldsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-card rounded-2xl max-w-md w-full shadow-xl border border-border p-6">
             <h2 className="text-xl font-bold text-foreground mb-2">Change pickup location</h2>
-            <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-              {pickupHold.title}
-            </p>
+            <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{pickupHold.title}</p>
 
-            <label htmlFor="new-pickup-location" className="block text-sm font-medium text-foreground/80 mb-2">
+            <label
+              htmlFor="new-pickup-location"
+              className="block text-sm font-medium text-foreground/80 mb-2"
+            >
               New pickup location
             </label>
-            <select id="new-pickup-location"
-              value={pickupLocationId || ""}
-              onChange={(e) => setPickupLocationId(parseInt(e.target.value, 10) || null)}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            <Select
+              value={pickupLocationId ? String(pickupLocationId) : "none"}
+              onValueChange={(value) =>
+                setPickupLocationId(value === "none" ? null : parseInt(value, 10))
+              }
               disabled={pickupLoading}
             >
-              <option value="">Select a location…</option>
-              {pickupLocations.map((loc) => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="new-pickup-location" className="w-full">
+                <SelectValue placeholder="Select a location..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Select a location…</SelectItem>
+                {pickupLocations.map((loc) => (
+                  <SelectItem key={loc.id} value={String(loc.id)}>
+                    {loc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <div className="mt-5 flex gap-3">
-              <button
+              <Button
                 type="button"
                 onClick={() => setPickupHold(null)}
                 disabled={pickupLoading}
-                className="flex-1 py-2 border border-border rounded-lg text-foreground/80 hover:bg-muted/30 transition-colors disabled:opacity-50"
+                variant="outline"
+                className="flex-1 text-foreground/80 hover:bg-muted/30 disabled:opacity-50"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={handleChangePickup}
                 disabled={pickupLoading || !pickupLocationId}
-                className="flex-1 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="stx-action-primary flex-1 font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {pickupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -364,15 +384,15 @@ export default function HoldsPage() {
   );
 }
 
-function HoldCard({ 
-  hold, 
+function HoldCard({
+  hold,
   onCancel,
   onSuspend,
   onActivate,
   onChangePickup,
   isLoading,
-}: { 
-  hold: PatronHold; 
+}: {
+  hold: PatronHold;
   onCancel: () => void;
   onSuspend?: () => void;
   onActivate?: () => void;
@@ -397,12 +417,14 @@ function HoldCard({
   };
 
   return (
-    <div className={`bg-card rounded-xl shadow-sm border p-4 flex gap-4
-                   ${hold.status === "ready" ? "border-green-200 bg-green-50/50" : "border-border"}`}>
+    <div
+      className={`bg-card rounded-xl shadow-sm border p-4 flex gap-4
+                   ${hold.status === "ready" ? "border-green-200 bg-green-50/50" : "border-border"}`}
+    >
       <div className="w-16 h-24 bg-muted rounded-lg overflow-hidden shrink-0">
         {hold.coverUrl ? (
           <UnoptimizedImage
-            src={hold.coverUrl} 
+            src={hold.coverUrl}
             alt={hold.title}
             className="w-full h-full object-cover"
           />
@@ -416,21 +438,21 @@ function HoldCard({
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold text-foreground truncate">{hold.title}</h3>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 ${statusColors[hold.status]}`}>
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 ${statusColors[hold.status]}`}
+          >
             {statusLabels[hold.status]}
           </span>
         </div>
-        
-        {hold.author && (
-          <p className="text-sm text-muted-foreground truncate">{hold.author}</p>
-        )}
-        
+
+        {hold.author && <p className="text-sm text-muted-foreground truncate">{hold.author}</p>}
+
         <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <MapPin className="h-4 w-4" />
             {hold.pickupLocationName}
           </span>
-          
+
           {hold.status === "pending" && typeof hold.queuePosition === "number" ? (
             <>
               <span className="text-muted-foreground/70">•</span>
@@ -467,49 +489,64 @@ function HoldCard({
 
       <div className="flex flex-col gap-2 shrink-0">
         {onChangePickup && hold.status !== "ready" ? (
-          <button
+          <Button
             type="button"
             onClick={onChangePickup}
             disabled={isLoading}
-            className="px-3 py-1.5 border border-border rounded-lg text-sm font-medium hover:bg-muted/30 transition-colors disabled:opacity-50"
+            variant="outline"
+            size="sm"
+            className="text-sm font-medium hover:bg-muted/30 disabled:opacity-50"
           >
             Change pickup
-          </button>
+          </Button>
         ) : null}
         {onActivate && (
-          <button type="button"
+          <Button
+            type="button"
             onClick={onActivate}
             disabled={isLoading}
-            className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium
-                     hover:bg-green-700 transition-colors disabled:opacity-50 
+            size="sm"
+            className="stx-action-primary text-sm font-medium
+                     disabled:opacity-50 
                      flex items-center gap-1"
           >
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
             Activate
-          </button>
+          </Button>
         )}
         {onSuspend && (
-          <button type="button"
+          <Button
+            type="button"
             onClick={onSuspend}
             disabled={isLoading}
-            className="px-3 py-1.5 border border-border rounded-lg text-sm font-medium
-                     hover:bg-muted/30 transition-colors disabled:opacity-50 
-                     flex items-center gap-1"
+            variant="outline"
+            size="sm"
+            className="text-sm font-medium hover:bg-muted/30 disabled:opacity-50 flex items-center gap-1"
           >
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="h-4 w-4" />}
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Pause className="h-4 w-4" />
+            )}
             Suspend
-          </button>
+          </Button>
         )}
-        <button type="button"
+        <Button
+          type="button"
           onClick={onCancel}
           disabled={isLoading}
-          className="px-3 py-1.5 border border-red-300 text-red-700 rounded-lg text-sm font-medium
-                   hover:bg-red-50 transition-colors disabled:opacity-50 
-                   flex items-center gap-1"
+          variant="outline"
+          size="sm"
+          className="border-red-300 text-red-700 text-sm font-medium
+                   hover:bg-red-50 disabled:opacity-50 flex items-center gap-1"
         >
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );

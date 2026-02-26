@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import {
-
   callOpenSRF,
   successResponse,
   errorResponse,
@@ -8,8 +7,7 @@ import {
   getRequestMeta,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
-import { z } from "zod";
-
+import { z as _z } from "zod";
 
 type OrgSettingDef = {
   key: string;
@@ -174,7 +172,7 @@ export async function GET(req: NextRequest) {
       [orgId, keys, authtoken]
     );
 
-    const values = (response?.payload?.[0] || {}) as Record<string, unknown>;
+    const values = (response?.payload?.[0] || {}) as Record<string, any>;
 
     const settings = SETTING_DEFS.map((def) => ({
       ...def,

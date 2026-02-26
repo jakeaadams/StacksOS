@@ -73,6 +73,11 @@ async function openAiChatCompletion(args: {
         : undefined,
       raw: json,
     };
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`AI provider timeout after ${args.config.timeoutMs}ms (openai)`);
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }
@@ -91,4 +96,3 @@ export const openAiProvider: AiProvider = {
     return { data, completion };
   },
 };
-

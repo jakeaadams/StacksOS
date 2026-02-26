@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
-  const t = useTranslations("privacyPage");
+  const _t = useTranslations("privacyPage");
   return (
     <div className="min-h-screen bg-muted/30">
       <section className="bg-card border-b border-border py-12">

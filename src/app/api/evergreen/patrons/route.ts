@@ -20,8 +20,6 @@ import { logger } from "@/lib/logger";
 import { storeCredential } from "@/lib/credential-store";
 import { z } from "zod";
 
-
-
 export async function GET(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["VIEW_USER"]);
@@ -78,10 +76,21 @@ export async function GET(req: NextRequest) {
       return errorResponse("Query or barcode required", 400);
     }
 
-    logger.debug({ requestId: getRequestMeta(req).requestId, route: "api.evergreen.patrons", query, searchType }, "Patrons search");
+    logger.debug(
+      {
+        requestId: getRequestMeta(req).requestId,
+        route: "api.evergreen.patrons",
+        query,
+        searchType,
+      },
+      "Patrons search"
+    );
 
     const fleshFields = ["card", "home_ou", "profile"];
-    const searchOu = Number((actor as Record<string, any>)?.ws_ou ?? (actor as Record<string, any>)?.home_ou ?? 1) || 1;
+    const searchOu =
+      Number(
+        (actor as Record<string, any>)?.ws_ou ?? (actor as Record<string, any>)?.home_ou ?? 1
+      ) || 1;
     const offset = parseInt(searchParams.get("offset") || "0");
 
     if (searchType === "barcode") {
@@ -129,13 +138,17 @@ export async function GET(req: NextRequest) {
 
         const results = Array.isArray(searchResponse?.payload) ? searchResponse.payload : [];
         const patrons = results
-          .filter((p: any) => p && !((p as Record<string, any>).ilsevent))
+          .filter((p: any) => p && !(p as Record<string, any>).ilsevent)
           .map(formatPatron);
 
         return successResponse({ count: patrons.length, patrons });
       } catch (err: any) {
         logger.warn(
-          { requestId: getRequestMeta(req).requestId, route: "api.evergreen.patrons", error: String(err) },
+          {
+            requestId: getRequestMeta(req).requestId,
+            route: "api.evergreen.patrons",
+            error: String(err),
+          },
           "Advanced patron search failed; falling back to pcrud actor.usr search"
         );
 
@@ -187,7 +200,7 @@ export async function GET(req: NextRequest) {
 
         const results = Array.isArray(pcrudResponse?.payload?.[0]) ? pcrudResponse.payload[0] : [];
         const patrons = results
-          .filter((p: any) => p && !((p as Record<string, any>).ilsevent))
+          .filter((p: any) => p && !(p as Record<string, any>).ilsevent)
           .map((p: any) => normalizePatron(p as Record<string, any>));
 
         return successResponse({ count: patrons.length, patrons });
@@ -200,7 +213,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fieldmapper objects with __p positional arrays
 function formatPatron(patron: Record<string, any>) {
   const card = patron.card?.__p || patron.card || {};
   const profile = patron.profile?.__p || patron.profile || {};
@@ -219,7 +231,6 @@ function formatPatron(patron: Record<string, any>) {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fieldmapper data
 function extractCard(patron: Record<string, any>) {
   const cards = patron.card || patron.cards || patron.__p?.[1];
   const card = Array.isArray(cards) ? cards[0] : cards;
@@ -242,7 +253,6 @@ function extractCard(patron: Record<string, any>) {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fieldmapper data
 function normalizePatron(patron: Record<string, any>, fallbackBarcode?: string) {
   const card = extractCard(patron);
   const rawId = patron.id ?? patron.__p?.[0];
@@ -292,14 +302,10 @@ async function resolveHomeOu(provided?: string | number | null) {
 }
 
 async function getDefaultProfileId(_authtoken: string): Promise<number> {
-  const groupsResponse = await callOpenSRF(
-    "open-ils.actor",
-    "open-ils.actor.groups.tree.retrieve"
-  );
+  const groupsResponse = await callOpenSRF("open-ils.actor", "open-ils.actor.groups.tree.retrieve");
   const tree = groupsResponse?.payload?.[0] as any;
   const candidates: Array<{ id: number; name: string }> = [];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- recursive org tree traversal
   const walk = (node: Record<string, any>) => {
     if (!node) return;
     const name = node.name ?? node[2];
@@ -341,23 +347,20 @@ async function getDefaultPatronSettings(authtoken: string, homeOu: number) {
     "open-ils.actor.ou_setting.ancestor_default.batch",
     [homeOu, ["ui.patron.default_ident_type", "ui.patron.default_country"], authtoken]
   );
-  const settings = settingsResponse?.payload?.[0] as any || {};
+  const settings = (settingsResponse?.payload?.[0] as any) || {};
 
   const identTypeRaw = settings["ui.patron.default_ident_type"];
-  const identType = Number.isFinite(parseInt(identTypeRaw, 10))
-    ? parseInt(identTypeRaw, 10)
-    : 1;
+  const identType = Number.isFinite(parseInt(identTypeRaw, 10)) ? parseInt(identTypeRaw, 10) : 1;
 
   const country = settings["ui.patron.default_country"] || "US";
   return { identType, country };
 }
 
 async function checkUsernameExists(authtoken: string, username: string): Promise<boolean> {
-  const response = await callOpenSRF(
-    "open-ils.actor",
-    "open-ils.actor.username.exists",
-    [authtoken, username]
-  );
+  const response = await callOpenSRF("open-ils.actor", "open-ils.actor.username.exists", [
+    authtoken,
+    username,
+  ]);
   const result = response?.payload?.[0] as any as any;
   if (isOpenSRFEvent(result)) {
     throw result;
@@ -372,11 +375,10 @@ async function checkUsernameExists(authtoken: string, username: string): Promise
 }
 
 async function checkBarcodeExists(authtoken: string, barcode: string): Promise<boolean> {
-  const response = await callOpenSRF(
-    "open-ils.actor",
-    "open-ils.actor.barcode.exists",
-    [authtoken, barcode]
-  );
+  const response = await callOpenSRF("open-ils.actor", "open-ils.actor.barcode.exists", [
+    authtoken,
+    barcode,
+  ]);
   const result = response?.payload?.[0] as any as any;
   if (isOpenSRFEvent(result)) {
     throw result;
@@ -522,7 +524,10 @@ export async function POST(req: NextRequest) {
       generated.password = password;
     }
 
-    const expireDate = body.expireDate || body.expire_date || formatDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
+    const expireDate =
+      body.expireDate ||
+      body.expire_date ||
+      formatDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
 
     const cardTempId = -1;
     const addressTempId = -2;
@@ -571,19 +576,14 @@ export async function POST(req: NextRequest) {
       billing_address: addressTempId,
     });
 
-    const response = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.patron.update",
-      [authtoken, patron]
-    );
+    const response = await callOpenSRF("open-ils.actor", "open-ils.actor.patron.update", [
+      authtoken,
+      patron,
+    ]);
 
     const result = response?.payload?.[0] as any as any;
     if (!result || isOpenSRFEvent(result) || result.ilsevent) {
-      return errorResponse(
-        getErrorMessage(result, "Patron creation failed"),
-        400,
-        result
-      );
+      return errorResponse(getErrorMessage(result, "Patron creation failed"), 400, result);
     }
 
     const normalized = normalizePatron(result, barcode);
@@ -694,9 +694,19 @@ export async function PUT(req: NextRequest) {
       : [];
 
     // These are optional collections, but Evergreen expects arrayrefs (not null).
-    updates.waiver_entries = Array.isArray((currentPatron as Record<string, any>).waiver_entries) ? (currentPatron as Record<string, any>).waiver_entries : [];
-    updates.survey_responses = Array.isArray((currentPatron as Record<string, any>).survey_responses) ? (currentPatron as Record<string, any>).survey_responses : [];
-    updates.stat_cat_entries = Array.isArray((currentPatron as Record<string, any>).stat_cat_entries) ? (currentPatron as Record<string, any>).stat_cat_entries : [];
+    updates.waiver_entries = Array.isArray((currentPatron as Record<string, any>).waiver_entries)
+      ? (currentPatron as Record<string, any>).waiver_entries
+      : [];
+    updates.survey_responses = Array.isArray(
+      (currentPatron as Record<string, any>).survey_responses
+    )
+      ? (currentPatron as Record<string, any>).survey_responses
+      : [];
+    updates.stat_cat_entries = Array.isArray(
+      (currentPatron as Record<string, any>).stat_cat_entries
+    )
+      ? (currentPatron as Record<string, any>).stat_cat_entries
+      : [];
 
     // Basic fields
     if (body.firstName !== undefined || body.first_given_name !== undefined) {
@@ -712,7 +722,8 @@ export async function PUT(req: NextRequest) {
       requestedUpdates.push("email");
     }
     if (body.phone !== undefined || body.day_phone !== undefined) {
-      updates.day_phone = (body.phone || body.day_phone) ? String(body.phone || body.day_phone).trim() : null;
+      updates.day_phone =
+        body.phone || body.day_phone ? String(body.phone || body.day_phone).trim() : null;
       requestedUpdates.push("day_phone");
     }
     if (body.homeLibrary !== undefined || body.home_ou !== undefined) {
@@ -755,20 +766,15 @@ export async function PUT(req: NextRequest) {
 
     const patron = encodeFieldmapper("au", updates);
 
-    const response = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.patron.update",
-      [authtoken, patron]
-    );
+    const response = await callOpenSRF("open-ils.actor", "open-ils.actor.patron.update", [
+      authtoken,
+      patron,
+    ]);
 
     const result = response?.payload?.[0] as any as any;
     const lastEvent = (result as Record<string, any>)?.last_event;
     if (!result || isOpenSRFEvent(result) || result.ilsevent || isOpenSRFEvent(lastEvent)) {
-      return errorResponse(
-        getErrorMessage(result, "Patron update failed"),
-        400,
-        result
-      );
+      return errorResponse(getErrorMessage(result, "Patron update failed"), 400, result);
     }
 
     const normalized = normalizePatron(result);
@@ -780,9 +786,16 @@ export async function PUT(req: NextRequest) {
       if (k === "day_phone") return (normalized.day_phone || null) !== (updates.day_phone || null);
       if (k === "home_ou") return Number(normalized.home_ou) !== Number(updates.home_ou);
       if (k === "profile") return Number(normalized.profile) !== Number(updates.profile);
-      if (k === "expire_date") return String(normalized.expire_date || "") !== String(updates.expire_date || "");
-      if (k === "active") return Boolean(normalized.active) !== Boolean(updates.active === "t" || updates.active === true);
-      if (k === "barred") return Boolean(normalized.barred) !== Boolean(updates.barred === "t" || updates.barred === true);
+      if (k === "expire_date")
+        return String(normalized.expire_date || "") !== String(updates.expire_date || "");
+      if (k === "active")
+        return (
+          Boolean(normalized.active) !== Boolean(updates.active === "t" || updates.active === true)
+        );
+      if (k === "barred")
+        return (
+          Boolean(normalized.barred) !== Boolean(updates.barred === "t" || updates.barred === true)
+        );
       return false;
     });
     if (mismatch) {
@@ -790,9 +803,13 @@ export async function PUT(req: NextRequest) {
         { requestId, route: "api.evergreen.patrons", patronId, mismatch },
         "Evergreen accepted patron.update but did not persist requested changes"
       );
-      return errorResponse("Patron update did not persist (Evergreen rejected one or more field updates)", 502, {
-        mismatch,
-      });
+      return errorResponse(
+        "Patron update did not persist (Evergreen rejected one or more field updates)",
+        502,
+        {
+          mismatch,
+        }
+      );
     }
 
     await logAuditEvent({
@@ -850,11 +867,10 @@ export async function PATCH(req: NextRequest) {
         isnew: 1,
       });
 
-      const response = await callOpenSRF(
-        "open-ils.actor",
-        "open-ils.actor.user.penalty.apply",
-        [authtoken, penalty]
-      );
+      const response = await callOpenSRF("open-ils.actor", "open-ils.actor.user.penalty.apply", [
+        authtoken,
+        penalty,
+      ]);
 
       const result = response?.payload?.[0] as any as any;
       if (isOpenSRFEvent(result) || result?.ilsevent) {
@@ -883,11 +899,10 @@ export async function PATCH(req: NextRequest) {
         return errorResponse("Penalty ID is required", 400);
       }
 
-      const response = await callOpenSRF(
-        "open-ils.actor",
-        "open-ils.actor.user.penalty.remove",
-        [authtoken, penaltyId]
-      );
+      const response = await callOpenSRF("open-ils.actor", "open-ils.actor.user.penalty.remove", [
+        authtoken,
+        penaltyId,
+      ]);
 
       const result = response?.payload?.[0] as any as any;
       if (isOpenSRFEvent(result) || result?.ilsevent) {
@@ -929,11 +944,10 @@ export async function PATCH(req: NextRequest) {
         isnew: 1,
       });
 
-      const response = await callOpenSRF(
-        "open-ils.actor",
-        "open-ils.actor.note.create",
-        [authtoken, note]
-      );
+      const response = await callOpenSRF("open-ils.actor", "open-ils.actor.note.create", [
+        authtoken,
+        note,
+      ]);
 
       const result = response?.payload?.[0] as any as any;
       if (isOpenSRFEvent(result) || result?.ilsevent) {
@@ -962,11 +976,10 @@ export async function PATCH(req: NextRequest) {
         return errorResponse("Note ID is required", 400);
       }
 
-      const response = await callOpenSRF(
-        "open-ils.actor",
-        "open-ils.actor.note.delete",
-        [authtoken, noteId]
-      );
+      const response = await callOpenSRF("open-ils.actor", "open-ils.actor.note.delete", [
+        authtoken,
+        noteId,
+      ]);
 
       const result = response?.payload?.[0] as any as any;
       if (isOpenSRFEvent(result) || result?.ilsevent) {
@@ -989,15 +1002,13 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (action === "getNotes") {
-      const response = await callOpenSRF(
-        "open-ils.actor",
-        "open-ils.actor.note.retrieve.all",
-        [authtoken, { usr: patronId }]
-      );
+      const response = await callOpenSRF("open-ils.actor", "open-ils.actor.note.retrieve.all", [
+        authtoken,
+        { usr: patronId },
+      ]);
 
-      const notes = response?.payload?.[0] as any as any || [];
-      const formattedNotes = (Array.isArray(notes) ? notes : [])// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fieldmapper
-      .map((n: any) => ({
+      const notes = (response?.payload?.[0] as any as any) || [];
+      const formattedNotes = (Array.isArray(notes) ? notes : []).map((n: any) => ({
         id: n.id || n.__p?.[0],
         title: n.title || n.__p?.[1] || "Note",
         value: n.value || n.__p?.[2] || "",
@@ -1015,9 +1026,8 @@ export async function PATCH(req: NextRequest) {
         "open-ils.actor.standing_penalty.types.retrieve"
       );
 
-      const types = response?.payload?.[0] as any as any || [];
-      const formattedTypes = (Array.isArray(types) ? types : [])// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw Evergreen fieldmapper
-      .map((t: any) => ({
+      const types = (response?.payload?.[0] as any as any) || [];
+      const formattedTypes = (Array.isArray(types) ? types : []).map((t: any) => ({
         id: t.id || t.__p?.[0],
         name: t.name || t.__p?.[1] || "Unknown",
         label: t.label || t.__p?.[2] || t.name || "Unknown",

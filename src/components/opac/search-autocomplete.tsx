@@ -4,6 +4,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/use-debounce";
 import { DEBOUNCE_DELAY_MS } from "@/lib/constants";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Search,
   BookOpen,
@@ -284,7 +293,7 @@ export function SearchAutocomplete({
     } else {
       const params = new URLSearchParams({ q: trimmed });
       if (scope !== "keyword") {
-        params.set("searchType", scope);
+        params.set("type", scope);
       }
       router.push(`/opac/search?${params.toString()}`);
     }
@@ -298,7 +307,7 @@ export function SearchAutocomplete({
       setQuery(item.title);
       const params = new URLSearchParams({ q: item.title });
       if (scope !== "keyword") {
-        params.set("searchType", scope);
+        params.set("type", scope);
       }
       router.push(`/opac/search?${params.toString()}`);
       return;
@@ -348,14 +357,14 @@ export function SearchAutocomplete({
   const wrapperClass = isHero ? `relative max-w-2xl mx-auto ${className}` : `relative ${className}`;
 
   const inputClass = isHero
-    ? "w-full py-4 md:py-5 text-lg rounded-full border-0 text-foreground placeholder:text-muted-foreground shadow-xl focus:outline-none focus:ring-4 focus:ring-white/30"
+    ? "w-full rounded-full border-0 py-4 text-lg shadow-xl focus-visible:ring-[4px] focus-visible:ring-white/30 md:py-5"
     : isPage
-      ? "w-full py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-foreground placeholder:text-muted-foreground"
-      : "w-full py-3 border border-border rounded-full bg-background focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-foreground placeholder:text-muted-foreground";
+      ? "w-full rounded-lg py-3"
+      : "w-full rounded-full bg-background py-3";
 
   const buttonClass = isHero
-    ? "absolute right-2 top-1/2 -translate-y-1/2 p-3 md:p-4 bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors shadow-lg"
-    : "absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors";
+    ? "absolute right-2 top-1/2 h-11 w-11 -translate-y-1/2 rounded-full shadow-lg md:h-12 md:w-12"
+    : "absolute right-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full";
 
   const dropdownClass =
     "absolute top-full left-0 right-0 mt-2 bg-card rounded-xl shadow-lg border border-border overflow-hidden z-50 max-h-[400px] overflow-y-auto";
@@ -371,25 +380,30 @@ export function SearchAutocomplete({
       <form onSubmit={handleSubmit} className="relative">
         {hasScopeSelector && (
           <div className="absolute left-1 top-1/2 -translate-y-1/2 z-10">
-            <select
+            <Select
               value={scope}
-              onChange={(e) => handleScopeChange(e.target.value as SearchScope)}
-              className={`appearance-none bg-primary-50 text-primary-700 font-medium text-sm
-                         rounded-full px-3 cursor-pointer border-0
-                         focus:outline-none focus:ring-2 focus:ring-primary-300
-                         ${isHero ? "py-2.5 md:py-3" : "py-2"}`}
-              aria-label="Search scope"
+              onValueChange={(value) => handleScopeChange(value as SearchScope)}
             >
-              {SCOPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                aria-label="Search scope"
+                className={`rounded-full border-0 bg-primary-50 px-3 text-sm font-medium text-primary-700 shadow-none focus:ring-2 focus:ring-primary-300 ${
+                  isHero ? "h-11 md:h-12" : "h-9"
+                }`}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SCOPE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 
-        <input
+        <Input
           ref={inputRef}
           type="text"
           value={query}
@@ -417,13 +431,13 @@ export function SearchAutocomplete({
           aria-activedescendant={activeIndex >= 0 ? `suggestion-${activeIndex}` : undefined}
         />
 
-        <button type="submit" className={buttonClass} aria-label="Search">
+        <Button type="submit" size="icon" className={buttonClass} aria-label="Search">
           {isLoading ? (
             <Loader2 className={`${isHero ? "h-5 w-5 md:h-6 md:w-6" : "h-5 w-5"} animate-spin`} />
           ) : (
             <Search className={isHero ? "h-5 w-5 md:h-6 md:w-6" : "h-5 w-5"} />
           )}
-        </button>
+        </Button>
       </form>
 
       {showDropdown && hasDropdownContent && (
@@ -446,33 +460,35 @@ export function SearchAutocomplete({
 
                   if (item.id < 0) {
                     return (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
                         key={item.id}
                         data-suggestion-item
                         id={`suggestion-${itemIndex}`}
                         role="option"
                         aria-selected={isActive}
                         onClick={() => handleSelectSuggestion(item)}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors
+                        className={`h-auto w-full justify-start gap-3 rounded-none px-4 py-2.5 text-left transition-colors
                                    ${isActive ? "bg-primary-50 text-primary-900" : "hover:bg-muted/30"}`}
                       >
                         <Clock className="h-4 w-4 text-muted-foreground/60 shrink-0" />
                         <span className="text-sm text-foreground">{item.title}</span>
-                      </button>
+                      </Button>
                     );
                   }
 
                   return (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
                       key={item.id}
                       data-suggestion-item
                       id={`suggestion-${itemIndex}`}
                       role="option"
                       aria-selected={isActive}
                       onClick={() => handleSelectSuggestion(item)}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors
+                      className={`h-auto w-full justify-start gap-3 rounded-none px-4 py-2.5 text-left transition-colors
                                  border-b border-border/30 last:border-0
                                  ${isActive ? "bg-primary-50 text-primary-900" : "hover:bg-muted/30"}`}
                     >
@@ -490,7 +506,7 @@ export function SearchAutocomplete({
                           {item.format}
                         </span>
                       )}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -498,19 +514,19 @@ export function SearchAutocomplete({
           })}
 
           {query.trim() && suggestions.length > 0 && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => {
                 setIsOpen(false);
                 const params = new URLSearchParams({ q: query.trim() });
-                if (scope !== "keyword") params.set("searchType", scope);
+                if (scope !== "keyword") params.set("type", scope);
                 router.push(`/opac/search?${params.toString()}`);
               }}
-              className="block w-full p-3 text-center text-primary hover:bg-muted/30
-                         font-medium text-sm border-t border-border/50"
+              className="block h-auto w-full rounded-none border-t border-border/50 p-3 text-center text-sm font-medium text-primary hover:bg-muted/30"
             >
               See all results for &quot;{query.trim()}&quot;
-            </button>
+            </Button>
           )}
         </div>
       )}

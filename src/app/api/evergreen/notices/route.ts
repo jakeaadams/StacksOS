@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import {
-
   callOpenSRF,
   successResponse,
   errorResponse,
@@ -9,14 +8,19 @@ import {
   getRequestMeta,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
+import { logger } from "@/lib/logger";
 import { requirePermissions } from "@/lib/permissions";
 import { sendNotice } from "@/lib/email";
 import type { NoticeType, NoticeContext } from "@/lib/email";
-import { getActiveTemplate, createNotificationEvent, createDelivery, markDeliveryAttempt } from "@/lib/db/notifications";
+import {
+  getActiveTemplate,
+  createNotificationEvent,
+  createDelivery,
+  markDeliveryAttempt,
+} from "@/lib/db/notifications";
 import { renderTemplateString } from "@/lib/notifications/render";
 import { sendSms } from "@/lib/sms/provider";
 import { z } from "zod";
-
 
 interface PatronNoticePreferences {
   patronId: number;
@@ -37,7 +41,11 @@ interface PatronNoticePreferences {
   smsFineBill: boolean;
 }
 
-function isNoticeTypeEnabled(prefs: PatronNoticePreferences, noticeType: NoticeType, channel: "email" | "sms") {
+function isNoticeTypeEnabled(
+  prefs: PatronNoticePreferences,
+  noticeType: NoticeType,
+  channel: "email" | "sms"
+) {
   if (channel === "email") {
     if (!prefs.emailEnabled) return false;
     switch (noticeType) {
@@ -100,7 +108,7 @@ async function getPatronPreferences(
     settingTypes,
   ]);
 
-  const settings = response?.payload?.[0] as any as any || {};
+  const settings = (response?.payload?.[0] as any as any) || {};
 
   return {
     patronId,
@@ -177,20 +185,24 @@ async function getLibraryInfo(authtoken: string, orgId: number) {
 }
 
 // GET - Retrieve patron notification preferences
-const noticesPostSchema = z.object({
-  patron_id: z.coerce.number().int().positive(),
-  notice_type: z.string().trim().min(1),
-  items: z.array(z.record(z.string(), z.unknown())).optional(),
-  holds: z.array(z.record(z.string(), z.unknown())).optional(),
-  bills: z.array(z.record(z.string(), z.unknown())).optional(),
-  expiration_date: z.string().optional(),
-  channel: z.enum(["email", "sms"]).optional(),
-}).passthrough();
+const noticesPostSchema = z
+  .object({
+    patron_id: z.coerce.number().int().positive(),
+    notice_type: z.string().trim().min(1),
+    items: z.array(z.record(z.string(), z.unknown())).optional(),
+    holds: z.array(z.record(z.string(), z.unknown())).optional(),
+    bills: z.array(z.record(z.string(), z.unknown())).optional(),
+    expiration_date: z.string().optional(),
+    channel: z.enum(["email", "sms"]).optional(),
+  })
+  .passthrough();
 
-const noticesPatchSchema = z.object({
-  patron_id: z.coerce.number().int().positive(),
-  preferences: z.record(z.string(), z.unknown()),
-}).passthrough();
+const noticesPatchSchema = z
+  .object({
+    patron_id: z.coerce.number().int().positive(),
+    preferences: z.record(z.string(), z.unknown()),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   try {
@@ -217,7 +229,8 @@ export async function POST(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
     const body = noticesPostSchema.parse(await req.json());
-    const { patron_id, notice_type, items, holds, bills, expiration_date, channel } = body as Record<string, any>;
+    const { patron_id, notice_type, items, holds, bills, expiration_date, channel } =
+      body as Record<string, any>;
     const noticeChannel = channel === "sms" ? "sms" : "email";
 
     if (!patron_id || !notice_type) {
@@ -270,15 +283,22 @@ export async function POST(req: NextRequest) {
 
     if (noticeChannel === "email") {
       if (!patron.email) return errorResponse("Patron has no email address", 400);
-      const sendResult = await sendNotice({ type: noticeType, context, createdBy: actor?.id ?? null });
+      const sendResult = await sendNotice({
+        type: noticeType,
+        context,
+        createdBy: actor?.id ?? null,
+      });
       notificationEventId = sendResult.eventId;
       deliveryId = sendResult.deliveryId;
     } else {
-      const phone =
-        String(patron.day_phone || patron.other_phone || patron.evening_phone || patron.phone || "").trim();
+      const phone = String(
+        patron.day_phone || patron.other_phone || patron.evening_phone || patron.phone || ""
+      ).trim();
       if (!phone) return errorResponse("Patron has no phone number for SMS", 400);
 
-      const eventId = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+      const eventId = globalThis.crypto?.randomUUID
+        ? globalThis.crypto.randomUUID()
+        : `${Date.now()}-${Math.random()}`;
       await createNotificationEvent({
         id: eventId,
         channel: "sms",
@@ -288,10 +308,14 @@ export async function POST(req: NextRequest) {
         createdBy: actor?.id ?? null,
         context,
       });
-      const delId = await createDelivery({ eventId, provider: String(process.env.STACKSOS_SMS_PROVIDER || "console") });
+      const delId = await createDelivery({
+        eventId,
+        provider: String(process.env.STACKSOS_SMS_PROVIDER || "console"),
+      });
 
       const active = await getActiveTemplate("sms", noticeType);
-      const msgTemplate = active?.body_template || "{{library.name}} notice for {{patron.firstName}}";
+      const msgTemplate =
+        active?.body_template || "{{library.name}} notice for {{patron.firstName}}";
       const message = renderTemplateString(msgTemplate, context, { html: false });
 
       try {
@@ -313,17 +337,30 @@ export async function POST(req: NextRequest) {
       entity: "email_notice",
       entityId: patron_id,
       status: "success",
-      details: { noticeType, patronId: patron_id, channel: noticeChannel, recipient: noticeChannel === "email" ? patron.email : undefined, notificationEventId, deliveryId },
+      details: {
+        noticeType,
+        patronId: patron_id,
+        channel: noticeChannel,
+        recipient: noticeChannel === "email" ? patron.email : undefined,
+        notificationEventId,
+        deliveryId,
+      },
       actor,
       ip,
       userAgent,
       requestId,
     });
 
-    return successResponse({ sent: true, channel: noticeChannel, recipient: noticeChannel === "email" ? patron.email : undefined, notificationEventId, deliveryId });
+    return successResponse({
+      sent: true,
+      channel: noticeChannel,
+      recipient: noticeChannel === "email" ? patron.email : undefined,
+      notificationEventId,
+      deliveryId,
+    });
   } catch (error: any) {
     const errorMsg = error instanceof Error ? (error as Error).message : String(error);
-    console.error("Route /api/evergreen/notices failed:", error);
+    logger.error({ error: String(error) }, "Route /api/evergreen/notices failed");
 
     await logAuditEvent({
       action: "notice.sent",

@@ -35,6 +35,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface SearchResult {
   id: number;
@@ -132,8 +134,8 @@ export function OPACHeader() {
   };
 
   return (
-    <header className="bg-card border-b border-border sticky top-0 z-50">
-      <div className="bg-primary text-primary-foreground px-4 py-2 text-sm">
+    <header className="sticky top-0 z-50 border-b border-border/70 surface-glass">
+      <div className="bg-[linear-gradient(98deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_100%)] text-primary-foreground px-4 py-2 text-sm">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {library?.phone ? (
@@ -183,7 +185,7 @@ export function OPACHeader() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-4">
+      <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           <Link href="/opac" className="flex items-center gap-3 shrink-0">
             {library?.logoUrl ? (
@@ -199,14 +201,14 @@ export function OPACHeader() {
               />
             ) : (
               <div
-                className="h-10 w-10 bg-primary-600 rounded-lg flex items-center justify-center"
+                className="h-10 w-10 rounded-xl bg-gradient-to-br from-[hsl(var(--brand-1))] via-[hsl(var(--brand-3))] to-[hsl(var(--brand-2))] flex items-center justify-center shadow-[0_16px_24px_-14px_hsl(var(--brand-3)/0.9)]"
                 aria-hidden="true"
               >
                 <BookOpen className="h-6 w-6 text-white" />
               </div>
             )}
             <div className="hidden sm:block">
-              <h1 className="font-bold text-lg text-foreground leading-tight">
+              <h1 className="font-bold text-lg leading-tight stx-brand-text">
                 {libraryLoading ? "Loading..." : library?.name || "Library Catalog"}
               </h1>
               {library?.tagline && (
@@ -222,19 +224,20 @@ export function OPACHeader() {
           >
             <form onSubmit={handleSearchSubmit} className="w-full">
               <div className="relative">
-                <input
+                <Input
                   type="text"
                   id="desktop-search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => searchResults.length > 0 && setShowResults(true)}
                   placeholder="Search books, movies, music..."
-                  className="w-full pl-4 pr-12 py-3 border border-border rounded-full bg-background focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-foreground placeholder:text-muted-foreground"
+                  className="w-full rounded-full border-border/80 bg-card/78 py-3 pl-4 pr-12 backdrop-blur-sm focus-visible:border-primary/40 focus-visible:ring-[3px] focus-visible:ring-primary-500/30"
                   autoComplete="off"
                 />
-                <button
+                <Button
                   type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors"
+                  size="icon"
+                  className="absolute right-1.5 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow-[0_12px_20px_-14px_hsl(var(--brand-3)/0.9)]"
                   aria-label="Search"
                 >
                   {isSearching ? (
@@ -242,18 +245,19 @@ export function OPACHeader() {
                   ) : (
                     <Search className="h-5 w-5" />
                   )}
-                </button>
+                </Button>
               </div>
             </form>
 
             {showResults && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl shadow-lg border border-border overflow-hidden z-50">
+              <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/75 bg-card/92 backdrop-blur-md shadow-[0_20px_36px_-26px_hsl(var(--shadow-tint)/0.78)] overflow-hidden z-50">
                 {searchResults.map((result) => (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     key={result.id}
                     onClick={() => handleResultClick(result.id)}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-muted/30 text-left border-b border-border/50 last:border-0"
+                    className="h-auto w-full justify-start gap-3 rounded-none border-b border-border/50 p-3 text-left hover:bg-muted/30 last:border-0"
                   >
                     {result.coverUrl ? (
                       <Image
@@ -275,7 +279,7 @@ export function OPACHeader() {
                         <p className="text-sm text-muted-foreground truncate">{result.author}</p>
                       )}
                     </div>
-                  </button>
+                  </Button>
                 ))}
                 <Link
                   href={`/opac/search?q=${encodeURIComponent(searchQuery)}`}
@@ -291,10 +295,12 @@ export function OPACHeader() {
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
 
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={toggleTheme}
-              className="p-2 rounded-full hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+              className="rounded-full stx-pill text-muted-foreground hover:text-foreground"
               aria-label={
                 mounted && resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"
               }
@@ -304,11 +310,11 @@ export function OPACHeader() {
               ) : (
                 <Moon className="h-5 w-5" />
               )}
-            </button>
+            </Button>
 
             {isLoggedIn ? (
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-2 px-4 py-2 rounded-full border border-border hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <DropdownMenuTrigger className="flex items-center gap-2 px-4 py-2 rounded-full stx-pill transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <User className="h-5 w-5 text-muted-foreground" />
                   <span className="hidden sm:inline text-sm font-medium text-foreground/80">
                     {patron?.firstName || "My Account"}
@@ -362,40 +368,43 @@ export function OPACHeader() {
             ) : (
               <Link
                 href="/opac/login"
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors font-medium"
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-[linear-gradient(125deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_88%)] text-white hover:brightness-110 transition-colors font-medium shadow-[0_16px_24px_-16px_hsl(var(--brand-3)/0.88)]"
               >
                 <User className="h-5 w-5" />
                 <span className="hidden sm:inline">Sign In</span>
               </Link>
             )}
 
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-muted-foreground hover:bg-muted/50 rounded-lg"
+              className="rounded-lg stx-pill text-muted-foreground md:hidden"
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
             >
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+            </Button>
           </div>
         </div>
 
         <div className="md:hidden mt-4 relative" role="search">
           <form onSubmit={handleSearchSubmit}>
             <div className="relative">
-              <input
+              <Input
                 type="text"
                 id="mobile-search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchResults.length > 0 && setShowResults(true)}
                 placeholder="Search books, movies, music..."
-                className="w-full pl-4 pr-12 py-3 border border-border rounded-full bg-background focus:outline-none focus:ring-2 focus:ring-primary-500 text-foreground placeholder:text-muted-foreground"
+                className="w-full rounded-full border-border/80 bg-card/78 py-3 pl-4 pr-12 backdrop-blur-sm focus-visible:border-primary/40 focus-visible:ring-[3px] focus-visible:ring-primary-500/30"
                 autoComplete="off"
               />
-              <button
+              <Button
                 type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors"
+                size="icon"
+                className="absolute right-1.5 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow-[0_12px_20px_-14px_hsl(var(--brand-3)/0.9)]"
                 aria-label="Search"
               >
                 {isSearching ? (
@@ -403,18 +412,19 @@ export function OPACHeader() {
                 ) : (
                   <Search className="h-5 w-5" />
                 )}
-              </button>
+              </Button>
             </div>
           </form>
 
           {showResults && searchResults.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl shadow-lg border border-border overflow-hidden z-50">
+            <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/75 bg-card/92 backdrop-blur-md shadow-[0_20px_36px_-26px_hsl(var(--shadow-tint)/0.78)] overflow-hidden z-50">
               {searchResults.slice(0, 4).map((result) => (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   key={result.id}
                   onClick={() => handleResultClick(result.id)}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-muted/30 text-left border-b border-border/50 last:border-0"
+                  className="h-auto w-full justify-start gap-3 rounded-none border-b border-border/50 p-3 text-left hover:bg-muted/30 last:border-0"
                 >
                   <div className="w-8 h-12 bg-muted rounded flex items-center justify-center shrink-0">
                     <BookOpen className="h-4 w-4 text-muted-foreground/70" />
@@ -425,7 +435,7 @@ export function OPACHeader() {
                       <p className="text-xs text-muted-foreground truncate">{result.author}</p>
                     )}
                   </div>
-                </button>
+                </Button>
               ))}
               <Link
                 href={`/opac/search?q=${encodeURIComponent(searchQuery)}`}
@@ -440,18 +450,18 @@ export function OPACHeader() {
       </div>
 
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-card">
+        <div className="md:hidden border-t border-border/70 bg-card/90 backdrop-blur-md">
           <nav className="px-4 py-4 space-y-2">
             <Link
               href="/opac"
-              className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+              className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg stx-surface-hover"
               onClick={() => setMobileMenuOpen(false)}
             >
               Home
             </Link>
             <Link
               href="/opac/search"
-              className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+              className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg stx-surface-hover"
               onClick={() => setMobileMenuOpen(false)}
             >
               Browse Catalog
@@ -459,7 +469,7 @@ export function OPACHeader() {
             {featureFlags.opacEvents ? (
               <Link
                 href="/opac/events"
-                className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+                className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg stx-surface-hover"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Events
@@ -468,7 +478,7 @@ export function OPACHeader() {
             {featureFlags.opacDigitalLibrary ? (
               <Link
                 href="/opac/digital"
-                className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+                className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg stx-surface-hover"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Digital Library
@@ -477,7 +487,7 @@ export function OPACHeader() {
             {featureFlags.opacKids ? (
               <Link
                 href="/opac/kids"
-                className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+                className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg stx-surface-hover"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Kids Catalog
@@ -486,19 +496,20 @@ export function OPACHeader() {
             {featureFlags.opacTeens ? (
               <Link
                 href="/opac/teens"
-                className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+                className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg stx-surface-hover"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Teens Catalog
               </Link>
             ) : null}
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => {
                 toggleTheme();
                 setMobileMenuOpen(false);
               }}
-              className="w-full flex items-center gap-2 px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+              className="h-auto w-full justify-start gap-2 rounded-lg px-4 py-2 text-foreground/80 stx-surface-hover"
             >
               {mounted && resolvedTheme === "dark" ? (
                 <>
@@ -509,20 +520,20 @@ export function OPACHeader() {
                   <Moon className="h-4 w-4" /> Dark Mode
                 </>
               )}
-            </button>
+            </Button>
             {isLoggedIn && (
               <>
                 <div className="border-t border-border my-2" />
                 <Link
                   href="/opac/account/checkouts"
-                  className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+                  className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg stx-surface-hover"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   My Checkouts
                 </Link>
                 <Link
                   href="/opac/account/holds"
-                  className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg"
+                  className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg stx-surface-hover"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   My Holds

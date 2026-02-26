@@ -37,14 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  Package,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  Loader2,
-  Filter,
-} from "lucide-react";
+import { Package, CheckCircle, XCircle, AlertTriangle, Loader2, Filter } from "lucide-react";
 
 interface Transit {
   id: number;
@@ -96,7 +89,9 @@ export default function TransitsPage() {
   const fetchTransits = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetchWithAuth(`/api/evergreen/transits?org_id=${user?.activeOrgId}&direction=incoming`);
+      const response = await fetchWithAuth(
+        `/api/evergreen/transits?org_id=${user?.activeOrgId}&direction=incoming`
+      );
       const data = await response.json();
       if (data.ok && data.transits) {
         setTransits(data.transits);
@@ -109,36 +104,39 @@ export default function TransitsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.activeOrgId]);
 
   useEffect(() => {
     fetchTransits();
   }, [fetchTransits]);
 
   // Handle barcode scan for quick receive
-  const handleBarcodeScan = useCallback(async (barcode: string) => {
-    try {
-      const response = await fetchWithAuth("/api/evergreen/transits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "receive",
-          copy_barcode: barcode,
-        }),
-      });
+  const handleBarcodeScan = useCallback(
+    async (barcode: string) => {
+      try {
+        const response = await fetchWithAuth("/api/evergreen/transits", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "receive",
+            copy_barcode: barcode,
+          }),
+        });
 
-      const data = await response.json();
-      if (data.ok) {
-        toast.success(data.hold ? "Transit received - Hold captured!" : "Transit received");
-        fetchTransits();
-      } else {
-        toast.error(data.error || "Failed to receive transit");
+        const data = await response.json();
+        if (data.ok) {
+          toast.success(data.hold ? "Transit received - Hold captured!" : "Transit received");
+          fetchTransits();
+        } else {
+          toast.error(data.error || "Failed to receive transit");
+        }
+      } catch (error) {
+        clientLogger.error("Failed to receive transit:", error);
+        toast.error("Failed to receive transit");
       }
-    } catch (error) {
-      clientLogger.error("Failed to receive transit:", error);
-      toast.error("Failed to receive transit");
-    }
-  }, [fetchTransits]);
+    },
+    [fetchTransits]
+  );
 
   // Handle receive action
   const handleReceive = useCallback((transit: Transit) => {
@@ -197,7 +195,15 @@ export default function TransitsPage() {
       const data = await response.json();
       if (data.ok) {
         toast.success(data.hold ? "Transit received - Hold captured!" : "Transit received");
-        setDialogState({ mode: null, transit: null, barcode: "", exceptionReason: "", exceptionNotes: "", abortReason: "", loading: false });
+        setDialogState({
+          mode: null,
+          transit: null,
+          barcode: "",
+          exceptionReason: "",
+          exceptionNotes: "",
+          abortReason: "",
+          loading: false,
+        });
         fetchTransits();
       } else {
         toast.error(data.error || "Failed to receive transit");
@@ -233,7 +239,15 @@ export default function TransitsPage() {
       const data = await response.json();
       if (data.ok) {
         toast.success("Transit exception recorded");
-        setDialogState({ mode: null, transit: null, barcode: "", exceptionReason: "", exceptionNotes: "", abortReason: "", loading: false });
+        setDialogState({
+          mode: null,
+          transit: null,
+          barcode: "",
+          exceptionReason: "",
+          exceptionNotes: "",
+          abortReason: "",
+          loading: false,
+        });
         fetchTransits();
       } else {
         toast.error(data.error || "Failed to record exception");
@@ -268,7 +282,15 @@ export default function TransitsPage() {
       const data = await response.json();
       if (data.ok) {
         toast.success("Transit cancelled");
-        setDialogState({ mode: null, transit: null, barcode: "", exceptionReason: "", exceptionNotes: "", abortReason: "", loading: false });
+        setDialogState({
+          mode: null,
+          transit: null,
+          barcode: "",
+          exceptionReason: "",
+          exceptionNotes: "",
+          abortReason: "",
+          loading: false,
+        });
         fetchTransits();
       } else {
         toast.error(data.error || "Failed to cancel transit");
@@ -283,7 +305,15 @@ export default function TransitsPage() {
 
   // Close dialog
   const closeDialog = useCallback(() => {
-    setDialogState({ mode: null, transit: null, barcode: "", exceptionReason: "", exceptionNotes: "", abortReason: "", loading: false });
+    setDialogState({
+      mode: null,
+      transit: null,
+      barcode: "",
+      exceptionReason: "",
+      exceptionNotes: "",
+      abortReason: "",
+      loading: false,
+    });
   }, []);
 
   // Filter transits by status
@@ -307,7 +337,9 @@ export default function TransitsPage() {
           <div className="max-w-md">
             <div className="font-medium truncate">{row.original.title || "Unknown Title"}</div>
             {row.original.call_number && (
-              <div className="text-xs text-muted-foreground truncate">{row.original.call_number}</div>
+              <div className="text-xs text-muted-foreground truncate">
+                {row.original.call_number}
+              </div>
             )}
           </div>
         ),
@@ -315,9 +347,7 @@ export default function TransitsPage() {
       {
         accessorKey: "barcode",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Barcode" />,
-        cell: ({ row }) => (
-          <div className="font-mono text-sm">{row.original.barcode || "N/A"}</div>
-        ),
+        cell: ({ row }) => <div className="font-mono text-sm">{row.original.barcode || "N/A"}</div>,
       },
       {
         accessorKey: "source",
@@ -361,27 +391,15 @@ export default function TransitsPage() {
           <div className="flex items-center gap-2">
             {!row.original.dest_recv_time && (
               <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleReceive(row.original)}
-                >
+                <Button size="sm" variant="outline" onClick={() => handleReceive(row.original)}>
                   <CheckCircle className="h-4 w-4 mr-1" />
                   Receive
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleException(row.original)}
-                >
+                <Button size="sm" variant="outline" onClick={() => handleException(row.original)}>
                   <AlertTriangle className="h-4 w-4 mr-1" />
                   Exception
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleAbort(row.original)}
-                >
+                <Button size="sm" variant="outline" onClick={() => handleAbort(row.original)}>
                   <XCircle className="h-4 w-4 mr-1" />
                   Cancel
                 </Button>
@@ -402,9 +420,7 @@ export default function TransitsPage() {
     <PageContainer>
       <PageHeader
         title="Transit Management"
-        
         breadcrumbs={[{ label: "Circulation", href: "/staff/circulation" }, { label: "Transits" }]}
-        
       />
 
       <PageContent>
@@ -413,9 +429,7 @@ export default function TransitsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Quick Transit Receipt</CardTitle>
-              <CardDescription>
-                Scan an item barcode to receive it from transit
-              </CardDescription>
+              <CardDescription>Scan an item barcode to receive it from transit</CardDescription>
             </CardHeader>
             <CardContent>
               <BarcodeInput
@@ -473,8 +487,12 @@ export default function TransitsPage() {
                     onClick: () => router.push("/staff/help#evergreen-setup"),
                   }}
                 >
-                  <Button variant="ghost" size="sm" onClick={() => router.push("/staff/help#demo-data")}>
-                    Seed demo data
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push("/staff/help#evergreen-setup")}
+                  >
+                    Evergreen setup checklist
                   </Button>
                 </EmptyState>
               ) : (
@@ -490,9 +508,7 @@ export default function TransitsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Receive Transit</DialogTitle>
-            <DialogDescription>
-              Confirm receipt of this item at its destination
-            </DialogDescription>
+            <DialogDescription>Confirm receipt of this item at its destination</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -527,9 +543,7 @@ export default function TransitsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Transit Exception</DialogTitle>
-            <DialogDescription>
-              Record an exception for this transit
-            </DialogDescription>
+            <DialogDescription>Record an exception for this transit</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -538,7 +552,8 @@ export default function TransitsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="exception-reason">Exception Reason *</Label>
-              <Select id="item-2"
+              <Select
+                id="item-2"
                 value={dialogState.exceptionReason}
                 onValueChange={(value) =>
                   setDialogState((prev) => ({ ...prev, exceptionReason: value }))
@@ -585,9 +600,7 @@ export default function TransitsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cancel Transit</DialogTitle>
-            <DialogDescription>
-              Confirm cancellation of this transit
-            </DialogDescription>
+            <DialogDescription>Confirm cancellation of this transit</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -611,11 +624,7 @@ export default function TransitsPage() {
             <Button variant="outline" onClick={closeDialog} disabled={dialogState.loading}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmAbort}
-              disabled={dialogState.loading}
-            >
+            <Button variant="destructive" onClick={confirmAbort} disabled={dialogState.loading}>
               {dialogState.loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirm Cancellation
             </Button>

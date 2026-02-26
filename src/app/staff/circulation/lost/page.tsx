@@ -9,7 +9,6 @@ import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
 import {
-
   PageContainer,
   PageHeader,
   PageContent,
@@ -28,15 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  AlertTriangle,
-  DollarSign,
-  Package,
-  PackageX,
-  Search,
-  Undo2,
-  XCircle,
-} from "lucide-react";
+import { AlertTriangle, DollarSign, Package, PackageX, Search, Undo2, XCircle } from "lucide-react";
 
 interface PatronInfo {
   id: number;
@@ -108,7 +99,9 @@ export default function LostMissingDamagedPage() {
   const [patron, setPatron] = useState<PatronInfo | null>(null);
   const [lostItems, setLostItems] = useState<LostItem[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
-  const [summary, setSummary] = useState<{ totalLostItems: number; totalOwed: number } | null>(null);
+  const [summary, setSummary] = useState<{ totalLostItems: number; totalOwed: number } | null>(
+    null
+  );
   const [selectedItem, setSelectedItem] = useState<ItemInfo | null>(null);
 
   const [markLostOpen, setMarkLostOpen] = useState(false);
@@ -130,7 +123,8 @@ export default function LostMissingDamagedPage() {
     setError(null);
 
     try {
-      const patronRes = await fetchWithAuth(`/api/evergreen/patrons?barcode=${encodeURIComponent(barcode.trim())}`
+      const patronRes = await fetchWithAuth(
+        `/api/evergreen/patrons?barcode=${encodeURIComponent(barcode.trim())}`
       );
       const patronData = await patronRes.json();
 
@@ -187,7 +181,9 @@ export default function LostMissingDamagedPage() {
     setError(null);
 
     try {
-      const res = await fetchWithAuth(`/api/evergreen/lost?item_barcode=${encodeURIComponent(barcode.trim())}`);
+      const res = await fetchWithAuth(
+        `/api/evergreen/lost?item_barcode=${encodeURIComponent(barcode.trim())}`
+      );
       const data = await res.json();
 
       if (data.ok) {
@@ -394,9 +390,7 @@ export default function LostMissingDamagedPage() {
         accessorKey: "copy_barcode",
         header: "Barcode",
         cell: ({ row }) => (
-          <span className="font-mono text-sm">
-            {row.original.copy_barcode || "—"}
-          </span>
+          <span className="font-mono text-sm">{row.original.copy_barcode || "—"}</span>
         ),
       },
       {
@@ -639,7 +633,9 @@ export default function LostMissingDamagedPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Find Patron</CardTitle>
-                <CardDescription>Scan a patron card to review lost items and bills.</CardDescription>
+                <CardDescription>
+                  Scan a patron card to review lost items and bills.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <BarcodeInput
@@ -689,7 +685,12 @@ export default function LostMissingDamagedPage() {
                     data={lostItems}
                     searchable={false}
                     paginated={false}
-                    emptyState={<EmptyState title="No lost items" description="This patron has no lost items." />}
+                    emptyState={
+                      <EmptyState
+                        title="No lost items"
+                        description="This patron has no lost items."
+                      />
+                    }
                   />
                 </CardContent>
               </Card>
@@ -706,7 +707,9 @@ export default function LostMissingDamagedPage() {
                     data={bills}
                     searchable={false}
                     paginated={false}
-                    emptyState={<EmptyState title="No bills" description="No lost item bills found." />}
+                    emptyState={
+                      <EmptyState title="No bills" description="No lost item bills found." />
+                    }
                   />
                 </CardContent>
               </Card>
@@ -719,8 +722,14 @@ export default function LostMissingDamagedPage() {
                     title="No lost items or bills"
                     description="This patron has no lost items or outstanding lost item bills."
                     icon={Search}
-                    action={{ label: "Open patron record", onClick: () => router.push(`/staff/patrons/${patron.id}`) }}
-                    secondaryAction={{ label: "Seed demo data", onClick: () => router.push("/staff/help#demo-data") }}
+                    action={{
+                      label: "Open patron record",
+                      onClick: () => router.push(`/staff/patrons/${patron.id}`),
+                    }}
+                    secondaryAction={{
+                      label: "Evergreen setup checklist",
+                      onClick: () => router.push("/staff/help#evergreen-setup"),
+                    }}
                   />
                 </CardContent>
               </Card>
@@ -777,7 +786,7 @@ export default function LostMissingDamagedPage() {
         open={markDamagedOpen}
         onOpenChange={setMarkDamagedOpen}
         title="Mark Item as Damaged"
-        description="Record damage and optionally bill the patron." 
+        description="Record damage and optionally bill the patron."
         variant="warning"
         confirmText="Mark Damaged"
         onConfirm={handleMarkDamaged}

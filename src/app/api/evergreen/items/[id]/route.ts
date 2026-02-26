@@ -22,26 +22,28 @@ interface RouteParams {
  * PATCH /api/evergreen/items/[id]
  * Update a copy (asset.copy / acp)
  */
-const itemPatchSchema = z.object({
-  barcode: z.string().trim().optional().nullable(),
-  alert_message: z.string().max(4096).optional().nullable(),
-  alertMessage: z.string().max(4096).optional().nullable(),
-  price: z.union([z.number(), z.string(), z.null()]).optional(),
-  holdable: z.boolean().optional(),
-  circulate: z.boolean().optional(),
-  opac_visible: z.boolean().optional(),
-  opacVisible: z.boolean().optional(),
-  circ_modifier: z.union([z.string(), z.null()]).optional(),
-  circModifier: z.union([z.string(), z.null()]).optional(),
-  loan_duration: z.union([z.coerce.number().int(), z.null()]).optional(),
-  loanDuration: z.union([z.coerce.number().int(), z.null()]).optional(),
-  fine_level: z.union([z.coerce.number().int(), z.null()]).optional(),
-  fineLevel: z.union([z.coerce.number().int(), z.null()]).optional(),
-  floating: z.union([z.coerce.number().int(), z.null()]).optional(),
-  floatingGroupId: z.union([z.coerce.number().int(), z.null()]).optional(),
-  stat_cat_entry_ids: z.array(z.coerce.number().int().positive()).optional(),
-  statCatEntryIds: z.array(z.coerce.number().int().positive()).optional(),
-}).passthrough();
+const itemPatchSchema = z
+  .object({
+    barcode: z.string().trim().optional().nullable(),
+    alert_message: z.string().max(4096).optional().nullable(),
+    alertMessage: z.string().max(4096).optional().nullable(),
+    price: z.union([z.number(), z.string(), z.null()]).optional(),
+    holdable: z.boolean().optional(),
+    circulate: z.boolean().optional(),
+    opac_visible: z.boolean().optional(),
+    opacVisible: z.boolean().optional(),
+    circ_modifier: z.union([z.string(), z.null()]).optional(),
+    circModifier: z.union([z.string(), z.null()]).optional(),
+    loan_duration: z.union([z.coerce.number().int(), z.null()]).optional(),
+    loanDuration: z.union([z.coerce.number().int(), z.null()]).optional(),
+    fine_level: z.union([z.coerce.number().int(), z.null()]).optional(),
+    fineLevel: z.union([z.coerce.number().int(), z.null()]).optional(),
+    floating: z.union([z.coerce.number().int(), z.null()]).optional(),
+    floatingGroupId: z.union([z.coerce.number().int(), z.null()]).optional(),
+    stat_cat_entry_ids: z.array(z.coerce.number().int().positive()).optional(),
+    statCatEntryIds: z.array(z.coerce.number().int().positive()).optional(),
+  })
+  .passthrough();
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
@@ -53,14 +55,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return errorResponse("Invalid copy ID", 400);
     }
 
-    const rawBody = await parseJsonBody<Record<string, unknown>>(req);
+    const rawBody = await parseJsonBody<Record<string, any>>(req);
     if (rawBody instanceof Response) return rawBody;
     const body = itemPatchSchema.parse(rawBody);
 
     const barcode =
-      body.barcode !== undefined && body.barcode !== null
-        ? String(body.barcode).trim()
-        : undefined;
+      body.barcode !== undefined && body.barcode !== null ? String(body.barcode).trim() : undefined;
 
     const alertMessageRaw =
       body.alert_message !== undefined
@@ -73,7 +73,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const holdableRaw = body.holdable;
     const circulateRaw = body.circulate;
     const opacVisibleRaw =
-      body.opac_visible !== undefined ? body.opac_visible : body.opacVisible !== undefined ? body.opacVisible : undefined;
+      body.opac_visible !== undefined
+        ? body.opac_visible
+        : body.opacVisible !== undefined
+          ? body.opacVisible
+          : undefined;
     const circModifierRaw =
       body.circ_modifier !== undefined
         ? body.circ_modifier
@@ -111,8 +115,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     const parseIntOrNull = (value: unknown): number | null => {
       if (value === null || value === undefined || value === "") return null;
-      const parsed =
-        typeof value === "number" ? value : parseInt(String(value), 10);
+      const parsed = typeof value === "number" ? value : parseInt(String(value), 10);
       return Number.isFinite(parsed) ? parsed : null;
     };
 
@@ -124,16 +127,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       }
     }
 
-    const parsedFineLevel =
-      fineLevelRaw !== undefined ? parseIntOrNull(fineLevelRaw) : undefined;
+    const parsedFineLevel = fineLevelRaw !== undefined ? parseIntOrNull(fineLevelRaw) : undefined;
     if (parsedFineLevel !== undefined && parsedFineLevel !== null) {
       if (![1, 2, 3].includes(parsedFineLevel)) {
         return errorResponse("fine_level must be one of: 1, 2, 3", 400);
       }
     }
 
-    const parsedFloating =
-      floatingRaw !== undefined ? parseIntOrNull(floatingRaw) : undefined;
+    const parsedFloating = floatingRaw !== undefined ? parseIntOrNull(floatingRaw) : undefined;
     if (parsedFloating !== undefined && parsedFloating !== null && parsedFloating <= 0) {
       return errorResponse("floating must be a positive integer or null", 400);
     }
@@ -166,11 +167,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     ]);
 
     const existing = fetchResponse?.payload?.[0];
-    if (!existing || (existing as Record<string, unknown>)?.ilsevent) {
+    if (!existing || (existing as Record<string, any>)?.ilsevent) {
       return notFoundResponse("Item not found");
     }
 
-    const updateData: Record<string, unknown> = { ...(existing as Record<string, unknown>) };
+    const updateData: Record<string, any> = { ...(existing as Record<string, any>) };
 
     if (barcode !== undefined) updateData.barcode = barcode;
 
@@ -196,15 +197,17 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     if (alertMessageRaw !== undefined) {
       updateData.alert_message =
-        alertMessageRaw === null || alertMessageRaw === undefined || String(alertMessageRaw).trim() === ""
+        alertMessageRaw === null ||
+        alertMessageRaw === undefined ||
+        String(alertMessageRaw).trim() === ""
           ? null
           : String(alertMessageRaw).trim();
     }
 
     // Keep required fields intact and record the editing user when possible.
     updateData.id = copyId;
-    if ((actor as Record<string, unknown>)?.id) {
-      updateData.editor = (actor as Record<string, unknown>).id;
+    if ((actor as Record<string, any>)?.id) {
+      updateData.editor = (actor as Record<string, any>).id;
     }
 
     updateData.ischanged = 1;
@@ -216,7 +219,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     ]);
 
     const result = updateResponse?.payload?.[0];
-    if (isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
+    if (isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to update item"), 400, result);
     }
 
@@ -235,10 +238,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         const validIds = new Set(validRows.map((r) => Number(r.id)));
         const missing = parsedStatCatEntryIds.filter((id) => !validIds.has(id));
         if (missing.length > 0) {
-          return errorResponse(
-            `Invalid stat cat entry id(s): ${missing.join(", ")}`,
-            400
-          );
+          return errorResponse(`Invalid stat cat entry id(s): ${missing.join(", ")}`, 400);
         }
 
         const byCategory = new Map<number, number>();
@@ -262,13 +262,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       );
 
       const currentMapsRaw = Array.isArray(currentMapsResponse?.payload?.[0])
-        ? (currentMapsResponse?.payload?.[0] as Record<string, unknown>[])
+        ? (currentMapsResponse?.payload?.[0] as Record<string, any>[])
         : [];
 
       const currentMaps = currentMapsRaw
         .map((row) => {
-          const mapId =
-            typeof row?.id === "number" ? row.id : parseInt(String(row?.id ?? ""), 10);
+          const mapId = typeof row?.id === "number" ? row.id : parseInt(String(row?.id ?? ""), 10);
           const entryId =
             typeof row?.stat_cat_entry === "number"
               ? row.stat_cat_entry
@@ -291,13 +290,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       const toCreateEntryIds = [...desired].filter((entryId) => !currentByEntry.has(entryId));
 
       for (const mapId of toDeleteMapIds) {
-        const deleteResponse = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.delete.ascecm",
-          [authtoken, mapId]
-        );
+        const deleteResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.ascecm", [
+          authtoken,
+          mapId,
+        ]);
         const deleteResult = deleteResponse?.payload?.[0];
-        if (isOpenSRFEvent(deleteResult) || (deleteResult as Record<string, unknown>)?.ilsevent) {
+        if (isOpenSRFEvent(deleteResult) || (deleteResult as Record<string, any>)?.ilsevent) {
           return errorResponse(
             getErrorMessage(deleteResult, "Failed to remove item stat category assignment"),
             400,
@@ -314,13 +312,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
           ischanged: 1,
         });
 
-        const createResponse = await callOpenSRF(
-          "open-ils.pcrud",
-          "open-ils.pcrud.create.ascecm",
-          [authtoken, payload]
-        );
+        const createResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.ascecm", [
+          authtoken,
+          payload,
+        ]);
         const createResult = createResponse?.payload?.[0];
-        if (isOpenSRFEvent(createResult) || (createResult as Record<string, unknown>)?.ilsevent) {
+        if (isOpenSRFEvent(createResult) || (createResult as Record<string, any>)?.ilsevent) {
           return errorResponse(
             getErrorMessage(createResult, "Failed to add item stat category assignment"),
             400,

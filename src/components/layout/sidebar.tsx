@@ -52,13 +52,15 @@ import {
   Bell,
   KeyRound,
   Gavel,
+  PlugZap,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { WorkformTracker } from "./workform-tracker";
+import { useAuth } from "@/contexts/auth-context";
 
 interface NavSection {
   title: string;
@@ -112,6 +114,15 @@ const mainNav: NavSection[] = [
       { title: "Holds", href: "/staff/circulation/holds-management", icon: BookMarked },
       { title: "Pull List", href: "/staff/circulation/pull-list", icon: ClipboardList },
       { title: "Holds Shelf", href: "/staff/circulation/holds-shelf", icon: Inbox },
+      ...(featureFlags.k12ClassCirculation
+        ? [
+            {
+              title: "Class Circulation",
+              href: "/staff/circulation/class-circulation",
+              icon: GraduationCap,
+            },
+          ]
+        : []),
       { title: "In-House Use", href: "/staff/circulation/in-house", icon: Library },
       { title: "Bills & Payments", href: "/staff/circulation/bills", icon: CreditCard },
       { title: "Offline Mode", href: "/staff/circulation/offline", icon: WifiOff },
@@ -224,10 +235,16 @@ const mainNav: NavSection[] = [
     defaultOpen: false,
     items: [
       { title: "Local Admin", href: "/staff/admin", icon: Settings },
+      ...(featureFlags.tenantConsole
+        ? [{ title: "Tenants", href: "/staff/admin/tenants", icon: Globe }]
+        : []),
       { title: "Permissions", href: "/staff/admin/permissions", icon: KeyRound },
       { title: "Go-live", href: "/staff/admin/go-live", icon: ClipboardList },
       { title: "Ops", href: "/staff/admin/ops", icon: Activity },
       { title: "Notifications", href: "/staff/admin/notifications", icon: Bell },
+      ...(featureFlags.developerPlatform
+        ? [{ title: "Developer Platform", href: "/staff/admin/developer-platform", icon: PlugZap }]
+        : []),
       { title: "System Settings", href: "/staff/admin/settings", icon: Sliders },
       { title: "My Settings", href: "/staff/settings", icon: UserCog },
       { title: "Policy Inspector", href: "/staff/admin/policy-inspector", icon: Database },
@@ -284,7 +301,7 @@ function NavSection({ section, collapsed }: { section: NavSection; collapsed: bo
                     className={cn(
                       "flex items-center justify-center h-10 w-10 mx-auto rounded-xl transition-all mb-1 relative",
                       isActive
-                        ? "bg-[hsl(var(--brand-1))] text-white shadow-sm"
+                        ? "bg-[hsl(var(--brand-1))] text-white shadow-[0_12px_18px_-14px_hsl(var(--brand-1)/0.9)]"
                         : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                     )}
                   >
@@ -316,7 +333,7 @@ function NavSection({ section, collapsed }: { section: NavSection; collapsed: bo
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center justify-between w-full px-2 py-1.5 text-[11px] font-semibold tracking-wider uppercase",
+          "flex items-center justify-between w-full px-2 py-1.5 text-[11px] font-semibold tracking-[0.16em] uppercase",
           hasActiveItem
             ? "text-[hsl(var(--brand-1))]"
             : "text-muted-foreground hover:text-foreground"
@@ -337,7 +354,7 @@ function NavSection({ section, collapsed }: { section: NavSection; collapsed: bo
                 className={cn(
                   "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all",
                   isActive
-                    ? "bg-[hsl(var(--brand-1))]/10 text-foreground shadow-sm border border-[hsl(var(--brand-1))]/15"
+                    ? "bg-[hsl(var(--brand-1))]/11 text-foreground shadow-[0_12px_20px_-18px_hsl(var(--brand-1)/0.8)] border border-[hsl(var(--brand-1))]/16"
                     : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                 )}
               >
@@ -396,6 +413,18 @@ export function Sidebar({
   branchName,
   mobile = false,
 }: SidebarProps) {
+  const { user } = useAuth();
+  const navSections = useMemo(() => {
+    if (user?.isPlatformAdmin) return mainNav;
+    return mainNav.map((section) => {
+      if (section.title !== "Administration") return section;
+      return {
+        ...section,
+        items: section.items.filter((item) => item.href !== "/staff/admin/tenants"),
+      };
+    });
+  }, [user?.isPlatformAdmin]);
+
   return (
     <aside
       className={cn(
@@ -408,14 +437,14 @@ export function Sidebar({
         className={cn("flex items-center justify-between px-3 py-3", collapsed && "justify-center")}
       >
         {!collapsed && (
-          <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+          <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/90">
             Navigation
           </div>
         )}
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-full"
+          className="h-8 w-8 rounded-full stx-pill"
           onClick={onToggleCollapse}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
@@ -430,8 +459,8 @@ export function Sidebar({
       <ScrollArea className="flex-1 pb-4">
         <div className={cn(collapsed ? "px-2" : "px-3")}>
           {collapsed ? null : <WorkformTracker />}
-          <nav className="space-y-1">
-            {mainNav.map((section) => (
+          <nav className="space-y-1 pb-2">
+            {navSections.map((section) => (
               <NavSection key={section.title} section={section} collapsed={collapsed} />
             ))}
           </nav>

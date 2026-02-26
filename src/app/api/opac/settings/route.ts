@@ -1,11 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import {
-  callOpenSRF,
-  successResponse,
-  errorResponse,
-  parseJsonBodyWithSchema,
-} from "@/lib/api";
+import { callOpenSRF, successResponse, errorResponse, parseJsonBodyWithSchema } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
 import { getOpacPrivacyPrefs, upsertOpacPrivacyPrefs } from "@/lib/db/opac";
@@ -37,11 +32,9 @@ export async function GET(_req: NextRequest) {
     }
 
     // Get session to get patron ID
-    const sessionResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.session.retrieve",
-      [patronToken]
-    );
+    const sessionResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [
+      patronToken,
+    ]);
 
     const user = sessionResponse?.payload?.[0];
     if (!user || user.ilsevent) {
@@ -115,11 +108,9 @@ export async function PUT(req: NextRequest) {
     const updates = updatesParsed;
 
     // Get session to get patron ID
-    const sessionResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.session.retrieve",
-      [patronToken]
-    );
+    const sessionResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [
+      patronToken,
+    ]);
 
     const user = sessionResponse?.payload?.[0];
     if (!user || user.ilsevent) {
@@ -133,7 +124,7 @@ export async function PUT(req: NextRequest) {
     if (updates.holdNotifyPhone) notifyMethods.push("phone");
 
     // Update settings
-    const settingsToUpdate: Record<string, unknown> = {
+    const settingsToUpdate: Record<string, any> = {
       "opac.hold_notify": notifyMethods.join(":") || "email",
     };
 
@@ -145,7 +136,9 @@ export async function PUT(req: NextRequest) {
     }
 
     if (typeof updates.keepHistory === "boolean") {
-      settingsToUpdate["history.circ.retention_start"] = updates.keepHistory ? new Date().toISOString() : null;
+      settingsToUpdate["history.circ.retention_start"] = updates.keepHistory
+        ? new Date().toISOString()
+        : null;
     }
 
     // Update patron settings via Evergreen
@@ -163,18 +156,20 @@ export async function PUT(req: NextRequest) {
 
     // Update email/phone if changed (requires patron update)
     if (updates.email || updates.phone) {
-      const patronUpdate: Record<string, unknown> = { id: user.id };
+      const patronUpdate: Record<string, any> = { id: user.id };
       if (updates.email) patronUpdate.email = updates.email;
       if (updates.phone) patronUpdate.day_phone = updates.phone;
 
-      await callOpenSRF(
-        "open-ils.actor",
-        "open-ils.actor.patron.update",
-        [patronToken, patronUpdate]
-      );
+      await callOpenSRF("open-ils.actor", "open-ils.actor.patron.update", [
+        patronToken,
+        patronUpdate,
+      ]);
     }
 
-    if (typeof updates.personalizedRecommendations === "boolean" || typeof updates.readingHistoryPersonalization === "boolean") {
+    if (
+      typeof updates.personalizedRecommendations === "boolean" ||
+      typeof updates.readingHistoryPersonalization === "boolean"
+    ) {
       await upsertOpacPrivacyPrefs(Number(user.id), {
         personalizedRecommendations: updates.personalizedRecommendations,
         readingHistoryPersonalization: updates.readingHistoryPersonalization,

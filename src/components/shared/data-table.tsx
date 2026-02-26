@@ -132,11 +132,7 @@ interface DataTableColumnHeaderProps {
   className?: string;
 }
 
-export function DataTableColumnHeader({
-  column,
-  title,
-  className,
-}: DataTableColumnHeaderProps) {
+export function DataTableColumnHeader({ column, title, className }: DataTableColumnHeaderProps) {
   if (!column.getCanSort()) {
     return <div className={className}>{title}</div>;
   }
@@ -170,8 +166,7 @@ export function getSelectColumn<TData>(): ColumnDef<TData, unknown> {
     header: ({ table }) => (
       <Checkbox
         checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
+          table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
@@ -265,9 +260,7 @@ export function DataTable<TData, TValue>({
   // Selection change callback
   React.useEffect(() => {
     if (onSelectionChange) {
-      const selectedRows = table
-        .getFilteredSelectedRowModel()
-        .rows.map((row) => row.original);
+      const selectedRows = table.getFilteredSelectedRowModel().rows.map((row) => row.original);
       onSelectionChange(selectedRows);
     }
   }, [rowSelection, onSelectionChange]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -282,7 +275,7 @@ export function DataTable<TData, TValue>({
   };
 
   const searchValue = searchColumn
-    ? (table.getColumn(searchColumn)?.getFilterValue() as string) ?? ""
+    ? ((table.getColumn(searchColumn)?.getFilterValue() as string) ?? "")
     : globalFilter;
 
   // Loading state
@@ -294,7 +287,10 @@ export function DataTable<TData, TValue>({
           <div className="h-10 w-64 bg-muted rounded animate-pulse" />
           <div className="h-10 w-32 bg-muted rounded animate-pulse" />
         </div>
-        <TableSkeleton rows={defaultPageSize > 10 ? 10 : defaultPageSize} columns={tableColumns.length} />
+        <TableSkeleton
+          rows={defaultPageSize > 10 ? 10 : defaultPageSize}
+          columns={tableColumns.length}
+        />
       </div>
     );
   }
@@ -378,11 +374,7 @@ export function DataTable<TData, TValue>({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
-                    className={compact ? "py-2" : undefined}
-                  >
+                  <TableHead key={header.id} className={compact ? "py-2" : undefined}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
@@ -400,7 +392,8 @@ export function DataTable<TData, TValue>({
                   className={cn(
                     onRowClick && "cursor-pointer",
                     hoverHighlight && "hover:bg-muted/50",
-                    onRowClick && "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset",
+                    onRowClick &&
+                      "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset",
                     striped && index % 2 === 1 && "bg-muted/25",
                     getRowClassName?.(row.original)
                   )}
@@ -424,16 +417,12 @@ export function DataTable<TData, TValue>({
             ) : (
               <TableRow>
                 <TableCell colSpan={tableColumns.length} className="h-24 text-center">
-                  {emptyState || (
-                    searchValue ? (
-                      <SearchEmptyState
-                        searchTerm={searchValue}
-                        onClear={() => handleSearch("")}
-                      />
+                  {emptyState ||
+                    (searchValue ? (
+                      <SearchEmptyState searchTerm={searchValue} onClear={() => handleSearch("")} />
                     ) : (
                       <EmptyState title="No data" description="No records to display." />
-                    )
-                  )}
+                    ))}
                 </TableCell>
               </TableRow>
             )}
@@ -472,16 +461,12 @@ export function DataTablePagination<TData>({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
       {/* Row count */}
-      <div className="text-sm text-muted-foreground">
-        {totalRows} row(s) total
-      </div>
+      <div className="text-sm text-muted-foreground">{totalRows} row(s) total</div>
 
       <div className="flex items-center gap-6 lg:gap-8">
         {/* Page size selector */}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground whitespace-nowrap">
-            Rows per page
-          </span>
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Rows per page</span>
           <Select
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => table.setPageSize(Number(value))}
@@ -508,7 +493,9 @@ export function DataTablePagination<TData>({
             {totalRows === 0 ? (
               "No results"
             ) : (
-              <>Showing {startRow}-{endRow} of {totalRows} results</>
+              <>
+                Showing {startRow}-{endRow} of {totalRows} results
+              </>
             )}
           </div>
         </div>

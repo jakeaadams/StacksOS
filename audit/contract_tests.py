@@ -36,10 +36,18 @@ def _load_json(path: Path):
 def main() -> int:
     root = Path(os.environ.get("ROOT_DIR", str(Path.cwd())))
     api_dir = root / "audit" / "api"
+    include_ai = os.environ.get("STACKSOS_AUDIT_INCLUDE_AI", "1") == "1"
     if not api_dir.exists():
         raise AssertionError("audit/api not found; run API audit first")
 
     failures: list[str] = []
+    summary_status: dict[str, str] = {}
+    summary_path = api_dir / "summary.tsv"
+    if summary_path.exists():
+        for line in summary_path.read_text(encoding="utf-8").splitlines()[1:]:
+            parts = line.split("\t")
+            if len(parts) >= 2:
+                summary_status[parts[0]] = parts[1]
 
     def check(name: str, fn, allow_error: bool = False):
         p = api_dir / f"{name}.json"
@@ -56,6 +64,12 @@ def main() -> int:
             fn(data)
         except AssertionError as e:
             failures.append(str(e))
+
+    def check_optional_ai(name: str, fn):
+        status = summary_status.get(name)
+        if status != "200":
+            return
+        check(name, fn)
 
     # ---------------------------------------------------------------------
     # Stable adapter invariants (avoid overfitting to one Evergreen)
@@ -173,6 +187,20 @@ def main() -> int:
             _require_dict(d.get("permissions"), "copy_statuses: permissions must be an object"),
         ),
     )
+    check(
+        "floating_groups",
+        lambda d: _require_list(d.get("groups"), "floating_groups: groups must be an array"),
+    )
+    check(
+        "spellcheck_probe",
+        lambda d: (
+            _require(
+                d.get("suggestion") is None or isinstance(d.get("suggestion"), str),
+                "spellcheck_probe: suggestion must be null or string",
+            ),
+            _require(_is_int_like(d.get("originalCount")), "spellcheck_probe: originalCount must be int-like"),
+        ),
+    )
 
     check(
         "copy_tag_types",
@@ -212,6 +240,14 @@ def main() -> int:
         "marc_sources",
         lambda d: _require_list(d.get("sources"), "marc_sources: sources must be an array"),
     )
+    if include_ai:
+        check_optional_ai(
+            "ai_marc_probe",
+            lambda d: (
+                _require(isinstance(d.get("leader"), str), "ai_marc_probe: leader must be a string"),
+                _require_list(d.get("fields"), "ai_marc_probe: fields must be an array"),
+            ),
+        )
 
     check(
         "transits_incoming",
@@ -243,6 +279,14 @@ def main() -> int:
             _require_list(d.get("records"), "catalog_search: records must be an array"),
         ),
     )
+    if include_ai:
+        check_optional_ai(
+            "ai_search_probe",
+            lambda d: (
+                _require(_is_int_like(d.get("count")), "ai_search_probe: count must be int-like"),
+                _require_list(d.get("records"), "ai_search_probe: records must be an array"),
+            ),
+        )
 
     check(
         "catalog_record",

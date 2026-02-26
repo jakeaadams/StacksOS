@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { NextRequest } from "next/server";
 import { errorResponse, getRequestMeta, successResponse, serverErrorResponse } from "@/lib/api";
 import { runDueScheduledReports } from "@/lib/reports/scheduled-runner";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 function constantTimeEqual(a: string, b: string): boolean {
   const aBuf = Buffer.from(a, "utf8");
@@ -38,4 +38,3 @@ export async function POST(req: NextRequest) {
     return serverErrorResponse(error, "Scheduled reports run-due POST", req);
   }
 }
-

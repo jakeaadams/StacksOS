@@ -14,7 +14,7 @@ import { z } from "zod";
  * OPAC Patron Messages
  * GET /api/opac/messages - Get patron messages from Evergreen
  * POST /api/opac/messages - Mark messages as read
- * 
+ *
  * Uses Evergreen open-ils.actor service for message operations
  */
 
@@ -57,8 +57,8 @@ export async function GET(req: NextRequest) {
     // Filter out deleted messages and sort by date (newest first)
     const activeMessages = messages
       .filter((m) => !m.isDeleted)
-      .sort((a: any, b: any) => 
-        new Date(b.createDate).getTime() - new Date(a.createDate).getTime()
+      .sort(
+        (a: any, b: any) => new Date(b.createDate).getTime() - new Date(a.createDate).getTime()
       );
 
     const unreadCount = activeMessages.filter((m) => !m.isRead).length;
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/messages GET auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/messages GET auth failed");
       return unauthorizedResponse();
     }
     logger.error({ error: String(error) }, "Error fetching patron messages");
@@ -144,8 +144,8 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    const successCount = results.filter(r => r.success).length;
-    const failureCount = results.filter(r => !r.success).length;
+    const successCount = results.filter((r) => r.success).length;
+    const failureCount = results.filter((r) => !r.success).length;
 
     return successResponse({
       success: failureCount === 0,
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/messages POST auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/messages POST auth failed");
       return unauthorizedResponse();
     }
     logger.error({ error: String(error) }, "Error processing message action");
@@ -168,11 +168,16 @@ export async function POST(req: NextRequest) {
 function determineMessageType(msg: any): string {
   const title = (msg.title || "").toLowerCase();
   const content = (msg.message || msg.content || "").toLowerCase();
-  
+
   if (title.includes("hold") || content.includes("hold")) {
     return "holds";
   }
-  if (title.includes("fine") || title.includes("fee") || content.includes("fine") || content.includes("fee")) {
+  if (
+    title.includes("fine") ||
+    title.includes("fee") ||
+    content.includes("fine") ||
+    content.includes("fee")
+  ) {
     return "fines";
   }
   if (title.includes("account") || title.includes("card") || content.includes("account")) {

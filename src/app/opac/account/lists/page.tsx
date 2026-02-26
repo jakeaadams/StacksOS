@@ -7,6 +7,9 @@ import Link from "next/link";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { featureFlags } from "@/lib/feature-flags";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Heart,
   BookOpen,
@@ -80,7 +83,7 @@ export default function MyListsPage() {
       setIsLoading(true);
       setError(null);
       const response = await fetch("/api/opac/lists", { credentials: "include" });
-      
+
       if (!response.ok) {
         if (response.status === 401) {
           router.push("/opac/login?redirect=/opac/account/lists");
@@ -112,11 +115,11 @@ export default function MyListsPage() {
   const selectList = useCallback(async (list: BookList) => {
     setSelectedList(list);
     setItemsLoading(true);
-    
+
     try {
       // Fetch full list details with items
       const response = await fetch(`/api/opac/lists/${list.id}`, { credentials: "include" });
-      
+
       if (response.ok) {
         const data = await response.json();
         setListItems(data.items || list.items || []);
@@ -136,18 +139,18 @@ export default function MyListsPage() {
     }
   }, [lists, selectedList, selectList]);
 
-	  const createList = async () => {
+  const createList = async () => {
     if (!newListName.trim()) return;
-    
-	    setActionLoading(true);
-	    try {
-	      const response = await fetchWithAuth("/api/opac/lists", {
-	        method: "POST",
-	        headers: { "Content-Type": "application/json" },
-	        body: JSON.stringify({
-	          name: newListName.trim(),
-	          description: newListDescription.trim(),
-	          visibility: newListVisibility,
+
+    setActionLoading(true);
+    try {
+      const response = await fetchWithAuth("/api/opac/lists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newListName.trim(),
+          description: newListDescription.trim(),
+          visibility: newListVisibility,
         }),
       });
 
@@ -170,18 +173,18 @@ export default function MyListsPage() {
     }
   };
 
-	  const updateList = async () => {
+  const updateList = async () => {
     if (!selectedList || !newListName.trim()) return;
-    
-	    setActionLoading(true);
-	    try {
-	      const response = await fetchWithAuth(`/api/opac/lists/${selectedList.id}`, {
-	        method: "PATCH",
-	        headers: { "Content-Type": "application/json" },
-	        body: JSON.stringify({
-	          name: newListName.trim(),
-	          description: newListDescription.trim(),
-	          visibility: newListVisibility,
+
+    setActionLoading(true);
+    try {
+      const response = await fetchWithAuth(`/api/opac/lists/${selectedList.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newListName.trim(),
+          description: newListDescription.trim(),
+          visibility: newListVisibility,
         }),
       });
 
@@ -192,7 +195,7 @@ export default function MyListsPage() {
           description: newListDescription.trim(),
           visibility: newListVisibility,
         };
-        setLists(lists.map(l => l.id === selectedList.id ? updatedList : l));
+        setLists(lists.map((l) => (l.id === selectedList.id ? updatedList : l)));
         setSelectedList(updatedList);
         setShowEditModal(false);
       } else {
@@ -206,15 +209,15 @@ export default function MyListsPage() {
     }
   };
 
-	  const deleteList = async (list: BookList) => {
-	    setActionLoading(true);
-	    try {
-	      const response = await fetchWithAuth(`/api/opac/lists/${list.id}`, {
-	        method: "DELETE",
-	      });
+  const deleteList = async (list: BookList) => {
+    setActionLoading(true);
+    try {
+      const response = await fetchWithAuth(`/api/opac/lists/${list.id}`, {
+        method: "DELETE",
+      });
 
       if (response.ok) {
-        const newLists = lists.filter(l => l.id !== list.id);
+        const newLists = lists.filter((l) => l.id !== list.id);
         setLists(newLists);
         if (selectedList?.id === list.id) {
           setSelectedList(newLists[0] || null);
@@ -236,21 +239,19 @@ export default function MyListsPage() {
     }
   };
 
-	  const removeItemFromList = async (itemId: number | string) => {
-	    if (!selectedList) return;
-	    
-	    try {
-	      const response = await fetchWithAuth(`/api/opac/lists/${selectedList.id}/items/${itemId}`, {
-	        method: "DELETE",
-	      });
+  const removeItemFromList = async (itemId: number | string) => {
+    if (!selectedList) return;
+
+    try {
+      const response = await fetchWithAuth(`/api/opac/lists/${selectedList.id}/items/${itemId}`, {
+        method: "DELETE",
+      });
 
       if (response.ok) {
-        setListItems(listItems.filter(item => item.id !== itemId));
-        setLists(lists.map(l => 
-          l.id === selectedList.id 
-            ? { ...l, itemCount: l.itemCount - 1 }
-            : l
-        ));
+        setListItems(listItems.filter((item) => item.id !== itemId));
+        setLists(
+          lists.map((l) => (l.id === selectedList.id ? { ...l, itemCount: l.itemCount - 1 } : l))
+        );
         if (selectedList) {
           setSelectedList({ ...selectedList, itemCount: selectedList.itemCount - 1 });
         }
@@ -270,9 +271,10 @@ export default function MyListsPage() {
   };
 
   const filteredItems = searchQuery
-    ? listItems.filter(item => 
-        item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.author?.toLowerCase().includes(searchQuery.toLowerCase())
+    ? listItems.filter(
+        (item) =>
+          item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.author?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : listItems;
 
@@ -289,8 +291,8 @@ export default function MyListsPage() {
           </p>
           <Link
             href="/opac"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white
-                     rounded-lg font-medium hover:bg-primary-700 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 stx-action-primary
+                     rounded-lg font-medium hover:brightness-110 transition-colors"
           >
             Back to catalog
           </Link>
@@ -329,7 +331,7 @@ export default function MyListsPage() {
                 <p className="text-muted-foreground">Organize your reading</p>
               </div>
             </div>
-            <button
+            <Button
               type="button"
               onClick={() => {
                 setNewListName("");
@@ -337,12 +339,12 @@ export default function MyListsPage() {
                 setNewListVisibility("private");
                 setShowCreateModal(true);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white
-                       rounded-lg hover:bg-primary-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 stx-action-primary
+                       rounded-lg hover:brightness-110 transition-colors"
             >
               <Plus className="h-4 w-4" />
               Create List
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -351,9 +353,15 @@ export default function MyListsPage() {
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
             <AlertCircle className="h-5 w-5 text-red-600" />
             <p className="text-red-700">{error}</p>
-            <button type="button" onClick={() => setError(null)} className="ml-auto">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setError(null)}
+              className="ml-auto h-8 w-8 rounded-full text-red-600 hover:bg-red-100"
+            >
               <X className="h-4 w-4 text-red-600" />
-            </button>
+            </Button>
           </div>
         )}
 
@@ -365,7 +373,7 @@ export default function MyListsPage() {
           <div className="grid lg:grid-cols-4 gap-6">
             {/* Lists sidebar */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl border border-border overflow-hidden">
+              <div className="stx-surface rounded-xl overflow-hidden">
                 <div className="p-4 border-b border-border">
                   <h2 className="font-semibold text-foreground">Your Lists</h2>
                 </div>
@@ -373,17 +381,22 @@ export default function MyListsPage() {
                   {lists.map((list) => {
                     const Icon = iconMap[list.icon] || List;
                     return (
-                      <button
+                      <Button
                         key={list.id}
                         type="button"
                         onClick={() => selectList(list)}
-                        className={`w-full text-left p-4 hover:bg-muted/30 transition-colors
+                        variant="ghost"
+                        className={`h-auto w-full justify-start p-4 text-left hover:bg-muted/30 transition-colors
                                   ${selectedList?.id === list.id ? "bg-primary-50 border-l-4 border-primary-600" : ""}`}
                       >
                         <div className="flex items-center gap-3">
-                          <Icon className={`h-5 w-5 ${selectedList?.id === list.id ? "text-primary-600" : "text-muted-foreground"}`} />
+                          <Icon
+                            className={`h-5 w-5 ${selectedList?.id === list.id ? "text-primary-600" : "text-muted-foreground"}`}
+                          />
                           <div className="flex-1 min-w-0">
-                            <p className={`font-medium truncate ${selectedList?.id === list.id ? "text-primary-600" : "text-foreground"}`}>
+                            <p
+                              className={`font-medium truncate ${selectedList?.id === list.id ? "text-primary-600" : "text-foreground"}`}
+                            >
                               {list.name}
                             </p>
                             <p className="text-sm text-muted-foreground">
@@ -396,13 +409,11 @@ export default function MyListsPage() {
                             <Globe className="h-4 w-4 text-muted-foreground/50" />
                           )}
                         </div>
-                      </button>
+                      </Button>
                     );
                   })}
                   {lists.length === 0 && (
-                    <div className="p-6 text-center text-muted-foreground">
-                      {t("noLists")}
-                    </div>
+                    <div className="p-6 text-center text-muted-foreground">{t("noLists")}</div>
                   )}
                 </div>
               </div>
@@ -411,7 +422,7 @@ export default function MyListsPage() {
             {/* List content */}
             <div className="lg:col-span-3">
               {selectedList ? (
-                <div className="bg-white rounded-xl border border-border">
+                <div className="stx-surface rounded-xl">
                   {/* List header */}
                   <div className="p-6 border-b border-border">
                     <div className="flex items-start justify-between gap-4">
@@ -421,7 +432,9 @@ export default function MyListsPage() {
                           <p className="text-muted-foreground mt-1">{selectedList.description}</p>
                         )}
                         <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                          <span>{selectedList.itemCount} item{selectedList.itemCount !== 1 && "s"}</span>
+                          <span>
+                            {selectedList.itemCount} item{selectedList.itemCount !== 1 && "s"}
+                          </span>
                           <span className="flex items-center gap-1">
                             {selectedList.visibility === "private" ? (
                               <>
@@ -439,24 +452,26 @@ export default function MyListsPage() {
                       </div>
                       {!selectedList.isDefault && (
                         <div className="flex gap-2">
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="icon"
                             onClick={openEditModal}
-                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/30 
-                                     rounded-lg transition-colors"
+                            className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                             title="Edit list"
                           >
                             <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="icon"
                             onClick={() => setShowDeleteConfirm(selectedList)}
-                            className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 
-                                     rounded-lg transition-colors"
+                            className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-600"
                             title="Delete list"
                           >
                             <Trash2 className="h-4 w-4" />
-                          </button>
+                          </Button>
                         </div>
                       )}
                     </div>
@@ -465,13 +480,12 @@ export default function MyListsPage() {
                     {listItems.length > 0 && (
                       <div className="mt-4 relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
-                        <input
+                        <Input
                           type="text"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           placeholder="Search in this list..."
-                          className="w-full pl-10 pr-4 py-2 border border-border rounded-lg
-                                   focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="h-9 rounded-lg border-border bg-background pl-10 pr-4"
                         />
                       </div>
                     )}
@@ -486,10 +500,7 @@ export default function MyListsPage() {
                     ) : filteredItems.length > 0 ? (
                       <div className="space-y-4">
                         {filteredItems.map((item) => (
-                          <div
-                            key={item.id}
-                            className="flex gap-4 p-4 bg-muted/30 rounded-lg"
-                          >
+                          <div key={item.id} className="flex gap-4 p-4 bg-muted/30 rounded-lg">
                             {/* Cover */}
                             <div className="w-16 h-24 bg-muted rounded-lg shrink-0 overflow-hidden">
                               {item.coverUrl ? (
@@ -532,15 +543,16 @@ export default function MyListsPage() {
                               >
                                 View
                               </Link>
-                              <button
+                              <Button
                                 type="button"
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => removeItemFromList(item.id)}
-                                className="p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50
-                                         rounded-lg transition-colors"
+                                className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-600"
                                 title="Remove from list"
                               >
                                 <Trash2 className="h-4 w-4" />
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         ))}
@@ -552,15 +564,15 @@ export default function MyListsPage() {
                           {searchQuery ? "No matching items" : "This list is empty"}
                         </h3>
                         <p className="text-muted-foreground mb-6">
-                          {searchQuery 
+                          {searchQuery
                             ? "Try a different search term"
                             : "Browse the catalog and save items to this list"}
                         </p>
                         {!searchQuery && (
                           <Link
                             href="/opac"
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white
-                                     rounded-lg font-medium hover:bg-primary-700 transition-colors"
+                            className="inline-flex items-center gap-2 px-6 py-3 stx-action-primary
+                                     rounded-lg font-medium hover:brightness-110 transition-colors"
                           >
                             <Search className="h-4 w-4" />
                             Browse Catalog
@@ -571,11 +583,9 @@ export default function MyListsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white rounded-xl border border-border p-12 text-center">
+                <div className="stx-surface rounded-xl p-12 text-center">
                   <List className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-                  <h2 className="text-xl font-semibold text-foreground mb-2">
-                    Select a list
-                  </h2>
+                  <h2 className="text-xl font-semibold text-foreground mb-2">Select a list</h2>
                   <p className="text-muted-foreground">
                     Choose a list from the sidebar or create a new one
                   </p>
@@ -591,38 +601,47 @@ export default function MyListsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-semibold text-foreground mb-4">Create New List</h3>
-            
+
             <div className="space-y-4">
               <div>
-                <label htmlFor="list-name" className="block text-sm font-medium text-foreground/80 mb-2">
+                <label
+                  htmlFor="list-name"
+                  className="block text-sm font-medium text-foreground/80 mb-2"
+                >
                   List Name *
                 </label>
-                <input id="list-name"
+                <Input
+                  id="list-name"
                   type="text"
                   value={newListName}
                   onChange={(e) => setNewListName(e.target.value)}
                   placeholder="e.g., Summer Reading"
-                  className="w-full px-3 py-2 border border-border rounded-lg
-                           focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-foreground/80 mb-2">
-                  Description
-                </label>
-                <textarea id="description"
-                  value={newListDescription}
-                  onChange={(e) => setNewListDescription(e.target.value)}
-                  placeholder="What is this list for?"
-                  rows={3}
-                  className="w-full px-3 py-2 border border-border rounded-lg
-                           focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="h-10 rounded-lg px-3"
                 />
               </div>
 
               <div>
-                <label htmlFor="visibility" className="block text-sm font-medium text-foreground/80 mb-2">
+                <label
+                  htmlFor="description"
+                  className="block text-sm font-medium text-foreground/80 mb-2"
+                >
+                  Description
+                </label>
+                <Textarea
+                  id="description"
+                  value={newListDescription}
+                  onChange={(e) => setNewListDescription(e.target.value)}
+                  placeholder="What is this list for?"
+                  rows={3}
+                  className="min-h-[84px] rounded-lg px-3"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="visibility"
+                  className="block text-sm font-medium text-foreground/80 mb-2"
+                >
                   Visibility
                 </label>
                 <div className="flex gap-4">
@@ -657,28 +676,22 @@ export default function MyListsPage() {
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setShowCreateModal(false)}
-                className="flex-1 py-2 border border-border rounded-lg text-foreground/80
-                         hover:bg-muted/30 transition-colors"
+                className="flex-1"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={createList}
                 disabled={!newListName.trim() || actionLoading}
-                className="flex-1 py-2 bg-primary-600 text-white rounded-lg font-medium
-                         hover:bg-primary-700 transition-colors disabled:opacity-50
-                         disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1"
               >
-                {actionLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  t("createList")
-                )}
-              </button>
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("createList")}
+              </Button>
             </div>
           </div>
         </div>
@@ -689,36 +702,45 @@ export default function MyListsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-semibold text-foreground mb-4">Edit List</h3>
-            
+
             <div className="space-y-4">
               <div>
-                <label htmlFor="list-name-2" className="block text-sm font-medium text-foreground/80 mb-2">
+                <label
+                  htmlFor="list-name-2"
+                  className="block text-sm font-medium text-foreground/80 mb-2"
+                >
                   List Name *
                 </label>
-                <input id="list-name-2"
+                <Input
+                  id="list-name-2"
                   type="text"
                   value={newListName}
                   onChange={(e) => setNewListName(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg
-                           focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="description-2" className="block text-sm font-medium text-foreground/80 mb-2">
-                  Description
-                </label>
-                <textarea id="description-2"
-                  value={newListDescription}
-                  onChange={(e) => setNewListDescription(e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-border rounded-lg
-                           focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="h-10 rounded-lg px-3"
                 />
               </div>
 
               <div>
-                <label htmlFor="visibility-2" className="block text-sm font-medium text-foreground/80 mb-2">
+                <label
+                  htmlFor="description-2"
+                  className="block text-sm font-medium text-foreground/80 mb-2"
+                >
+                  Description
+                </label>
+                <Textarea
+                  id="description-2"
+                  value={newListDescription}
+                  onChange={(e) => setNewListDescription(e.target.value)}
+                  rows={3}
+                  className="min-h-[84px] rounded-lg px-3"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="visibility-2"
+                  className="block text-sm font-medium text-foreground/80 mb-2"
+                >
                   Visibility
                 </label>
                 <div className="flex gap-4">
@@ -753,28 +775,22 @@ export default function MyListsPage() {
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setShowEditModal(false)}
-                className="flex-1 py-2 border border-border rounded-lg text-foreground/80
-                         hover:bg-muted/30 transition-colors"
+                className="flex-1"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={updateList}
                 disabled={!newListName.trim() || actionLoading}
-                className="flex-1 py-2 bg-primary-600 text-white rounded-lg font-medium
-                         hover:bg-primary-700 transition-colors disabled:opacity-50
-                         disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1"
               >
-                {actionLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Save Changes"
-                )}
-              </button>
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
+              </Button>
             </div>
           </div>
         </div>
@@ -786,33 +802,28 @@ export default function MyListsPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-semibold text-foreground mb-4">Delete List</h3>
             <p className="text-muted-foreground mb-6">
-              Are you sure you want to delete <strong>{showDeleteConfirm.name}</strong>? 
-              This action cannot be undone.
+              Are you sure you want to delete <strong>{showDeleteConfirm.name}</strong>? This action
+              cannot be undone.
             </p>
 
             <div className="flex gap-3">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setShowDeleteConfirm(null)}
-                className="flex-1 py-2 border border-border rounded-lg text-foreground/80
-                         hover:bg-muted/30 transition-colors"
+                className="flex-1"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="destructive"
                 onClick={() => deleteList(showDeleteConfirm)}
                 disabled={actionLoading}
-                className="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium
-                         hover:bg-red-700 transition-colors disabled:opacity-50
-                         disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1"
               >
-                {actionLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Delete List"
-                )}
-              </button>
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete List"}
+              </Button>
             </div>
           </div>
         </div>

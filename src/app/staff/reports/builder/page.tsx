@@ -11,8 +11,22 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   Play,
@@ -32,7 +46,7 @@ import {
 
 interface QueryResult {
   columns: string[];
-  rows: Record<string, unknown>[];
+  rows: Record<string, any>[];
   rowCount: number;
   executionTime: number;
 }
@@ -79,9 +93,7 @@ const REPORT_TEMPLATES = [
     name: "Holds Summary",
     category: "circulation",
     description: "Current holds status by library",
-    parameters: [
-      { name: "orgId", label: "Library", type: "org", default: "1" },
-    ],
+    parameters: [{ name: "orgId", label: "Library", type: "org", default: "1" }],
     apiEndpoint: "/api/evergreen/reports",
     apiAction: "holds_summary",
   },
@@ -90,9 +102,7 @@ const REPORT_TEMPLATES = [
     name: "Patron Statistics",
     category: "patrons",
     description: "Active patrons, new registrations, expired accounts",
-    parameters: [
-      { name: "orgId", label: "Library", type: "org", default: "1" },
-    ],
+    parameters: [{ name: "orgId", label: "Library", type: "org", default: "1" }],
     apiEndpoint: "/api/evergreen/reports",
     apiAction: "patron_stats",
   },
@@ -101,9 +111,7 @@ const REPORT_TEMPLATES = [
     name: "Collection Statistics",
     category: "collection",
     description: "Item counts by status and location",
-    parameters: [
-      { name: "orgId", label: "Library", type: "org", default: "1" },
-    ],
+    parameters: [{ name: "orgId", label: "Library", type: "org", default: "1" }],
     apiEndpoint: "/api/evergreen/reports",
     apiAction: "collection_stats",
   },
@@ -112,16 +120,16 @@ const REPORT_TEMPLATES = [
     name: "Fines Summary",
     category: "circulation",
     description: "Outstanding fines and recent payments",
-    parameters: [
-      { name: "orgId", label: "Library", type: "org", default: "1" },
-    ],
+    parameters: [{ name: "orgId", label: "Library", type: "org", default: "1" }],
     apiEndpoint: "/api/evergreen/reports",
     apiAction: "fines_summary",
   },
 ];
 
 export default function ReportsBuilderPage() {
-  const [selectedTemplate, setSelectedTemplate] = useState<typeof REPORT_TEMPLATES[0] | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<(typeof REPORT_TEMPLATES)[0] | null>(
+    null
+  );
   const [parameters, setParameters] = useState<Record<string, string>>({});
   const [isExecuting, setIsExecuting] = useState(false);
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -178,7 +186,7 @@ export default function ReportsBuilderPage() {
 
       // Transform API response to table format
       let columns: string[] = [];
-      let rows: Record<string, unknown>[] = [];
+      let rows: Record<string, any>[] = [];
 
       if (data.stats) {
         // Dashboard-style stats
@@ -186,7 +194,7 @@ export default function ReportsBuilderPage() {
         rows = Object.entries(data.stats)
           .filter(([_, v]) => v !== null)
           .map(([key, value]) => ({
-            Metric: key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
+            Metric: key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
             Value: value,
           }));
       } else if (data.items && Array.isArray(data.items)) {
@@ -220,7 +228,6 @@ export default function ReportsBuilderPage() {
       });
 
       toast.success(`Report completed: ${rows.length} rows`);
-
     } catch (err) {
       const message = err instanceof Error ? err.message : "Report execution failed";
       setError(message);
@@ -230,11 +237,11 @@ export default function ReportsBuilderPage() {
     }
   }, [selectedTemplate, parameters]);
 
-  const selectTemplate = (template: typeof REPORT_TEMPLATES[0]) => {
+  const selectTemplate = (template: (typeof REPORT_TEMPLATES)[0]) => {
     setSelectedTemplate(template);
     // Initialize parameters with defaults
     const defaults: Record<string, string> = {};
-    template.parameters.forEach(p => {
+    template.parameters.forEach((p) => {
       defaults[p.name] = p.default;
     });
     setParameters(defaults);
@@ -269,7 +276,7 @@ export default function ReportsBuilderPage() {
   };
 
   const loadSavedReport = (report: SavedReport) => {
-    const template = REPORT_TEMPLATES.find(t => t.id === report.templateId);
+    const template = REPORT_TEMPLATES.find((t) => t.id === report.templateId);
     if (template) {
       setSelectedTemplate(template);
       setParameters(report.parameters);
@@ -278,7 +285,7 @@ export default function ReportsBuilderPage() {
   };
 
   const deleteSavedReport = (reportId: string) => {
-    const updated = savedReports.filter(r => r.id !== reportId);
+    const updated = savedReports.filter((r) => r.id !== reportId);
     setSavedReports(updated);
     localStorage.setItem("stacksos_saved_reports", JSON.stringify(updated));
     toast.success("Report deleted");
@@ -288,8 +295,8 @@ export default function ReportsBuilderPage() {
     if (!result) return;
 
     const headers = result.columns.join(",");
-    const rows = result.rows.map(row =>
-      result.columns.map(col => JSON.stringify(row[col] ?? "")).join(",")
+    const rows = result.rows.map((row) =>
+      result.columns.map((col) => JSON.stringify(row[col] ?? "")).join(",")
     );
     const csv = [headers, ...rows].join("\n");
 
@@ -304,9 +311,10 @@ export default function ReportsBuilderPage() {
     toast.success("CSV exported");
   };
 
-  const filteredTemplates = selectedCategory === "all"
-    ? REPORT_TEMPLATES
-    : REPORT_TEMPLATES.filter(t => t.category === selectedCategory);
+  const filteredTemplates =
+    selectedCategory === "all"
+      ? REPORT_TEMPLATES
+      : REPORT_TEMPLATES.filter((t) => t.category === selectedCategory);
 
   return (
     <div className="flex flex-col h-full">
@@ -318,7 +326,9 @@ export default function ReportsBuilderPage() {
                 Reports
               </Link>
               <span>/</span>
-              <span className="text-foreground font-medium" aria-current="page">Builder</span>
+              <span className="text-foreground font-medium" aria-current="page">
+                Builder
+              </span>
             </nav>
             <h1 className="text-2xl font-semibold flex items-center gap-2">
               <Database className="h-6 w-6" />
@@ -419,7 +429,9 @@ export default function ReportsBuilderPage() {
                     >
                       <CardHeader className="p-3">
                         <CardTitle className="text-sm font-medium">{template.name}</CardTitle>
-                        <CardDescription className="text-xs">{template.description}</CardDescription>
+                        <CardDescription className="text-xs">
+                          {template.description}
+                        </CardDescription>
                         <Badge variant="outline" className="w-fit text-xs mt-1">
                           {template.category}
                         </Badge>
@@ -446,10 +458,22 @@ export default function ReportsBuilderPage() {
                       >
                         <CardHeader className="p-3">
                           <div className="flex items-start justify-between">
-                            <div role="button" tabIndex={0} onClick={() => loadSavedReport(report)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); loadSavedReport(report); } }}>
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => loadSavedReport(report)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  loadSavedReport(report);
+                                }
+                              }}
+                            >
                               <CardTitle className="text-sm font-medium">{report.name}</CardTitle>
                               {report.description && (
-                                <CardDescription className="text-xs">{report.description}</CardDescription>
+                                <CardDescription className="text-xs">
+                                  {report.description}
+                                </CardDescription>
                               )}
                               <div className="flex items-center gap-2 mt-1">
                                 <Badge variant="outline" className="text-xs">
@@ -513,15 +537,19 @@ export default function ReportsBuilderPage() {
                 <div className="flex flex-wrap gap-4">
                   {selectedTemplate.parameters.map((param) => (
                     <div key={param.name} className="space-y-1">
-                      <Label htmlFor={param.name} className="text-xs">{param.label}</Label>
+                      <Label htmlFor={param.name} className="text-xs">
+                        {param.label}
+                      </Label>
                       <Input
                         id={param.name}
                         type={param.type === "number" ? "number" : "text"}
                         value={parameters[param.name] || ""}
-                        onChange={(e) => setParameters(prev => ({
-                          ...prev,
-                          [param.name]: e.target.value,
-                        }))}
+                        onChange={(e) =>
+                          setParameters((prev) => ({
+                            ...prev,
+                            [param.name]: e.target.value,
+                          }))
+                        }
                         className="w-32"
                       />
                     </div>
@@ -533,7 +561,9 @@ export default function ReportsBuilderPage() {
             <div className="p-4 border-b">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Info className="h-4 w-4" />
-                <span className="text-sm">Select a report template from the sidebar to get started</span>
+                <span className="text-sm">
+                  Select a report template from the sidebar to get started
+                </span>
               </div>
             </div>
           )}
@@ -583,7 +613,11 @@ export default function ReportsBuilderPage() {
                           <thead className="bg-muted">
                             <tr>
                               {result.columns.map((col) => (
-                                <th scope="col" key={col} className="px-4 py-2 text-left font-medium border-b">
+                                <th
+                                  scope="col"
+                                  key={col}
+                                  className="px-4 py-2 text-left font-medium border-b"
+                                >
                                   {col}
                                 </th>
                               ))}

@@ -45,7 +45,7 @@ type KioskState = "idle" | "patron-login" | "ready" | "scanning" | "complete";
 const IDLE_TIMEOUT = 60000; // 60 seconds of inactivity returns to idle
 
 export default function SelfCheckoutPage() {
-  const t = useTranslations("selfCheckout");
+  const _t = useTranslations("selfCheckout");
   const [state, setState] = useState<KioskState>("idle");
   const [patron, setPatron] = useState<PatronInfo | null>(null);
   const [checkedOutItems, setCheckedOutItems] = useState<CheckedOutItem[]>([]);
@@ -54,47 +54,50 @@ export default function SelfCheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [lastError, setLastError] = useState<string | null>(null);
-  
+
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Play audio feedback
-  const playSound = useCallback((type: "success" | "error" | "welcome") => {
-    if (!soundEnabled) return;
-    
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    if (type === "success") {
-      oscillator.frequency.value = 880;
-      gainNode.gain.value = 0.3;
-      oscillator.start();
-      setTimeout(() => oscillator.stop(), 150);
-    } else if (type === "error") {
-      oscillator.frequency.value = 220;
-      gainNode.gain.value = 0.3;
-      oscillator.start();
-      setTimeout(() => {
-        oscillator.frequency.value = 180;
-        setTimeout(() => oscillator.stop(), 200);
-      }, 200);
-    } else if (type === "welcome") {
-      oscillator.frequency.value = 523;
-      gainNode.gain.value = 0.2;
-      oscillator.start();
-      setTimeout(() => {
-        oscillator.frequency.value = 659;
+  const playSound = useCallback(
+    (type: "success" | "error" | "welcome") => {
+      if (!soundEnabled) return;
+
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      if (type === "success") {
+        oscillator.frequency.value = 880;
+        gainNode.gain.value = 0.3;
+        oscillator.start();
+        setTimeout(() => oscillator.stop(), 150);
+      } else if (type === "error") {
+        oscillator.frequency.value = 220;
+        gainNode.gain.value = 0.3;
+        oscillator.start();
         setTimeout(() => {
-          oscillator.frequency.value = 784;
-          setTimeout(() => oscillator.stop(), 100);
+          oscillator.frequency.value = 180;
+          setTimeout(() => oscillator.stop(), 200);
+        }, 200);
+      } else if (type === "welcome") {
+        oscillator.frequency.value = 523;
+        gainNode.gain.value = 0.2;
+        oscillator.start();
+        setTimeout(() => {
+          oscillator.frequency.value = 659;
+          setTimeout(() => {
+            oscillator.frequency.value = 784;
+            setTimeout(() => oscillator.stop(), 100);
+          }, 100);
         }, 100);
-      }, 100);
-    }
-  }, [soundEnabled]);
+      }
+    },
+    [soundEnabled]
+  );
 
   // Reset idle timer
   const resetIdleTimer = useCallback(() => {
@@ -119,21 +122,21 @@ export default function SelfCheckoutPage() {
   // Handle patron login
   const handlePatronLogin = async () => {
     if (!barcodeInput.trim()) return;
-    
+
     setIsProcessing(true);
     setLastError(null);
-    
-	  try {
-	    // In production, this would call the Evergreen API
-	    // For now, simulate a successful login
-	    const res = await fetchWithAuth("/api/opac/auth", {
-	      method: "POST",
-	      headers: { "Content-Type": "application/json" },
-	      body: JSON.stringify({ barcode: barcodeInput, pin: pinInput }),
-	    });
-      
+
+    try {
+      // In production, this would call the Evergreen API
+      // For now, simulate a successful login
+      const res = await fetchWithAuth("/api/opac/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ barcode: barcodeInput, pin: pinInput }),
+      });
+
       const data = await res.json();
-      
+
       if (data.ok && data.patron) {
         setPatron({
           id: data.patron.id,
@@ -162,21 +165,21 @@ export default function SelfCheckoutPage() {
   // Handle item checkout
   const handleCheckout = async () => {
     if (!barcodeInput.trim() || !patron) return;
-    
+
     setIsProcessing(true);
     setLastError(null);
-    
-	  try {
-	    const res = await fetchWithAuth("/api/opac/self-checkout", {
-	      method: "POST",
-	      headers: { "Content-Type": "application/json" },
-	      body: JSON.stringify({
-	        itemBarcode: barcodeInput,
+
+    try {
+      const res = await fetchWithAuth("/api/opac/self-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          itemBarcode: barcodeInput,
         }),
       });
-      
+
       const data = await res.json();
-      
+
       const checkout = data?.checkout;
       if (data.ok && checkout) {
         const newItem: CheckedOutItem = {
@@ -184,7 +187,9 @@ export default function SelfCheckoutPage() {
           title: checkout.title || "Unknown Title",
           author: checkout.author,
           barcode: checkout.barcode || barcodeInput,
-          dueDate: checkout.dueDate || new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+          dueDate:
+            checkout.dueDate ||
+            new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toLocaleDateString(),
         };
         setCheckedOutItems((prev) => [newItem, ...prev]);
         playSound("success");
@@ -251,7 +256,7 @@ export default function SelfCheckoutPage() {
               <p className="text-primary-foreground/80 text-sm">Scan your items to check out</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -263,10 +268,7 @@ export default function SelfCheckoutPage() {
               {soundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
             </Button>
             {patron && (
-              <Button
-                variant="secondary"
-                onClick={handleLogout}
-              >
+              <Button variant="secondary" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 End Session
               </Button>
@@ -278,10 +280,9 @@ export default function SelfCheckoutPage() {
       {/* Main Content */}
       <main className="flex-1 p-6">
         <div className="max-w-4xl mx-auto">
-          
           {/* Idle State - Touch to Start */}
           {state === "idle" && (
-            <div 
+            <div
               className="h-[70vh] flex flex-col items-center justify-center cursor-pointer"
               onClick={() => setState("patron-login")}
             >
@@ -312,7 +313,12 @@ export default function SelfCheckoutPage() {
                     placeholder="Library Card Barcode"
                     value={barcodeInput}
                     onChange={(e) => setBarcodeInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (pinInput ? handlePatronLogin() : document.getElementById("pin-input")?.focus())}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" &&
+                      (pinInput
+                        ? handlePatronLogin()
+                        : document.getElementById("pin-input")?.focus())
+                    }
                     className="text-center text-lg h-14"
                     autoComplete="off"
                   />
@@ -329,7 +335,7 @@ export default function SelfCheckoutPage() {
                     autoComplete="off"
                   />
                 </div>
-                
+
                 {lastError && (
                   <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-center">
                     <AlertTriangle className="h-4 w-4 inline mr-2" />
@@ -337,8 +343,8 @@ export default function SelfCheckoutPage() {
                   </div>
                 )}
 
-                <Button 
-                  className="w-full h-14 text-lg" 
+                <Button
+                  className="w-full h-14 text-lg"
                   onClick={handlePatronLogin}
                   disabled={isProcessing || !barcodeInput}
                 >
@@ -389,8 +395,8 @@ export default function SelfCheckoutPage() {
                       className="text-lg h-12"
                       autoComplete="off"
                     />
-                    <Button 
-                      className="h-12 px-6" 
+                    <Button
+                      className="h-12 px-6"
                       onClick={handleCheckout}
                       disabled={isProcessing || !barcodeInput}
                     >
@@ -419,7 +425,9 @@ export default function SelfCheckoutPage() {
                         </div>
                         <div>
                           <p className="font-semibold">{patron.name}</p>
-                          <p className="text-sm text-muted-foreground font-mono">{patron.barcode}</p>
+                          <p className="text-sm text-muted-foreground font-mono">
+                            {patron.barcode}
+                          </p>
                         </div>
                       </div>
                       {patron.holdsReady > 0 && (
@@ -446,12 +454,17 @@ export default function SelfCheckoutPage() {
                     ) : (
                       <div className="space-y-3 max-h-64 overflow-auto">
                         {checkedOutItems.map((item) => (
-                          <div key={item.id} className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                          <div
+                            key={item.id}
+                            className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800"
+                          >
                             <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="font-medium truncate">{item.title}</p>
                               {item.author && (
-                                <p className="text-sm text-muted-foreground truncate">{item.author}</p>
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {item.author}
+                                </p>
                               )}
                             </div>
                             <div className="text-right shrink-0">
@@ -467,7 +480,12 @@ export default function SelfCheckoutPage() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1" onClick={handlePrintReceipt} disabled={checkedOutItems.length === 0}>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={handlePrintReceipt}
+                    disabled={checkedOutItems.length === 0}
+                  >
                     <Printer className="h-4 w-4 mr-2" />
                     Print Receipt
                   </Button>
@@ -489,7 +507,8 @@ export default function SelfCheckoutPage() {
                 </div>
                 <h2 className="text-2xl font-bold mb-2">All Done!</h2>
                 <p className="text-muted-foreground mb-6">
-                  You checked out {checkedOutItems.length} item{checkedOutItems.length !== 1 ? "s" : ""}
+                  You checked out {checkedOutItems.length} item
+                  {checkedOutItems.length !== 1 ? "s" : ""}
                 </p>
 
                 <div className="space-y-3">
@@ -505,7 +524,6 @@ export default function SelfCheckoutPage() {
               </CardContent>
             </Card>
           )}
-
         </div>
       </main>
 

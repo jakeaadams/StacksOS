@@ -20,7 +20,7 @@ export interface AuditEvent {
   entity?: string;
   entityId?: string | number;
   status: "success" | "failure";
-  details?: Record<string, unknown>;
+  details?: Record<string, any>;
   actor?: AuditActor | null;
   orgId?: number;
   ip?: string | null;
@@ -52,8 +52,8 @@ function scrub(value: unknown, depth = 0): unknown {
     return value.map((item: any) => scrub(item, depth + 1));
   }
 
-  const output: Record<string, unknown> = {};
-  for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+  const output: Record<string, any> = {};
+  for (const [key, val] of Object.entries(value as Record<string, any>)) {
     if (REDACT_KEYS.has(key.toLowerCase())) {
       output[key] = "[redacted]";
       continue;

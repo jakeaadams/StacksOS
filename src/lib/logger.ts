@@ -53,8 +53,8 @@ function scrub(value: unknown, depth = 0): unknown {
     return value.map((item) => scrub(item, depth + 1));
   }
 
-  const output: Record<string, unknown> = {};
-  for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+  const output: Record<string, any> = {};
+  for (const [key, val] of Object.entries(value as Record<string, any>)) {
     if (REDACT_KEYS.has(key.toLowerCase())) {
       output[key] = "[redacted]";
       continue;
@@ -73,7 +73,7 @@ function safeJson(obj: unknown): string {
   }
 }
 
-function writeLine(level: LogLevel, record: Record<string, unknown>): void {
+function writeLine(level: LogLevel, record: Record<string, any>): void {
   const line = safeJson(record) + "\n";
 
   // stderr for warn/error so logs can be split by stream.
@@ -84,7 +84,7 @@ function writeLine(level: LogLevel, record: Record<string, unknown>): void {
   process.stdout.write(line);
 }
 
-export type LogMeta = Record<string, unknown> & {
+export type LogMeta = Record<string, any> & {
   requestId?: string | null;
   route?: string;
   component?: string;
@@ -110,7 +110,7 @@ function createLogger(baseMeta: LogMeta = {}): Logger {
   const log = (level: LogLevel, meta: LogMeta, msg: string) => {
     if (!shouldLog(level)) return;
 
-    const record: Record<string, unknown> = {
+    const record: Record<string, any> = {
       ts: new Date().toISOString(),
       level,
       msg,

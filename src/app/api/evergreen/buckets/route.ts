@@ -28,20 +28,23 @@ interface Bucket {
   itemCount: number;
 }
 
-const bucketsPostSchema = z.object({
-  action: z.enum(["create", "add_record", "update", "remove_record"]),
-  name: z.string().trim().max(512).optional(),
-  description: z.string().max(2048).optional(),
-  bucketId: z.coerce.number().int().positive().optional(),
-  recordId: z.coerce.number().int().positive().optional(),
-  pub: z.boolean().optional(),
-}).passthrough();
+const bucketsPostSchema = z
+  .object({
+    action: z.enum(["create", "add_record", "update", "remove_record"]),
+    name: z.string().trim().max(512).optional(),
+    description: z.string().max(2048).optional(),
+    bucketId: z.coerce.number().int().positive().optional(),
+    recordId: z.coerce.number().int().positive().optional(),
+    pub: z.boolean().optional(),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
     const staffIdRaw = actor?.id ?? actor?.usr ?? actor?.user_id;
-    const staffId = typeof staffIdRaw === "number" ? staffIdRaw : parseInt(String(staffIdRaw ?? ""), 10);
+    const staffId =
+      typeof staffIdRaw === "number" ? staffIdRaw : parseInt(String(staffIdRaw ?? ""), 10);
     if (!Number.isFinite(staffId)) {
       return errorResponse("Unable to resolve staff user id", 500);
     }
@@ -66,11 +69,11 @@ export async function GET(req: NextRequest) {
 
         let itemCount = 0;
         try {
-          const itemsRes = await callOpenSRF(
-            "open-ils.actor",
-            "open-ils.actor.container.flesh",
-            [authtoken, "biblio", b.id]
-          );
+          const itemsRes = await callOpenSRF("open-ils.actor", "open-ils.actor.container.flesh", [
+            authtoken,
+            "biblio",
+            b.id,
+          ]);
           const fleshed = itemsRes?.payload?.[0];
           if (fleshed && fleshed.items) {
             itemCount = fleshed.items.length;
@@ -96,7 +99,6 @@ export async function GET(req: NextRequest) {
       buckets,
       count: buckets.length,
     });
-
   } catch (error) {
     return serverErrorResponse(error, "Buckets GET", req);
   }
@@ -106,7 +108,8 @@ export async function POST(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
     const staffIdRaw = actor?.id ?? actor?.usr ?? actor?.user_id;
-    const staffId = typeof staffIdRaw === "number" ? staffIdRaw : parseInt(String(staffIdRaw ?? ""), 10);
+    const staffId =
+      typeof staffIdRaw === "number" ? staffIdRaw : parseInt(String(staffIdRaw ?? ""), 10);
     if (!Number.isFinite(staffId)) {
       return errorResponse("Unable to resolve staff user id", 500);
     }
@@ -119,26 +122,22 @@ export async function POST(req: NextRequest) {
         return errorResponse("Bucket name is required", 400);
       }
 
-      const createRes = await callOpenSRF(
-        "open-ils.actor",
-        "open-ils.actor.container.create",
-        [
-          authtoken,
-          "biblio",
-          encodeFieldmapper("cbreb", {
-            owner: staffId,
-            name,
-            description: description || "",
-            btype: "staff_client",
-            pub: pub === true ? "t" : "f",
-            isnew: 1,
-            ischanged: 1,
-          }),
-        ]
-      );
+      const createRes = await callOpenSRF("open-ils.actor", "open-ils.actor.container.create", [
+        authtoken,
+        "biblio",
+        encodeFieldmapper("cbreb", {
+          owner: staffId,
+          name,
+          description: description || "",
+          btype: "staff_client",
+          pub: pub === true ? "t" : "f",
+          isnew: 1,
+          ischanged: 1,
+        }),
+      ]);
 
       const result = createRes?.payload?.[0];
-      if (!result || isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
+      if (!result || isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
         return errorResponse(getErrorMessage(result, "Failed to create bucket"), 400, result);
       }
 
@@ -161,24 +160,24 @@ export async function POST(req: NextRequest) {
         return errorResponse("Bucket ID and record ID are required", 400);
       }
 
-      const addRes = await callOpenSRF(
-        "open-ils.actor",
-        "open-ils.actor.container.item.create",
-        [
-          authtoken,
-          "biblio",
-          encodeFieldmapper("cbrebi", {
-            bucket: bucketId,
-            target_biblio_record_entry: recordId,
-            isnew: 1,
-            ischanged: 1,
-          }),
-        ]
-      );
+      const addRes = await callOpenSRF("open-ils.actor", "open-ils.actor.container.item.create", [
+        authtoken,
+        "biblio",
+        encodeFieldmapper("cbrebi", {
+          bucket: bucketId,
+          target_biblio_record_entry: recordId,
+          isnew: 1,
+          ischanged: 1,
+        }),
+      ]);
 
       const result = addRes?.payload?.[0];
-      if (!result || isOpenSRFEvent(result) || (result as Record<string, unknown>)?.ilsevent) {
-        return errorResponse(getErrorMessage(result, "Failed to add record to bucket"), 400, result);
+      if (!result || isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
+        return errorResponse(
+          getErrorMessage(result, "Failed to add record to bucket"),
+          400,
+          result
+        );
       }
 
       return successResponse({ itemId: result });
@@ -190,17 +189,19 @@ export async function POST(req: NextRequest) {
         return errorResponse("Valid bucketId is required", 400);
       }
 
-      const existingResponse = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.cbreb", [
-        authtoken,
-        parsedBucketId,
-      ]);
+      const existingResponse = await callOpenSRF(
+        "open-ils.pcrud",
+        "open-ils.pcrud.retrieve.cbreb",
+        [authtoken, parsedBucketId]
+      );
       const existing = existingResponse?.payload?.[0];
-      if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, unknown>)?.ilsevent) {
+      if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, any>)?.ilsevent) {
         return errorResponse(getErrorMessage(existing, "Bucket not found"), 404, existing);
       }
 
-      const ownerRaw = (existing as Record<string, unknown>)?.owner;
-      const ownerId = typeof ownerRaw === "number" ? ownerRaw : parseInt(String(ownerRaw ?? ""), 10);
+      const ownerRaw = (existing as Record<string, any>)?.owner;
+      const ownerId =
+        typeof ownerRaw === "number" ? ownerRaw : parseInt(String(ownerRaw ?? ""), 10);
       if (Number.isFinite(ownerId) && ownerId !== staffId) {
         return errorResponse("You can only edit buckets you own", 403);
       }
@@ -208,25 +209,26 @@ export async function POST(req: NextRequest) {
       const nextName =
         name !== undefined
           ? String(name || "").trim()
-          : String((existing as Record<string, unknown>)?.name || "").trim();
+          : String((existing as Record<string, any>)?.name || "").trim();
       if (!nextName) {
         return errorResponse("Bucket name is required", 400);
       }
 
       const updatePayload: any = encodeFieldmapper("cbreb", {
-        ...(existing as Record<string, unknown>),
+        ...(existing as Record<string, any>),
         id: parsedBucketId,
         name: nextName,
         description:
           description !== undefined
             ? String(description || "").trim()
-            : String((existing as Record<string, unknown>)?.description || "").trim(),
+            : String((existing as Record<string, any>)?.description || "").trim(),
         pub:
           pub !== undefined
             ? pub === true
               ? "t"
               : "f"
-            : (existing as Record<string, unknown>)?.pub === "t" || (existing as Record<string, unknown>)?.pub === true
+            : (existing as Record<string, any>)?.pub === "t" ||
+                (existing as Record<string, any>)?.pub === true
               ? "t"
               : "f",
         owner: Number.isFinite(ownerId) ? ownerId : staffId,
@@ -238,8 +240,16 @@ export async function POST(req: NextRequest) {
         updatePayload,
       ]);
       const updateResult = updateRes?.payload?.[0];
-      if (!updateResult || isOpenSRFEvent(updateResult) || (updateResult as Record<string, unknown>)?.ilsevent) {
-        return errorResponse(getErrorMessage(updateResult, "Failed to update bucket"), 400, updateResult);
+      if (
+        !updateResult ||
+        isOpenSRFEvent(updateResult) ||
+        (updateResult as Record<string, any>)?.ilsevent
+      ) {
+        return errorResponse(
+          getErrorMessage(updateResult, "Failed to update bucket"),
+          400,
+          updateResult
+        );
       }
 
       return successResponse({
@@ -249,11 +259,17 @@ export async function POST(req: NextRequest) {
           description:
             description !== undefined
               ? String(description || "").trim()
-              : String((existing as Record<string, unknown>)?.description || "").trim(),
+              : String((existing as Record<string, any>)?.description || "").trim(),
           owner: Number.isFinite(ownerId) ? ownerId : staffId,
-          btype: String((existing as Record<string, unknown>)?.btype || "staff_client"),
-          pub: pub !== undefined ? pub === true : (existing as Record<string, unknown>)?.pub === "t" || (existing as Record<string, unknown>)?.pub === true,
-          createTime: String((existing as Record<string, unknown>)?.create_time || new Date().toISOString()),
+          btype: String((existing as Record<string, any>)?.btype || "staff_client"),
+          pub:
+            pub !== undefined
+              ? pub === true
+              : (existing as Record<string, any>)?.pub === "t" ||
+                (existing as Record<string, any>)?.pub === true,
+          createTime: String(
+            (existing as Record<string, any>)?.create_time || new Date().toISOString()
+          ),
         },
       });
     }
@@ -263,11 +279,11 @@ export async function POST(req: NextRequest) {
         return errorResponse("Bucket ID and record ID are required", 400);
       }
 
-      const fleshRes = await callOpenSRF(
-        "open-ils.actor",
-        "open-ils.actor.container.flesh",
-        [authtoken, "biblio", bucketId]
-      );
+      const fleshRes = await callOpenSRF("open-ils.actor", "open-ils.actor.container.flesh", [
+        authtoken,
+        "biblio",
+        bucketId,
+      ]);
 
       const bucket = fleshRes?.payload?.[0];
       if (!bucket || !bucket.items) {
@@ -294,7 +310,6 @@ export async function POST(req: NextRequest) {
     }
 
     return errorResponse("Invalid action", 400);
-
   } catch (error) {
     return serverErrorResponse(error, "Buckets POST", req);
   }
@@ -310,11 +325,11 @@ export async function DELETE(req: NextRequest) {
       return errorResponse("Bucket ID is required", 400);
     }
 
-    const deleteRes = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.container.delete",
-      [authtoken, "biblio", parseInt(bucketId, 10)]
-    );
+    const deleteRes = await callOpenSRF("open-ils.actor", "open-ils.actor.container.delete", [
+      authtoken,
+      "biblio",
+      parseInt(bucketId, 10),
+    ]);
 
     const result = deleteRes?.payload?.[0];
     if (result?.ilsevent) {
@@ -322,7 +337,6 @@ export async function DELETE(req: NextRequest) {
     }
 
     return successResponse({ deleted: true });
-
   } catch (error) {
     return serverErrorResponse(error, "Buckets DELETE", req);
   }

@@ -1,22 +1,19 @@
 import { NextRequest } from "next/server";
-import {
-  callOpenSRF,
-  successResponse,
-  errorResponse,
-  serverErrorResponse,
-} from "@/lib/api";
+import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { z } from "zod";
 
 // POST /api/opac/renew - Renew a single item
-const renewPostSchema = z.object({
-  copyBarcode: z.string().trim().optional(),
-  circId: z.coerce.number().int().positive().optional(),
-  checkoutId: z.coerce.number().int().positive().optional(),
-}).refine((b) => Boolean(b.copyBarcode) || Boolean(b.circId) || Boolean(b.checkoutId), {
-  message: "copyBarcode, circId, or checkoutId required",
-});
+const renewPostSchema = z
+  .object({
+    copyBarcode: z.string().trim().optional(),
+    circId: z.coerce.number().int().positive().optional(),
+    checkoutId: z.coerce.number().int().positive().optional(),
+  })
+  .refine((b) => Boolean(b.copyBarcode) || Boolean(b.circId) || Boolean(b.checkoutId), {
+    message: "copyBarcode, circId, or checkoutId required",
+  });
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,18 +27,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Renew by barcode or circ ID
-    const renewParams: Record<string, unknown> = {};
+    const renewParams: Record<string, any> = {};
     if (copyBarcode) {
       renewParams.copy_barcode = copyBarcode;
     } else {
       renewParams.circ = resolvedCircId;
     }
 
-    const renewResponse = await callOpenSRF(
-      "open-ils.circ",
-      "open-ils.circ.renew",
-      [patronToken, renewParams]
-    );
+    const renewResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.renew", [
+      patronToken,
+      renewParams,
+    ]);
 
     const result = renewResponse.payload?.[0];
 
@@ -62,7 +58,6 @@ export async function POST(req: NextRequest) {
       const message = errorMessages[textcode] || result.desc || "Renewal failed";
 
       return errorResponse(message);
-
     }
 
     // Success - get new due date
@@ -76,7 +71,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PatronAuthError) {
-      console.error("Route /api/opac/renew auth failed:", error);
+      logger.warn({ error: String(error) }, "Route /api/opac/renew auth failed");
       return errorResponse("Authentication required", 401);
     }
     logger.error({ error: String(error) }, "Error renewing item");

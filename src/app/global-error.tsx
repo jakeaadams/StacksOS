@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { clientLogger } from "@/lib/client-logger";
 
 export default function GlobalError({
@@ -17,90 +19,32 @@ export default function GlobalError({
 
   return (
     <html>
-      <body>
-        <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontFamily: "system-ui, sans-serif",
-            backgroundColor: "#fafafa",
-            padding: "2rem",
-          }}
-        >
-          <div style={{ textAlign: "center", maxWidth: "400px" }}>
-            <div
-              style={{
-                fontSize: "4rem",
-                marginBottom: "1rem",
-              }}
-            >
-              ⚠️
+      <body className="min-h-screen bg-muted/30">
+        <div className="mx-auto flex min-h-screen max-w-2xl items-center justify-center px-4 py-16">
+          <div className="w-full rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+            <div className="mx-auto mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+              <AlertTriangle className="h-8 w-8" />
             </div>
 
-            <h1
-              style={{
-                fontSize: "1.5rem",
-                fontWeight: "bold",
-                marginBottom: "0.5rem",
-                color: "#1a1a1a",
-              }}
-            >
-              Critical Error
-            </h1>
+            <h1 className="mb-2 text-2xl font-bold text-foreground">Critical Error</h1>
 
-            <p
-              style={{
-                color: "#666",
-                marginBottom: "1.5rem",
-              }}
-            >
+            <p className="mb-6 text-muted-foreground">
               A critical error has occurred. Please try refreshing the page.
             </p>
 
-            {error.digest && (
-              <p
-                style={{
-                  fontSize: "0.75rem",
-                  color: "#666",
-                  fontFamily: "monospace",
-                  marginBottom: "1.5rem",
-                }}
-              >
+            {error.digest ? (
+              <p className="mb-6 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs font-mono text-muted-foreground">
                 Error ID: {error.digest}
               </p>
-            )}
+            ) : null}
 
-            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
-              <button
-                onClick={reset}
-                style={{
-                  padding: "0.5rem 1rem",
-                  backgroundColor: "#0d9488",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "0.375rem",
-                  cursor: "pointer",
-                  fontWeight: 500,
-                }}
-              >
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Button onClick={reset} className="stx-action-primary">
                 Try Again
-              </button>
-              <Link
-                href="/"
-                style={{
-                  padding: "0.5rem 1rem",
-                  backgroundColor: "white",
-                  color: "#333",
-                  border: "1px solid #ddd",
-                  borderRadius: "0.375rem",
-                  textDecoration: "none",
-                  fontWeight: 500,
-                }}
-              >
-                Go Home
-              </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/">Go Home</Link>
+              </Button>
             </div>
           </div>
         </div>

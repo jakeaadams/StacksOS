@@ -10,12 +10,32 @@ import {
   ConfirmDialog,
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ColumnDef } from "@tanstack/react-table";
 import { useApi } from "@/hooks";
 import { fetchWithAuth } from "@/lib/client-fetch";
@@ -52,12 +72,15 @@ interface FundDebitRow {
 }
 
 export default function InvoicesPage() {
-  const { data, isLoading } = useApi<any>(
-    "/api/evergreen/acquisitions/invoices",
-    { immediate: true }
-  );
-  const { data: vendorsData } = useApi<any>("/api/evergreen/acquisitions/vendors", { immediate: true });
-  const { data: methodsData } = useApi<any>("/api/evergreen/acquisitions/invoice-methods", { immediate: true });
+  const { data, isLoading } = useApi<any>("/api/evergreen/acquisitions/invoices", {
+    immediate: true,
+  });
+  const { data: vendorsData } = useApi<any>("/api/evergreen/acquisitions/vendors", {
+    immediate: true,
+  });
+  const { data: methodsData } = useApi<any>("/api/evergreen/acquisitions/invoice-methods", {
+    immediate: true,
+  });
   const { data: fundsData } = useApi<any>("/api/evergreen/acquisitions/funds", { immediate: true });
 
   const invoices: InvoiceRow[] = data?.invoices || [];
@@ -83,11 +106,18 @@ export default function InvoicesPage() {
   const [entrySplits, setEntrySplits] = useState<Array<{ fundId: string; amount: string }>>([]);
   const [savingEntry, setSavingEntry] = useState(false);
   const [closing, setClosing] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({ open: false, title: "", description: "", onConfirm: () => {} });
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({ open: false, title: "", description: "", onConfirm: () => {} });
 
   const [splitEditorOpen, setSplitEditorOpen] = useState(false);
   const [splitEditorEntryId, setSplitEditorEntryId] = useState<number | null>(null);
-  const [splitEditorSplits, setSplitEditorSplits] = useState<Array<{ fundId: string; amount: string }>>([]);
+  const [splitEditorSplits, setSplitEditorSplits] = useState<
+    Array<{ fundId: string; amount: string }>
+  >([]);
   const [splitEditorSaving, setSplitEditorSaving] = useState(false);
 
   const loadInvoice = useCallback(async (id: number) => {
@@ -143,9 +173,14 @@ export default function InvoicesPage() {
 
   const fundDebitsByEntry = useMemo(() => {
     const map = new Map<number, FundDebitRow[]>();
-    const list: FundDebitRow[] = Array.isArray(invoiceDetails?.fundDebits) ? invoiceDetails.fundDebits : [];
+    const list: FundDebitRow[] = Array.isArray(invoiceDetails?.fundDebits)
+      ? invoiceDetails.fundDebits
+      : [];
     for (const fd of list) {
-      const entryId = typeof fd.invoice_entry === "number" ? fd.invoice_entry : parseInt(String((fd as any).invoice_entry ?? ""), 10);
+      const entryId =
+        typeof fd.invoice_entry === "number"
+          ? fd.invoice_entry
+          : parseInt(String((fd as any).invoice_entry ?? ""), 10);
       if (!Number.isFinite(entryId)) continue;
       if (!map.has(entryId)) map.set(entryId, []);
       map.get(entryId)!.push(fd);
@@ -156,7 +191,10 @@ export default function InvoicesPage() {
   const normalizeSplitsForApi = (splits: Array<{ fundId: string; amount: string }>) => {
     return splits
       .map((s) => ({ fundId: parseInt(s.fundId, 10), amount: parseFloat(s.amount) }))
-      .filter((s) => Number.isFinite(s.fundId) && s.fundId > 0 && Number.isFinite(s.amount) && s.amount > 0);
+      .filter(
+        (s) =>
+          Number.isFinite(s.fundId) && s.fundId > 0 && Number.isFinite(s.amount) && s.amount > 0
+      );
   };
 
   const entrySplitSum = useMemo(() => {
@@ -323,7 +361,10 @@ export default function InvoicesPage() {
       <PageHeader
         title="Invoices"
         subtitle="Create and manage Evergreen acquisition invoices."
-        breadcrumbs={[{ label: "Acquisitions", href: "/staff/acquisitions" }, { label: "Invoices" }]}
+        breadcrumbs={[
+          { label: "Acquisitions", href: "/staff/acquisitions" },
+          { label: "Invoices" },
+        ]}
         actions={[{ label: "Create invoice", onClick: () => setCreateOpen(true), icon: Plus }]}
       />
       <PageContent>
@@ -338,10 +379,14 @@ export default function InvoicesPage() {
               <div>
                 <Label htmlFor="provider">Provider</Label>
                 <Select id="provider" value={providerId} onValueChange={setProviderId}>
-                  <SelectTrigger><SelectValue placeholder="Select provider" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select provider" />
+                  </SelectTrigger>
                   <SelectContent>
                     {vendors.map((v: any) => (
-                      <SelectItem key={v.id} value={String(v.id)}>{v.name}</SelectItem>
+                      <SelectItem key={v.id} value={String(v.id)}>
+                        {v.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -350,10 +395,14 @@ export default function InvoicesPage() {
               <div>
                 <Label htmlFor="receive-method">Receive method</Label>
                 <Select id="receive-method" value={recvMethod} onValueChange={setRecvMethod}>
-                  <SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select method" />
+                  </SelectTrigger>
                   <SelectContent>
                     {methods.map((m: any) => (
-                      <SelectItem key={m.code} value={String(m.code)}>{m.name || m.code}</SelectItem>
+                      <SelectItem key={m.code} value={String(m.code)}>
+                        {m.name || m.code}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -361,19 +410,35 @@ export default function InvoicesPage() {
 
               <div>
                 <Label htmlFor="vendor-invoice-id">Vendor invoice ID</Label>
-                <Input id="vendor-invoice-id" value={invIdent} onChange={(e) => setInvIdent(e.target.value)} placeholder="e.g. INV-12345" />
+                <Input
+                  id="vendor-invoice-id"
+                  value={invIdent}
+                  onChange={(e) => setInvIdent(e.target.value)}
+                  placeholder="e.g. INV-12345"
+                />
               </div>
 
               <div>
                 <Label htmlFor="note">Note (optional)</Label>
-                <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
+                <Input
+                  id="note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Optional"
+                />
               </div>
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>Cancel</Button>
+              <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>
+                Cancel
+              </Button>
               <Button onClick={() => void createInvoice()} disabled={creating}>
-                {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Receipt className="h-4 w-4 mr-2" />}
+                {creating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Receipt className="h-4 w-4 mr-2" />
+                )}
                 Create
               </Button>
             </DialogFooter>
@@ -387,9 +452,14 @@ export default function InvoicesPage() {
               <DialogDescription>View entries and close the invoice when ready.</DialogDescription>
             </DialogHeader>
             {detailsLoading ? (
-              <div className="p-10 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              <div className="p-10 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
             ) : !invoiceDetails ? (
-              <EmptyState title="No invoice selected" description="Select an invoice from the list." />
+              <EmptyState
+                title="No invoice selected"
+                description="Select an invoice from the list."
+              />
             ) : (
               <div className="space-y-4">
                 <Card>
@@ -399,19 +469,39 @@ export default function InvoicesPage() {
                   <CardContent className="grid gap-3 md:grid-cols-4">
                     <div className="md:col-span-2">
                       <Label htmlFor="purchase-order-id">Purchase order ID</Label>
-                      <Input id="purchase-order-id" value={entryPoId} onChange={(e) => setEntryPoId(e.target.value)} placeholder="PO id" />
+                      <Input
+                        id="purchase-order-id"
+                        value={entryPoId}
+                        onChange={(e) => setEntryPoId(e.target.value)}
+                        placeholder="PO id"
+                      />
                     </div>
                     <div>
                       <Label htmlFor="item-count">Item count</Label>
-                      <Input id="item-count" value={entryCount} onChange={(e) => setEntryCount(e.target.value)} placeholder="1" />
+                      <Input
+                        id="item-count"
+                        value={entryCount}
+                        onChange={(e) => setEntryCount(e.target.value)}
+                        placeholder="1"
+                      />
                     </div>
                     <div>
                       <Label htmlFor="cost-billed">Cost billed (optional)</Label>
-                      <Input id="cost-billed" value={entryCost} onChange={(e) => setEntryCost(e.target.value)} placeholder="0.00" />
+                      <Input
+                        id="cost-billed"
+                        value={entryCost}
+                        onChange={(e) => setEntryCost(e.target.value)}
+                        placeholder="0.00"
+                      />
                     </div>
                     <div className="md:col-span-4">
                       <Label htmlFor="note-2">Note (optional)</Label>
-                      <Input id="note-2" value={entryNote} onChange={(e) => setEntryNote(e.target.value)} placeholder="Optional" />
+                      <Input
+                        id="note-2"
+                        value={entryNote}
+                        onChange={(e) => setEntryNote(e.target.value)}
+                        placeholder="Optional"
+                      />
                     </div>
 
                     <div className="md:col-span-4">
@@ -424,7 +514,9 @@ export default function InvoicesPage() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => setEntrySplits((prev) => [...prev, { fundId: "", amount: "" }])}
+                          onClick={() =>
+                            setEntrySplits((prev) => [...prev, { fundId: "", amount: "" }])
+                          }
                           disabled={funds.length === 0}
                         >
                           <Plus className="h-4 w-4 mr-2" />
@@ -432,7 +524,8 @@ export default function InvoicesPage() {
                         </Button>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        Use splits to allocate this invoice entry across multiple funds. Splits must sum to the billed amount (if provided).
+                        Use splits to allocate this invoice entry across multiple funds. Splits must
+                        sum to the billed amount (if provided).
                       </div>
 
                       {entrySplits.length > 0 && (
@@ -440,16 +533,23 @@ export default function InvoicesPage() {
                           {entrySplits.map((s, idx) => (
                             <div key={idx} className="grid gap-2 grid-cols-12 items-end">
                               <div className="col-span-7">
-                                <Label htmlFor="fund" className="text-xs">Fund</Label>
-                                <Select id="fund"
+                                <Label htmlFor="fund" className="text-xs">
+                                  Fund
+                                </Label>
+                                <Select
+                                  id="fund"
                                   value={s.fundId}
                                   onValueChange={(v) =>
                                     setEntrySplits((prev) =>
-                                      prev.map((row, i) => (i === idx ? { ...row, fundId: v } : row))
+                                      prev.map((row, i) =>
+                                        i === idx ? { ...row, fundId: v } : row
+                                      )
                                     )
                                   }
                                 >
-                                  <SelectTrigger><SelectValue placeholder="Select fund" /></SelectTrigger>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select fund" />
+                                  </SelectTrigger>
                                   <SelectContent>
                                     {funds.map((f) => (
                                       <SelectItem key={f.id} value={String(f.id)}>
@@ -460,12 +560,17 @@ export default function InvoicesPage() {
                                 </Select>
                               </div>
                               <div className="col-span-4">
-                                <Label htmlFor="amount" className="text-xs">Amount</Label>
-                                <Input id="amount"
+                                <Label htmlFor="amount" className="text-xs">
+                                  Amount
+                                </Label>
+                                <Input
+                                  id="amount"
                                   value={s.amount}
                                   onChange={(e) =>
                                     setEntrySplits((prev) =>
-                                      prev.map((row, i) => (i === idx ? { ...row, amount: e.target.value } : row))
+                                      prev.map((row, i) =>
+                                        i === idx ? { ...row, amount: e.target.value } : row
+                                      )
                                     )
                                   }
                                   placeholder="0.00"
@@ -476,7 +581,9 @@ export default function InvoicesPage() {
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setEntrySplits((prev) => prev.filter((_, i) => i !== idx))}
+                                  onClick={() =>
+                                    setEntrySplits((prev) => prev.filter((_, i) => i !== idx))
+                                  }
                                 >
                                   Remove
                                 </Button>
@@ -485,10 +592,12 @@ export default function InvoicesPage() {
                           ))}
 
                           <div className="text-xs text-muted-foreground">
-                            Split total: <span className="font-mono">{entrySplitSum.toFixed(2)}</span>
+                            Split total:{" "}
+                            <span className="font-mono">{entrySplitSum.toFixed(2)}</span>
                             {entryCost.trim() ? (
                               <>
-                                {" "}• Cost billed: <span className="font-mono">{entryCost.trim()}</span>
+                                {" "}
+                                • Cost billed: <span className="font-mono">{entryCost.trim()}</span>
                               </>
                             ) : null}
                           </div>
@@ -497,12 +606,24 @@ export default function InvoicesPage() {
                     </div>
 
                     <div className="md:col-span-4 flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => void closeInvoice()} disabled={closing}>
-                        {closing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                      <Button
+                        variant="outline"
+                        onClick={() => void closeInvoice()}
+                        disabled={closing}
+                      >
+                        {closing ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                        )}
                         Close invoice
                       </Button>
                       <Button onClick={() => void addEntry()} disabled={savingEntry}>
-                        {savingEntry ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                        {savingEntry ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4 mr-2" />
+                        )}
                         Add entry
                       </Button>
                     </div>
@@ -555,11 +676,18 @@ export default function InvoicesPage() {
                                       {fds.map((fd) => (
                                         <div key={fd.id} className="truncate">
                                           <span className="font-medium">{fd.fund_name}</span>{" "}
-                                          <span className="font-mono text-muted-foreground">{fd.amount}</span>
+                                          <span className="font-mono text-muted-foreground">
+                                            {fd.amount}
+                                          </span>
                                         </div>
                                       ))}
                                     </div>
-                                    <Button type="button" variant="outline" size="sm" onClick={() => openSplitEditor(e.id)}>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => openSplitEditor(e.id)}
+                                    >
                                       <Pencil className="h-4 w-4 mr-2" />
                                       Edit
                                     </Button>
@@ -567,7 +695,9 @@ export default function InvoicesPage() {
                                 );
                               })()}
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{e.note || "—"}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {e.note || "—"}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -577,7 +707,9 @@ export default function InvoicesPage() {
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDetailsOpen(false)}>Close</Button>
+              <Button variant="outline" onClick={() => setDetailsOpen(false)}>
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -587,7 +719,8 @@ export default function InvoicesPage() {
             <DialogHeader>
               <DialogTitle>Fund splits</DialogTitle>
               <DialogDescription>
-                Allocate an invoice entry across funds. Changes are saved to Evergreen as `acq.fund_debit` rows tied to the invoice entry.
+                Allocate an invoice entry across funds. Changes are saved to Evergreen as
+                `acq.fund_debit` rows tied to the invoice entry.
               </DialogDescription>
             </DialogHeader>
 
@@ -595,8 +728,11 @@ export default function InvoicesPage() {
               {splitEditorSplits.map((s, idx) => (
                 <div key={idx} className="grid gap-2 grid-cols-12 items-end">
                   <div className="col-span-7">
-                    <Label htmlFor="fund-2" className="text-xs">Fund</Label>
-                    <Select id="fund-2"
+                    <Label htmlFor="fund-2" className="text-xs">
+                      Fund
+                    </Label>
+                    <Select
+                      id="fund-2"
                       value={s.fundId}
                       onValueChange={(v) =>
                         setSplitEditorSplits((prev) =>
@@ -604,7 +740,9 @@ export default function InvoicesPage() {
                         )
                       }
                     >
-                      <SelectTrigger><SelectValue placeholder="Select fund" /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select fund" />
+                      </SelectTrigger>
                       <SelectContent>
                         {funds.map((f) => (
                           <SelectItem key={f.id} value={String(f.id)}>
@@ -615,12 +753,17 @@ export default function InvoicesPage() {
                     </Select>
                   </div>
                   <div className="col-span-4">
-                    <Label htmlFor="amount-2" className="text-xs">Amount</Label>
-                    <Input id="amount-2"
+                    <Label htmlFor="amount-2" className="text-xs">
+                      Amount
+                    </Label>
+                    <Input
+                      id="amount-2"
                       value={s.amount}
                       onChange={(e) =>
                         setSplitEditorSplits((prev) =>
-                          prev.map((row, i) => (i === idx ? { ...row, amount: e.target.value } : row))
+                          prev.map((row, i) =>
+                            i === idx ? { ...row, amount: e.target.value } : row
+                          )
                         )
                       }
                       placeholder="0.00"
@@ -631,7 +774,9 @@ export default function InvoicesPage() {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => setSplitEditorSplits((prev) => prev.filter((_, i) => i !== idx))}
+                      onClick={() =>
+                        setSplitEditorSplits((prev) => prev.filter((_, i) => i !== idx))
+                      }
                     >
                       Remove
                     </Button>
@@ -640,7 +785,11 @@ export default function InvoicesPage() {
               ))}
 
               <div className="flex justify-between">
-                <Button type="button" variant="outline" onClick={() => setSplitEditorSplits((p) => [...p, { fundId: "", amount: "" }])}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSplitEditorSplits((p) => [...p, { fundId: "", amount: "" }])}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Add split
                 </Button>
@@ -648,7 +797,10 @@ export default function InvoicesPage() {
                   Total:{" "}
                   <span className="font-mono">
                     {(() => {
-                      const sum = normalizeSplitsForApi(splitEditorSplits).reduce((a, s) => a + s.amount, 0);
+                      const sum = normalizeSplitsForApi(splitEditorSplits).reduce(
+                        (a, s) => a + s.amount,
+                        0
+                      );
                       return (Math.round(sum * 100) / 100).toFixed(2);
                     })()}
                   </span>
@@ -657,11 +809,19 @@ export default function InvoicesPage() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setSplitEditorOpen(false)} disabled={splitEditorSaving}>
+              <Button
+                variant="outline"
+                onClick={() => setSplitEditorOpen(false)}
+                disabled={splitEditorSaving}
+              >
                 Cancel
               </Button>
               <Button onClick={() => void saveSplitEdits()} disabled={splitEditorSaving}>
-                {splitEditorSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Split className="h-4 w-4 mr-2" />}
+                {splitEditorSaving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Split className="h-4 w-4 mr-2" />
+                )}
                 Save splits
               </Button>
             </DialogFooter>
@@ -690,8 +850,8 @@ export default function InvoicesPage() {
                     onClick: () => window.location.assign("/staff/help#evergreen-setup"),
                   }}
                   secondaryAction={{
-                    label: "Seed demo data",
-                    onClick: () => window.location.assign("/staff/help#demo-data"),
+                    label: "Evergreen setup checklist",
+                    onClick: () => window.location.assign("/staff/help#evergreen-setup"),
                   }}
                 />
               }

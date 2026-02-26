@@ -46,7 +46,7 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
         .passthrough()
     );
     if (body instanceof Response) return body;
-    const actionRaw = actionOverride || (body as Record<string, unknown>).action;
+    const actionRaw = actionOverride || (body as Record<string, any>).action;
     const action = String(actionRaw || "").trim();
     if (!action) return errorResponse("Missing action", 400);
     const { ip, userAgent, requestId } = getRequestMeta(req);
@@ -58,10 +58,7 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
         const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.create_po]);
         const provider = body.provider;
         const orderingAgency =
-          body.orderingAgency ??
-          body.ordering_agency ??
-          actor?.ws_ou ??
-          actor?.home_ou;
+          body.orderingAgency ?? body.ordering_agency ?? actor?.ws_ou ?? actor?.home_ou;
 
         if (!provider) {
           return errorResponse("Provider required", 400);
@@ -71,18 +68,14 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
           return errorResponse("Ordering agency required", 400);
         }
 
-        const response = await callOpenSRF(
-          "open-ils.acq",
-          "open-ils.acq.purchase_order.create",
-          [
-            authtoken,
-            {
-              provider,
-              ordering_agency: orderingAgency,
-              name: body.name || undefined,
-            },
-          ]
-        );
+        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.purchase_order.create", [
+          authtoken,
+          {
+            provider,
+            ordering_agency: orderingAgency,
+            name: body.name || undefined,
+          },
+        ]);
 
         const result = response?.payload?.[0];
         if (!result || isOpenSRFEvent(result) || result.ilsevent) {
@@ -121,9 +114,14 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
       case "create_invoice": {
         const { authtoken, actor } = await requirePermissions(["CREATE_INVOICE"]);
         const providerId = parseInt(String(body.providerId ?? body.provider ?? ""), 10);
-        const receiver = parseInt(String(body.receiver ?? actor?.ws_ou ?? actor?.home_ou ?? ""), 10);
+        const receiver = parseInt(
+          String(body.receiver ?? actor?.ws_ou ?? actor?.home_ou ?? ""),
+          10
+        );
         const recvMethod = String(body.recvMethod ?? body.recv_method ?? "").trim();
-        const invIdent = String(body.invIdent ?? body.inv_ident ?? body.vendor_invoice_id ?? "").trim();
+        const invIdent = String(
+          body.invIdent ?? body.inv_ident ?? body.vendor_invoice_id ?? ""
+        ).trim();
 
         if (!Number.isFinite(providerId)) return errorResponse("providerId required", 400);
         if (!Number.isFinite(receiver)) return errorResponse("receiver required", 400);
@@ -142,18 +140,34 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
           ischanged: 1,
         });
 
-        const res = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acqinv", [authtoken, payload]);
+        const res = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acqinv", [
+          authtoken,
+          payload,
+        ]);
         const result = res?.payload?.[0];
-        if (!result || isOpenSRFEvent(result) || (result as Record<string, unknown>).ilsevent) {
+        if (!result || isOpenSRFEvent(result) || (result as Record<string, any>).ilsevent) {
           const msg = getErrorMessage(result, "Failed to create invoice");
-          await logAuditEvent({ action: "acq.invoice.create", entity: "acqinv", status: "failure", actor, ip, userAgent, requestId, error: msg, details: { providerId, receiver, recvMethod, invIdent } });
+          await logAuditEvent({
+            action: "acq.invoice.create",
+            entity: "acqinv",
+            status: "failure",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            error: msg,
+            details: { providerId, receiver, recvMethod, invIdent },
+          });
           return errorResponse(msg, 400, result);
         }
 
         await logAuditEvent({
           action: "acq.invoice.create",
           entity: "acqinv",
-          entityId: typeof result === "number" ? result : (result as Record<string, unknown>)?.id as string | number | undefined,
+          entityId:
+            typeof result === "number"
+              ? result
+              : ((result as Record<string, any>)?.id as string | number | undefined),
           status: "success",
           actor,
           ip,
@@ -162,30 +176,46 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
           details: { providerId, receiver, recvMethod, invIdent },
         });
 
-        return successResponse({ invoiceId: typeof result === "number" ? result : (result as Record<string, unknown>)?.id as number | undefined, invoice: result });
+        return successResponse({
+          invoiceId:
+            typeof result === "number"
+              ? result
+              : ((result as Record<string, any>)?.id as number | undefined),
+          invoice: result,
+        });
       }
 
       case "add_invoice_entry": {
         const { authtoken, actor } = await requirePermissions(["ADMIN_INVOICE"]);
         const invoiceId = parseInt(String(body.invoiceId ?? body.invoice ?? ""), 10);
-        const purchaseOrderId = body.purchaseOrderId !== undefined ? parseInt(String(body.purchaseOrderId), 10) : null;
-        const lineitemId = body.lineitemId !== undefined ? parseInt(String(body.lineitemId), 10) : null;
+        const purchaseOrderId =
+          body.purchaseOrderId !== undefined ? parseInt(String(body.purchaseOrderId), 10) : null;
+        const lineitemId =
+          body.lineitemId !== undefined ? parseInt(String(body.lineitemId), 10) : null;
         const invItemCount = parseInt(String(body.invItemCount ?? body.inv_item_count ?? "1"), 10);
         let costBilled = body.costBilled !== undefined ? String(body.costBilled) : undefined;
         const note = body.note ? String(body.note).trim() : undefined;
 
         if (!Number.isFinite(invoiceId)) return errorResponse("invoiceId required", 400);
-        if (!Number.isFinite(invItemCount) || invItemCount <= 0) return errorResponse("invItemCount must be > 0", 400);
+        if (!Number.isFinite(invItemCount) || invItemCount <= 0)
+          return errorResponse("invItemCount must be > 0", 400);
 
         const rawSplits = body.splits ?? body.fundSplits ?? null;
         const splits: Array<{ fundId: number; amount: number }> = [];
         if (rawSplits !== null && rawSplits !== undefined) {
           if (!Array.isArray(rawSplits)) return errorResponse("splits must be an array", 400);
           for (const s of rawSplits) {
-            const fundId = parseInt(String((s as Record<string, unknown>)?.fundId ?? (s as Record<string, unknown>)?.fund_id ?? ""), 10);
-            const amount = parseFloat(String((s as Record<string, unknown>)?.amount ?? ""));
-            if (!Number.isFinite(fundId) || fundId <= 0) return errorResponse("Invalid fundId in splits", 400);
-            if (!Number.isFinite(amount) || amount <= 0) return errorResponse("Invalid amount in splits", 400);
+            const fundId = parseInt(
+              String(
+                (s as Record<string, any>)?.fundId ?? (s as Record<string, any>)?.fund_id ?? ""
+              ),
+              10
+            );
+            const amount = parseFloat(String((s as Record<string, any>)?.amount ?? ""));
+            if (!Number.isFinite(fundId) || fundId <= 0)
+              return errorResponse("Invalid fundId in splits", 400);
+            if (!Number.isFinite(amount) || amount <= 0)
+              return errorResponse("Invalid amount in splits", 400);
             splits.push({ fundId, amount: Math.round(amount * 100) / 100 });
           }
           const seen = new Set<number>();
@@ -199,7 +229,8 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
           } else {
             const cb = Math.round(parseFloat(String(costBilled)) * 100) / 100;
             if (!Number.isFinite(cb)) return errorResponse("Invalid costBilled", 400);
-            if (Math.abs(cb - sum) > 0.01) return errorResponse("Fund splits must sum to costBilled", 400);
+            if (Math.abs(cb - sum) > 0.01)
+              return errorResponse("Fund splits must sum to costBilled", 400);
             costBilled = cb.toFixed(2);
           }
         }
@@ -221,15 +252,31 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
           ischanged: 1,
         });
 
-        const res = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acqie", [authtoken, payload]);
+        const res = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acqie", [
+          authtoken,
+          payload,
+        ]);
         const result = res?.payload?.[0];
-        if (!result || isOpenSRFEvent(result) || (result as Record<string, unknown>).ilsevent) {
+        if (!result || isOpenSRFEvent(result) || (result as Record<string, any>).ilsevent) {
           const msg = getErrorMessage(result, "Failed to add invoice entry");
-          await logAuditEvent({ action: "acq.invoice_entry.create", entity: "acqie", status: "failure", actor, ip, userAgent, requestId, error: msg, details: { invoiceId, purchaseOrderId, lineitemId, invItemCount } });
+          await logAuditEvent({
+            action: "acq.invoice_entry.create",
+            entity: "acqie",
+            status: "failure",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            error: msg,
+            details: { invoiceId, purchaseOrderId, lineitemId, invItemCount },
+          });
           return errorResponse(msg, 400, result);
         }
 
-        const entryId = typeof result === "number" ? result : (result as Record<string, unknown>)?.id as number | undefined;
+        const entryId =
+          typeof result === "number"
+            ? result
+            : ((result as Record<string, any>)?.id as number | undefined);
 
         const createdFundDebitIds: number[] = [];
         if (splits.length > 0) {
@@ -254,12 +301,22 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
                 isnew: 1,
                 ischanged: 1,
               });
-              const fdRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acqfdeb", [authtoken, fdPayload]);
+              const fdRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acqfdeb", [
+                authtoken,
+                fdPayload,
+              ]);
               const fdResult = fdRes?.payload?.[0];
-              if (!fdResult || isOpenSRFEvent(fdResult) || (fdResult as Record<string, unknown>).ilsevent) {
+              if (
+                !fdResult ||
+                isOpenSRFEvent(fdResult) ||
+                (fdResult as Record<string, any>).ilsevent
+              ) {
                 throw new Error(getErrorMessage(fdResult, "Failed to create fund debit"));
               }
-              const fdId = typeof fdResult === "number" ? fdResult : (fdResult as Record<string, unknown>)?.id as number | undefined;
+              const fdId =
+                typeof fdResult === "number"
+                  ? fdResult
+                  : ((fdResult as Record<string, any>)?.id as number | undefined);
               if (fdId != null && Number.isFinite(fdId)) createdFundDebitIds.push(fdId);
             }
           } catch (e) {
@@ -267,13 +324,20 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
             // Best-effort rollback of newly created debits and the invoice entry.
             for (const fdId of createdFundDebitIds) {
               try {
-                await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.acqfdeb", [authtoken, fdId]);
+                await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.acqfdeb", [
+                  authtoken,
+                  fdId,
+                ]);
               } catch {
                 // ignore
               }
             }
             try {
-              if (entryId) await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.acqie", [authtoken, entryId]);
+              if (entryId)
+                await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.acqie", [
+                  authtoken,
+                  entryId,
+                ]);
             } catch {
               // ignore
             }
@@ -310,17 +374,28 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
 
       case "set_invoice_entry_splits": {
         const { authtoken, actor } = await requirePermissions(["ADMIN_INVOICE", "ADMIN_ACQ_FUND"]);
-        const invoiceEntryId = parseInt(String(body.invoiceEntryId ?? body.invoice_entry_id ?? body.entryId ?? body.entry_id ?? ""), 10);
+        const invoiceEntryId = parseInt(
+          String(
+            body.invoiceEntryId ?? body.invoice_entry_id ?? body.entryId ?? body.entry_id ?? ""
+          ),
+          10
+        );
         if (!Number.isFinite(invoiceEntryId)) return errorResponse("invoiceEntryId required", 400);
         const rawSplits = body.splits ?? body.fundSplits ?? null;
-        if (!Array.isArray(rawSplits) || rawSplits.length === 0) return errorResponse("splits array required", 400);
+        if (!Array.isArray(rawSplits) || rawSplits.length === 0)
+          return errorResponse("splits array required", 400);
 
         const splits: Array<{ fundId: number; amount: number }> = [];
         for (const s of rawSplits) {
-          const fundId = parseInt(String((s as Record<string, unknown>)?.fundId ?? (s as Record<string, unknown>)?.fund_id ?? ""), 10);
-          const amount = parseFloat(String((s as Record<string, unknown>)?.amount ?? ""));
-          if (!Number.isFinite(fundId) || fundId <= 0) return errorResponse("Invalid fundId in splits", 400);
-          if (!Number.isFinite(amount) || amount <= 0) return errorResponse("Invalid amount in splits", 400);
+          const fundId = parseInt(
+            String((s as Record<string, any>)?.fundId ?? (s as Record<string, any>)?.fund_id ?? ""),
+            10
+          );
+          const amount = parseFloat(String((s as Record<string, any>)?.amount ?? ""));
+          if (!Number.isFinite(fundId) || fundId <= 0)
+            return errorResponse("Invalid fundId in splits", 400);
+          if (!Number.isFinite(amount) || amount <= 0)
+            return errorResponse("Invalid amount in splits", 400);
           splits.push({ fundId, amount: Math.round(amount * 100) / 100 });
         }
 
@@ -336,7 +411,10 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
         );
         for (const row of existing) {
           try {
-            await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.acqfdeb", [authtoken, row.id]);
+            await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.delete.acqfdeb", [
+              authtoken,
+              row.id,
+            ]);
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
             await logAuditEvent({
@@ -376,9 +454,12 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
             isnew: 1,
             ischanged: 1,
           });
-          const fdRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acqfdeb", [authtoken, fdPayload]);
+          const fdRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acqfdeb", [
+            authtoken,
+            fdPayload,
+          ]);
           const fdResult = fdRes?.payload?.[0];
-          if (!fdResult || isOpenSRFEvent(fdResult) || (fdResult as Record<string, unknown>).ilsevent) {
+          if (!fdResult || isOpenSRFEvent(fdResult) || (fdResult as Record<string, any>).ilsevent) {
             const msg = getErrorMessage(fdResult, "Failed to create fund debit");
             await logAuditEvent({
               action: "acq.invoice_entry.splits.set",
@@ -394,7 +475,10 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
             });
             return errorResponse(msg, 400, fdResult);
           }
-          const fdId = typeof fdResult === "number" ? fdResult : (fdResult as Record<string, unknown>)?.id as number | undefined;
+          const fdId =
+            typeof fdResult === "number"
+              ? fdResult
+              : ((fdResult as Record<string, any>)?.id as number | undefined);
           if (fdId != null && Number.isFinite(fdId)) createdFundDebitIds.push(fdId);
         }
 
@@ -410,7 +494,11 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
           details: { invoiceEntryId, splits, createdFundDebitIds },
         });
 
-        return successResponse({ updated: true, invoiceEntryId, fundDebitIds: createdFundDebitIds });
+        return successResponse({
+          updated: true,
+          invoiceEntryId,
+          fundDebitIds: createdFundDebitIds,
+        });
       }
 
       case "close_invoice": {
@@ -418,12 +506,16 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
         const invoiceId = parseInt(String(body.invoiceId ?? body.invoice ?? ""), 10);
         if (!Number.isFinite(invoiceId)) return errorResponse("invoiceId required", 400);
 
-        const invRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.acqinv", [authtoken, invoiceId]);
+        const invRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.acqinv", [
+          authtoken,
+          invoiceId,
+        ]);
         const existing = invRes?.payload?.[0];
-        if (!existing || (existing as Record<string, unknown>).ilsevent) return notFoundResponse("Invoice not found");
+        if (!existing || (existing as Record<string, any>).ilsevent)
+          return notFoundResponse("Invoice not found");
 
         const updatePayload = encodeFieldmapper("acqinv", {
-          ...(existing as Record<string, unknown>),
+          ...(existing as Record<string, any>),
           close_date: new Date().toISOString(),
           closed_by: actor?.id,
           ischanged: 1,
@@ -434,28 +526,48 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
           updatePayload,
         ]);
         const result = res?.payload?.[0];
-        if (!result || isOpenSRFEvent(result) || (result as Record<string, unknown>).ilsevent) {
+        if (!result || isOpenSRFEvent(result) || (result as Record<string, any>).ilsevent) {
           const msg = getErrorMessage(result, "Failed to close invoice");
-          await logAuditEvent({ action: "acq.invoice.close", entity: "acqinv", entityId: invoiceId, status: "failure", actor, ip, userAgent, requestId, error: msg });
+          await logAuditEvent({
+            action: "acq.invoice.close",
+            entity: "acqinv",
+            entityId: invoiceId,
+            status: "failure",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            error: msg,
+          });
           return errorResponse(msg, 400, result);
         }
 
-        await logAuditEvent({ action: "acq.invoice.close", entity: "acqinv", entityId: invoiceId, status: "success", actor, ip, userAgent, requestId });
+        await logAuditEvent({
+          action: "acq.invoice.close",
+          entity: "acqinv",
+          entityId: invoiceId,
+          status: "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+        });
         return successResponse({ closed: true, invoiceId });
       }
 
       case "receive_lineitem": {
-        const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.receive_lineitem]);
+        const { authtoken, actor } = await requirePermissions([
+          ...ACQUISITIONS_PERMS.receive_lineitem,
+        ]);
         const lineitemId = parsePositiveIntId(body.lineitemId);
         if (!lineitemId) {
           return errorResponse("Lineitem ID required", 400);
         }
 
-        const response = await callOpenSRF(
-          "open-ils.acq",
-          "open-ils.acq.lineitem.receive.batch",
-          [authtoken, [lineitemId]]
-        );
+        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.lineitem.receive.batch", [
+          authtoken,
+          [lineitemId],
+        ]);
 
         const result = response?.payload?.[0];
         if (!result || isOpenSRFEvent(result) || result.ilsevent) {
@@ -489,17 +601,20 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
       }
 
       case "receive_lineitem_detail": {
-        const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.receive_lineitem]);
-        const detailId = parsePositiveIntId(body.detailId ?? body.lineitemDetailId ?? body.lineitem_detail_id);
+        const { authtoken, actor } = await requirePermissions([
+          ...ACQUISITIONS_PERMS.receive_lineitem,
+        ]);
+        const detailId = parsePositiveIntId(
+          body.detailId ?? body.lineitemDetailId ?? body.lineitem_detail_id
+        );
         if (!detailId) {
           return errorResponse("Detail ID required", 400);
         }
 
-        const response = await callOpenSRF(
-          "open-ils.acq",
-          "open-ils.acq.lineitem_detail.receive",
-          [authtoken, detailId]
-        );
+        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.lineitem_detail.receive", [
+          authtoken,
+          detailId,
+        ]);
 
         const result = response?.payload?.[0];
         if (!result || isOpenSRFEvent(result) || result.ilsevent) {
@@ -533,8 +648,12 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
       }
 
       case "unreceive_lineitem_detail": {
-        const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.receive_lineitem]);
-        const detailId = parsePositiveIntId(body.detailId ?? body.lineitemDetailId ?? body.lineitem_detail_id);
+        const { authtoken, actor } = await requirePermissions([
+          ...ACQUISITIONS_PERMS.receive_lineitem,
+        ]);
+        const detailId = parsePositiveIntId(
+          body.detailId ?? body.lineitemDetailId ?? body.lineitem_detail_id
+        );
         if (!detailId) {
           return errorResponse("Detail ID required", 400);
         }
@@ -577,7 +696,9 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
       }
 
       case "cancel_lineitem": {
-        const { authtoken, actor } = await requirePermissions([...ACQUISITIONS_PERMS.cancel_lineitem]);
+        const { authtoken, actor } = await requirePermissions([
+          ...ACQUISITIONS_PERMS.cancel_lineitem,
+        ]);
         const lineitemId = parsePositiveIntId(body.lineitemId);
         const { reason } = body;
         if (!lineitemId) {
@@ -591,11 +712,11 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
               ? parseInt(String(reason), 10)
               : 1;
 
-        const response = await callOpenSRF(
-          "open-ils.acq",
-          "open-ils.acq.lineitem.cancel",
-          [authtoken, lineitemId, reasonId]
-        );
+        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.lineitem.cancel", [
+          authtoken,
+          lineitemId,
+          reasonId,
+        ]);
 
         const result = response?.payload?.[0];
         if (!result || isOpenSRFEvent(result) || result.ilsevent) {
@@ -645,11 +766,11 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
               ? parseInt(String(claimType), 10)
               : 1;
 
-        const response = await callOpenSRF(
-          "open-ils.acq",
-          "open-ils.acq.claim.lineitem",
-          [authtoken, lineitemId, claimTypeId]
-        );
+        const response = await callOpenSRF("open-ils.acq", "open-ils.acq.claim.lineitem", [
+          authtoken,
+          lineitemId,
+          claimTypeId,
+        ]);
 
         const result = response?.payload?.[0];
         if (!result || isOpenSRFEvent(result) || result.ilsevent) {
@@ -698,11 +819,11 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
         }
 
         const copy = await getCopyByBarcode(copyBarcode);
-        if (!copy || isOpenSRFEvent(copy) || (copy as Record<string, unknown>).ilsevent) {
+        if (!copy || isOpenSRFEvent(copy) || (copy as Record<string, any>).ilsevent) {
           return notFoundResponse("Item not found");
         }
 
-        const args: Record<string, unknown> = {
+        const args: Record<string, any> = {
           apply_fines: billAmount && billAmount > 0 ? "apply" : "noapply",
         };
         if (billAmount && billAmount > 0) args.override_amount = billAmount;
@@ -710,7 +831,7 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
 
         const response = await callOpenSRF("open-ils.circ", "open-ils.circ.mark_item_damaged", [
           authtoken,
-          parseInt(String((copy as Record<string, unknown>).id), 10),
+          parseInt(String((copy as Record<string, any>).id), 10),
           args,
         ]);
 
@@ -720,7 +841,7 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
           await logAuditEvent({
             action: "acq.copy.mark_damaged",
             entity: "acp",
-            entityId: (copy as Record<string, unknown>).id as string | number | undefined,
+            entityId: (copy as Record<string, any>).id as string | number | undefined,
             status: "failure",
             actor,
             ip,
@@ -735,7 +856,7 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
         await logAuditEvent({
           action: "acq.copy.mark_damaged",
           entity: "acp",
-          entityId: (copy as Record<string, unknown>).id as string | number | undefined,
+          entityId: (copy as Record<string, any>).id as string | number | undefined,
           status: "success",
           actor,
           ip,

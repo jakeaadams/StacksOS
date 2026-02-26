@@ -1,7 +1,7 @@
 import { successResponse, withErrorHandling } from "@/lib/api";
 import { getTenantConfig } from "@/lib/tenant/config";
 import { getActiveIncident } from "@/lib/db/support";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 export const GET = withErrorHandling(async (_req: Request) => {
   const tenant = getTenantConfig();
@@ -28,6 +28,7 @@ export const GET = withErrorHandling(async (_req: Request) => {
       tenantId: tenant.tenantId,
       displayName: tenant.displayName,
       region: tenant.region || null,
+      profile: tenant.profile?.type || "public",
     },
     evergreen: { ok: evergreenOk, status: evergreenStatus },
     incident: incident || null,

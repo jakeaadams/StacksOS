@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { callOpenSRF, successResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
-import { z } from "zod";
+import { z as _z } from "zod";
 
 /**
  * GET /api/evergreen/copy-locations
@@ -15,21 +15,17 @@ export async function GET(req: NextRequest) {
 
     const { authtoken } = await requirePermissions(["STAFF_LOGIN"]);
 
-    const response = await callOpenSRF(
-      "open-ils.pcrud",
-      "open-ils.pcrud.search.acpl.atomic",
-      [
-        authtoken,
-        { id: { "!=": null } },
-        {
-          limit,
-          offset,
-          order_by: { acpl: "name" },
-          flesh: 1,
-          flesh_fields: { acpl: ["owning_lib"] },
-        },
-      ]
-    );
+    const response = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.acpl.atomic", [
+      authtoken,
+      { id: { "!=": null } },
+      {
+        limit,
+        offset,
+        order_by: { acpl: "name" },
+        flesh: 1,
+        flesh_fields: { acpl: ["owning_lib"] },
+      },
+    ]);
 
     const extract = (obj: any, field: string, idx: number) => {
       if (!obj) return null;
@@ -46,11 +42,16 @@ export async function GET(req: NextRequest) {
       return {
         id: extract(loc, "id", 0),
         name: extract(loc, "name", 1),
-        owningLib: typeof owningLibObj === "object" ? extractNested(owningLibObj, "id", 0) : extract(loc, "owning_lib", 2),
+        owningLib:
+          typeof owningLibObj === "object"
+            ? extractNested(owningLibObj, "id", 0)
+            : extract(loc, "owning_lib", 2),
         owningLibShortname:
           typeof owningLibObj === "object" ? extractNested(owningLibObj, "shortname", 2) : null,
-        owningLibName: typeof owningLibObj === "object" ? extractNested(owningLibObj, "name", 1) : null,
-        opacVisible: extract(loc, "opac_visible", 3) === "t" || extract(loc, "opac_visible", 3) === true,
+        owningLibName:
+          typeof owningLibObj === "object" ? extractNested(owningLibObj, "name", 1) : null,
+        opacVisible:
+          extract(loc, "opac_visible", 3) === "t" || extract(loc, "opac_visible", 3) === true,
       };
     });
 
@@ -59,4 +60,3 @@ export async function GET(req: NextRequest) {
     return serverErrorResponse(error, "CopyLocations GET", req);
   }
 }
-

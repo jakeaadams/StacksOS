@@ -2,7 +2,10 @@ import { query } from "@/lib/db/evergreen";
 import type { ScheduledReportKey } from "@/lib/reports/scheduled-report-definitions";
 
 export { SCHEDULED_REPORT_DEFINITIONS } from "@/lib/reports/scheduled-report-definitions";
-export type { ReportDefinition, ScheduledReportKey } from "@/lib/reports/scheduled-report-definitions";
+export type {
+  ReportDefinition,
+  ScheduledReportKey,
+} from "@/lib/reports/scheduled-report-definitions";
 
 function escapeCsv(value: unknown): string {
   const str = String(value ?? "");
@@ -10,7 +13,7 @@ function escapeCsv(value: unknown): string {
   return str;
 }
 
-function toCsv(rows: Array<Record<string, unknown>>, columns: string[]): string {
+function toCsv(rows: Array<Record<string, any>>, columns: string[]): string {
   const header = columns.map(escapeCsv).join(",");
   const lines = rows.map((row) => columns.map((c) => escapeCsv(row[c])).join(","));
   return [header, ...lines].join("\n");
@@ -206,7 +209,15 @@ export async function generateScheduledReport(args: {
     [args.orgId, limit]
   );
 
-  const csv = toCsv(rows, ["circ_id", "due_date", "patron_id", "barcode", "call_number", "title", "author"]);
+  const csv = toCsv(rows, [
+    "circ_id",
+    "due_date",
+    "patron_id",
+    "barcode",
+    "call_number",
+    "title",
+    "author",
+  ]);
   return {
     filename: `${sanitizeFilename(`overdue-${date}`)}.csv`,
     contentType: "text/csv; charset=utf-8",

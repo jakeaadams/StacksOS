@@ -1,8 +1,16 @@
 import { NextRequest } from "next/server";
-import { parseJsonBodyWithSchema, successResponse, errorResponse, serverErrorResponse, getErrorMessage, isOpenSRFEvent } from "@/lib/api";
+import {
+  parseJsonBodyWithSchema,
+  successResponse,
+  errorResponse,
+  serverErrorResponse,
+  getErrorMessage,
+  isOpenSRFEvent,
+} from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { callOpenSRF } from "@/lib/api/client";
 import { requirePermissions } from "@/lib/permissions";
+import { isDemoDataEnabled } from "@/lib/demo-data";
 import { z } from "zod";
 
 function escapeRegex(value: string): string {
@@ -23,7 +31,7 @@ export async function GET(req: NextRequest) {
 
     const { authtoken } = await requirePermissions(["STAFF_LOGIN"]);
     const requestId = req.headers.get("x-request-id") || null;
-    
+
     logger.debug({ requestId, route: "api.evergreen.authority", query, axis }, "Authority search");
 
     // Use open-ils.search for authority browse
@@ -38,13 +46,17 @@ export async function GET(req: NextRequest) {
           query,
           axis || null, // authority type filter (author, subject, title, etc.)
           limit, // limit results
-          offset,  // offset
+          offset, // offset
         ]
       );
     } catch (error: any) {
       // Evergreen installs vary; many don't expose authority browse in OpenSRF.
       // Fall back to searching authority.record_entry via PCrud (no direct DB access required).
-      if (error && typeof error === "object" && (error as Record<string, any>).code === "OSRF_METHOD_NOT_FOUND") {
+      if (
+        error &&
+        typeof error === "object" &&
+        (error as Record<string, any>).code === "OSRF_METHOD_NOT_FOUND"
+      ) {
         response = null;
       } else {
         throw error;
@@ -52,7 +64,7 @@ export async function GET(req: NextRequest) {
     }
 
     const authorities = response?.payload || [];
-    
+
     // Transform results to a consistent format
     const results = authorities.map((auth: any, index: number) => {
       // Handle both simple string results and complex objects
@@ -64,7 +76,7 @@ export async function GET(req: NextRequest) {
           linkedBibs: 0,
         };
       }
-      
+
       return {
         id: auth?.id || index,
         heading: auth?.heading || auth?.main_heading || auth?.value || String(auth),
@@ -95,7 +107,9 @@ export async function GET(req: NextRequest) {
       },
       { limit, offset, order_by: { are: "heading" } },
     ]);
-    const rows = Array.isArray(pcrud?.payload?.[0]) ? (pcrud.payload[0] as Record<string, any>[]) : [];
+    const rows = Array.isArray(pcrud?.payload?.[0])
+      ? (pcrud.payload[0] as Record<string, any>[])
+      : [];
     const fallback = rows.map((r) => ({
       id: r.id,
       heading: r.heading || r.simple_heading || "",
@@ -108,13 +122,11 @@ export async function GET(req: NextRequest) {
       authorities: fallback,
       query,
       axis: axis || null,
-      warning:
-        response
-          ? "OpenSRF authority browse returned no results; using authority record search."
-          : "Authority browse is not available via OpenSRF on this Evergreen server; using authority record search.",
+      warning: response
+        ? "OpenSRF authority browse returned no results; using authority record search."
+        : "Authority browse is not available via OpenSRF on this Evergreen server; using authority record search.",
       message: null,
     });
-
   } catch (error: any) {
     return serverErrorResponse(error, "Authority GET", req);
   }
@@ -122,6 +134,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!isDemoDataEnabled()) {
+      return errorResponse(
+        "Authority demo seeding is disabled. Set STACKSOS_ALLOW_DEMO_DATA=1 only for sandbox environments.",
+        403
+      );
+    }
+
     const body = await parseJsonBodyWithSchema(
       req,
       z
@@ -133,8 +152,12 @@ export async function POST(req: NextRequest) {
     );
     if (body instanceof Response) return body;
 
-    const { authtoken, actor } = await requirePermissions(["CREATE_AUTHORITY_RECORD", "IMPORT_MARC"]);
-    const actorId = typeof actor?.id === "number" ? actor.id : parseInt(String(actor?.id ?? ""), 10);
+    const { authtoken, actor } = await requirePermissions([
+      "CREATE_AUTHORITY_RECORD",
+      "IMPORT_MARC",
+    ]);
+    const actorId =
+      typeof actor?.id === "number" ? actor.id : parseInt(String(actor?.id ?? ""), 10);
     const owner = Number(actor?.ws_ou ?? actor?.home_ou ?? 1) || 1;
 
     const created: Array<{ id: number; heading: string }> = [];
@@ -147,7 +170,9 @@ export async function POST(req: NextRequest) {
           { deleted: "f", simple_heading: { "~*": exact } },
           { limit: 1 },
         ]);
-        const rows = Array.isArray(existing?.payload?.[0]) ? (existing.payload[0] as Record<string, any>[]) : [];
+        const rows = Array.isArray(existing?.payload?.[0])
+          ? (existing.payload[0] as Record<string, any>[])
+          : [];
         if (rows.length > 0) {
           continue;
         }
@@ -156,7 +181,10 @@ export async function POST(req: NextRequest) {
       }
 
       const control = `STACKSOS-DEMO-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      const safeHeading = String(heading).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+      const safeHeading = String(heading)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
       const marc =
         `<?xml version="1.0" encoding="UTF-8"?>` +
         `<record xmlns="http://www.loc.gov/MARC21/slim">` +
@@ -180,7 +208,9 @@ export async function POST(req: NextRequest) {
       }
 
       const id =
-        typeof (row as Record<string, any>)?.id === "number" ? (row as Record<string, any>).id : parseInt(String((row as Record<string, any>)?.id ?? ""), 10);
+        typeof (row as Record<string, any>)?.id === "number"
+          ? (row as Record<string, any>).id
+          : parseInt(String((row as Record<string, any>)?.id ?? ""), 10);
       if (Number.isFinite(id) && id > 0) created.push({ id, heading });
     }
 

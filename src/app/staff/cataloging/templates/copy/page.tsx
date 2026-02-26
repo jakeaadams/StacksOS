@@ -20,8 +20,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, RefreshCw, Settings, Trash2, Pencil, Package } from "lucide-react";
 
@@ -98,7 +111,9 @@ export default function CopyTemplatesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchWithAuth(`/api/evergreen/templates?type=copy&org_id=${orgId}&limit=200`);
+      const res = await fetchWithAuth(
+        `/api/evergreen/templates?type=copy&org_id=${orgId}&limit=200`
+      );
       const json = await res.json();
       if (!res.ok || json?.ok !== true) throw new Error(json?.error || `HTTP ${res.status}`);
       setTemplates(Array.isArray(json.templates) ? json.templates : []);
@@ -137,22 +152,25 @@ export default function CopyTemplatesPage() {
     setDialogOpen(true);
   }, [orgId]);
 
-  const openEdit = useCallback((t: CopyTemplate) => {
-    setEditing(t);
-    setForm({
-      name: t.name,
-      owningLib: String(t.owningLib || orgId),
-      status: t.status ? String(t.status) : "",
-      location: t.location ? String(t.location) : "",
-      circModifier: t.circModifier || "",
-      holdable: Boolean(t.holdable),
-      circulate: Boolean(t.circulate),
-      opacVisible: Boolean(t.opacVisible),
-      ref: Boolean(t.ref),
-      price: typeof t.price === "number" ? String(t.price) : "",
-    });
-    setDialogOpen(true);
-  }, [orgId]);
+  const openEdit = useCallback(
+    (t: CopyTemplate) => {
+      setEditing(t);
+      setForm({
+        name: t.name,
+        owningLib: String(t.owningLib || orgId),
+        status: t.status ? String(t.status) : "",
+        location: t.location ? String(t.location) : "",
+        circModifier: t.circModifier || "",
+        holdable: Boolean(t.holdable),
+        circulate: Boolean(t.circulate),
+        opacVisible: Boolean(t.opacVisible),
+        ref: Boolean(t.ref),
+        price: typeof t.price === "number" ? String(t.price) : "",
+      });
+      setDialogOpen(true);
+    },
+    [orgId]
+  );
 
   const requestDelete = useCallback((t: CopyTemplate) => {
     setDeleteTarget(t);
@@ -267,9 +285,21 @@ export default function CopyTemplatesPage() {
         header: "Flags",
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1">
-            {row.original.circulate ? <Badge variant="secondary">Circulate</Badge> : <Badge variant="outline">No circ</Badge>}
-            {row.original.holdable ? <Badge variant="secondary">Holdable</Badge> : <Badge variant="outline">No holds</Badge>}
-            {row.original.opacVisible ? <Badge variant="secondary">OPAC</Badge> : <Badge variant="outline">Hidden</Badge>}
+            {row.original.circulate ? (
+              <Badge variant="secondary">Circulate</Badge>
+            ) : (
+              <Badge variant="outline">No circ</Badge>
+            )}
+            {row.original.holdable ? (
+              <Badge variant="secondary">Holdable</Badge>
+            ) : (
+              <Badge variant="outline">No holds</Badge>
+            )}
+            {row.original.opacVisible ? (
+              <Badge variant="secondary">OPAC</Badge>
+            ) : (
+              <Badge variant="outline">Hidden</Badge>
+            )}
             {row.original.ref ? <Badge variant="outline">Ref</Badge> : null}
           </div>
         ),
@@ -279,7 +309,12 @@ export default function CopyTemplatesPage() {
         header: "",
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
-            <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)} aria-label="Edit template">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openEdit(row.original)}
+              aria-label="Edit template"
+            >
               <Pencil className="h-4 w-4" />
             </Button>
             <Button
@@ -309,7 +344,12 @@ export default function CopyTemplatesPage() {
           { label: "Copy" },
         ]}
         actions={[
-          { label: "Back", onClick: () => router.push("/staff/cataloging/templates"), icon: ArrowLeft, variant: "outline" as const },
+          {
+            label: "Back",
+            onClick: () => router.push("/staff/cataloging/templates"),
+            icon: ArrowLeft,
+            variant: "outline" as const,
+          },
           { label: "Refresh", onClick: load, icon: RefreshCw, variant: "outline" as const },
           { label: "New Template", onClick: openCreate, icon: Plus },
         ]}
@@ -321,12 +361,18 @@ export default function CopyTemplatesPage() {
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base">Scope</CardTitle>
-            <CardDescription>Templates are stored in Evergreen (asset.copy_template). Select an org to filter.</CardDescription>
+            <CardDescription>
+              Templates are stored in Evergreen (asset.copy_template). Select an org to filter.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="organization">Organization</Label>
-              <Select id="organization" value={String(orgId)} onValueChange={(v) => setOrgId(parseInt(v, 10))}>
+              <Select
+                id="organization"
+                value={String(orgId)}
+                onValueChange={(v) => setOrgId(parseInt(v, 10))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select org" />
                 </SelectTrigger>
@@ -348,7 +394,11 @@ export default function CopyTemplatesPage() {
                   : "None returned (you can still create templates)."}
               </div>
               {circModifiers.length === 0 ? (
-                <Button variant="outline" size="sm" onClick={() => router.push("/staff/help#evergreen-setup")}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push("/staff/help#evergreen-setup")}
+                >
                   <Settings className="h-4 w-4 mr-2" />
                   Evergreen setup checklist
                 </Button>
@@ -369,7 +419,9 @@ export default function CopyTemplatesPage() {
             <CardTitle className="text-base flex items-center gap-2">
               <Package className="h-4 w-4" /> Templates
             </CardTitle>
-            <CardDescription>{templates.length} template{templates.length === 1 ? "" : "s"}</CardDescription>
+            <CardDescription>
+              {templates.length} template{templates.length === 1 ? "" : "s"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <DataTable
@@ -384,7 +436,10 @@ export default function CopyTemplatesPage() {
                   title="No copy templates"
                   description="Create your first copy template to speed up item creation."
                   action={{ label: "Create template", onClick: openCreate, icon: Plus }}
-                  secondaryAction={{ label: "Seed demo data", onClick: () => router.push("/staff/help#demo-data") }}
+                  secondaryAction={{
+                    label: "Evergreen setup checklist",
+                    onClick: () => router.push("/staff/help#evergreen-setup"),
+                  }}
                 />
               }
             />
@@ -404,16 +459,29 @@ export default function CopyTemplatesPage() {
           <div className="grid gap-4 py-2 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g., New Book Default" />
+              <Input
+                id="name"
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="e.g., New Book Default"
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="owning-library">Owning library</Label>
-              <Select id="owning-library" value={form.owningLib} onValueChange={(v) => setForm((p) => ({ ...p, owningLib: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select org" /></SelectTrigger>
+              <Select
+                id="owning-library"
+                value={form.owningLib}
+                onValueChange={(v) => setForm((p) => ({ ...p, owningLib: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select org" />
+                </SelectTrigger>
                 <SelectContent>
                   {orgs.map((o) => (
-                    <SelectItem key={o.id} value={String(o.id)}>{o.shortname} — {o.name}</SelectItem>
+                    <SelectItem key={o.id} value={String(o.id)}>
+                      {o.shortname} — {o.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -421,12 +489,20 @@ export default function CopyTemplatesPage() {
 
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select id="status" value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
-                <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
+              <Select
+                id="status"
+                value={form.status}
+                onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Optional" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">(None)</SelectItem>
                   {statuses.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -434,12 +510,20 @@ export default function CopyTemplatesPage() {
 
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
-              <Select id="location" value={form.location} onValueChange={(v) => setForm((p) => ({ ...p, location: v }))}>
-                <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
+              <Select
+                id="location"
+                value={form.location}
+                onValueChange={(v) => setForm((p) => ({ ...p, location: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Optional" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">(None)</SelectItem>
                   {filteredLocations.map((l) => (
-                    <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>
+                    <SelectItem key={l.id} value={String(l.id)}>
+                      {l.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -447,8 +531,14 @@ export default function CopyTemplatesPage() {
 
             <div className="space-y-2">
               <Label htmlFor="circ-modifier">Circ modifier</Label>
-              <Select id="circ-modifier" value={form.circModifier} onValueChange={(v) => setForm((p) => ({ ...p, circModifier: v }))}>
-                <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
+              <Select
+                id="circ-modifier"
+                value={form.circModifier}
+                onValueChange={(v) => setForm((p) => ({ ...p, circModifier: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Optional" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">(None)</SelectItem>
                   {circModifiers.map((c) => (
@@ -462,7 +552,8 @@ export default function CopyTemplatesPage() {
 
             <div className="space-y-2">
               <Label htmlFor="price">Price</Label>
-              <Input id="price"
+              <Input
+                id="price"
                 value={form.price}
                 onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))}
                 placeholder="Optional"
@@ -475,7 +566,10 @@ export default function CopyTemplatesPage() {
                 <div className="text-sm font-medium">Circulate</div>
                 <div className="text-xs text-muted-foreground">Allow normal circulation.</div>
               </div>
-              <Switch checked={form.circulate} onCheckedChange={(v) => setForm((p) => ({ ...p, circulate: Boolean(v) }))} />
+              <Switch
+                checked={form.circulate}
+                onCheckedChange={(v) => setForm((p) => ({ ...p, circulate: Boolean(v) }))}
+              />
             </div>
 
             <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
@@ -483,7 +577,10 @@ export default function CopyTemplatesPage() {
                 <div className="text-sm font-medium">Holdable</div>
                 <div className="text-xs text-muted-foreground">Allow holds on items.</div>
               </div>
-              <Switch checked={form.holdable} onCheckedChange={(v) => setForm((p) => ({ ...p, holdable: Boolean(v) }))} />
+              <Switch
+                checked={form.holdable}
+                onCheckedChange={(v) => setForm((p) => ({ ...p, holdable: Boolean(v) }))}
+              />
             </div>
 
             <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
@@ -491,15 +588,23 @@ export default function CopyTemplatesPage() {
                 <div className="text-sm font-medium">OPAC visible</div>
                 <div className="text-xs text-muted-foreground">Show in public catalog.</div>
               </div>
-              <Switch checked={form.opacVisible} onCheckedChange={(v) => setForm((p) => ({ ...p, opacVisible: Boolean(v) }))} />
+              <Switch
+                checked={form.opacVisible}
+                onCheckedChange={(v) => setForm((p) => ({ ...p, opacVisible: Boolean(v) }))}
+              />
             </div>
 
             <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
               <div>
                 <div className="text-sm font-medium">Reference</div>
-                <div className="text-xs text-muted-foreground">Mark as reference/non-circulating.</div>
+                <div className="text-xs text-muted-foreground">
+                  Mark as reference/non-circulating.
+                </div>
               </div>
-              <Switch checked={form.ref} onCheckedChange={(v) => setForm((p) => ({ ...p, ref: Boolean(v) }))} />
+              <Switch
+                checked={form.ref}
+                onCheckedChange={(v) => setForm((p) => ({ ...p, ref: Boolean(v) }))}
+              />
             </div>
           </div>
 
