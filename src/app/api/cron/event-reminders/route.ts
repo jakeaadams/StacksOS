@@ -30,11 +30,17 @@ async function loadNotifications() {
 
 export async function GET(req: NextRequest) {
   try {
-    // Optional: verify a shared secret for cron security
-    const authHeader = req.headers.get("authorization") || "";
+    // Verify cron secret when configured (required in production)
     const cronSecret = process.env.CRON_SECRET || "";
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return errorResponse("Unauthorized", 401);
+    if (!cronSecret && process.env.NODE_ENV === "production") {
+      logger.error({}, "CRON_SECRET is not set — rejecting cron request in production");
+      return errorResponse("Server misconfiguration", 500);
+    }
+    if (cronSecret) {
+      const authHeader = req.headers.get("authorization") || "";
+      if (authHeader !== `Bearer ${cronSecret}`) {
+        return errorResponse("Unauthorized", 401);
+      }
     }
 
     const dueReminders = await getDueReminders();
@@ -65,27 +71,21 @@ export async function GET(req: NextRequest) {
               ? "sms"
               : "email";
 
-          try {
-            await notifications.createNotificationEvent({
-              id: notificationId,
-              channel,
-              noticeType: "event_reminder",
-              patronId: reminder.patronId,
-              context: {
-                eventId: reminder.eventId,
-                eventTitle,
-                eventDate,
-                registrationId: reminder.registrationId,
-              },
-            });
-          } catch (notifyErr) {
-            logger.warn(
-              { err: String(notifyErr), registrationId: reminder.registrationId },
-              "Failed to create notification event for reminder; marking sent anyway"
-            );
-          }
+          // Primary channel — failure here skips marking sent (will retry next cron run)
+          await notifications.createNotificationEvent({
+            id: notificationId,
+            channel,
+            noticeType: "event_reminder",
+            patronId: reminder.patronId,
+            context: {
+              eventId: reminder.eventId,
+              eventTitle,
+              eventDate,
+              registrationId: reminder.registrationId,
+            },
+          });
 
-          // If the reminder channel is "both", also send email
+          // If the reminder channel is "both", also send email (best-effort)
           if (reminder.reminderChannel === "both") {
             try {
               await notifications.createNotificationEvent({
@@ -108,8 +108,8 @@ export async function GET(req: NextRequest) {
             }
           }
         } else {
-          // Notification system unavailable - log for manual follow-up
-          logger.info(
+          // Notification system unavailable — log for manual follow-up but skip marking sent
+          logger.warn(
             {
               registrationId: reminder.registrationId,
               patronId: reminder.patronId,
@@ -117,8 +117,10 @@ export async function GET(req: NextRequest) {
               eventTitle,
               channel: reminder.reminderChannel,
             },
-            "Event reminder due (notification system unavailable)"
+            "Event reminder due but notification system unavailable — will retry"
           );
+          failed++;
+          continue;
         }
 
         await markReminderSent(reminder.registrationId);

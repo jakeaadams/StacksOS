@@ -37,9 +37,10 @@ import type { OpenSRFResponse } from "./types";
  *   const name = fieldValue(group, "name", PGT_FIELDS);     // string | null
  */
 export function fieldValue<
-  TFields extends Readonly<Record<string, number>>,
-  TKey extends string & keyof TFields,
->(obj: unknown, field: TKey, fields: TFields): any {
+  T = any,
+  TFields extends Readonly<Record<string, number>> = Readonly<Record<string, number>>,
+  TKey extends string & keyof TFields = string & keyof TFields,
+>(obj: unknown, field: TKey, fields: TFields): T | null {
   if (!obj || typeof obj !== "object") return null;
 
   const record = obj as Record<string, any>;
@@ -123,11 +124,11 @@ export function fieldBool<
  *   const result = payloadFirst(response);
  *   if (result?.ilsevent) { ... }
  */
-export function payloadFirst(response: OpenSRFResponse | null | undefined): any {
+export function payloadFirst<T = any>(response: OpenSRFResponse | null | undefined): T | null {
   if (!response) return null;
   const payload = response.payload;
   if (!Array.isArray(payload) || payload.length === 0) return null;
-  return payload[0] ?? null;
+  return (payload[0] as T) ?? null;
 }
 
 /**
@@ -167,9 +168,10 @@ export function payloadAll(response: OpenSRFResponse | null | undefined): any[] 
  *   const orgUnitName = nestedFieldValue(p.org_unit, "shortname", AOU_FIELDS);
  */
 export function nestedFieldValue<
-  TFields extends Readonly<Record<string, number>>,
-  TKey extends string & keyof TFields,
->(obj: unknown, field: TKey, fields: TFields): any {
+  T = any,
+  TFields extends Readonly<Record<string, number>> = Readonly<Record<string, number>>,
+  TKey extends string & keyof TFields = string & keyof TFields,
+>(obj: unknown, field: TKey, fields: TFields): T | null {
   if (!obj || typeof obj !== "object") return null;
   return fieldValue(obj, field, fields);
 }

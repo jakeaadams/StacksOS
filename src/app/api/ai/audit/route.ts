@@ -4,6 +4,21 @@ import { requirePermissions } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { listAiDrafts, getAiDraftWithDecisions } from "@/lib/db/ai";
 
+/**
+ * Redact sensitive operational fields from draft list responses.
+ * Full detail (including ip, user_agent, raw output) is only available
+ * in single-draft detail mode, which is already admin-gated.
+ */
+function redactDraftForList(draft: Record<string, any>): Record<string, any> {
+  const { ip, user_agent, output, input_redacted, ...safe } = draft;
+  return {
+    ...safe,
+    // Show presence of output without full content in list view
+    hasOutput: output !== null && output !== undefined,
+    hasInput: input_redacted !== null && input_redacted !== undefined,
+  };
+}
+
 export async function GET(req: NextRequest) {
   const { ip } = getRequestMeta(req);
   const rate = await checkRateLimit(ip || "unknown", {
@@ -18,7 +33,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    await requirePermissions(["STAFF_LOGIN"]);
+    // Require admin-level permission — AI audit contains model outputs and actor metadata
+    await requirePermissions(["ADMIN_LOGIN"]);
 
     const url = new URL(req.url);
     const type = url.searchParams.get("type") || undefined;
@@ -28,7 +44,7 @@ export async function GET(req: NextRequest) {
     const limitParam = url.searchParams.get("limit");
     const offsetParam = url.searchParams.get("offset");
 
-    // Single draft detail mode
+    // Single draft detail mode — full detail for admins
     if (draftId) {
       const result = await getAiDraftWithDecisions(draftId);
       if (!result) {
@@ -40,7 +56,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // List mode with filtering
+    // List mode with filtering — redact sensitive fields
     const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10) || 50, 1), 200) : 50;
     const offset = offsetParam ? Math.max(parseInt(offsetParam, 10) || 0, 0) : 0;
 
@@ -53,7 +69,7 @@ export async function GET(req: NextRequest) {
     });
 
     return successResponse({
-      drafts: result.drafts,
+      drafts: result.drafts.map(redactDraftForList),
       total: result.total,
       limit,
       offset,

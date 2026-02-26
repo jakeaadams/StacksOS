@@ -40,6 +40,7 @@ const circulationBodySchema = z.discriminatedUnion("action", [
       itemBarcode: z.string().trim().min(1),
       override: z.boolean().optional(),
       overrideReason: z.string().trim().max(256).optional(),
+      dueDate: z.string().trim().max(30).optional(),
     })
     .passthrough(),
   z
@@ -157,7 +158,7 @@ export async function POST(req: NextRequest) {
 
     switch (body.action) {
       case "checkout": {
-        const { patronBarcode, itemBarcode, override, overrideReason } = body;
+        const { patronBarcode, itemBarcode, override, overrideReason, dueDate } = body;
 
         if (!patronBarcode || !itemBarcode) {
           return errorResponse("Patron and item barcode required", 400);
@@ -167,9 +168,22 @@ export async function POST(req: NextRequest) {
           ? "open-ils.circ.checkout.full.override"
           : "open-ils.circ.checkout.full";
 
+        const checkoutParams: Record<string, any> = {
+          patron_barcode: patronBarcode,
+          copy_barcode: itemBarcode,
+        };
+
+        // Apply specific due date override when provided by staff
+        if (dueDate) {
+          const parsed = new Date(dueDate);
+          if (!Number.isNaN(parsed.getTime())) {
+            checkoutParams.due_date = parsed.toISOString();
+          }
+        }
+
         const checkoutResponse = await callOpenSRF("open-ils.circ", checkoutMethod, [
           authtoken,
-          { patron_barcode: patronBarcode, copy_barcode: itemBarcode },
+          checkoutParams,
         ]);
 
         const result = payloadFirst(checkoutResponse);

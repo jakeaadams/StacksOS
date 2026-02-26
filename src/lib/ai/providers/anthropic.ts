@@ -21,7 +21,7 @@ async function anthropicMessages(args: {
     throw new Error("Anthropic is not configured (missing ANTHROPIC_API_KEY)");
   }
 
-  const model = args.config.model || "claude-sonnet-4-6";
+  const model = args.config.model || "claude-sonnet-4-20250514";
   const url = `${resolveBaseUrl()}/v1/messages`;
 
   const controller = new AbortController();
