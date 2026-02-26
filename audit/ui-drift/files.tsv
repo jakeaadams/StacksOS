@@ -1,4 +1,8 @@
 file	score	raw_buttons	text_inputs	choice_inputs	action_inputs	selects	textareas	inline_styles	purple_palette	palette_drift	legacy_primary_combo	legacy_surface_combo	href_hash	placeholder_text	missing_button_primitive	missing_input_primitive	missing_select_primitive	missing_textarea_primitive	issues
+src/components/ai/AdminCopilotPanel.tsx	8	0	0	0	0	0	0	4	0	0	0	0	0	0	0	0	0	0	inline_style
+src/app/staff/admin/page.tsx	4	0	0	0	0	0	0	0	4	4	0	0	0	0	0	0	0	0	hardcoded_palette
+src/components/ai/CatalogingCopilotPanel.tsx	4	0	0	0	0	0	0	2	0	0	0	0	0	0	0	0	0	0	inline_style
+src/app/opac/record/[id]/page.tsx	2	1	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	1	textarea_without_ui_textarea
 src/app/error.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/global-error.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -23,6 +27,7 @@ src/app/opac/browse/page.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
 src/app/opac/digital/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/digital/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/error.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/opac/events/[id]/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/events/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/events/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/forgot-pin/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -34,6 +39,7 @@ src/app/opac/kids/account/page.tsx	0	0	0	0	0	0	0	0	21	0	0	0	0	0	0	0	0	0
 src/app/opac/kids/account/reading-log/page.tsx	0	0	0	0	0	0	0	0	2	0	0	0	0	0	0	0	0	0	
 src/app/opac/kids/browse/page.tsx	0	0	0	0	0	0	0	0	18	0	0	0	0	0	0	0	0	0	
 src/app/opac/kids/challenges/page.tsx	0	0	0	0	0	0	0	0	23	0	0	0	0	0	0	0	0	0	
+src/app/opac/kids/error.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/kids/help/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/kids/layout.tsx	0	0	0	0	0	0	0	0	28	0	0	0	0	0	0	0	0	0	
 src/app/opac/kids/page.tsx	0	0	0	0	0	0	0	0	34	0	0	0	0	0	0	0	0	0	
@@ -57,12 +63,11 @@ src/app/opac/privacy/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
 src/app/opac/recommendations/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/recommendations/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/record/[id]/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
-src/app/opac/record/[id]/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/register/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/register/page.tsx	0	0	0	2	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/search/_components/ActiveFilterChips.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/search/_components/SearchFiltersPanel.tsx	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
-src/app/opac/search/_components/SearchResultsList.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/opac/search/_components/SearchResultsList.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/search/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/search/loading.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/search/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -72,6 +77,7 @@ src/app/opac/teens/search/page.tsx	0	0	0	0	0	0	0	0	6	0	0	0	0	0	0	0	0	0
 src/app/opac/terms/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/release-notes/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/self-checkout/error.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/self-checkout/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/acquisitions/allocations/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/acquisitions/claims/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -87,6 +93,7 @@ src/app/staff/acquisitions/receiving/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/acquisitions/selection/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/acquisitions/vendors/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/activity/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/staff/admin/ai-audit/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/copy-tags/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/developer-platform/page.tsx	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/error.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -94,8 +101,8 @@ src/app/staff/admin/go-live/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
 src/app/staff/admin/item-statuses/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/loading.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/notifications/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/staff/admin/onboarding/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/ops/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
-src/app/staff/admin/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/permissions/_components/permissions-columns.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/permissions/_components/PermissionsDialogs.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/permissions/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -149,15 +156,19 @@ src/app/staff/circulation/bills/_components/bills-columns.tsx	0	0	0	0	0	0	0	0	0	
 src/app/staff/circulation/bills/_components/BillsDialogs.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/circulation/bills/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/circulation/checkin/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
-src/app/staff/circulation/checkout/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/staff/circulation/checkout/page.tsx	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/circulation/claims/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
-src/app/staff/circulation/class-circulation/page.tsx	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/staff/circulation/class-circulation/barcodes/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/staff/circulation/class-circulation/challenges/page.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/staff/circulation/class-circulation/overdue/page.tsx	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/staff/circulation/class-circulation/page.tsx	0	0	0	2	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/circulation/error.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/circulation/holds-management/_components/holds-columns.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/circulation/holds-management/_components/HoldsDialogs.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/circulation/holds-management/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/circulation/holds-shelf/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/circulation/in-house/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/staff/circulation/k12-assets/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/circulation/loading.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/circulation/lost/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/circulation/offline/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -167,6 +178,7 @@ src/app/staff/circulation/renew/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
 src/app/staff/circulation/transits/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/course-reserves/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/error.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/staff/events/page.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/help/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/ill/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -205,6 +217,7 @@ src/components/cataloging/add-item-dialog.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/cataloging/authority-control.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/cataloging/lazy.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/circulation/circulation-desk.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/circulation/patron-context-bar.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/dashboard/dashboard-editor.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/dashboard/lazy.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/keyboard/keyboard-shortcuts.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	

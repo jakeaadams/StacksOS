@@ -140,7 +140,12 @@ export default function PatronGroupsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Button variant="outline" size="sm" onClick={fetchGroups}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchGroups}
+            aria-label="Search patron groups"
+          >
             <Search className="h-4 w-4" />
           </Button>
         </div>

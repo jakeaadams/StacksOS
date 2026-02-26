@@ -434,6 +434,7 @@ export default function EDIPage() {
                                   <Button
                                     size="sm"
                                     variant="ghost"
+                                    aria-label="Test connection"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleTestConnection(a.id);
@@ -444,6 +445,7 @@ export default function EDIPage() {
                                   <Button
                                     size="sm"
                                     variant="ghost"
+                                    aria-label="Configure account"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setEditingAccount(a);
@@ -612,6 +614,7 @@ export default function EDIPage() {
                                   <Button
                                     size="sm"
                                     variant="ghost"
+                                    aria-label="Retry"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleRetryMessage(m.id);

@@ -229,7 +229,9 @@ test.describe("Catalog Workflows", () => {
       await page.goto("/staff/cataloging");
       await expect(page.locator("body")).toBeVisible();
 
-      // Verify navigation completed successfully
+      // Verify no server error
+      const bodyText = await page.locator("body").textContent();
+      expect(bodyText).not.toMatch(/Internal Server Error/i);
     });
   });
 

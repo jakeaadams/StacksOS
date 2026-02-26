@@ -41,6 +41,10 @@ test.describe("Circulation Workflows", () => {
 
     // Verify page body is visible
     await expect(page.locator("body")).toBeVisible();
+
+    // Verify no server error
+    const bodyText = await page.locator("body").textContent();
+    expect(bodyText).not.toMatch(/Internal Server Error/i);
   });
 
   test("patron lookup functionality exists", async ({ page }) => {

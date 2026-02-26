@@ -19,7 +19,7 @@ const fundSummarySchema = z.object({
 
 const requestSchema = z.object({
   orgId: z.number().int().positive(),
-  funds: z.array(fundSummarySchema),
+  funds: z.array(fundSummarySchema).max(100),
   orderCounts: z.object({
     total: z.number().int().min(0),
     pending: z.number().int().min(0),
