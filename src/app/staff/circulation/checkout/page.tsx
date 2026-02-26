@@ -297,7 +297,7 @@ export default function CheckoutPage() {
       const details =
         err instanceof ApiError && err.details && typeof err.details === "object"
           ? (err.details as CheckoutBlockDetails)
-          : ((err as any)?.details as CheckoutBlockDetails | undefined);
+          : ((err as Error & { details?: unknown }).details as CheckoutBlockDetails | undefined);
 
       const code = details?.code ? String(details.code) : undefined;
       const desc = details?.desc ? String(details.desc) : undefined;

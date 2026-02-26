@@ -19,11 +19,13 @@ function isAllowedCoverUrl(raw: string): boolean {
   }
 }
 
-const saveCoverSchema = z.object({
-  recordId: z.coerce.number().int().positive(),
-  coverUrl: z.string().trim().min(1).max(2048),
-  source: z.string().trim().max(256).optional(),
-}).passthrough();
+const saveCoverSchema = z
+  .object({
+    recordId: z.coerce.number().int().positive(),
+    coverUrl: z.string().trim().min(1).max(2048),
+    source: z.string().trim().max(256).optional(),
+  })
+  .passthrough();
 
 export async function POST(request: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(request);
@@ -32,7 +34,7 @@ export async function POST(request: NextRequest) {
     // Require staff authentication
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
 
-    const body = saveCoverSchema.safeParse(await request.json().catch(() => null)).data as any;
+    const body = saveCoverSchema.safeParse(await request.json().catch(() => null)).data;
     const recordId = parsePositiveInt(body?.recordId);
     const coverUrl = String(body?.coverUrl || "").trim();
     const source = String(body?.source || "").trim();
@@ -40,7 +42,8 @@ export async function POST(request: NextRequest) {
     if (!recordId) return errorResponse("Missing or invalid recordId", 400);
     if (!coverUrl) return errorResponse("Missing coverUrl", 400);
     if (coverUrl.length > 2048) return errorResponse("coverUrl is too long", 400);
-    if (!isAllowedCoverUrl(coverUrl)) return errorResponse("Invalid coverUrl (must be http(s) or a relative path)", 400);
+    if (!isAllowedCoverUrl(coverUrl))
+      return errorResponse("Invalid coverUrl (must be http(s) or a relative path)", 400);
 
     // Ensure custom tables exist
     await ensureCustomTables();
@@ -73,7 +76,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return successResponse({ success: true, message: "Cover saved successfully", recordId, coverUrl, source: source || null });
+    return successResponse({
+      success: true,
+      message: "Cover saved successfully",
+      recordId,
+      coverUrl,
+      source: source || null,
+    });
   } catch (error) {
     return serverErrorResponse(error, "Save cover POST", request);
   }
@@ -99,7 +108,11 @@ export async function GET(request: NextRequest) {
       return successResponse({ success: false, message: "No custom cover found" });
     }
 
-    return successResponse({ success: true, coverUrl: result[0]!.cover_url, source: result[0]!.source });
+    return successResponse({
+      success: true,
+      coverUrl: result[0]!.cover_url,
+      source: result[0]!.source,
+    });
   } catch (error) {
     return serverErrorResponse(error, "Save cover GET", request);
   }

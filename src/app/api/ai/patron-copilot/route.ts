@@ -18,7 +18,7 @@ const requestSchema = z.object({
   alertCount: z.number().int().min(0),
   active: z.boolean(),
   barred: z.boolean(),
-  profileGroup: z.string().optional(),
+  profileGroup: z.string().max(200).optional(),
 });
 
 const guidanceSchema = z.object({

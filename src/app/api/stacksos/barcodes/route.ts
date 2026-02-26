@@ -7,7 +7,8 @@ import {
   successResponse,
   serverErrorResponse,
 } from "@/lib/api/responses";
-import { requireAuthToken } from "@/lib/api";
+import { getRequestMeta, requireAuthToken } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { z } from "zod";
 
 const _barcodesPostSchema = z
@@ -29,6 +30,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+
   try {
     await requireAuthToken();
 
@@ -56,6 +59,18 @@ export async function POST(req: NextRequest) {
     }
 
     const result = applyBarcodeProfile(barcode, profile);
+
+    await logAuditEvent({
+      action: "barcode.generate",
+      entity: "barcode",
+      status: "success",
+      actor: null,
+      ip,
+      userAgent,
+      requestId,
+      details: { profileId, barcode },
+    });
+
     return successResponse({ profile: serializeProfile(profile), result });
   } catch (error) {
     return serverErrorResponse(error, "Barcodes POST", req);

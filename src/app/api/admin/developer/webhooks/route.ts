@@ -2,10 +2,12 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
   errorResponse,
+  getRequestMeta,
   parseJsonBodyWithSchema,
   serverErrorResponse,
   successResponse,
 } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { requireSaaSAccess } from "@/lib/saas-rbac";
 import {
   DEVELOPER_EVENT_TYPES,
@@ -91,6 +93,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+
   try {
     const body = await parseJsonBodyWithSchema(req, postSchema);
     if (body instanceof Response) return body;
@@ -112,6 +116,19 @@ export async function POST(req: NextRequest) {
         secret: body.secret,
         actorId,
       });
+
+      await logAuditEvent({
+        action: "webhook.create",
+        entity: "webhook_subscription",
+        entityId: created.id,
+        status: "success",
+        actor: ctx.actor as import("@/lib/audit").AuditActor | null,
+        ip,
+        userAgent,
+        requestId,
+        details: { webhookId: created.id, name: body.name },
+      });
+
       return successResponse({ subscription: created });
     }
 
@@ -131,6 +148,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+
   try {
     const body = await parseJsonBodyWithSchema(req, updateSchema);
     if (body instanceof Response) return body;
@@ -153,6 +172,19 @@ export async function PUT(req: NextRequest) {
       actorId,
     });
     if (!updated) return errorResponse("Webhook subscription not found", 404);
+
+    await logAuditEvent({
+      action: "webhook.update",
+      entity: "webhook_subscription",
+      entityId: body.id,
+      status: "success",
+      actor: ctx.actor as import("@/lib/audit").AuditActor | null,
+      ip,
+      userAgent,
+      requestId,
+      details: { webhookId: body.id },
+    });
+
     return successResponse({ subscription: updated });
   } catch (error) {
     return serverErrorResponse(error, "PUT /api/admin/developer/webhooks", req);
@@ -160,6 +192,8 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+
   try {
     const body = await parseJsonBodyWithSchema(req, deleteSchema);
     if (body instanceof Response) return body;
@@ -172,6 +206,19 @@ export async function DELETE(req: NextRequest) {
 
     const deleted = await deleteWebhookSubscription({ id: body.id, tenantId: ctx.tenantId });
     if (!deleted) return errorResponse("Webhook subscription not found", 404);
+
+    await logAuditEvent({
+      action: "webhook.delete",
+      entity: "webhook_subscription",
+      entityId: body.id,
+      status: "success",
+      actor: ctx.actor as import("@/lib/audit").AuditActor | null,
+      ip,
+      userAgent,
+      requestId,
+      details: { webhookId: body.id },
+    });
+
     return successResponse({ deleted: true });
   } catch (error) {
     return serverErrorResponse(error, "DELETE /api/admin/developer/webhooks", req);

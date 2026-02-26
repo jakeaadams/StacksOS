@@ -68,18 +68,25 @@ const FORMAT_ICONS: Record<string, React.ElementType> = {
   magazine: Newspaper,
 };
 
-function FacetGroup({ facet, onValueToggle }: { facet: Facet; onValueToggle: (value: string) => void }) {
+function FacetGroup({
+  facet,
+  onValueToggle,
+}: {
+  facet: Facet;
+  onValueToggle: (value: string) => void;
+}) {
   const [isOpen, setIsOpen] = useState(facet.expanded !== false);
   const [showAll, setShowAll] = useState(false);
-  
+
   const displayValues = showAll ? facet.values : facet.values.slice(0, 5);
   const hasMore = facet.values.length > 5;
-  const selectedCount = facet.values.filter(v => v.selected).length;
+  const selectedCount = facet.values.filter((v) => v.selected).length;
   const Icon = facet.icon;
 
   return (
     <div className="border-b border-border/50 pb-4">
-      <button type="button"
+      <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between w-full py-2 text-left hover:text-primary transition-colors"
       >
@@ -87,12 +94,14 @@ function FacetGroup({ facet, onValueToggle }: { facet: Facet; onValueToggle: (va
           {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
           <span className="font-medium text-sm">{facet.name}</span>
           {selectedCount > 0 && (
-            <Badge variant="secondary" className="rounded-full px-2 py-0 text-[10px]">{selectedCount}</Badge>
+            <Badge variant="secondary" className="rounded-full px-2 py-0 text-[10px]">
+              {selectedCount}
+            </Badge>
           )}
         </div>
         {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
-      
+
       {isOpen && (
         <div className="pt-2 space-y-1">
           {displayValues.map((value) => {
@@ -105,17 +114,29 @@ function FacetGroup({ facet, onValueToggle }: { facet: Facet; onValueToggle: (va
                   value.selected && "bg-primary/5"
                 )}
               >
-                <Checkbox checked={value.selected} onCheckedChange={() => onValueToggle(value.value)} className="h-4 w-4" />
+                <Checkbox
+                  checked={value.selected}
+                  onCheckedChange={() => onValueToggle(value.value)}
+                  className="h-4 w-4"
+                />
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  {FormatIcon && <FormatIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />}
+                  {FormatIcon && (
+                    <FormatIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                  )}
                   <span className="text-sm truncate">{value.label}</span>
                 </div>
-                <span className="text-xs text-muted-foreground tabular-nums">{value.count.toLocaleString()}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {value.count.toLocaleString()}
+                </span>
               </label>
             );
           })}
           {hasMore && (
-            <button type="button" onClick={() => setShowAll(!showAll)} className="text-xs text-primary hover:underline mt-2 pl-2">
+            <button
+              type="button"
+              onClick={() => setShowAll(!showAll)}
+              className="text-xs text-primary hover:underline mt-2 pl-2"
+            >
               {showAll ? "Show less" : `Show ${facet.values.length - 5} more`}
             </button>
           )}
@@ -143,42 +164,94 @@ function YearRangeFacet({ onRangeChange }: { onRangeChange: (range: [number, num
         <span className="font-medium text-sm">Publication Year</span>
       </div>
       <div className="flex items-center gap-2 mt-2">
-        <Input type="number" value={startYear} onChange={(e) => setStartYear(e.target.value)} placeholder="From" className="h-8 text-sm" min={1800} max={currentYear} />
+        <Input
+          type="number"
+          value={startYear}
+          onChange={(e) => setStartYear(e.target.value)}
+          placeholder="From"
+          className="h-8 text-sm"
+          min={1800}
+          max={currentYear}
+          aria-label="From year"
+        />
         <span className="text-muted-foreground">—</span>
-        <Input value={endYear} onChange={(e) => setEndYear(e.target.value)} placeholder="To" className="h-8 text-sm" min={1800} max={currentYear} />
-        <Button size="sm" variant="secondary" onClick={handleApply} className="h-8">Apply</Button>
+        <Input
+          value={endYear}
+          onChange={(e) => setEndYear(e.target.value)}
+          placeholder="To"
+          className="h-8 text-sm"
+          min={1800}
+          max={currentYear}
+          aria-label="To year"
+        />
+        <Button size="sm" variant="secondary" onClick={handleApply} className="h-8">
+          Apply
+        </Button>
       </div>
     </div>
   );
 }
 
-export function FacetedSearch({ facets, onFilterChange, onClearAll, totalResults, className }: FacetedSearchProps) {
+export function FacetedSearch({
+  facets,
+  onFilterChange,
+  onClearAll,
+  totalResults,
+  className,
+}: FacetedSearchProps) {
   const activeFilters = useMemo(() => {
-    return facets.flatMap(facet => facet.values.filter(v => v.selected).map(v => ({ facetId: facet.id, facetName: facet.name, ...v })));
+    return facets.flatMap((facet) =>
+      facet.values
+        .filter((v) => v.selected)
+        .map((v) => ({ facetId: facet.id, facetName: facet.name, ...v }))
+    );
   }, [facets]);
 
-  const handleValueToggle = useCallback((facetId: string, value: string) => {
-    const facet = facets.find(f => f.id === facetId);
-    if (!facet) return;
-    const currentSelected = facet.values.filter(v => v.selected).map(v => v.value);
-    const newSelected = currentSelected.includes(value) ? currentSelected.filter(v => v !== value) : [...currentSelected, value];
-    onFilterChange(facetId, newSelected);
-  }, [facets, onFilterChange]);
+  const handleValueToggle = useCallback(
+    (facetId: string, value: string) => {
+      const facet = facets.find((f) => f.id === facetId);
+      if (!facet) return;
+      const currentSelected = facet.values.filter((v) => v.selected).map((v) => v.value);
+      const newSelected = currentSelected.includes(value)
+        ? currentSelected.filter((v) => v !== value)
+        : [...currentSelected, value];
+      onFilterChange(facetId, newSelected);
+    },
+    [facets, onFilterChange]
+  );
 
   const FacetContent = (
     <div className={cn("space-y-4", className)}>
       {activeFilters.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active Filters</span>
-            <button type="button" onClick={onClearAll} className="text-xs text-primary hover:underline">Clear all</button>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Active Filters
+            </span>
+            <button
+              type="button"
+              onClick={onClearAll}
+              className="text-xs text-primary hover:underline"
+            >
+              Clear all
+            </button>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {activeFilters.map((filter) => (
-              <Badge key={`${filter.facetId}-${filter.value}`} variant="secondary" className="pr-1 gap-1">
-                <span className="text-[10px] text-muted-foreground mr-0.5">{filter.facetName}:</span>
+              <Badge
+                key={`${filter.facetId}-${filter.value}`}
+                variant="secondary"
+                className="pr-1 gap-1"
+              >
+                <span className="text-[10px] text-muted-foreground mr-0.5">
+                  {filter.facetName}:
+                </span>
                 {filter.label}
-                <button type="button" onClick={() => handleValueToggle(filter.facetId, filter.value)} className="ml-1 hover:bg-background/50 rounded-full p-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleValueToggle(filter.facetId, filter.value)}
+                  className="ml-1 hover:bg-background/50 rounded-full p-0.5"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </Badge>
@@ -196,9 +269,15 @@ export function FacetedSearch({ facets, onFilterChange, onClearAll, totalResults
       <ScrollArea className="h-[calc(100vh-300px)] pr-4">
         <div className="space-y-2">
           {facets.map((facet) => (
-            <FacetGroup key={facet.id} facet={facet} onValueToggle={(value) => handleValueToggle(facet.id, value)} />
+            <FacetGroup
+              key={facet.id}
+              facet={facet}
+              onValueToggle={(value) => handleValueToggle(facet.id, value)}
+            />
           ))}
-          <YearRangeFacet onRangeChange={(range) => onFilterChange("year", [`${range[0]}-${range[1]}`])} />
+          <YearRangeFacet
+            onRangeChange={(range) => onFilterChange("year", [`${range[0]}-${range[1]}`])}
+          />
         </div>
       </ScrollArea>
     </div>
@@ -221,12 +300,19 @@ export function FacetedSearch({ facets, onFilterChange, onClearAll, totalResults
           <Button variant="outline" size="sm" className="lg:hidden">
             <SlidersHorizontal className="h-4 w-4 mr-2" />
             Filters
-            {activeFilters.length > 0 && <Badge variant="secondary" className="ml-2 rounded-full">{activeFilters.length}</Badge>}
+            {activeFilters.length > 0 && (
+              <Badge variant="secondary" className="ml-2 rounded-full">
+                {activeFilters.length}
+              </Badge>
+            )}
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-[300px] sm:w-[400px]">
           <SheetHeader>
-            <SheetTitle className="flex items-center gap-2"><Filter className="h-4 w-4" />Filters</SheetTitle>
+            <SheetTitle className="flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              Filters
+            </SheetTitle>
             <SheetDescription>Narrow down your search results</SheetDescription>
           </SheetHeader>
           <div className="mt-6">{FacetContent}</div>

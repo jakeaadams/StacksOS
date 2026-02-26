@@ -20,6 +20,17 @@ import { logger } from "@/lib/logger";
 // Types
 // ---------------------------------------------------------------------------
 
+/**
+ * Migrations are forward-only by design. To revert a migration:
+ * 1. Create a new migration that undoes the previous changes
+ * 2. All migrations use IF NOT EXISTS / IF EXISTS guards for idempotency
+ * 3. Manual SQL intervention via the Evergreen database is the escape hatch
+ *
+ * Rollback support (down migrations) is intentionally omitted because:
+ * - The K12 schema lives in a shared Evergreen database
+ * - Automatic rollbacks risk data loss in production
+ * - Forward-only migrations are simpler to reason about
+ */
 interface Migration {
   version: number;
   description: string;

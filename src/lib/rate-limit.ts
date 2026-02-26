@@ -45,7 +45,7 @@ if (!(globalThis as Record<string, any>)[GLOBAL_CLEANUP_KEY]) {
   );
 
   // Best-effort: don't keep the process alive just for cleanup (useful for tests).
-  (handle as any).unref?.();
+  (handle as NodeJS.Timeout & { unref?: () => void }).unref?.();
 
   (globalThis as Record<string, any>)[GLOBAL_CLEANUP_KEY] = handle;
 }

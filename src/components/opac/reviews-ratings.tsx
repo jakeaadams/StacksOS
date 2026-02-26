@@ -101,6 +101,7 @@ function StarRating({
             variant="ghost"
             size="icon"
             disabled={!interactive}
+            aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
             className={`h-auto w-auto p-0.5 ${interactive ? "cursor-pointer hover:scale-110" : "cursor-default"}`}
             onMouseEnter={() => interactive && setHoverRating(star)}
             onMouseLeave={() => interactive && setHoverRating(0)}

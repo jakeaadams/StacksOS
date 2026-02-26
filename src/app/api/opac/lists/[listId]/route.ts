@@ -5,22 +5,24 @@ import {
   errorResponse,
   serverErrorResponse,
   unauthorizedResponse,
+  getRequestMeta,
 } from "@/lib/api";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
 import { z } from "zod";
 
 // GET /api/opac/lists/[listId] - Get list details with items
-const updateListSchema = z.object({
-  name: z.string().trim().min(1).max(512).optional(),
-  description: z.string().max(2048).optional(),
-  visibility: z.enum(["private", "public"]).optional(),
-}).passthrough();
+const updateListSchema = z
+  .object({
+    name: z.string().trim().min(1).max(512).optional(),
+    description: z.string().max(2048).optional(),
+    visibility: z.enum(["private", "public"]).optional(),
+  })
+  .passthrough();
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ listId: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ listId: string }> }) {
   try {
     const { listId } = await params;
     const cookieStore = await cookies();
@@ -31,14 +33,14 @@ export async function GET(
     }
 
     // Get the bookbag contents
-    const bagResponse = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.container.flesh",
-      [patronToken, "biblio", parseInt(listId)]
-    );
+    const bagResponse = await callOpenSRF("open-ils.actor", "open-ils.actor.container.flesh", [
+      patronToken,
+      "biblio",
+      parseInt(listId),
+    ]);
 
     const bag = bagResponse.payload?.[0];
-    
+
     if (!bag || bag.ilsevent) {
       return errorResponse("List not found", 404);
     }
@@ -52,15 +54,17 @@ export async function GET(
             "open-ils.search.biblio.record.mods_slim.retrieve",
             [item.target_biblio_record_entry]
           );
-          
+
           const bib = bibResponse.payload?.[0];
-          
+
           return {
             id: item.id,
             bibId: item.target_biblio_record_entry,
             title: bib?.title || "Unknown Title",
             author: bib?.author || "",
-            coverUrl: bib?.isbn ? `https://covers.openlibrary.org/b/isbn/${bib.isbn}-M.jpg` : undefined,
+            coverUrl: bib?.isbn
+              ? `https://covers.openlibrary.org/b/isbn/${bib.isbn}-M.jpg`
+              : undefined,
             dateAdded: item.create_time,
             notes: item.notes || "",
           };
@@ -94,10 +98,19 @@ export async function GET(
 }
 
 // PATCH /api/opac/lists/[listId] - Update list
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ listId: string }> }
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ listId: string }> }) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 30,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-lists-mutate",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const { listId } = await params;
     const cookieStore = await cookies();
@@ -110,26 +123,32 @@ export async function PATCH(
     const { name, description, visibility } = updateListSchema.parse(await req.json());
 
     // Update the bookbag
-    const updateResponse = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.container.update",
-      [
-        patronToken,
-        "biblio",
-        {
-          id: parseInt(listId),
-          name: name?.trim(),
-          description: description || "",
-          pub: visibility === "public" ? "t" : "f",
-        },
-      ]
-    );
+    const updateResponse = await callOpenSRF("open-ils.actor", "open-ils.actor.container.update", [
+      patronToken,
+      "biblio",
+      {
+        id: parseInt(listId),
+        name: name?.trim(),
+        description: description || "",
+        pub: visibility === "public" ? "t" : "f",
+      },
+    ]);
 
     const result = updateResponse.payload?.[0];
 
     if (result?.ilsevent) {
       return errorResponse(result.textcode || "Failed to update list");
     }
+
+    await logAuditEvent({
+      action: "opac.list.update",
+      entity: "bookbag",
+      entityId: parseInt(listId),
+      status: "success",
+      actor: null,
+      ip,
+      details: { listId: parseInt(listId) },
+    });
 
     return successResponse({ success: true, message: "List updated" });
   } catch (error) {
@@ -143,6 +162,18 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ listId: string }> }
 ) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 30,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-lists-mutate",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const { listId } = await params;
     const cookieStore = await cookies();
@@ -164,6 +195,16 @@ export async function DELETE(
     if (result?.ilsevent) {
       return errorResponse(result.textcode || "Failed to delete list");
     }
+
+    await logAuditEvent({
+      action: "opac.list.delete",
+      entity: "bookbag",
+      entityId: parseInt(listId),
+      status: "success",
+      actor: null,
+      ip,
+      details: { listId: parseInt(listId) },
+    });
 
     return successResponse({ success: true, message: "List deleted" });
   } catch (error) {

@@ -40,7 +40,7 @@ const serialsPostSchema = z
   .object({
     action: z.string().trim().min(1),
     item_id: z.coerce.number().int().positive().optional(),
-    item_ids: z.array(z.coerce.number().int().positive()).optional(),
+    item_ids: z.array(z.coerce.number().int().positive()).max(500).optional(),
     claim_type: z.coerce.number().int().positive().optional(),
   })
   .passthrough();

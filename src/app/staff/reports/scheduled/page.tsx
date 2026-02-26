@@ -89,13 +89,13 @@ function cadenceLabel(s: Schedule): string {
 }
 
 function reportLabel(key: Schedule["report_key"]): string {
-  return SCHEDULED_REPORT_DEFINITIONS.find((r: any) => r.key === key)?.label || key;
+  return SCHEDULED_REPORT_DEFINITIONS.find((r) => r.key === key)?.label || key;
 }
 
 function parseRecipients(value: string): string[] {
   return value
     .split(",")
-    .map((v: any) => v.trim())
+    .map((v) => v.trim())
     .filter(Boolean);
 }
 
@@ -106,7 +106,9 @@ export default function ScheduledReportsPage() {
   const schedulesApi = useApi<{ schedules: Schedule[] }>("/api/reports/scheduled", {
     immediate: true,
   });
-  const envApi = useApi<any>("/api/env", { immediate: true });
+  const envApi = useApi<{
+    env: { scheduledReports?: { runnerConfigured?: boolean; publicBaseUrlConfigured?: boolean } };
+  }>("/api/env", { immediate: true });
 
   const schedules = schedulesApi.data?.schedules || [];
 
@@ -524,13 +526,15 @@ export default function ScheduledReportsPage() {
               <Select
                 id="report"
                 value={form.reportKey}
-                onValueChange={(v) => setForm((p) => ({ ...p, reportKey: v as any }))}
+                onValueChange={(v) =>
+                  setForm((p) => ({ ...p, reportKey: v as Schedule["report_key"] }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select report" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SCHEDULED_REPORT_DEFINITIONS.map((r: any) => (
+                  {SCHEDULED_REPORT_DEFINITIONS.map((r) => (
                     <SelectItem key={r.key} value={r.key}>
                       {r.label}
                     </SelectItem>
@@ -538,10 +542,7 @@ export default function ScheduledReportsPage() {
                 </SelectContent>
               </Select>
               <div className="text-xs text-muted-foreground">
-                {
-                  SCHEDULED_REPORT_DEFINITIONS.find((r: any) => r.key === form.reportKey)
-                    ?.description
-                }
+                {SCHEDULED_REPORT_DEFINITIONS.find((r) => r.key === form.reportKey)?.description}
               </div>
             </div>
 
@@ -556,7 +557,7 @@ export default function ScheduledReportsPage() {
                   <SelectValue placeholder="Select org" />
                 </SelectTrigger>
                 <SelectContent>
-                  {orgs.map((o: any) => (
+                  {orgs.map((o) => (
                     <SelectItem key={o.id} value={String(o.id)}>
                       {o.shortname} — {o.name}
                     </SelectItem>
@@ -571,7 +572,9 @@ export default function ScheduledReportsPage() {
                 <Select
                   id="cadence"
                   value={form.cadence}
-                  onValueChange={(v) => setForm((p) => ({ ...p, cadence: v as any }))}
+                  onValueChange={(v) =>
+                    setForm((p) => ({ ...p, cadence: v as Schedule["cadence"] }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Cadence" />

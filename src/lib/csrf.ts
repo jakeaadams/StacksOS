@@ -1,6 +1,6 @@
 /**
  * CSRF Protection Utility
- * 
+ *
  * Provides Cross-Site Request Forgery protection for state-changing operations.
  * Uses double-submit cookie pattern with cryptographic tokens.
  */
@@ -19,7 +19,7 @@ function parseForwardedProto(value: string | null): string | null {
 }
 
 function isRequestSecure(request: NextRequest): boolean {
-  const headers = (request as any)?.headers as { get?: (name: string) => string | null } | undefined;
+  const headers = request.headers;
   const headerGet = typeof headers?.get === "function" ? headers.get.bind(headers) : () => null;
 
   const forwardedProto = parseForwardedProto(
@@ -27,7 +27,7 @@ function isRequestSecure(request: NextRequest): boolean {
   );
   if (forwardedProto) return forwardedProto === "https";
 
-  const directProtoRaw = (request as any)?.nextUrl?.protocol as string | undefined;
+  const directProtoRaw = request.nextUrl?.protocol as string | undefined;
   const directProto = typeof directProtoRaw === "string" ? directProtoRaw.toLowerCase() : undefined;
   if (directProto === "https:") return true;
   if (directProto === "http:") return false;
@@ -36,13 +36,15 @@ function isRequestSecure(request: NextRequest): boolean {
 }
 
 export function isCookieSecure(request?: NextRequest): boolean {
-  const raw = String(process.env.STACKSOS_COOKIE_SECURE || "").trim().toLowerCase();
+  const raw = String(process.env.STACKSOS_COOKIE_SECURE || "")
+    .trim()
+    .toLowerCase();
   if (raw === "true") return true;
   if (raw === "false") return false;
 
   if (request) {
-    const hasHeaderGet = typeof (request as any)?.headers?.get === "function";
-    const hasProto = typeof (request as any)?.nextUrl?.protocol === "string";
+    const hasHeaderGet = typeof request.headers?.get === "function";
+    const hasProto = typeof request.nextUrl?.protocol === "string";
     if (!hasHeaderGet && !hasProto) {
       // Unable to infer from request (e.g. unit tests). Fall back to environment.
       return process.env.NODE_ENV === "production";
@@ -97,7 +99,7 @@ export function generateCSRFToken(): string {
  */
 export function setCSRFCookie(response: NextResponse, token: string, request?: NextRequest): void {
   const cookieSecure = isCookieSecure(request);
-  
+
   response.cookies.set(CSRF_COOKIE_NAME, token, {
     httpOnly: true,
     secure: cookieSecure,
@@ -110,22 +112,22 @@ export function setCSRFCookie(response: NextResponse, token: string, request?: N
 /**
  * Validate CSRF token from request
  * Compares token in cookie with token in header
- * 
+ *
  * @param request - Next.js request object
  * @returns true if valid, false otherwise
  */
 export function validateCSRFToken(request: NextRequest): boolean {
   // Get token from cookie
   const cookieToken = request.cookies.get(CSRF_COOKIE_NAME)?.value;
-  
+
   // Get token from header
   const headerToken = request.headers.get(CSRF_HEADER_NAME);
-  
+
   // Both must exist and match
   if (!cookieToken || !headerToken) {
     return false;
   }
-  
+
   // Constant-time comparison to prevent timing attacks
   return constantTimeEqual(cookieToken, headerToken);
 }

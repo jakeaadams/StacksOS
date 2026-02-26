@@ -71,7 +71,7 @@ const UpdateSchema = z
     orgId: z.number().int().positive(),
     note: z.string().max(500).optional(),
     hours: HoursSchema.optional(),
-    closedDates: z.array(ClosedDateSchema).optional(),
+    closedDates: z.array(ClosedDateSchema).max(400).optional(),
     versionId: z.number().int().positive().optional(),
   })
   .strict();

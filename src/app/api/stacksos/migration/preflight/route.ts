@@ -7,7 +7,8 @@ import {
   successResponse,
   serverErrorResponse,
 } from "@/lib/api/responses";
-import { requireAuthToken } from "@/lib/api";
+import { getRequestMeta, requireAuthToken } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { z as _z } from "zod";
 
 interface PreflightRecord {
@@ -18,6 +19,8 @@ interface PreflightRecord {
 }
 
 export async function POST(req: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+
   try {
     await requireAuthToken();
 
@@ -85,6 +88,22 @@ export async function POST(req: NextRequest) {
     }
 
     const invalidCount = results.filter((r: any) => !r.valid).length;
+
+    await logAuditEvent({
+      action: "migration.preflight",
+      entity: "migration",
+      status: "success",
+      actor: null,
+      ip,
+      userAgent,
+      requestId,
+      details: {
+        total: results.length,
+        valid: results.length - invalidCount,
+        invalid: invalidCount,
+        duplicates: duplicateCount,
+      },
+    });
 
     return successResponse({
       summary: {

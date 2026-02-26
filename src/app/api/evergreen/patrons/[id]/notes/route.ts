@@ -54,8 +54,8 @@ function parseNotePayload(n: Record<string, any>): PatronNote {
 const notePostSchema = z
   .object({
     title: z.string().trim().max(512).optional(),
-    value: z.string().optional(),
-    note: z.string().optional(),
+    value: z.string().max(2000).optional(),
+    note: z.string().max(2000).optional(),
     public: z.boolean().optional(),
     pub: z.union([z.boolean(), z.literal("t"), z.literal("f")]).optional(),
   })

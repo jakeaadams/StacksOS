@@ -59,7 +59,14 @@ export function ComparePanel({
             <Columns2 className="h-4 w-4" />
             Compare records
           </span>
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={onCloseCompare} title="Close compare" aria-label="Close compare panel">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
+            onClick={onCloseCompare}
+            title="Close compare"
+            aria-label="Close compare panel"
+          >
             <X className="h-4 w-4" />
             <span className="sr-only">Close compare</span>
           </Button>
@@ -71,7 +78,13 @@ export function ComparePanel({
         </div>
 
         <div className="flex items-center gap-2">
-          <Input value={compareDraft} onChange={(e) => onCompareDraftChange(e.target.value)} placeholder="Compare record ID (e.g. 123)" inputMode="numeric" />
+          <Input
+            value={compareDraft}
+            onChange={(e) => onCompareDraftChange(e.target.value)}
+            placeholder="Compare record ID (e.g. 123)"
+            inputMode="numeric"
+            aria-label="Compare MARC record ID"
+          />
           <Button
             onClick={() => {
               const id = compareDraft.trim();
@@ -86,18 +99,26 @@ export function ComparePanel({
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <div className="text-xs text-muted-foreground">Tip: add `?compare=123` to deep-link this view.</div>
-          <Button size="sm" variant="outline" onClick={onClearCompare} disabled={compareLoading}>Clear</Button>
+          <div className="text-xs text-muted-foreground">
+            Tip: add `?compare=123` to deep-link this view.
+          </div>
+          <Button size="sm" variant="outline" onClick={onClearCompare} disabled={compareLoading}>
+            Clear
+          </Button>
         </div>
 
         {compareError && (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{compareError}</div>
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {compareError}
+          </div>
         )}
 
         {compareBibInfo && (
           <div className="rounded-lg border bg-muted/30 px-3 py-2">
             <div className="text-sm font-medium truncate">{compareBibInfo.title || "Untitled"}</div>
-            <div className="text-xs text-muted-foreground truncate">{compareBibInfo.author || "\u2014"}</div>
+            <div className="text-xs text-muted-foreground truncate">
+              {compareBibInfo.author || "\u2014"}
+            </div>
           </div>
         )}
 
@@ -106,8 +127,12 @@ export function ComparePanel({
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline">Base #{recordId}</Badge>
               <Badge variant="outline">Compare #{compareDraft.trim() || compareIdParam}</Badge>
-              <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10">+{diffAdded}</Badge>
-              <Badge className="bg-rose-500/10 text-rose-700 hover:bg-rose-500/10">-{diffRemoved}</Badge>
+              <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10">
+                +{diffAdded}
+              </Badge>
+              <Badge className="bg-rose-500/10 text-rose-700 hover:bg-rose-500/10">
+                -{diffRemoved}
+              </Badge>
             </div>
 
             <div className="max-h-[520px] overflow-auto rounded-lg border bg-background">
@@ -131,7 +156,9 @@ export function ComparePanel({
                       </span>
                       <span className="break-words">{r.line}</span>
                       {r.delta > 1 ? (
-                        <span className="ml-2 text-[10px] text-muted-foreground">\u00d7{r.delta}</span>
+                        <span className="ml-2 text-[10px] text-muted-foreground">
+                          \u00d7{r.delta}
+                        </span>
                       ) : null}
                     </div>
                   ))}

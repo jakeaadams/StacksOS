@@ -3,6 +3,8 @@ import { logger } from "@/lib/logger";
 import { ensureLibrarySchemaExists } from "@/lib/db/library-schema";
 import { query, withTransaction } from "@/lib/db/evergreen";
 
+type DbParam = string | number | boolean | null | string[];
+
 export type EventRegistrationStatus = "registered" | "waitlisted" | "canceled";
 export type EventReminderChannel = "none" | "email" | "sms" | "both";
 
@@ -273,7 +275,7 @@ export async function listPatronEventRegistrations(
   await ensureOpacEventTables();
 
   const filters: string[] = ["patron_id = $1"];
-  const params: unknown[] = [patronId];
+  const params: DbParam[] = [patronId];
   let p = 2;
 
   if (options?.eventIds && options.eventIds.length > 0) {
@@ -305,7 +307,7 @@ export async function listPatronEventRegistrations(
       WHERE ${filters.join(" AND ")}
       ORDER BY updated_at DESC, id DESC
     `,
-    params as any[]
+    params
   );
 
   return rows.map(toRegistrationRecord);
@@ -760,7 +762,7 @@ export async function listPatronEventHistory(
   await ensureOpacEventTables();
 
   const filters: string[] = ["patron_id = $1"];
-  const params: unknown[] = [patronId];
+  const params: DbParam[] = [patronId];
   let p = 2;
 
   if (options?.eventId) {
@@ -799,7 +801,7 @@ export async function listPatronEventHistory(
       ORDER BY created_at DESC, id DESC
       LIMIT $${p}
     `,
-    params as any[]
+    params
   );
 
   return rows.map((row) => ({
@@ -827,7 +829,7 @@ export async function listEventRegistrations(
   await ensureOpacEventTables();
 
   const filters: string[] = ["event_id = $1"];
-  const params: unknown[] = [eventId];
+  const params: DbParam[] = [eventId];
 
   if (!options?.includeCanceled) {
     filters.push("status <> 'canceled'");
@@ -852,7 +854,7 @@ export async function listEventRegistrations(
       WHERE ${filters.join(" AND ")}
       ORDER BY status ASC, waitlist_position ASC NULLS LAST, registered_at ASC
     `,
-    params as any[]
+    params
   );
 
   return rows.map(toRegistrationRecord);

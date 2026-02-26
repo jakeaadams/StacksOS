@@ -5,7 +5,9 @@ import {
   errorResponse,
   serverErrorResponse,
   parseJsonBodyWithSchema,
+  getRequestMeta,
 } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { getEvergreenPool } from "@/lib/db/evergreen";
 import { requireSaaSAccess } from "@/lib/saas-rbac";
 import { getTenantConfig } from "@/lib/tenant/config";
@@ -45,6 +47,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+
   try {
     const tenantId = getTenantConfig().tenantId;
     const { actor } = await requireSaaSAccess({
@@ -76,6 +80,18 @@ export async function POST(req: NextRequest) {
     }
 
     logger.info({ tenantId, taskId: body.task_id, actorId }, "Onboarding task marked complete");
+
+    await logAuditEvent({
+      action: "onboarding.task.complete",
+      entity: "onboarding_task",
+      entityId: body.task_id,
+      status: "success",
+      actor: actor as import("@/lib/audit").AuditActor | null,
+      ip,
+      userAgent,
+      requestId,
+      details: { tenantId, taskId: body.task_id },
+    });
 
     return successResponse({ completion: row });
   } catch (error) {

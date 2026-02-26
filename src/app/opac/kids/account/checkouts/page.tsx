@@ -129,6 +129,7 @@ export default function KidsCheckoutsPage() {
           size="icon"
           onClick={() => router.back()}
           className="rounded-xl"
+          aria-label="Go back"
         >
           <ChevronLeft className="h-6 w-6" />
         </Button>

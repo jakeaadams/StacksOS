@@ -180,6 +180,7 @@ function TeensSearchContent() {
             <Button
               type="submit"
               size="icon"
+              aria-label="Search"
               className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full hover:from-purple-700 hover:to-indigo-700 transition-colors"
             >
               <Search className="h-5 w-5" />

@@ -1,6 +1,6 @@
 /**
  * API Endpoint Tests
- * 
+ *
  * Integration tests for key API endpoints
  * Note: These tests mock external dependencies (Evergreen, database)
  */
@@ -55,7 +55,7 @@ describe("API Endpoints", () => {
 
       // Import and test the route handler
       const { GET } = await import("@/app/api/health/route");
-      
+
       const request = new Request("http://localhost:3000/api/health", {
         method: "GET",
       });
@@ -82,7 +82,7 @@ describe("API Endpoints", () => {
       );
 
       const { GET } = await import("@/app/api/health/route");
-      
+
       const request = new Request("http://localhost:3000/api/health", {
         method: "GET",
       });
@@ -107,7 +107,7 @@ describe("API Endpoints", () => {
       vi.mocked(fetchEvergreen).mockRejectedValue(new Error("Evergreen unavailable"));
 
       const { GET } = await import("@/app/api/health/route");
-      
+
       const request = new Request("http://localhost:3000/api/health", {
         method: "GET",
       });
@@ -130,7 +130,7 @@ describe("API Endpoints", () => {
       );
 
       const { GET } = await import("@/app/api/health/route");
-      
+
       const request = new Request("http://localhost:3000/api/health", {
         method: "GET",
       });
@@ -148,7 +148,7 @@ describe("API Endpoints", () => {
   describe("CSRF Token API", () => {
     it("should return a CSRF token", async () => {
       const { GET } = await import("@/app/api/csrf-token/route");
-      
+
       // Create mock request
       const request = {
         cookies: {
@@ -166,9 +166,9 @@ describe("API Endpoints", () => {
 
     it("should return existing token if present", async () => {
       const existingToken = "a".repeat(64);
-      
+
       const { GET } = await import("@/app/api/csrf-token/route");
-      
+
       const request = {
         cookies: {
           get: vi.fn(() => ({ value: existingToken })),
@@ -184,29 +184,48 @@ describe("API Endpoints", () => {
   });
 
   describe("Authentication Response Structures", () => {
-    it("should have standard error response format", () => {
-      // Test the structure that error responses should have
-      const errorResponse = {
-        ok: false,
-        message: "Authentication failed",
-        error: "INVALID_CREDENTIALS",
-      };
+    it("error response schema rejects invalid shapes", async () => {
+      const { z } = await import("zod");
+      const errorSchema = z.object({ ok: z.literal(false), error: z.string() });
 
-      expect(errorResponse).toHaveProperty("ok", false);
-      expect(errorResponse).toHaveProperty("message");
+      // Valid error response
+      expect(errorSchema.safeParse({ ok: false, error: "Authentication failed" }).success).toBe(
+        true
+      );
+
+      // Rejects success-shaped object
+      expect(errorSchema.safeParse({ ok: true }).success).toBe(false);
+
+      // Rejects empty object
+      expect(errorSchema.safeParse({}).success).toBe(false);
+
+      // Rejects missing error field
+      expect(errorSchema.safeParse({ ok: false }).success).toBe(false);
+
+      // Rejects wrong ok value with error field
+      expect(errorSchema.safeParse({ ok: true, error: "test" }).success).toBe(false);
     });
 
-    it("should have standard success response format", () => {
-      const successResponse = {
-        ok: true,
-        data: {
-          authtoken: "test-token",
-          user: { id: 1, username: "test" },
-        },
-      };
+    it("success response schema rejects invalid shapes", async () => {
+      const { z } = await import("zod");
+      const successSchema = z.object({ ok: z.literal(true) }).passthrough();
 
-      expect(successResponse).toHaveProperty("ok", true);
-      expect(successResponse).toHaveProperty("data");
+      // Valid success response
+      expect(
+        successSchema.safeParse({ ok: true, data: { authtoken: "t", user: { id: 1 } } }).success
+      ).toBe(true);
+
+      // Minimal valid success response
+      expect(successSchema.safeParse({ ok: true }).success).toBe(true);
+
+      // Rejects error-shaped object
+      expect(successSchema.safeParse({ ok: false, error: "fail" }).success).toBe(false);
+
+      // Rejects empty object
+      expect(successSchema.safeParse({}).success).toBe(false);
+
+      // Rejects missing ok field
+      expect(successSchema.safeParse({ data: {} }).success).toBe(false);
     });
   });
 });

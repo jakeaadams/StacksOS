@@ -202,12 +202,12 @@ export default function AccountSettingsPage() {
               { id: "profile", label: "Profile", icon: User },
               { id: "notifications", label: "Notifications", icon: Bell },
               { id: "privacy", label: "Privacy & Security", icon: Shield },
-            ].map((tab: any) => (
+            ].map((tab) => (
               <Button
                 type="button"
                 variant="ghost"
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as "profile" | "notifications" | "privacy")}
                 className={`h-auto items-center gap-2 rounded-none border-b-2 px-0 py-4 text-sm font-medium transition-colors
                   ${
                     activeTab === tab.id

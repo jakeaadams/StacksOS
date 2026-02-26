@@ -295,7 +295,7 @@ export default function NotificationsAdminPage() {
         title="Notifications Center"
         subtitle="Manage templates, preview safely, and monitor delivery status."
         breadcrumbs={[{ label: "Admin", href: "/staff/admin" }, { label: "Notifications" }]}
-        actions={headerActions as any}
+        actions={headerActions}
       />
       <PageContent className="space-y-6">
         {error && (
@@ -343,7 +343,10 @@ export default function NotificationsAdminPage() {
           </CardContent>
         </Card>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as "templates" | "deliveries")}
+        >
           <TabsList>
             <TabsTrigger value="templates">
               <Mail className="h-4 w-4 mr-2" />

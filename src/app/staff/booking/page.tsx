@@ -594,11 +594,20 @@ export default function BookingPage() {
               </div>
               <div className="space-y-2">
                 <div className="text-sm font-medium">Start</div>
-                <Input value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                <Input
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  aria-label="Start time"
+                />
               </div>
               <div className="space-y-2">
                 <div className="text-sm font-medium">End</div>
-                <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                <Input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  aria-label="End time"
+                />
               </div>
             </div>
           </div>

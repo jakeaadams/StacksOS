@@ -16,7 +16,15 @@ interface PinButtonProps {
   size?: "default" | "sm" | "icon";
 }
 
-export function PinButton({ type, id, title, subtitle, href, variant = "outline", size = "default" }: PinButtonProps) {
+export function PinButton({
+  type,
+  id,
+  title,
+  subtitle,
+  href,
+  variant = "outline",
+  size = "default",
+}: PinButtonProps) {
   const { addPin, removePin, isPinned } = useWorkforms();
   const pinned = isPinned(type, id);
 
@@ -35,7 +43,12 @@ export function PinButton({ type, id, title, subtitle, href, variant = "outline"
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant={variant} size="icon" onClick={handleClick}>
+            <Button
+              variant={variant}
+              size="icon"
+              onClick={handleClick}
+              aria-label={pinned ? "Unpin" : "Pin"}
+            >
               {pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
             </Button>
           </TooltipTrigger>

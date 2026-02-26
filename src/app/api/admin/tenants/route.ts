@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { fetchEvergreen } from "@/lib/api/evergreen-fetch";
 import { logAuditEvent } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { requireSaaSAccess } from "@/lib/saas-rbac";
 import { clearTenantConfigCache, getTenantConfig, getTenantId } from "@/lib/tenant/config";
 import {
@@ -127,6 +128,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 10,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "admin-tenants",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
 
   try {
     const { actor } = await requireSaaSAccess({

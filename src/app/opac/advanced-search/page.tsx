@@ -237,6 +237,7 @@ export default function AdvancedSearchPage() {
                       size="icon"
                       onClick={() => removeSearchField(field.id)}
                       className="h-10 w-10 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600"
+                      aria-label="Remove search field"
                     >
                       <X className="h-5 w-5" />
                     </Button>

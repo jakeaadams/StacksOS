@@ -316,10 +316,12 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
               author: String(h.author || ""),
               coverUrl,
               status: status as PatronHold["status"],
-              queuePosition: Number.isFinite(queuePosition as any)
-                ? (queuePosition as number)
-                : null,
-              totalHolds: Number.isFinite(totalHolds as any) ? (totalHolds as number) : null,
+              queuePosition:
+                typeof queuePosition === "number" && Number.isFinite(queuePosition)
+                  ? queuePosition
+                  : null,
+              totalHolds:
+                typeof totalHolds === "number" && Number.isFinite(totalHolds) ? totalHolds : null,
               pickupLocationId: Number.isFinite(pickupId) ? pickupId : null,
               pickupLocationName: String(h.pickupLocationName || h.pickupLocation || "Library"),
               expirationDate: h.shelfExpireDate || h.expireDate || null,

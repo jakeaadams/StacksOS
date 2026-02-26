@@ -181,8 +181,9 @@ function KidsSearchContent() {
             <Button
               type="submit"
               size="icon"
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-gradient-to-r 
-                       from-purple-500 to-pink-500 text-white rounded-full 
+              aria-label="Search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-gradient-to-r
+                       from-purple-500 to-pink-500 text-white rounded-full
                        hover:from-purple-600 hover:to-pink-600 transition-colors"
             >
               <Search className="h-5 w-5" />

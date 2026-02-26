@@ -133,8 +133,9 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                 <Button
                   type="submit"
                   size="icon"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r 
-                           from-purple-600 to-indigo-600 text-white rounded-full 
+                  aria-label="Search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r
+                           from-purple-600 to-indigo-600 text-white rounded-full
                            hover:from-purple-700 hover:to-indigo-700 transition-colors shadow-md"
                 >
                   <Search className="h-5 w-5" />
@@ -176,6 +177,7 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                     onClick={() => logout()}
                     className="rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground/80"
                     title="Log out"
+                    aria-label="Log out"
                   >
                     <LogOut className="h-5 w-5" />
                   </Button>
@@ -200,6 +202,7 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
               size="icon"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="rounded-xl text-muted-foreground hover:bg-muted/50 md:hidden"
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
             >
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </Button>
@@ -221,7 +224,8 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                 <Button
                   type="submit"
                   size="icon"
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r 
+                  aria-label="Search"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r
                            from-purple-600 to-indigo-600 text-white rounded-full"
                 >
                   <Search className="h-4 w-4" />

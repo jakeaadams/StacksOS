@@ -1,14 +1,22 @@
 import { NextRequest } from "next/server";
-import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
+import {
+  callOpenSRF,
+  successResponse,
+  errorResponse,
+  serverErrorResponse,
+  getRequestMeta,
+} from "@/lib/api";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { z } from "zod";
 
 // GET /api/opac/fines - Get patron fines/fees
 const payFinesSchema = z.object({
-  transactionIds: z.array(z.coerce.number().int().positive()).min(1),
+  transactionIds: z.array(z.coerce.number().int().positive()).min(1).max(100),
   amount: z.union([z.number().positive(), z.string().min(1)]),
-  paymentType: z.string().optional(),
+  paymentType: z.string().max(50).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -108,6 +116,18 @@ export async function GET(req: NextRequest) {
 
 // POST /api/opac/fines/pay - Pay fines (if online payment is enabled)
 export async function POST(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 20,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-fines-payment",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const { patronToken, patronId } = await requirePatronSession();
 
@@ -142,6 +162,15 @@ export async function POST(req: NextRequest) {
     if (result?.ilsevent) {
       return errorResponse(result.textcode || "Payment failed");
     }
+
+    await logAuditEvent({
+      action: "opac.fines.payment",
+      entity: "payment",
+      status: "success",
+      actor: { id: patronId },
+      ip,
+      details: { patronId, transactionIds, amount: Number(amount), paymentType },
+    });
 
     return successResponse({
       success: true,

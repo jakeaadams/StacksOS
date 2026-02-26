@@ -271,6 +271,7 @@ export default function NewTitlesPage() {
                   type="button"
                   variant="outline"
                   size="icon"
+                  aria-label="Previous page"
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
                 >
@@ -314,6 +315,7 @@ export default function NewTitlesPage() {
                   type="button"
                   variant="outline"
                   size="icon"
+                  aria-label="Next page"
                   onClick={() => setPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
                 >

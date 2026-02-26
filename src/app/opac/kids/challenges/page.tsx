@@ -151,7 +151,6 @@ export default function KidsChallengesPage() {
         <Button
           type="button"
           variant="ghost"
-          size="icon"
           onClick={() => router.push("/opac/kids")}
           className="h-12 w-auto px-6 text-purple-700 bg-purple-100 hover:bg-purple-200"
         >

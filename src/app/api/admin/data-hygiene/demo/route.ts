@@ -3,11 +3,13 @@ import {
   callOpenSRF,
   encodeFieldmapper,
   getErrorMessage,
+  getRequestMeta,
   isOpenSRFEvent,
   parseJsonBodyWithSchema,
   serverErrorResponse,
   successResponse,
 } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { z } from "zod";
 
@@ -440,8 +442,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+
   try {
-    const { authtoken } = await requirePermissions(["ADMIN_CONFIG"]);
+    const { authtoken, actor } = await requirePermissions(["ADMIN_CONFIG"]);
     const body = await parseJsonBodyWithSchema(req, purgeSchema);
     if (body instanceof Response) return body;
 
@@ -557,6 +561,24 @@ export async function POST(req: NextRequest) {
       if (res.ok) deleted.bibRecords += 1;
       else errors.push(`bre:${bibId} -> ${res.error}`);
     }
+
+    await logAuditEvent({
+      action: "data_hygiene.demo.purge",
+      entity: "demo_data",
+      status: "success",
+      actor: actor as import("@/lib/audit").AuditActor | null,
+      ip,
+      userAgent,
+      requestId,
+      details: {
+        bibRecords: deleted.bibRecords,
+        authorities: deleted.authorities,
+        patrons: deleted.patrons,
+        before: snapshotCounts(snapshot),
+        deleted,
+        errorCount: errors.length,
+      },
+    });
 
     return successResponse({
       dryRun: false,

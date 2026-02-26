@@ -11,10 +11,10 @@ import { publishDeveloperEvent } from "@/lib/developer/webhooks";
 
 const fundSummarySchema = z.object({
   id: z.union([z.string(), z.number()]),
-  name: z.string(),
-  code: z.string(),
+  name: z.string().max(500),
+  code: z.string().max(100),
   year: z.number().int(),
-  currency: z.string(),
+  currency: z.string().max(10),
 });
 
 const requestSchema = z.object({

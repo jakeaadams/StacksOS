@@ -73,7 +73,7 @@ export default function PurchaseOrdersPage() {
                 : state === "on-order"
                   ? "info"
                   : "pending";
-          return <StatusBadge label={state.replace(/_/g, " ")} status={status as any} />;
+          return <StatusBadge label={state.replace(/_/g, " ")} status={status} />;
         },
       },
       {

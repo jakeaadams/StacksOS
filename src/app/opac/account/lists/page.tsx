@@ -359,6 +359,7 @@ export default function MyListsPage() {
               size="icon"
               onClick={() => setError(null)}
               className="ml-auto h-8 w-8 rounded-full text-red-600 hover:bg-red-100"
+              aria-label="Dismiss error"
             >
               <X className="h-4 w-4 text-red-600" />
             </Button>
@@ -459,6 +460,7 @@ export default function MyListsPage() {
                             onClick={openEditModal}
                             className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                             title="Edit list"
+                            aria-label="Edit list"
                           >
                             <Edit2 className="h-4 w-4" />
                           </Button>
@@ -469,6 +471,7 @@ export default function MyListsPage() {
                             onClick={() => setShowDeleteConfirm(selectedList)}
                             className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-600"
                             title="Delete list"
+                            aria-label="Delete list"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -550,6 +553,7 @@ export default function MyListsPage() {
                                 onClick={() => removeItemFromList(item.id)}
                                 className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-600"
                                 title="Remove from list"
+                                aria-label="Remove from list"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

@@ -3,7 +3,7 @@ import { areMockEventsEnabled } from "@/lib/demo-data";
 /**
  * Mock Events Data for OPAC Events Calendar
  *
- * TODO: Replace with LibCal API integration
+ * Events data is loaded from the database via opac-events.ts; LibCal integration is planned for a future release.
  * ==========================================
  * When ready to integrate with Springshare LibCal:
  * 1. Use the LibCal Events API: https://api2.libcal.com/1.1/events

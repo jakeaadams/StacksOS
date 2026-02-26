@@ -108,9 +108,18 @@ const QUICK_QUESTIONS = [
   },
 ];
 
-function QuickQuestionButton({ question, onClick, isLoading }: { question: string; onClick: () => void; isLoading: boolean }) {
+function QuickQuestionButton({
+  question,
+  onClick,
+  isLoading,
+}: {
+  question: string;
+  onClick: () => void;
+  isLoading: boolean;
+}) {
   return (
-    <button type="button"
+    <button
+      type="button"
       onClick={onClick}
       disabled={isLoading}
       className={cn(
@@ -124,7 +133,12 @@ function QuickQuestionButton({ question, onClick, isLoading }: { question: strin
   );
 }
 
-function PolicyResponse({ question, answer, sources, onFeedback }: PolicyQuestion & { onFeedback: (helpful: boolean) => void }) {
+function PolicyResponse({
+  question,
+  answer,
+  sources,
+  onFeedback,
+}: PolicyQuestion & { onFeedback: (helpful: boolean) => void }) {
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<boolean | null>(null);
 
@@ -149,13 +163,13 @@ function PolicyResponse({ question, answer, sources, onFeedback }: PolicyQuestio
           <span className="text-sm font-medium">{question}</span>
         </div>
       </div>
-      
+
       <div className="bg-primary/5 border border-primary/10 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <span className="text-xs font-medium text-primary">Policy Explainer</span>
         </div>
-        
+
         <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
           {answer}
         </div>
@@ -165,7 +179,9 @@ function PolicyResponse({ question, answer, sources, onFeedback }: PolicyQuestio
             <div className="flex flex-wrap gap-1">
               <span className="text-xs text-muted-foreground">Sources:</span>
               {sources.map((source) => (
-                <Badge key={source} variant="outline" className="text-[10px]">{source}</Badge>
+                <Badge key={source} variant="outline" className="text-[10px]">
+                  {source}
+                </Badge>
               ))}
             </div>
           </div>
@@ -174,10 +190,22 @@ function PolicyResponse({ question, answer, sources, onFeedback }: PolicyQuestio
         <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Was this helpful?</span>
-            <Button variant="ghost" size="sm" className={cn("h-7 px-2", feedback === true && "text-green-600 bg-green-50")} onClick={() => handleFeedback(true)} disabled={feedback !== null}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("h-7 px-2", feedback === true && "text-green-600 bg-green-50")}
+              onClick={() => handleFeedback(true)}
+              disabled={feedback !== null}
+            >
               <ThumbsUp className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="sm" className={cn("h-7 px-2", feedback === false && "text-red-600 bg-red-50")} onClick={() => handleFeedback(false)} disabled={feedback !== null}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("h-7 px-2", feedback === false && "text-red-600 bg-red-50")}
+              onClick={() => handleFeedback(false)}
+              disabled={feedback !== null}
+            >
               <ThumbsDown className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -240,31 +268,41 @@ export function PolicyExplainer({ trigger, variant = "dialog", className }: Poli
     } finally {
       setIsLoading(false);
       setTimeout(
-        () => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }),
+        () =>
+          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }),
         100
       );
     }
   }, []);
 
   const handleFeedback = useCallback((questionId: string, helpful: boolean) => {
-    setResponses(prev => prev.map(r => r.id === questionId ? { ...r, helpful } : r));
+    setResponses((prev) => prev.map((r) => (r.id === questionId ? { ...r, helpful } : r)));
   }, []);
 
   const content = (
     <div className={cn("flex flex-col h-full", className)}>
       {responses.length === 0 && (
         <div className="space-y-4 p-4">
-          <p className="text-sm text-muted-foreground">Ask me anything about library policies! Here are some common questions:</p>
+          <p className="text-sm text-muted-foreground">
+            Ask me anything about library policies! Here are some common questions:
+          </p>
           <div className="grid gap-4">
             {QUICK_QUESTIONS.map((category) => (
               <div key={category.category}>
                 <div className="flex items-center gap-2 mb-2">
                   <category.icon className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{category.category}</span>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {category.category}
+                  </span>
                 </div>
                 <div className="space-y-1">
                   {category.questions.map((q) => (
-                    <QuickQuestionButton key={q} question={q} onClick={() => handleAsk(q)} isLoading={isLoading} />
+                    <QuickQuestionButton
+                      key={q}
+                      question={q}
+                      onClick={() => handleAsk(q)}
+                      isLoading={isLoading}
+                    />
                   ))}
                 </div>
               </div>
@@ -277,12 +315,18 @@ export function PolicyExplainer({ trigger, variant = "dialog", className }: Poli
         <ScrollArea ref={scrollRef} className="flex-1 p-4">
           <div className="space-y-4">
             {responses.map((response) => (
-              <PolicyResponse key={response.id} {...response} onFeedback={(helpful) => handleFeedback(response.id, helpful)} />
+              <PolicyResponse
+                key={response.id}
+                {...response}
+                onFeedback={(helpful) => handleFeedback(response.id, helpful)}
+              />
             ))}
             {isLoading && (
               <div className="flex items-center gap-2 p-4 bg-muted/30 rounded-lg animate-pulse">
                 <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-sm text-muted-foreground">Looking up policy information...</span>
+                <span className="text-sm text-muted-foreground">
+                  Looking up policy information...
+                </span>
               </div>
             )}
           </div>
@@ -290,13 +334,41 @@ export function PolicyExplainer({ trigger, variant = "dialog", className }: Poli
       )}
 
       <div className="border-t p-4 bg-background">
-        <form onSubmit={(e) => { e.preventDefault(); handleAsk(question); }} className="flex gap-2">
-          <Textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask about library policies..." className="min-h-[44px] max-h-[120px] resize-none" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAsk(question); } }} />
-          <Button type="submit" size="icon" disabled={!question.trim() || isLoading}>
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleAsk(question);
+          }}
+          className="flex gap-2"
+        >
+          <Textarea
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Ask about library policies..."
+            className="min-h-[44px] max-h-[120px] resize-none"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleAsk(question);
+              }
+            }}
+          />
+          <Button
+            type="submit"
+            size="icon"
+            disabled={!question.trim() || isLoading}
+            aria-label="Send question"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </form>
-        <p className="text-[10px] text-muted-foreground mt-2 text-center">AI-powered. Answers are based on current library policies.</p>
+        <p className="text-[10px] text-muted-foreground mt-2 text-center">
+          AI-powered. Answers are based on current library policies.
+        </p>
       </div>
     </div>
   );
@@ -314,7 +386,9 @@ export function PolicyExplainer({ trigger, variant = "dialog", className }: Poli
         <div className="flex items-center gap-2 p-3 border-b bg-muted/30">
           <Sparkles className="h-4 w-4 text-primary" />
           <span className="font-medium text-sm">Policy Explainer</span>
-          <Badge variant="secondary" className="text-[10px]">AI</Badge>
+          <Badge variant="secondary" className="text-[10px]">
+            AI
+          </Badge>
         </div>
         {content}
       </div>
@@ -325,12 +399,14 @@ export function PolicyExplainer({ trigger, variant = "dialog", className }: Poli
     return (
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>{trigger || defaultTrigger}</SheetTrigger>
-        <SheetContent className="w-[400px] p-0 flex flex-col">
+        <SheetContent className="w-full sm:w-[400px] p-0 flex flex-col">
           <SheetHeader className="p-4 border-b">
             <SheetTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               Policy Explainer
-              <Badge variant="secondary" className="text-[10px]">AI</Badge>
+              <Badge variant="secondary" className="text-[10px]">
+                AI
+              </Badge>
             </SheetTitle>
             <SheetDescription>Get instant answers about library policies</SheetDescription>
           </SheetHeader>
@@ -348,7 +424,9 @@ export function PolicyExplainer({ trigger, variant = "dialog", className }: Poli
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             Policy Explainer
-            <Badge variant="secondary" className="text-[10px]">AI</Badge>
+            <Badge variant="secondary" className="text-[10px]">
+              AI
+            </Badge>
           </DialogTitle>
           <DialogDescription>Get instant answers about library policies</DialogDescription>
         </DialogHeader>

@@ -6,6 +6,7 @@ import {
   serverErrorResponse,
   getRequestMeta,
 } from "@/lib/api";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { cookies } from "next/headers";
@@ -14,12 +15,24 @@ import { z } from "zod";
 
 // POST /api/opac/change-pin - Change patron PIN
 const changePinSchema = z.object({
-  currentPin: z.string().min(1),
-  newPin: z.string().min(1),
+  currentPin: z.string().min(1).max(200),
+  newPin: z.string().min(1).max(200),
 });
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 10,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-change-pin",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const cookieStore = await cookies();
     const patronToken = cookieStore.get("patron_authtoken")?.value;
@@ -38,22 +51,18 @@ export async function POST(req: NextRequest) {
       return errorResponse("New PIN must be at least 4 characters");
     }
 
-    const sessionResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.session.retrieve",
-      [patronToken]
-    );
+    const sessionResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [
+      patronToken,
+    ]);
 
     const user = sessionResponse?.payload?.[0];
     if (!user || user.ilsevent) {
       return errorResponse("Session expired", 401);
     }
 
-    const seedResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.authenticate.init",
-      [user.usrname]
-    );
+    const seedResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.init", [
+      user.usrname,
+    ]);
 
     const seed = seedResponse?.payload?.[0];
     if (!seed) {
@@ -62,15 +71,13 @@ export async function POST(req: NextRequest) {
 
     const currentHash = hashPassword(currentPin, seed);
 
-    const verifyResponse = await callOpenSRF(
-      "open-ils.auth",
-      "open-ils.auth.authenticate.verify",
-      [{
+    const verifyResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.verify", [
+      {
         username: user.usrname,
         password: currentHash,
         type: "opac",
-      }]
-    );
+      },
+    ]);
 
     const verifyResult = verifyResponse?.payload?.[0];
     if (!verifyResult || verifyResult.ilsevent !== 0) {
@@ -85,21 +92,21 @@ export async function POST(req: NextRequest) {
         requestId,
         details: { reason: "incorrect_current_pin" },
       });
-      
+
       return errorResponse("Current PIN is incorrect");
     }
 
-    const updateResponse = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.user.password",
-      [patronToken, newPin, currentPin]
-    );
+    const updateResponse = await callOpenSRF("open-ils.actor", "open-ils.actor.user.password", [
+      patronToken,
+      newPin,
+      currentPin,
+    ]);
 
     const updateResult = updateResponse?.payload?.[0];
 
     if (updateResult?.ilsevent && updateResult.ilsevent !== 0) {
       logger.error({ error: String(updateResult) }, "PIN change error");
-      
+
       await logAuditEvent({
         action: "patron.pin.change",
         entity: "patron",
@@ -111,7 +118,7 @@ export async function POST(req: NextRequest) {
         requestId,
         details: { reason: updateResult.desc },
       });
-      
+
       return errorResponse(updateResult.desc || "Failed to change PIN", 500);
     }
 

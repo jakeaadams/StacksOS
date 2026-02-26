@@ -175,9 +175,9 @@ function SuggestionCard({ suggestion, onApply }: { suggestion: Suggestion; onApp
     enhance: "bg-sky-50 border-sky-200",
     warning: "bg-amber-50 border-amber-200",
   };
-  
+
   const Icon = icons[suggestion.type];
-  
+
   return (
     <div className={cn("rounded-lg border p-3 space-y-2", bgColors[suggestion.type])}>
       <div className="flex items-start justify-between gap-2">
@@ -185,8 +185,12 @@ function SuggestionCard({ suggestion, onApply }: { suggestion: Suggestion; onApp
           <Icon className={cn("h-4 w-4 mt-0.5", colors[suggestion.type])} />
           <div>
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[10px] font-mono">{suggestion.field}</Badge>
-              <span className="text-xs text-muted-foreground">{Math.round(suggestion.confidence * 100)}% confidence</span>
+              <Badge variant="outline" className="text-[10px] font-mono">
+                {suggestion.field}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {Math.round(suggestion.confidence * 100)}% confidence
+              </span>
             </div>
             <p className="text-sm mt-1">{suggestion.message}</p>
             {suggestion.suggestedValue && (
@@ -206,20 +210,27 @@ function SuggestionCard({ suggestion, onApply }: { suggestion: Suggestion; onApp
   );
 }
 
-function Z3950ResultCard({ 
-  result, 
-  onSelect 
-}: { 
-  result: Z3950Result; 
-  onSelect: () => void;
-}) {
+function Z3950ResultCard({ result, onSelect }: { result: Z3950Result; onSelect: () => void }) {
   return (
-    <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={onSelect}>
+    <Card
+      className="hover:border-primary/50 transition-colors cursor-pointer"
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect?.();
+        }
+      }}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1 flex-1">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="text-[10px]">{result.source}</Badge>
+              <Badge variant="secondary" className="text-[10px]">
+                {result.source}
+              </Badge>
             </div>
             <h4 className="font-medium">{result.title}</h4>
             <p className="text-sm text-muted-foreground">{result.author}</p>
@@ -319,36 +330,46 @@ export function CatalogingCopilot({
     }
   }, [searchQuery]);
 
-  const handleApplySuggestion = useCallback((suggestion: Suggestion) => {
-    if (suggestion.suggestedValue && onFieldSuggestion) {
-      onFieldSuggestion(suggestion.field, suggestion.suggestedValue);
-      toast.success(`Applied suggestion to ${suggestion.field}`);
-    }
-  }, [onFieldSuggestion]);
+  const handleApplySuggestion = useCallback(
+    (suggestion: Suggestion) => {
+      if (suggestion.suggestedValue && onFieldSuggestion) {
+        onFieldSuggestion(suggestion.field, suggestion.suggestedValue);
+        toast.success(`Applied suggestion to ${suggestion.field}`);
+      }
+    },
+    [onFieldSuggestion]
+  );
 
-  const handleImportRecord = useCallback((result: Z3950Result) => {
-    if (onImport) {
-      const marcXml = typeof result.marcXml === "string" ? result.marcXml : "";
-      if (!marcXml.trim()) {
-        toast.error("Selected record did not include MARCXML.");
-        return;
+  const handleImportRecord = useCallback(
+    (result: Z3950Result) => {
+      if (onImport) {
+        const marcXml = typeof result.marcXml === "string" ? result.marcXml : "";
+        if (!marcXml.trim()) {
+          toast.error("Selected record did not include MARCXML.");
+          return;
+        }
+
+        const fields = parseMarcXmlToFields(marcXml);
+        if (!fields) {
+          toast.error("Unable to parse MARCXML from selected record.");
+          return;
+        }
+
+        onImport(fields);
       }
 
-      const fields = parseMarcXmlToFields(marcXml);
-      if (!fields) {
-        toast.error("Unable to parse MARCXML from selected record.");
-        return;
-      }
-
-      onImport(fields);
-    }
-
-    toast.success(`Imported record from ${result.source}`);
-    setIsOpen(false);
-  }, [onImport]);
+      toast.success(`Imported record from ${result.source}`);
+      setIsOpen(false);
+    },
+    [onImport]
+  );
 
   const content = (
-    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="h-full flex flex-col">
+    <Tabs
+      value={activeTab}
+      onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+      className="h-full flex flex-col"
+    >
       <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="suggest" className="gap-1.5">
           <Lightbulb className="h-4 w-4" />
@@ -382,16 +403,20 @@ export function CatalogingCopilot({
               </div>
             ) : suggestions.length > 0 ? (
               suggestions.map((s) => (
-                <SuggestionCard 
-                  key={s.id} 
-                  suggestion={s} 
+                <SuggestionCard
+                  key={s.id}
+                  suggestion={s}
                   onApply={() => handleApplySuggestion(s)}
                 />
               ))
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Info className="h-8 w-8 mx-auto mb-2" />
-                <p>{isbn || title ? "No suggestions returned." : "Add an ISBN or title to request suggestions."}</p>
+                <p>
+                  {isbn || title
+                    ? "No suggestions returned."
+                    : "Add an ISBN or title to request suggestions."}
+                </p>
               </div>
             )}
           </div>
@@ -451,8 +476,8 @@ export function CatalogingCopilot({
             <span className="font-medium">Validation</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Use the MARC Editor validation for authoritative checks (required fields, indicators, and
-            Evergreen-specific rules). This assistant does not run demo validations.
+            Use the MARC Editor validation for authoritative checks (required fields, indicators,
+            and Evergreen-specific rules). This assistant does not run demo validations.
           </p>
         </div>
       </TabsContent>
@@ -473,13 +498,13 @@ export function CatalogingCopilot({
           <CardTitle className="flex items-center gap-2 text-base">
             <Sparkles className="h-4 w-4 text-primary" />
             Cataloging Copilot
-            <Badge variant="secondary" className="text-[10px]">AI</Badge>
+            <Badge variant="secondary" className="text-[10px]">
+              AI
+            </Badge>
           </CardTitle>
           <CardDescription>AI-powered cataloging assistance</CardDescription>
         </CardHeader>
-        <CardContent>
-          {content}
-        </CardContent>
+        <CardContent>{content}</CardContent>
       </Card>
     );
   }
@@ -493,7 +518,9 @@ export function CatalogingCopilot({
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               Cataloging Copilot
-              <Badge variant="secondary" className="text-[10px]">AI</Badge>
+              <Badge variant="secondary" className="text-[10px]">
+                AI
+              </Badge>
             </DialogTitle>
             <DialogDescription>AI-powered cataloging assistance</DialogDescription>
           </DialogHeader>
@@ -511,7 +538,9 @@ export function CatalogingCopilot({
           <SheetTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             Cataloging Copilot
-            <Badge variant="secondary" className="text-[10px]">AI</Badge>
+            <Badge variant="secondary" className="text-[10px]">
+              AI
+            </Badge>
           </SheetTitle>
           <SheetDescription>AI-powered cataloging assistance</SheetDescription>
         </SheetHeader>

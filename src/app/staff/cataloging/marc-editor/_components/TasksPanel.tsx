@@ -42,7 +42,14 @@ export function TasksPanel({
             <ClipboardList className="h-4 w-4" />
             Tasks & notes
           </span>
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={onClose} title="Close tasks panel" aria-label="Close tasks panel">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
+            onClick={onClose}
+            title="Close tasks panel"
+            aria-label="Close tasks panel"
+          >
             <X className="h-4 w-4" />
             <span className="sr-only">Close tasks panel</span>
           </Button>
@@ -50,17 +57,33 @@ export function TasksPanel({
       </CardHeader>
       <CardContent className="space-y-3">
         {!recordIdNum ? (
-          <div className="text-sm text-muted-foreground">Save the record first to attach tasks.</div>
+          <div className="text-sm text-muted-foreground">
+            Save the record first to attach tasks.
+          </div>
         ) : (
           <>
             <div className="space-y-2">
-              <Input value={newTaskTitle} onChange={(e) => onNewTaskTitleChange(e.target.value)} placeholder="Task title" />
-              <Input value={newTaskBody} onChange={(e) => onNewTaskBodyChange(e.target.value)} placeholder="Optional note" />
-              <Button size="sm" onClick={onCreateTask} disabled={!newTaskTitle.trim()}>Add task</Button>
+              <Input
+                value={newTaskTitle}
+                onChange={(e) => onNewTaskTitleChange(e.target.value)}
+                placeholder="Task title"
+                aria-label="Task title"
+              />
+              <Input
+                value={newTaskBody}
+                onChange={(e) => onNewTaskBodyChange(e.target.value)}
+                placeholder="Optional note"
+                aria-label="Task note"
+              />
+              <Button size="sm" onClick={onCreateTask} disabled={!newTaskTitle.trim()}>
+                Add task
+              </Button>
             </div>
 
             {tasksError ? (
-              <div className="text-sm text-muted-foreground">Failed to load tasks: {tasksError}</div>
+              <div className="text-sm text-muted-foreground">
+                Failed to load tasks: {tasksError}
+              </div>
             ) : null}
 
             {tasksLoading ? (
@@ -79,12 +102,35 @@ export function TasksPanel({
                         <Badge variant="outline">{t.status}</Badge>
                       </div>
                       {t.body ? (
-                        <div className="text-xs text-muted-foreground whitespace-pre-wrap">{t.body}</div>
+                        <div className="text-xs text-muted-foreground whitespace-pre-wrap">
+                          {t.body}
+                        </div>
                       ) : null}
                       <div className="flex items-center gap-2">
-                        <Button size="sm" variant="outline" onClick={() => onSetTaskStatus(t.id, "open")} disabled={t.status === "open"}>Open</Button>
-                        <Button size="sm" variant="outline" onClick={() => onSetTaskStatus(t.id, "done")} disabled={t.status === "done"}>Done</Button>
-                        <Button size="sm" variant="outline" onClick={() => onSetTaskStatus(t.id, "canceled")} disabled={t.status === "canceled"}>Cancel</Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onSetTaskStatus(t.id, "open")}
+                          disabled={t.status === "open"}
+                        >
+                          Open
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onSetTaskStatus(t.id, "done")}
+                          disabled={t.status === "done"}
+                        >
+                          Done
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onSetTaskStatus(t.id, "canceled")}
+                          disabled={t.status === "canceled"}
+                        >
+                          Cancel
+                        </Button>
                       </div>
                     </div>
                   ))

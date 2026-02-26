@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Clock } from "lucide-react";
 import { fetchWithAuth } from "@/lib/client-fetch";
@@ -14,7 +21,10 @@ interface IdleTimeoutWarningProps {
 
 const LAST_ACTIVITY_KEY = "stacksos_last_activity";
 
-export function IdleTimeoutWarning({ idleTimeoutMinutes, warningBeforeMinutes = 2 }: IdleTimeoutWarningProps) {
+export function IdleTimeoutWarning({
+  idleTimeoutMinutes,
+  warningBeforeMinutes = 2,
+}: IdleTimeoutWarningProps) {
   const { user, logout } = useAuth();
   const idleMs = Math.max(1, idleTimeoutMinutes) * 60_000;
   const warnMs = Math.min(idleMs, Math.max(30_000, warningBeforeMinutes * 60_000));
@@ -65,13 +75,19 @@ export function IdleTimeoutWarning({ idleTimeoutMinutes, warningBeforeMinutes = 
     setActivityNow();
 
     const onActivity = () => setActivityNow();
-    const events: Array<keyof WindowEventMap> = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
+    const events: Array<keyof WindowEventMap> = [
+      "mousemove",
+      "mousedown",
+      "keydown",
+      "scroll",
+      "touchstart",
+    ];
     for (const ev of events) window.addEventListener(ev, onActivity, { passive: true });
 
     intervalRef.current = window.setInterval(tick, 1000);
 
     return () => {
-      for (const ev of events) window.removeEventListener(ev, onActivity as any);
+      for (const ev of events) window.removeEventListener(ev, onActivity);
       if (intervalRef.current) window.clearInterval(intervalRef.current);
       intervalRef.current = null;
     };
@@ -100,16 +116,15 @@ export function IdleTimeoutWarning({ idleTimeoutMinutes, warningBeforeMinutes = 
             Session expiring due to inactivity
           </AlertDialogTitle>
           <AlertDialogDescription>
-            You’ll be signed out in <span className="font-mono">{format(remainingMs)}</span> unless you confirm you’re still here.
+            You’ll be signed out in <span className="font-mono">{format(remainingMs)}</span> unless
+            you confirm you’re still here.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <Button variant="outline" onClick={() => void logout()}>
             Sign out now
           </Button>
-          <Button onClick={() => void staySignedIn()}>
-            Stay signed in
-          </Button>
+          <Button onClick={() => void staySignedIn()}>Stay signed in</Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -1056,7 +1056,7 @@ export async function POST(req: NextRequest) {
               isbn: z.string().trim().optional(),
               publisher: z.string().trim().optional(),
               pubYear: z.string().trim().optional(),
-              subjects: z.array(z.string()).optional(),
+              subjects: z.array(z.string()).max(50).optional(),
               format: z.string().trim().optional(),
             })
             .optional(),

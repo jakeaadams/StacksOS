@@ -487,7 +487,7 @@ export default function CourseReservesPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "courses" | "terms")}>
                 <TabsList>
                   <TabsTrigger value="courses" className="gap-2">
                     <GraduationCap className="h-4 w-4" />

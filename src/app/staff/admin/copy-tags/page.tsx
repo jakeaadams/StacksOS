@@ -591,7 +591,7 @@ export default function CopyTagsPage() {
               <CardDescription>Create tag types first, then create tags.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "tags" | "types")}>
                 <TabsList>
                   <TabsTrigger value="tags" className="gap-2">
                     <Tags className="h-4 w-4" />

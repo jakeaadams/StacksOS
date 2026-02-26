@@ -4,21 +4,19 @@
  * Shows: connection status, current branch, scanner status, latency
  */
 
-
 import { useEffect, useState } from "react";
 import { STATUS_CHECK_INTERVAL_MS } from "@/lib/constants";
 
-import { 
-  WifiOff, 
-  MapPin, 
-  Scan, 
-  Activity,
-  CheckCircle2,
-  AlertCircle,
-  Loader2
-} from "lucide-react";
+import { WifiOff, MapPin, Scan, Activity, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
+
+declare global {
+  interface WindowEventMap {
+    "stacksos:scan": CustomEvent<{ message?: string }>;
+    "stacksos:action": CustomEvent<{ message?: string }>;
+  }
+}
 
 interface StatusHUDProps {
   className?: string;
@@ -52,8 +50,11 @@ export function StatusHUD({ className }: StatusHUDProps) {
     const measureLatency = async () => {
       const start = performance.now();
       try {
-        await fetch("/api/evergreen/ping", { method: "GET",
-        credentials: "include", cache: "no-store" });
+        await fetch("/api/evergreen/ping", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
         const end = performance.now();
         setLatency(Math.round(end - start));
       } catch {
@@ -75,8 +76,8 @@ export function StatusHUD({ className }: StatusHUDProps) {
       setTimeout(() => setScannerStatus("ready"), 500);
     };
 
-    window.addEventListener("stacksos:scan" as any, handleScan);
-    return () => window.removeEventListener("stacksos:scan" as any, handleScan);
+    window.addEventListener("stacksos:scan", handleScan);
+    return () => window.removeEventListener("stacksos:scan", handleScan);
   }, []);
 
   // Listen for action events
@@ -85,8 +86,8 @@ export function StatusHUD({ className }: StatusHUDProps) {
       setLastAction(e.detail?.message || "Action completed");
     };
 
-    window.addEventListener("stacksos:action" as any, handleAction);
-    return () => window.removeEventListener("stacksos:action" as any, handleAction);
+    window.addEventListener("stacksos:action", handleAction);
+    return () => window.removeEventListener("stacksos:action", handleAction);
   }, []);
 
   const getLatencyColor = () => {
@@ -143,8 +144,11 @@ export function StatusHUD({ className }: StatusHUDProps) {
         <div className="flex items-center gap-1.5">
           {getScannerIcon()}
           <span>
-            {scannerStatus === "ready" ? "Scanner Ready" : 
-             scannerStatus === "scanning" ? "Scanning..." : "Scanner Error"}
+            {scannerStatus === "ready"
+              ? "Scanner Ready"
+              : scannerStatus === "scanning"
+                ? "Scanning..."
+                : "Scanner Error"}
           </span>
         </div>
       </div>

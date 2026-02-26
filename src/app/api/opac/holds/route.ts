@@ -5,8 +5,11 @@ import {
   errorResponse,
   serverErrorResponse,
   unauthorizedResponse,
+  getRequestMeta,
 } from "@/lib/api";
 import { payloadFirst } from "@/lib/api/extract-payload";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { upsertOpacPatronPrefs } from "@/lib/db/opac";
@@ -141,7 +144,7 @@ const updateHoldSchema = z
   .object({
     holdId: z.coerce.number().int().positive(),
     action: z.enum(["freeze", "thaw", "update_pickup"]).optional(),
-    suspendUntil: z.string().optional().nullable(),
+    suspendUntil: z.string().max(30).optional().nullable(),
     pickupLocation: z.coerce.number().int().positive().optional(),
   })
   .passthrough();
@@ -320,6 +323,18 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 30,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-holds-mutate",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const { patronToken, patronId } = await requirePatronSession();
 
@@ -361,6 +376,16 @@ export async function POST(req: NextRequest) {
       // Preference write must never break the request path.
     }
 
+    await logAuditEvent({
+      action: "opac.hold.place",
+      entity: "hold",
+      entityId: result,
+      status: "success",
+      actor: { id: patronId },
+      ip,
+      details: { patronId, recordId, holdType, pickupLocation: pickupId },
+    });
+
     return successResponse({
       success: true,
       holdId: result,
@@ -376,8 +401,20 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 30,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-holds-mutate",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
-    const { patronToken } = await requirePatronSession();
+    const { patronToken, patronId } = await requirePatronSession();
 
     const { holdId } = cancelHoldSchema.parse(await req.json());
 
@@ -399,6 +436,16 @@ export async function DELETE(req: NextRequest) {
       return errorResponse(mapped.message || "Failed to cancel hold", 400, mapped.details);
     }
 
+    await logAuditEvent({
+      action: "opac.hold.cancel",
+      entity: "hold",
+      entityId: holdId,
+      status: "success",
+      actor: { id: patronId },
+      ip,
+      details: { patronId, holdId },
+    });
+
     return successResponse({
       success: true,
       message: "Hold cancelled successfully",
@@ -413,6 +460,18 @@ export async function DELETE(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 30,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-holds-mutate",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const { patronToken, patronId } = await requirePatronSession();
 
@@ -466,6 +525,16 @@ export async function PATCH(req: NextRequest) {
       const mapped = buildHoldErrorDetails(response, { action: "update" });
       return errorResponse(mapped.message || "Failed to update hold", 400, mapped.details);
     }
+
+    await logAuditEvent({
+      action: "opac.hold.update",
+      entity: "hold",
+      entityId: holdId,
+      status: "success",
+      actor: { id: patronId },
+      ip,
+      details: { patronId, holdId, holdAction: action },
+    });
 
     return successResponse({
       success: true,

@@ -46,7 +46,7 @@ Lint policy note:
   - `npm run lint -- --quiet`: pass
   - `npm run type-check`: pass
   - `npm run test:run`: pass (`219/219`)
-  - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`61 passed, 2 skipped`)
+  - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`70 passed, 5 skipped`)
   - `BASE_URL=http://127.0.0.1:3000 bash audit/run_opac_audit.sh`: pass (`42/42` OPAC pages, `21/21` OPAC APIs, Evergreen bridge `4/4`)
   - `TASK_BENCH_STAFF_USER=jake TASK_BENCH_STAFF_PASS=jake TASK_BENCH_REQUIRE_STAFF=1 TASK_BENCH_ENFORCE=1 node scripts/task-benchmark.mjs`: pass (staff metrics fully populated)
   - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake BASE_URL=http://127.0.0.1:3000 bash audit/run_all.sh`: pass

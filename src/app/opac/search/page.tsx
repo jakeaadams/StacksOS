@@ -703,6 +703,7 @@ function SearchContent() {
                 type="submit"
                 variant="ghost"
                 size="icon"
+                aria-label="Search"
                 className="absolute right-2.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full text-muted-foreground/75 transition-colors hover:bg-muted/60 hover:text-foreground"
               >
                 <Search className="h-5 w-5" />

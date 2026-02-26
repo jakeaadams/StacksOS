@@ -447,7 +447,30 @@ export async function POST(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
     const { ip, userAgent, requestId } = getRequestMeta(req);
-    const body = await parseJsonBodyWithSchema(req, z.object({}).passthrough());
+    const patronSchema = z
+      .object({
+        family_name: z.string().max(200).optional(),
+        first_given_name: z.string().max(200).optional(),
+        second_given_name: z.string().max(200).optional(),
+        dob: z.string().max(20).optional(),
+        ident_value: z.string().max(100).optional(),
+        ident_value2: z.string().max(100).optional(),
+        email: z.string().max(300).optional(),
+        day_phone: z.string().max(50).optional(),
+        evening_phone: z.string().max(50).optional(),
+        other_phone: z.string().max(50).optional(),
+        home_ou: z.number().int().optional(),
+        profile: z.number().int().optional(),
+        expire_date: z.string().max(30).optional(),
+        barred: z.union([z.boolean(), z.literal("t"), z.literal("f")]).optional(),
+        active: z.union([z.boolean(), z.literal("t"), z.literal("f")]).optional(),
+        juvenile: z.union([z.boolean(), z.literal("t"), z.literal("f")]).optional(),
+        usrname: z.string().max(200).optional(),
+        passwd: z.string().max(200).optional(),
+        net_access_level: z.number().int().optional(),
+      })
+      .passthrough();
+    const body = await parseJsonBodyWithSchema(req, patronSchema);
     if (body instanceof NextResponse) return body;
 
     const missing = requireFields(body, ["firstName", "lastName"]);
@@ -650,7 +673,30 @@ export async function PUT(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
     const { ip, userAgent, requestId } = getRequestMeta(req);
-    const body = await parseJsonBodyWithSchema(req, z.object({}).passthrough());
+    const patronSchema = z
+      .object({
+        family_name: z.string().max(200).optional(),
+        first_given_name: z.string().max(200).optional(),
+        second_given_name: z.string().max(200).optional(),
+        dob: z.string().max(20).optional(),
+        ident_value: z.string().max(100).optional(),
+        ident_value2: z.string().max(100).optional(),
+        email: z.string().max(300).optional(),
+        day_phone: z.string().max(50).optional(),
+        evening_phone: z.string().max(50).optional(),
+        other_phone: z.string().max(50).optional(),
+        home_ou: z.number().int().optional(),
+        profile: z.number().int().optional(),
+        expire_date: z.string().max(30).optional(),
+        barred: z.union([z.boolean(), z.literal("t"), z.literal("f")]).optional(),
+        active: z.union([z.boolean(), z.literal("t"), z.literal("f")]).optional(),
+        juvenile: z.union([z.boolean(), z.literal("t"), z.literal("f")]).optional(),
+        usrname: z.string().max(200).optional(),
+        passwd: z.string().max(200).optional(),
+        net_access_level: z.number().int().optional(),
+      })
+      .passthrough();
+    const body = await parseJsonBodyWithSchema(req, patronSchema);
     if (body instanceof NextResponse) return body;
 
     const patronId = parseInt(String(body.id || body.patronId || ""), 10);
@@ -857,7 +903,30 @@ export async function PATCH(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
     const { ip, userAgent, requestId } = getRequestMeta(req);
-    const body = await parseJsonBodyWithSchema(req, z.object({}).passthrough());
+    const patronSchema = z
+      .object({
+        family_name: z.string().max(200).optional(),
+        first_given_name: z.string().max(200).optional(),
+        second_given_name: z.string().max(200).optional(),
+        dob: z.string().max(20).optional(),
+        ident_value: z.string().max(100).optional(),
+        ident_value2: z.string().max(100).optional(),
+        email: z.string().max(300).optional(),
+        day_phone: z.string().max(50).optional(),
+        evening_phone: z.string().max(50).optional(),
+        other_phone: z.string().max(50).optional(),
+        home_ou: z.number().int().optional(),
+        profile: z.number().int().optional(),
+        expire_date: z.string().max(30).optional(),
+        barred: z.union([z.boolean(), z.literal("t"), z.literal("f")]).optional(),
+        active: z.union([z.boolean(), z.literal("t"), z.literal("f")]).optional(),
+        juvenile: z.union([z.boolean(), z.literal("t"), z.literal("f")]).optional(),
+        usrname: z.string().max(200).optional(),
+        passwd: z.string().max(200).optional(),
+        net_access_level: z.number().int().optional(),
+      })
+      .passthrough();
+    const body = await parseJsonBodyWithSchema(req, patronSchema);
     if (body instanceof NextResponse) return body;
 
     const action = body.action;

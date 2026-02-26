@@ -695,7 +695,7 @@ export default function StatCategoriesPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as StatKind)}>
                 <TabsList>
                   <TabsTrigger value="copy" className="gap-2">
                     <BarChart3 className="h-4 w-4" />

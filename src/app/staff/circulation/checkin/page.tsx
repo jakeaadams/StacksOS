@@ -218,7 +218,12 @@ export default function CheckinPage() {
         return;
       }
 
-      const rawDetails = err instanceof ApiError ? err.details : (err as any)?.details;
+      const rawDetails =
+        err instanceof ApiError
+          ? err.details
+          : err instanceof Error
+            ? (err as Error & { details?: unknown }).details
+            : undefined;
       const code =
         rawDetails &&
         typeof rawDetails === "object" &&

@@ -15,7 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -91,7 +97,9 @@ export default function FundingSourcesPage() {
     try {
       const params = new URLSearchParams();
       if (selectedOrgId !== "all") params.append("org_id", String(selectedOrgId));
-      const response = await fetchWithAuth(`/api/evergreen/acquisitions/funding-sources?${params.toString()}`);
+      const response = await fetchWithAuth(
+        `/api/evergreen/acquisitions/funding-sources?${params.toString()}`
+      );
       const data = await response.json();
       if (data.ok) {
         setFundingSources(data.fundingSources || []);
@@ -123,25 +131,45 @@ export default function FundingSourcesPage() {
 
   const handleOpenEdit = (source: FundingSource) => {
     setEditingSource(source);
-    setFormData({ name: source.name, code: source.code, owner: source.owner, currency: source.currency });
+    setFormData({
+      name: source.name,
+      code: source.code,
+      owner: source.owner,
+      currency: source.currency,
+    });
     setIsFormOpen(true);
   };
 
   const handleSave = async () => {
-    if (!formData.name.trim()) { toast.error("Name is required"); return; }
-    if (!formData.code.trim()) { toast.error("Code is required"); return; }
-    if (!formData.owner) { toast.error("Owner is required"); return; }
+    if (!formData.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+    if (!formData.code.trim()) {
+      toast.error("Code is required");
+      return;
+    }
+    if (!formData.owner) {
+      toast.error("Owner is required");
+      return;
+    }
 
     setIsSaving(true);
     try {
       const response = await fetchWithAuth("/api/evergreen/acquisitions/funding-sources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: editingSource ? "update" : "create", id: editingSource?.id, ...formData }),
+        body: JSON.stringify({
+          action: editingSource ? "update" : "create",
+          id: editingSource?.id,
+          ...formData,
+        }),
       });
       const data = await response.json();
       if (data.ok) {
-        toast.success(editingSource ? "Funding source updated" : "Funding source created", { description: formData.name });
+        toast.success(editingSource ? "Funding source updated" : "Funding source created", {
+          description: formData.name,
+        });
         setIsFormOpen(false);
         await loadFundingSources();
       } else {
@@ -180,16 +208,27 @@ export default function FundingSourcesPage() {
   };
 
   const handleAddCredit = async () => {
-    if (!creditSourceId || !creditAmount) { toast.error("Amount is required"); return; }
+    if (!creditSourceId || !creditAmount) {
+      toast.error("Amount is required");
+      return;
+    }
     const amount = parseFloat(creditAmount);
-    if (isNaN(amount) || amount <= 0) { toast.error("Please enter a valid amount"); return; }
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
 
     setIsSaving(true);
     try {
       const response = await fetchWithAuth("/api/evergreen/acquisitions/funding-sources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "add_credit", fundingSourceId: creditSourceId, amount, note: creditNote || null }),
+        body: JSON.stringify({
+          action: "add_credit",
+          fundingSourceId: creditSourceId,
+          amount,
+          note: creditNote || null,
+        }),
       });
       const data = await response.json();
       if (data.ok) {
@@ -212,7 +251,12 @@ export default function FundingSourcesPage() {
   const filteredSources = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return fundingSources;
-    return fundingSources.filter((s) => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q) || (s.ownerName || "").toLowerCase().includes(q));
+    return fundingSources.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.code.toLowerCase().includes(q) ||
+        (s.ownerName || "").toLowerCase().includes(q)
+    );
   }, [fundingSources, searchQuery]);
 
   const formatCurrency = (amount: number, currency: string = "USD") => {
@@ -252,12 +296,20 @@ export default function FundingSourcesPage() {
       {
         accessorKey: "creditTotal",
         header: "Total Credit",
-        cell: ({ row }) => <span className="font-mono">{formatCurrency(row.original.creditTotal, row.original.currency)}</span>,
+        cell: ({ row }) => (
+          <span className="font-mono">
+            {formatCurrency(row.original.creditTotal, row.original.currency)}
+          </span>
+        ),
       },
       {
         accessorKey: "allocatedTotal",
         header: "Allocated",
-        cell: ({ row }) => <span className="font-mono text-amber-600">{formatCurrency(row.original.allocatedTotal, row.original.currency)}</span>,
+        cell: ({ row }) => (
+          <span className="font-mono text-amber-600">
+            {formatCurrency(row.original.allocatedTotal, row.original.currency)}
+          </span>
+        ),
       },
       {
         accessorKey: "balance",
@@ -265,7 +317,11 @@ export default function FundingSourcesPage() {
         cell: ({ row }) => (
           <div className="flex items-center gap-1">
             <TrendingUp className="h-3 w-3 text-green-500" />
-            <span className={`font-mono ${row.original.balance < 0 ? "text-red-600" : "text-green-600"}`}>{formatCurrency(row.original.balance, row.original.currency)}</span>
+            <span
+              className={`font-mono ${row.original.balance < 0 ? "text-red-600" : "text-green-600"}`}
+            >
+              {formatCurrency(row.original.balance, row.original.currency)}
+            </span>
           </div>
         ),
       },
@@ -276,7 +332,10 @@ export default function FundingSourcesPage() {
           const percent = getUsagePercent(row.original);
           return (
             <div className="w-24">
-              <Progress value={percent} className={`h-2 ${percent > 90 ? "[&>div]:bg-red-500" : percent > 75 ? "[&>div]:bg-amber-500" : "[&>div]:bg-green-500"}`} />
+              <Progress
+                value={percent}
+                className={`h-2 ${percent > 90 ? "[&>div]:bg-red-500" : percent > 75 ? "[&>div]:bg-amber-500" : "[&>div]:bg-green-500"}`}
+              />
               <div className="text-xs text-muted-foreground mt-1">{percent.toFixed(0)}%</div>
             </div>
           );
@@ -287,9 +346,29 @@ export default function FundingSourcesPage() {
         header: "",
         cell: ({ row }) => (
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={() => { setCreditSourceId(row.original.id); setIsCreditDialogOpen(true); }}><CreditCard className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(row.original)}><Edit className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="sm" onClick={() => { setDeletingSource(row.original); setDeleteConfirmOpen(true); }}><Trash2 className="h-4 w-4 text-red-600" /></Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setCreditSourceId(row.original.id);
+                setIsCreditDialogOpen(true);
+              }}
+            >
+              <CreditCard className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(row.original)}>
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDeletingSource(row.original);
+                setDeleteConfirmOpen(true);
+              }}
+            >
+              <Trash2 className="h-4 w-4 text-red-600" />
+            </Button>
           </div>
         ),
       },
@@ -307,8 +386,17 @@ export default function FundingSourcesPage() {
   if (isLoading && fundingSources.length === 0) {
     return (
       <PageContainer>
-        <PageHeader title="Funding Sources" subtitle="Manage funding sources for acquisitions." breadcrumbs={[{ label: "Acquisitions", href: "/staff/acquisitions" }, { label: "Funding Sources" }]} />
-        <PageContent><LoadingSpinner message="Loading funding sources..." /></PageContent>
+        <PageHeader
+          title="Funding Sources"
+          subtitle="Manage funding sources for acquisitions."
+          breadcrumbs={[
+            { label: "Acquisitions", href: "/staff/acquisitions" },
+            { label: "Funding Sources" },
+          ]}
+        />
+        <PageContent>
+          <LoadingSpinner message="Loading funding sources..." />
+        </PageContent>
       </PageContainer>
     );
   }
@@ -318,7 +406,10 @@ export default function FundingSourcesPage() {
       <PageHeader
         title="Funding Sources"
         subtitle="Manage funding sources for acquisitions."
-        breadcrumbs={[{ label: "Acquisitions", href: "/staff/acquisitions" }, { label: "Funding Sources" }]}
+        breadcrumbs={[
+          { label: "Acquisitions", href: "/staff/acquisitions" },
+          { label: "Funding Sources" },
+        ]}
         actions={[
           { label: "Refresh", onClick: loadFundingSources, icon: RefreshCw, variant: "outline" },
           { label: "Add Funding Source", onClick: handleOpenCreate, icon: Plus },
@@ -331,10 +422,16 @@ export default function FundingSourcesPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Credit</p>
-                  <div className="text-2xl font-semibold mt-1">{formatCurrency(stats.totalCredit)}</div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Total Credit
+                  </p>
+                  <div className="text-2xl font-semibold mt-1">
+                    {formatCurrency(stats.totalCredit)}
+                  </div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600"><Wallet className="h-5 w-5" /></div>
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600">
+                  <Wallet className="h-5 w-5" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -342,10 +439,16 @@ export default function FundingSourcesPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Allocated</p>
-                  <div className="text-2xl font-semibold mt-1 text-amber-600">{formatCurrency(stats.totalAllocated)}</div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Total Allocated
+                  </p>
+                  <div className="text-2xl font-semibold mt-1 text-amber-600">
+                    {formatCurrency(stats.totalAllocated)}
+                  </div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-amber-500/10 text-amber-600"><DollarSign className="h-5 w-5" /></div>
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-amber-500/10 text-amber-600">
+                  <DollarSign className="h-5 w-5" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -354,9 +457,15 @@ export default function FundingSourcesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Available</p>
-                  <div className={`text-2xl font-semibold mt-1 ${stats.totalAvailable < 0 ? "text-red-600" : "text-green-600"}`}>{formatCurrency(stats.totalAvailable)}</div>
+                  <div
+                    className={`text-2xl font-semibold mt-1 ${stats.totalAvailable < 0 ? "text-red-600" : "text-green-600"}`}
+                  >
+                    {formatCurrency(stats.totalAvailable)}
+                  </div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-green-500/10 text-green-600"><TrendingUp className="h-5 w-5" /></div>
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-green-500/10 text-green-600">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -370,16 +479,33 @@ export default function FundingSourcesPage() {
                 <CardDescription>View and manage all funding sources.</CardDescription>
               </div>
               <div className="flex gap-3">
-                <Select value={selectedOrgId === "all" ? "all" : String(selectedOrgId)} onValueChange={(value) => setSelectedOrgId(value === "all" ? "all" : parseInt(value, 10))}>
-                  <SelectTrigger className="w-48"><SelectValue placeholder="Organization" /></SelectTrigger>
+                <Select
+                  value={selectedOrgId === "all" ? "all" : String(selectedOrgId)}
+                  onValueChange={(value) =>
+                    setSelectedOrgId(value === "all" ? "all" : parseInt(value, 10))
+                  }
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Organization" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Organizations</SelectItem>
-                    {orgs.map((org) => <SelectItem key={org.id} value={String(org.id)}>{org.shortname}</SelectItem>)}
+                    {orgs.map((org) => (
+                      <SelectItem key={org.id} value={String(org.id)}>
+                        {org.shortname}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <div className="relative w-64">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search funding sources..." className="!pl-14" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search funding sources..."
+                    className="!pl-14"
+                    aria-label="Search funding sources"
+                  />
                 </div>
               </div>
             </div>
@@ -391,7 +517,17 @@ export default function FundingSourcesPage() {
               isLoading={isLoading}
               searchable={false}
               paginated={filteredSources.length > 20}
-              emptyState={<EmptyState title="No funding sources found" description={searchQuery ? "No funding sources match your search criteria." : "No funding sources have been configured."} action={{ label: "Add Funding Source", onClick: handleOpenCreate }} />}
+              emptyState={
+                <EmptyState
+                  title="No funding sources found"
+                  description={
+                    searchQuery
+                      ? "No funding sources match your search criteria."
+                      : "No funding sources have been configured."
+                  }
+                  action={{ label: "Add Funding Source", onClick: handleOpenCreate }}
+                />
+              }
             />
           </CardContent>
         </Card>
@@ -400,31 +536,66 @@ export default function FundingSourcesPage() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Wallet className="h-5 w-5" />{editingSource ? "Edit Funding Source" : "New Funding Source"}</DialogTitle>
-            <DialogDescription>{editingSource ? "Update the funding source details." : "Create a new funding source."}</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5" />
+              {editingSource ? "Edit Funding Source" : "New Funding Source"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingSource
+                ? "Update the funding source details."
+                : "Create a new funding source."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Name *</Label>
-                <Input id="name" value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} placeholder="e.g., State Grant 2024" />
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., State Grant 2024"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="code">Code *</Label>
-                <Input id="code" value={formData.code} onChange={(e) => setFormData((prev) => ({ ...prev, code: e.target.value }))} placeholder="e.g., STGRANT24" />
+                <Input
+                  id="code"
+                  value={formData.code}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, code: e.target.value }))}
+                  placeholder="e.g., STGRANT24"
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="owner">Owner Organization *</Label>
-              <Select value={formData.owner ? String(formData.owner) : ""} onValueChange={(value) => setFormData((prev) => ({ ...prev, owner: parseInt(value, 10) }))}>
-                <SelectTrigger><SelectValue placeholder="Select organization" /></SelectTrigger>
-                <SelectContent>{orgs.map((org) => <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>)}</SelectContent>
+              <Select
+                value={formData.owner ? String(formData.owner) : ""}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, owner: parseInt(value, 10) }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select organization" />
+                </SelectTrigger>
+                <SelectContent>
+                  {orgs.map((org) => (
+                    <SelectItem key={org.id} value={String(org.id)}>
+                      {org.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="currency">Currency</Label>
-              <Select value={formData.currency} onValueChange={(value) => setFormData((prev) => ({ ...prev, currency: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={formData.currency}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, currency: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USD">USD - US Dollar</SelectItem>
                   <SelectItem value="EUR">EUR - Euro</SelectItem>
@@ -435,8 +606,12 @@ export default function FundingSourcesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsFormOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={isSaving}>{isSaving ? "Saving..." : editingSource ? "Update" : "Create"}</Button>
+            <Button variant="outline" onClick={() => setIsFormOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? "Saving..." : editingSource ? "Update" : "Create"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -444,22 +619,42 @@ export default function FundingSourcesPage() {
       <Dialog open={isCreditDialogOpen} onOpenChange={setIsCreditDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5" />Add Credit</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Add Credit
+            </DialogTitle>
             <DialogDescription>Add credit to this funding source.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="creditAmount">Amount *</Label>
-              <Input id="creditAmount" type="number" step="0.01" min="0" value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} placeholder="0.00" />
+              <Input
+                id="creditAmount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(e.target.value)}
+                placeholder="0.00"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="creditNote">Note (optional)</Label>
-              <Input id="creditNote" value={creditNote} onChange={(e) => setCreditNote(e.target.value)} placeholder="e.g., Annual budget allocation" />
+              <Input
+                id="creditNote"
+                value={creditNote}
+                onChange={(e) => setCreditNote(e.target.value)}
+                placeholder="e.g., Annual budget allocation"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreditDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddCredit} disabled={isSaving}>{isSaving ? "Adding..." : "Add Credit"}</Button>
+            <Button variant="outline" onClick={() => setIsCreditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddCredit} disabled={isSaving}>
+              {isSaving ? "Adding..." : "Add Credit"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

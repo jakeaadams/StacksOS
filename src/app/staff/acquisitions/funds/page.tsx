@@ -18,7 +18,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -110,7 +116,9 @@ export default function FundsPage() {
       const params = new URLSearchParams();
       if (selectedYear !== "all") params.append("year", String(selectedYear));
       if (selectedOrgId !== "all") params.append("org_id", String(selectedOrgId));
-      const response = await fetchWithAuth(`/api/evergreen/acquisitions/funds?${params.toString()}`);
+      const response = await fetchWithAuth(
+        `/api/evergreen/acquisitions/funds?${params.toString()}`
+      );
       const data = await response.json();
       if (data.ok) {
         setFunds(data.funds || []);
@@ -157,9 +165,18 @@ export default function FundsPage() {
   };
 
   const handleSave = async () => {
-    if (!formData.name.trim()) { toast.error("Fund name is required"); return; }
-    if (!formData.code.trim()) { toast.error("Fund code is required"); return; }
-    if (!formData.org) { toast.error("Organization is required"); return; }
+    if (!formData.name.trim()) {
+      toast.error("Fund name is required");
+      return;
+    }
+    if (!formData.code.trim()) {
+      toast.error("Fund code is required");
+      return;
+    }
+    if (!formData.org) {
+      toast.error("Organization is required");
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -174,7 +191,9 @@ export default function FundsPage() {
       });
       const data = await response.json();
       if (data.ok) {
-        toast.success(editingFund ? "Fund updated" : "Fund created", { description: formData.name });
+        toast.success(editingFund ? "Fund updated" : "Fund created", {
+          description: formData.name,
+        });
         setIsFormOpen(false);
         await loadFunds();
       } else {
@@ -215,7 +234,12 @@ export default function FundsPage() {
   const filteredFunds = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return funds;
-    return funds.filter((f) => f.name.toLowerCase().includes(q) || f.code.toLowerCase().includes(q) || (f.orgName || "").toLowerCase().includes(q));
+    return funds.filter(
+      (f) =>
+        f.name.toLowerCase().includes(q) ||
+        f.code.toLowerCase().includes(q) ||
+        (f.orgName || "").toLowerCase().includes(q)
+    );
   }, [funds, searchQuery]);
 
   const formatCurrency = (amount: number, currency: string = "USD") => {
@@ -265,7 +289,11 @@ export default function FundsPage() {
       {
         accessorKey: "allocated",
         header: "Allocated",
-        cell: ({ row }) => <span className="font-mono">{formatCurrency(row.original.allocated, row.original.currency)}</span>,
+        cell: ({ row }) => (
+          <span className="font-mono">
+            {formatCurrency(row.original.allocated, row.original.currency)}
+          </span>
+        ),
       },
       {
         accessorKey: "spent",
@@ -273,14 +301,20 @@ export default function FundsPage() {
         cell: ({ row }) => (
           <div className="flex items-center gap-1">
             <TrendingDown className="h-3 w-3 text-red-500" />
-            <span className="font-mono text-red-600">{formatCurrency(row.original.spent, row.original.currency)}</span>
+            <span className="font-mono text-red-600">
+              {formatCurrency(row.original.spent, row.original.currency)}
+            </span>
           </div>
         ),
       },
       {
         accessorKey: "encumbered",
         header: "Encumbered",
-        cell: ({ row }) => <span className="font-mono text-amber-600">{formatCurrency(row.original.encumbered, row.original.currency)}</span>,
+        cell: ({ row }) => (
+          <span className="font-mono text-amber-600">
+            {formatCurrency(row.original.encumbered, row.original.currency)}
+          </span>
+        ),
       },
       {
         accessorKey: "balance",
@@ -288,7 +322,11 @@ export default function FundsPage() {
         cell: ({ row }) => (
           <div className="flex items-center gap-1">
             <TrendingUp className="h-3 w-3 text-green-500" />
-            <span className={`font-mono ${row.original.balance < 0 ? "text-red-600" : "text-green-600"}`}>{formatCurrency(row.original.balance, row.original.currency)}</span>
+            <span
+              className={`font-mono ${row.original.balance < 0 ? "text-red-600" : "text-green-600"}`}
+            >
+              {formatCurrency(row.original.balance, row.original.currency)}
+            </span>
           </div>
         ),
       },
@@ -299,7 +337,10 @@ export default function FundsPage() {
           const percent = getUsagePercent(row.original);
           return (
             <div className="w-24">
-              <Progress value={percent} className={`h-2 ${percent > 90 ? "[&>div]:bg-red-500" : percent > 75 ? "[&>div]:bg-amber-500" : "[&>div]:bg-green-500"}`} />
+              <Progress
+                value={percent}
+                className={`h-2 ${percent > 90 ? "[&>div]:bg-red-500" : percent > 75 ? "[&>div]:bg-amber-500" : "[&>div]:bg-green-500"}`}
+              />
               <div className="text-xs text-muted-foreground mt-1">{percent.toFixed(0)}%</div>
             </div>
           );
@@ -308,16 +349,41 @@ export default function FundsPage() {
       {
         accessorKey: "active",
         header: "Status",
-        cell: ({ row }) => <Badge className={row.original.active ? "bg-green-100 text-green-800" : "bg-muted/50 text-foreground"}>{row.original.active ? "Active" : "Inactive"}</Badge>,
+        cell: ({ row }) => (
+          <Badge
+            className={
+              row.original.active ? "bg-green-100 text-green-800" : "bg-muted/50 text-foreground"
+            }
+          >
+            {row.original.active ? "Active" : "Inactive"}
+          </Badge>
+        ),
       },
       {
         id: "actions",
         header: "",
         cell: ({ row }) => (
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={() => router.push(`/staff/acquisitions/funds/${row.original.id}`)}><Eye className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(row.original)}><Edit className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="sm" onClick={() => { setDeletingFund(row.original); setDeleteConfirmOpen(true); }}><Trash2 className="h-4 w-4 text-red-600" /></Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push(`/staff/acquisitions/funds/${row.original.id}`)}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(row.original)}>
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDeletingFund(row.original);
+                setDeleteConfirmOpen(true);
+              }}
+            >
+              <Trash2 className="h-4 w-4 text-red-600" />
+            </Button>
           </div>
         ),
       },
@@ -336,8 +402,14 @@ export default function FundsPage() {
   if (isLoading && funds.length === 0) {
     return (
       <PageContainer>
-        <PageHeader title="Funds" subtitle="Manage acquisition funds and allocations." breadcrumbs={[{ label: "Acquisitions", href: "/staff/acquisitions" }, { label: "Funds" }]} />
-        <PageContent><LoadingSpinner message="Loading funds..." /></PageContent>
+        <PageHeader
+          title="Funds"
+          subtitle="Manage acquisition funds and allocations."
+          breadcrumbs={[{ label: "Acquisitions", href: "/staff/acquisitions" }, { label: "Funds" }]}
+        />
+        <PageContent>
+          <LoadingSpinner message="Loading funds..." />
+        </PageContent>
       </PageContainer>
     );
   }
@@ -360,10 +432,16 @@ export default function FundsPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Allocated</p>
-                  <div className="text-2xl font-semibold mt-1">{formatCurrency(stats.totalAllocated)}</div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Total Allocated
+                  </p>
+                  <div className="text-2xl font-semibold mt-1">
+                    {formatCurrency(stats.totalAllocated)}
+                  </div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600"><DollarSign className="h-5 w-5" /></div>
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-600">
+                  <DollarSign className="h-5 w-5" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -371,10 +449,16 @@ export default function FundsPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Spent</p>
-                  <div className="text-2xl font-semibold mt-1 text-red-600">{formatCurrency(stats.totalSpent)}</div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Total Spent
+                  </p>
+                  <div className="text-2xl font-semibold mt-1 text-red-600">
+                    {formatCurrency(stats.totalSpent)}
+                  </div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-red-500/10 text-red-600"><TrendingDown className="h-5 w-5" /></div>
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-red-500/10 text-red-600">
+                  <TrendingDown className="h-5 w-5" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -382,10 +466,16 @@ export default function FundsPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Encumbered</p>
-                  <div className="text-2xl font-semibold mt-1 text-amber-600">{formatCurrency(stats.totalEncumbered)}</div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Total Encumbered
+                  </p>
+                  <div className="text-2xl font-semibold mt-1 text-amber-600">
+                    {formatCurrency(stats.totalEncumbered)}
+                  </div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-amber-500/10 text-amber-600"><DollarSign className="h-5 w-5" /></div>
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-amber-500/10 text-amber-600">
+                  <DollarSign className="h-5 w-5" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -393,10 +483,18 @@ export default function FundsPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Balance</p>
-                  <div className={`text-2xl font-semibold mt-1 ${stats.totalBalance < 0 ? "text-red-600" : "text-green-600"}`}>{formatCurrency(stats.totalBalance)}</div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Total Balance
+                  </p>
+                  <div
+                    className={`text-2xl font-semibold mt-1 ${stats.totalBalance < 0 ? "text-red-600" : "text-green-600"}`}
+                  >
+                    {formatCurrency(stats.totalBalance)}
+                  </div>
                 </div>
-                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-green-500/10 text-green-600"><TrendingUp className="h-5 w-5" /></div>
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-green-500/10 text-green-600">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -410,23 +508,51 @@ export default function FundsPage() {
                 <CardDescription>View and manage all acquisition funds.</CardDescription>
               </div>
               <div className="flex gap-3">
-                <Select value={selectedYear === "all" ? "all" : String(selectedYear)} onValueChange={(value) => setSelectedYear(value === "all" ? "all" : parseInt(value, 10))}>
-                  <SelectTrigger className="w-32"><SelectValue placeholder="Year" /></SelectTrigger>
+                <Select
+                  value={selectedYear === "all" ? "all" : String(selectedYear)}
+                  onValueChange={(value) =>
+                    setSelectedYear(value === "all" ? "all" : parseInt(value, 10))
+                  }
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Years</SelectItem>
-                    {years.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                    {years.map((y) => (
+                      <SelectItem key={y} value={String(y)}>
+                        {y}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                <Select value={selectedOrgId === "all" ? "all" : String(selectedOrgId)} onValueChange={(value) => setSelectedOrgId(value === "all" ? "all" : parseInt(value, 10))}>
-                  <SelectTrigger className="w-48"><SelectValue placeholder="Organization" /></SelectTrigger>
+                <Select
+                  value={selectedOrgId === "all" ? "all" : String(selectedOrgId)}
+                  onValueChange={(value) =>
+                    setSelectedOrgId(value === "all" ? "all" : parseInt(value, 10))
+                  }
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Organization" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Organizations</SelectItem>
-                    {orgs.map((org) => <SelectItem key={org.id} value={String(org.id)}>{org.shortname}</SelectItem>)}
+                    {orgs.map((org) => (
+                      <SelectItem key={org.id} value={String(org.id)}>
+                        {org.shortname}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <div className="relative w-64">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search funds..." className="!pl-14" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search funds..."
+                    className="!pl-14"
+                    aria-label="Search funds"
+                  />
                 </div>
               </div>
             </div>
@@ -438,7 +564,17 @@ export default function FundsPage() {
               isLoading={isLoading}
               searchable={false}
               paginated={filteredFunds.length > 20}
-              emptyState={<EmptyState title="No funds found" description={searchQuery ? "No funds match your search criteria." : "No funds have been configured."} action={{ label: "Add Fund", onClick: handleOpenCreate }} />}
+              emptyState={
+                <EmptyState
+                  title="No funds found"
+                  description={
+                    searchQuery
+                      ? "No funds match your search criteria."
+                      : "No funds have been configured."
+                  }
+                  action={{ label: "Add Fund", onClick: handleOpenCreate }}
+                />
+              }
             />
           </CardContent>
         </Card>
@@ -447,40 +583,86 @@ export default function FundsPage() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><DollarSign className="h-5 w-5" />{editingFund ? "Edit Fund" : "New Fund"}</DialogTitle>
-            <DialogDescription>{editingFund ? "Update the fund details." : "Create a new acquisition fund."}</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              {editingFund ? "Edit Fund" : "New Fund"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingFund ? "Update the fund details." : "Create a new acquisition fund."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Fund Name *</Label>
-                <Input id="name" value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} placeholder="e.g., Adult Fiction" />
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., Adult Fiction"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="code">Fund Code *</Label>
-                <Input id="code" value={formData.code} onChange={(e) => setFormData((prev) => ({ ...prev, code: e.target.value }))} placeholder="e.g., ADFIC" />
+                <Input
+                  id="code"
+                  value={formData.code}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, code: e.target.value }))}
+                  placeholder="e.g., ADFIC"
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="year">Fiscal Year *</Label>
-                <Select value={String(formData.year)} onValueChange={(value) => setFormData((prev) => ({ ...prev, year: parseInt(value, 10) }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{years.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+                <Select
+                  value={String(formData.year)}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, year: parseInt(value, 10) }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((y) => (
+                      <SelectItem key={y} value={String(y)}>
+                        {y}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="org">Organization *</Label>
-                <Select value={formData.org ? String(formData.org) : ""} onValueChange={(value) => setFormData((prev) => ({ ...prev, org: parseInt(value, 10) }))}>
-                  <SelectTrigger><SelectValue placeholder="Select organization" /></SelectTrigger>
-                  <SelectContent>{orgs.map((org) => <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>)}</SelectContent>
+                <Select
+                  value={formData.org ? String(formData.org) : ""}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, org: parseInt(value, 10) }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select organization" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {orgs.map((org) => (
+                      <SelectItem key={org.id} value={String(org.id)}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="currency">Currency</Label>
-              <Select value={formData.currency} onValueChange={(value) => setFormData((prev) => ({ ...prev, currency: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={formData.currency}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, currency: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USD">USD - US Dollar</SelectItem>
                   <SelectItem value="EUR">EUR - Euro</SelectItem>
@@ -491,22 +673,42 @@ export default function FundsPage() {
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
-                <Label htmlFor="rollover" className="text-sm">Rollover</Label>
+                <Label htmlFor="rollover" className="text-sm">
+                  Rollover
+                </Label>
                 <p className="text-xs text-muted-foreground">Carry unused balance to next year</p>
               </div>
-              <Switch id="rollover" checked={formData.rollover} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, rollover: checked }))} />
+              <Switch
+                id="rollover"
+                checked={formData.rollover}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({ ...prev, rollover: checked }))
+                }
+              />
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
-                <Label htmlFor="propagate" className="text-sm">Propagate</Label>
+                <Label htmlFor="propagate" className="text-sm">
+                  Propagate
+                </Label>
                 <p className="text-xs text-muted-foreground">Apply to descendant org units</p>
               </div>
-              <Switch id="propagate" checked={formData.propagate} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, propagate: checked }))} />
+              <Switch
+                id="propagate"
+                checked={formData.propagate}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({ ...prev, propagate: checked }))
+                }
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsFormOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={isSaving}>{isSaving ? "Saving..." : editingFund ? "Update" : "Create"}</Button>
+            <Button variant="outline" onClick={() => setIsFormOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? "Saving..." : editingFund ? "Update" : "Create"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

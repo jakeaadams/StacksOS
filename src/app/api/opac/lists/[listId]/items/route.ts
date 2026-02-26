@@ -4,10 +4,12 @@ import {
   encodeFieldmapper,
   errorResponse,
   getErrorMessage,
+  getRequestMeta,
   isOpenSRFEvent,
   serverErrorResponse,
   successResponse,
 } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -21,6 +23,8 @@ const addListItemSchema = z
   .passthrough();
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ listId: string }> }) {
+  const { ip } = getRequestMeta(req);
+
   try {
     const { patronToken } = await requirePatronSession();
     const { listId } = await params;
@@ -58,6 +62,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ lis
     if (!result || isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
       return errorResponse(getErrorMessage(result, "Failed to add item to list"), 400, result);
     }
+
+    await logAuditEvent({
+      action: "opac.list.add_item",
+      entity: "bookbag_item",
+      entityId: result,
+      status: "success",
+      actor: null,
+      ip,
+      details: { listId: listNumeric, bibId },
+    });
 
     return successResponse({ itemId: result });
   } catch (error) {

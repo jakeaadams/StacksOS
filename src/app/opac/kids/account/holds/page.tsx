@@ -182,6 +182,7 @@ export default function KidsHoldsPage() {
           size="icon"
           onClick={() => router.back()}
           className="rounded-xl text-muted-foreground hover:text-foreground/80 hover:bg-muted/50"
+          aria-label="Go back"
         >
           <ChevronLeft className="h-6 w-6" />
         </Button>

@@ -244,7 +244,7 @@ export async function callOpenSRF<T = any>(
         `OpenSRF gateway error (${resolvedService}.${resolvedMethod}): status ${status}${debug ? ` - ${debug}` : ""}`
       );
       if (isMethodNotFound) {
-        (err as any).code = "OSRF_METHOD_NOT_FOUND";
+        (err as Error & { code?: string }).code = "OSRF_METHOD_NOT_FOUND";
       }
       throw err;
     }
@@ -254,7 +254,10 @@ export async function callOpenSRF<T = any>(
     return decoded;
   } catch (error) {
     const e = error instanceof Error ? error : new Error(String(error));
-    const code = typeof (e as any).code === "string" ? String((e as any).code) : "";
+    const code =
+      typeof (e as Error & { code?: string }).code === "string"
+        ? String((e as Error & { code?: string }).code)
+        : "";
     if (code === "OSRF_METHOD_NOT_FOUND") {
       outcome = "method_not_found";
       // Method-not-found is a capability mismatch, not a connectivity failure.

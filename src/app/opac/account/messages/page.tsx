@@ -237,6 +237,7 @@ export default function PatronMessagesPage() {
               size="icon"
               className="ml-auto h-7 w-7 text-red-700 hover:text-red-700"
               onClick={() => setError(null)}
+              aria-label="Dismiss error"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -425,6 +426,7 @@ export default function PatronMessagesPage() {
                         size="icon"
                         disabled={isActionLoading}
                         title="Delete"
+                        aria-label="Delete message"
                         className="text-muted-foreground hover:text-red-600"
                         onClick={() => void deleteMessages([selectedMessage.id])}
                       >

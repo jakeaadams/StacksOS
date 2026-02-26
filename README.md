@@ -77,7 +77,14 @@ Login credentials are your Evergreen staff credentials.
 | `npm run audit:opac`           | Run OPAC route/API/Evergreen-bridge audit matrix         |
 | `npm run audit:task-benchmark` | Run browser task benchmark harness (p50/p95 by workflow) |
 | `npm run evergreen:footprint`  | Capture Evergreen boundary snapshot for upgrade diffing  |
+| `npm run test:ui`              | Run unit tests with Vitest UI mode                       |
+| `npm run test:e2e:smoke`       | Run E2E smoke tests only                                 |
+| `npm run test:e2e:ui`          | Run Playwright in UI mode                                |
+| `npm run type-check`           | Run TypeScript type checking                             |
+| `npm run clean`                | Clean build artifacts                                    |
+| `npm run audit:demo`           | Audit for demo data in non-demo environments             |
 | `npm run tenant:provision`     | Create/update tenant JSON configuration                  |
+| `npm run tenant:onboarding`    | Check tenant onboarding status                           |
 
 ## Project Structure
 
@@ -230,6 +237,56 @@ Then diff the two generated folders under `audit/evergreen-footprint/`.
 - `fieldValue`/`payloadFirst` helpers replace `as any` chains across adapter routes
 - Zod discriminated union narrowing in circulation route
 
+### ILL (Interlibrary Loan)
+
+- ILL request tracking with configurable provider sync (ILLiad, Tipasa, ReShare, custom webhook)
+- Manual, monitor, and enabled sync modes for safe rollout
+
+### Booking / Room Reservations
+
+- Room and resource reservation workflows for patrons and staff
+
+### Serials Management
+
+- Serial subscription tracking and issue management for periodicals
+
+### Course Reserves
+
+- Course reserve lists with instructor assignment and semester-scoped visibility
+
+### Z39.50 Federated Search
+
+- Federated search across external Z39.50 targets from the cataloging interface
+
+### Scheduled Reports
+
+- Cron-driven scheduled report delivery with secret-based authentication
+
+### CSP Security Hardening
+
+- Content Security Policy report-only mode with violation collection at `/api/security/csp-report`
+
+### SMTP Email Provider
+
+- Direct SMTP email transport as an alternative to Resend, SendGrid, and SES
+
+### Developer Platform (Webhooks & Extensions)
+
+- Webhook subscriptions with signed delivery, retry tracking, and test endpoints
+- Extension registration framework with capability-based activation
+
+### AI Ops Playbooks
+
+- Operational playbooks for AI reliability tuning and incident response
+
+### AI Policy Explainer
+
+- AI-powered natural language explanations of library circulation and fine policies
+
+### Summer Reading Programs
+
+- Configurable summer reading programs with goal types (books, pages, minutes), badges, and org-unit scoping
+
 ## AI Fallback Monitoring
 
 Platform admins can monitor AI reliability from:
@@ -346,7 +403,7 @@ Local:
 
 - `npm run lint -- --quiet`: pass
 - `npm run type-check`: pass
-- `npm run test:run`: pass (`131/131`)
+- `npm run test:run`: pass (`219/219`)
 - `npm run audit:ui-drift`: pass
 - `npm run audit:opac`: validated in VM runtime (requires live app + Evergreen bridge)
 - `npm run audit:task-benchmark`: pass
@@ -356,8 +413,8 @@ VM (`192.168.1.233`, `/home/jake/projects/stacksos`):
 
 - `npm run lint -- --quiet`: pass
 - `npm run type-check`: pass
-- `npm run test:run`: pass (`131/131`)
-- `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`61 passed, 2 skipped`)
+- `npm run test:run`: pass (`219/219`)
+- `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`70 passed, 5 skipped`)
 - `BASE_URL=http://127.0.0.1:3000 bash audit/run_opac_audit.sh`: pass (`42/42` OPAC pages, `21/21` OPAC API checks, Evergreen bridge `4/4`)
 - `TASK_BENCH_STAFF_USER=jake TASK_BENCH_STAFF_PASS=jake TASK_BENCH_REQUIRE_STAFF=1 TASK_BENCH_ENFORCE=1 node scripts/task-benchmark.mjs`: pass (staff metrics fully populated)
 - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake BASE_URL=http://127.0.0.1:3000 bash audit/run_all.sh`: pass

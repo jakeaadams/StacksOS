@@ -153,41 +153,72 @@ test.describe("Catalog Workflows", () => {
     test("cataloging interface is accessible", async ({ page }) => {
       await page.goto("/staff/cataloging");
 
-      // Verify cataloging page loads
-      await expect(page.locator("body")).toBeVisible();
+      // Verify cataloging page loads with meaningful content
+      await expect(page.locator("main, [role='main'], h1, h2").first()).toBeVisible();
 
       // Verify we're in the staff area
-      const url = page.url();
-      expect(url).toContain("/staff");
+      await expect(page).toHaveURL(/\/staff/);
+
+      // Verify no server error
+      const bodyText = await page.locator("body").textContent();
+      expect(bodyText).not.toMatch(/Internal Server Error/i);
     });
 
     test("MARC editor is accessible", async ({ page }) => {
       await page.goto("/staff/cataloging/marc-editor");
 
-      // Verify MARC editor page loads
-      await expect(page.locator("body")).toBeVisible();
+      // Verify MARC editor page loads with meaningful content
+      await expect(page.locator("main, [role='main'], h1, h2").first()).toBeVisible();
+
+      // Verify we're in the staff area
+      await expect(page).toHaveURL(/\/staff/);
+
+      // Verify no server error
+      const bodyText = await page.locator("body").textContent();
+      expect(bodyText).not.toMatch(/Internal Server Error/i);
     });
 
     test("Z39.50 import is accessible", async ({ page }) => {
       await page.goto("/staff/cataloging/z3950");
 
-      // Verify Z39.50 page loads
-      await expect(page.locator("body")).toBeVisible();
+      // Verify Z39.50 page loads with meaningful content
+      await expect(page.locator("main, [role='main'], h1, h2").first()).toBeVisible();
+
+      // Verify we're in the staff area
+      await expect(page).toHaveURL(/\/staff/);
+
+      // Verify no server error
+      const bodyText = await page.locator("body").textContent();
+      expect(bodyText).not.toMatch(/Internal Server Error/i);
     });
 
     test("record details load when accessed directly", async ({ page }) => {
       const recordId = process.env.E2E_RECORD_ID || "10";
       await page.goto(`/staff/catalog/record/${recordId}`);
 
-      // Page should load (even if record doesn't exist, page structure should load)
-      await expect(page.locator("body")).toBeVisible();
+      // Page should load with meaningful content (even if record doesn't exist, page structure should load)
+      await expect(page.locator("main, [role='main'], h1, h2").first()).toBeVisible();
+
+      // Verify we're in the staff area
+      await expect(page).toHaveURL(/\/staff/);
+
+      // Verify no server error
+      const bodyText = await page.locator("body").textContent();
+      expect(bodyText).not.toMatch(/Internal Server Error/i);
     });
 
     test("holdings display is accessible", async ({ page }) => {
       await page.goto("/staff/cataloging/holdings");
 
-      // Verify holdings page loads
-      await expect(page.locator("body")).toBeVisible();
+      // Verify holdings page loads with meaningful content
+      await expect(page.locator("main, [role='main'], h1, h2").first()).toBeVisible();
+
+      // Verify we're in the staff area
+      await expect(page).toHaveURL(/\/staff/);
+
+      // Verify no server error
+      const bodyText = await page.locator("body").textContent();
+      expect(bodyText).not.toMatch(/Internal Server Error/i);
     });
 
     test("catalog navigation works", async ({ page }) => {
@@ -207,8 +238,12 @@ test.describe("Catalog Workflows", () => {
       // Try accessing a record details page
       await page.goto("/opac/record/1");
 
-      // Page should load (even if specific record doesn't exist)
-      await expect(page.locator("body")).toBeVisible();
+      // Page should load with meaningful content (even if specific record doesn't exist)
+      await expect(page.locator("main, [role='main'], h1, h2, nav").first()).toBeVisible();
+
+      // Verify no server error
+      const bodyText = await page.locator("body").textContent();
+      expect(bodyText).not.toMatch(/Internal Server Error/i);
     });
 
     test("search results can be accessed", async ({ page }) => {
@@ -217,8 +252,12 @@ test.describe("Catalog Workflows", () => {
       // Wait for page load
       await page.waitForLoadState("domcontentloaded");
 
-      // Verify page loaded
-      await expect(page.locator("body")).toBeVisible();
+      // Verify page loaded with meaningful content
+      await expect(page.locator("main, [role='main'], h1, h2, nav").first()).toBeVisible();
+
+      // Verify no server error
+      const bodyText = await page.locator("body").textContent();
+      expect(bodyText).not.toMatch(/Internal Server Error/i);
     });
   });
 });

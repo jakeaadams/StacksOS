@@ -9,10 +9,11 @@ A comprehensive MARC XML diff viewer component created at `/home/jake/projects/s
 ✅ **Field-by-field comparison** - Parses MARC XML and compares each field individually
 ✅ **Subfield-level diffs** - Shows exact changes within MARC subfields
 ✅ **Color-coded changes**:
-  - 🟢 Green: Added fields/subfields
-  - 🔴 Red: Removed fields/subfields
-  - 🟡 Yellow/Amber: Modified fields/subfields
-  - ⚪ Gray: Unchanged fields
+
+- 🟢 Green: Added fields/subfields
+- 🔴 Red: Removed fields/subfields
+- 🟡 Yellow/Amber: Modified fields/subfields
+- ⚪ Gray: Unchanged fields
 
 ✅ **Dialog-based UI** - Clean modal interface with Dialog component
 ✅ **Statistics summary** - Shows count of added, removed, modified, and unchanged fields
@@ -25,10 +26,10 @@ A comprehensive MARC XML diff viewer component created at `/home/jake/projects/s
 
 ```typescript
 interface MarcDiffProps {
-  oldMarc: string;        // Original MARC XML
-  newMarc: string;        // Modified MARC XML
-  open: boolean;          // Dialog open state
-  onOpenChange: (open: boolean) => void;  // Dialog state handler
+  oldMarc: string; // Original MARC XML
+  newMarc: string; // Modified MARC XML
+  open: boolean; // Dialog open state
+  onOpenChange: (open: boolean) => void; // Dialog state handler
   onConfirm?: () => void; // Callback when "Save Changes" is clicked
 }
 ```
@@ -51,9 +52,7 @@ function MyComponent() {
 
   return (
     <>
-      <button onClick={() => setShowDiff(true)}>
-        Review Changes
-      </button>
+      <button onClick={() => setShowDiff(true)}>Review Changes</button>
 
       <MarcDiff
         oldMarc={originalMarcXml}
@@ -108,6 +107,7 @@ function MarcEditor() {
 ## Component Structure
 
 ### Main Component: `MarcDiff`
+
 - Parses MARC XML using browser DOMParser
 - Computes field-by-field diffs
 - Displays changes in scrollable dialog
@@ -169,6 +169,7 @@ Uses Tailwind CSS with color-coded backgrounds:
 - **Unchanged**: `bg-background border-border`
 
 Badges use consistent color scheme:
+
 - Added: Green
 - Removed: Red
 - Modified: Amber/Yellow

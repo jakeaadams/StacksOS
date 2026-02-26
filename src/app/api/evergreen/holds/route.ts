@@ -25,7 +25,7 @@ const holdsPostSchema = z
       "update_pickup_lib",
     ]),
     patronId: z.union([z.coerce.number().int().positive(), z.string().min(1)]).optional(),
-    holdType: z.string().optional(),
+    holdType: z.string().max(10).optional(),
     target: z.union([z.coerce.number(), z.string()]).optional(),
     targetId: z.union([z.coerce.number(), z.string()]).optional(),
     pickupLib: z.union([z.coerce.number().int().positive(), z.string().min(1)]).optional(),
@@ -33,7 +33,7 @@ const holdsPostSchema = z
     cause: z.union([z.number(), z.string()]).optional(),
     reason: z.union([z.number(), z.string()]).optional(),
     note: z.string().max(1024).optional().nullable(),
-    thawDate: z.string().optional().nullable(),
+    thawDate: z.string().max(30).optional().nullable(),
   })
   .passthrough();
 

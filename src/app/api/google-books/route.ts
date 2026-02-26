@@ -46,7 +46,7 @@ function upgradeGoogleImageZoom(url: string | null): string | null {
 }
 
 function getLocalBackoffUntilMs(): number {
-  const g = globalThis as any;
+  const g = globalThis as Record<string, unknown>;
   const raw = g[GLOBAL_BACKOFF_KEY];
   const n = typeof raw === "number" ? raw : parseInt(String(raw ?? ""), 10);
   return Number.isFinite(n) ? n : 0;

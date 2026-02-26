@@ -33,6 +33,11 @@ import {
   PageHeader,
 } from "@/components/shared";
 
+type PermissionErrorDetails = {
+  missing?: string[];
+  requestId?: string;
+};
+
 import type { ViewMode, PatronMini, TransactionRow } from "./_components/bills-utils";
 import {
   formatCurrency,
@@ -59,8 +64,10 @@ function BillsContent() {
     requestId?: string;
   } | null>(null);
 
-  const payBillsMutation = useMutation<any, any>();
-  const refundMutation = useMutation<any, any>();
+  type MutationResponse = { ok?: boolean; error?: string; [key: string]: unknown };
+  type MutationPayload = Record<string, unknown>;
+  const payBillsMutation = useMutation<MutationResponse, MutationPayload>();
+  const refundMutation = useMutation<MutationResponse, MutationPayload>();
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -278,13 +285,12 @@ function BillsContent() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 403) {
-          const missing = Array.isArray((err.details as any)?.missing)
-            ? (err.details as any).missing
-            : [];
+          const details = err.details as PermissionErrorDetails | undefined;
+          const missing = Array.isArray(details?.missing) ? details.missing : [];
           setPermissionDenied({
             message: err.message || "Permission denied",
             missing,
-            requestId: (err.details as any)?.requestId,
+            requestId: details?.requestId,
           });
           toast.error("Permission denied", { description: err.message });
           return;
@@ -372,13 +378,12 @@ function BillsContent() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 403) {
-          const missing = Array.isArray((err.details as any)?.missing)
-            ? (err.details as any).missing
-            : [];
+          const details = err.details as PermissionErrorDetails | undefined;
+          const missing = Array.isArray(details?.missing) ? details.missing : [];
           setPermissionDenied({
             message: err.message || "Permission denied",
             missing,
-            requestId: (err.details as any)?.requestId,
+            requestId: details?.requestId,
           });
           toast.error("Permission denied", { description: err.message });
           return;

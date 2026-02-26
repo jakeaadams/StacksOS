@@ -310,6 +310,7 @@ export default function ItemStatusPage() {
             disabled={!canUpdate}
             onClick={() => setEditStatus(row.original)}
             title={canUpdate ? "Edit" : "Missing permission: UPDATE_COPY_STATUS"}
+            aria-label="Edit status"
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -323,6 +324,7 @@ export default function ItemStatusPage() {
               setDeleteOpen(true);
             }}
             title={canDelete ? "Delete" : "Missing permission: DELETE_COPY_STATUS"}
+            aria-label="Delete status"
           >
             <Trash2 className="h-4 w-4" />
           </Button>

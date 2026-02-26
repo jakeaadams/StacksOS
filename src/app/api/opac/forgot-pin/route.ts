@@ -66,8 +66,8 @@ export async function POST(req: NextRequest) {
   }
   try {
     const body = forgotPinSchema.parse(await req.json());
-    identifier = (body as any).identifier;
-    const method = (body as any).method;
+    identifier = body.barcode || body.email || body.username;
+    const method = body.barcode ? "barcode" : body.email ? "email" : "username";
 
     if (!identifier) {
       return errorResponse("Please provide your library card number or username");

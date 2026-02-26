@@ -327,6 +327,7 @@ export default function KidsHomePage() {
                 <Button
                   type="submit"
                   size="icon"
+                  aria-label="Search"
                   className="absolute right-2 top-1/2 h-12 w-12 -translate-y-1/2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:from-purple-600 hover:to-pink-600"
                 >
                   <Search className="h-6 w-6" />

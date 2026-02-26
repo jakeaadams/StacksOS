@@ -122,7 +122,7 @@ export async function logAuditEvent(event: AuditEvent): Promise<void> {
     const patronId = typeof rawId === "number" ? rawId : parseInt(String(rawId ?? ""), 10);
     if (!Number.isFinite(patronId)) return;
 
-    const details = sanitized.details as any;
+    const details = sanitized.details as Record<string, unknown> | undefined;
     const updates = Array.isArray(details?.updates) ? details.updates : null;
     const changes =
       updates && updates.length

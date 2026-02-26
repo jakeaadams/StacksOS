@@ -237,6 +237,7 @@ export default function ReadingLogPage() {
           size="icon"
           onClick={() => router.back()}
           className="rounded-xl text-muted-foreground hover:bg-muted/50 hover:text-foreground/80"
+          aria-label="Go back"
         >
           <ChevronLeft className="h-6 w-6" />
         </Button>
@@ -367,7 +368,11 @@ function ReadingEntryCard({
       >
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={coverUrl} alt="" className="h-full w-full object-cover rounded-lg" />
+          <img
+            src={coverUrl}
+            alt={entry.title || "Book cover"}
+            className="h-full w-full object-cover rounded-lg"
+          />
         ) : (
           <BookOpen className="h-6 w-6 text-primary-400" />
         )}
@@ -564,6 +569,7 @@ function AddReadingModal({
             size="icon"
             onClick={onClose}
             className="rounded-full text-muted-foreground/70 hover:bg-muted/50 hover:text-muted-foreground"
+            aria-label="Close"
           >
             <X className="h-5 w-5" />
           </Button>
@@ -589,6 +595,7 @@ function AddReadingModal({
                   size="icon"
                   onClick={handleSearch}
                   className="absolute right-1.5 top-1/2 h-9 w-9 -translate-y-1/2 text-muted-foreground/70 hover:text-primary-600"
+                  aria-label="Search"
                 >
                   <Search className="h-5 w-5" />
                 </Button>
@@ -738,6 +745,7 @@ function AddReadingModal({
                       type="button"
                       key={star}
                       onClick={() => setRating(rating === star ? 0 : star)}
+                      aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
                     >
                       <Star
                         className={`h-8 w-8 transition-colors ${

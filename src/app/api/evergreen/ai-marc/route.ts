@@ -39,19 +39,21 @@ const marcFieldSchema = z.object({
   tag: z.string().min(3).max(3),
   ind1: z.string().max(1).default(" "),
   ind2: z.string().max(1).default(" "),
-  subfields: z.array(
-    z.object({
-      code: z.string().min(1).max(1),
-      value: z.string().min(1),
-    })
-  ),
+  subfields: z
+    .array(
+      z.object({
+        code: z.string().min(1).max(1),
+        value: z.string().min(1),
+      })
+    )
+    .max(100),
   confidence: z.enum(["high", "medium", "low"]).default("medium"),
 });
 
 const marcGenerationResponseSchema = z.object({
   leader: z.string().min(24).max(24),
   field_008: z.string().min(40).max(40),
-  fields: z.array(marcFieldSchema).min(1),
+  fields: z.array(marcFieldSchema).min(1).max(100),
 });
 
 // ---------------------------------------------------------------------------

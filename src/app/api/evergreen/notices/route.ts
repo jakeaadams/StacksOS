@@ -192,10 +192,10 @@ const noticesPostSchema = z
   .object({
     patron_id: z.coerce.number().int().positive(),
     notice_type: z.string().trim().min(1),
-    items: z.array(z.record(z.string(), z.unknown())).optional(),
-    holds: z.array(z.record(z.string(), z.unknown())).optional(),
-    bills: z.array(z.record(z.string(), z.unknown())).optional(),
-    expiration_date: z.string().optional(),
+    items: z.array(z.record(z.string(), z.unknown())).max(200).optional(),
+    holds: z.array(z.record(z.string(), z.unknown())).max(200).optional(),
+    bills: z.array(z.record(z.string(), z.unknown())).max(200).optional(),
+    expiration_date: z.string().max(30).optional(),
     channel: z.enum(["email", "sms"]).optional(),
   })
   .passthrough();

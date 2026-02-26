@@ -40,8 +40,8 @@ const itemPatchSchema = z
     fineLevel: z.union([z.coerce.number().int(), z.null()]).optional(),
     floating: z.union([z.coerce.number().int(), z.null()]).optional(),
     floatingGroupId: z.union([z.coerce.number().int(), z.null()]).optional(),
-    stat_cat_entry_ids: z.array(z.coerce.number().int().positive()).optional(),
-    statCatEntryIds: z.array(z.coerce.number().int().positive()).optional(),
+    stat_cat_entry_ids: z.array(z.coerce.number().int().positive()).max(100).optional(),
+    statCatEntryIds: z.array(z.coerce.number().int().positive()).max(100).optional(),
   })
   .passthrough();
 

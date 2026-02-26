@@ -20,7 +20,7 @@ import { z } from "zod";
 
 const messagesPostSchema = z.object({
   action: z.enum(["mark_read", "mark_unread", "delete"]),
-  messageIds: z.array(z.coerce.number().int().positive()).min(1),
+  messageIds: z.array(z.coerce.number().int().positive()).min(1).max(100),
 });
 
 export async function GET(req: NextRequest) {

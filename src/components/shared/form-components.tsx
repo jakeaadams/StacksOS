@@ -11,7 +11,14 @@
 "use client";
 
 import * as React from "react";
-import { useForm, UseFormReturn, FieldValues, Path, SubmitHandler, Resolver } from "react-hook-form";
+import {
+  useForm,
+  UseFormReturn,
+  FieldValues,
+  Path,
+  SubmitHandler,
+  Resolver,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
@@ -45,7 +52,16 @@ import { AlertCircle, Check, Loader2 } from "lucide-react";
 export interface FormFieldConfig<T extends FieldValues> {
   name: Path<T>;
   label: string;
-  type?: "text" | "email" | "password" | "number" | "tel" | "date" | "textarea" | "select" | "checkbox";
+  type?:
+    | "text"
+    | "email"
+    | "password"
+    | "number"
+    | "tel"
+    | "date"
+    | "textarea"
+    | "select"
+    | "checkbox";
   placeholder?: string;
   description?: string;
   options?: { value: string; label: string }[];
@@ -131,22 +147,12 @@ export function FormBuilder<T extends FieldValues>({
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className={cn(layoutClasses[layout], className)}
-      >
+      <form onSubmit={form.handleSubmit(onSubmit)} className={cn(layoutClasses[layout], className)}>
         {fields.map((fieldConfig) => (
-          <FormFieldRenderer
-            key={fieldConfig.name}
-            form={form}
-            config={fieldConfig}
-          />
+          <FormFieldRenderer key={fieldConfig.name} form={form} config={fieldConfig} />
         ))}
 
-        <div className={cn(
-          "flex gap-2 pt-4",
-          layout === "inline" ? "" : "border-t mt-6"
-        )}>
+        <div className={cn("flex gap-2 pt-4", layout === "inline" ? "" : "border-t mt-6")}>
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
@@ -170,12 +176,7 @@ export function FormBuilder<T extends FieldValues>({
           )}
 
           {onCancel && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onCancel}
-              disabled={isSubmitting}
-            >
+            <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
               {cancelLabel}
             </Button>
           )}
@@ -231,11 +232,7 @@ function FormFieldRenderer<T extends FieldValues>({
                 {...field}
               />
             ) : type === "select" && options ? (
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-                disabled={disabled}
-              >
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={disabled}>
                 <SelectTrigger>
                   <SelectValue placeholder={placeholder || "Select..."} />
                 </SelectTrigger>
@@ -254,9 +251,7 @@ function FormFieldRenderer<T extends FieldValues>({
                   onCheckedChange={field.onChange}
                   disabled={disabled}
                 />
-                <label
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
+                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                   {label}
                 </label>
               </div>
@@ -380,7 +375,9 @@ export const formSchemas = {
   // Search form
   search: z.object({
     query: z.string().min(1, "Search query is required"),
-    searchType: z.enum(["keyword", "title", "author", "subject", "barcode", "isbn"]).default("keyword"),
+    searchType: z
+      .enum(["keyword", "title", "author", "subject", "barcode", "isbn"])
+      .default("keyword"),
     library: z.string().optional(),
     format: z.string().optional(),
     available: z.boolean().default(false),
@@ -442,11 +439,7 @@ export function SearchForm({
         className="flex-1"
       />
       <Button type="submit" disabled={isLoading || !query.trim()}>
-        {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          "Search"
-        )}
+        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
       </Button>
     </form>
   );
@@ -475,12 +468,10 @@ export function ValidatedInput({
   const inputId = inputProps.id ?? `input-${generatedId}`;
   const errorId = `${inputId}-error`;
   const descriptionId = `${inputId}-description`;
-  
+
   // Build aria-describedby value
-  const describedBy = [
-    description && descriptionId,
-    error && errorId
-  ].filter(Boolean).join(' ') || undefined;
+  const describedBy =
+    [description && descriptionId, error && errorId].filter(Boolean).join(" ") || undefined;
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -510,10 +501,14 @@ export function ValidatedInput({
         )}
       </div>
       {description && !error && (
-        <p id={descriptionId} className="text-sm text-muted-foreground">{description}</p>
+        <p id={descriptionId} className="text-sm text-muted-foreground">
+          {description}
+        </p>
       )}
       {error && (
-        <p id={errorId} role="alert" className="text-sm text-destructive">{error}</p>
+        <p id={errorId} role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
       )}
     </div>
   );

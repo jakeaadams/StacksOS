@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { requireSelfCheckoutSession, SelfCheckoutAuthError } from "@/lib/self-checkout-auth";
 import { logAuditEvent } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 
@@ -25,6 +26,17 @@ const selfCheckoutPostSchema = z
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 60,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-self-checkout",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
 
   try {
     const { selfCheckoutToken: authtoken, patronId } = await requireSelfCheckoutSession();

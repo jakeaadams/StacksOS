@@ -191,6 +191,7 @@ export function GroupedWorkCard({
               onClick={() => onAddToList?.(work.primaryBibId)}
               className="text-muted-foreground/70 hover:text-red-500"
               title="Add to list"
+              aria-label="Add to list"
             >
               <Heart className="h-5 w-5" />
             </Button>

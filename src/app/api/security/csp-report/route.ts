@@ -5,6 +5,31 @@ import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
+type CspReportBody = {
+  "blocked-uri"?: string;
+  "violated-directive"?: string;
+  "document-uri"?: string;
+  "original-policy"?: string;
+  "effective-directive"?: string;
+  disposition?: string;
+  referrer?: string;
+  "script-sample"?: string;
+  sample?: string;
+  "source-file"?: string;
+  "status-code"?: number;
+  "line-number"?: number;
+  "column-number"?: number;
+  blockedURL?: string;
+  documentURI?: string;
+  [key: string]: unknown;
+};
+
+type CspPayload = {
+  "csp-report"?: CspReportBody;
+  body?: CspReportBody;
+  [key: string]: unknown;
+};
+
 const cspReportSchema = z
   .object({
     "csp-report": z.record(z.string(), z.unknown()).optional(),
@@ -50,28 +75,23 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const rawPayload: any = await req.json().catch(() => null);
-    const payload = rawPayload ? (cspReportSchema.safeParse(rawPayload).data ?? rawPayload) : null;
-    const reportBody =
-      (payload as any)?.["csp-report"] || (payload as Record<string, any>)?.body || payload;
+    const rawPayload: unknown = await req.json().catch(() => null);
+    const payload = rawPayload
+      ? ((cspReportSchema.safeParse(rawPayload).data ?? rawPayload) as CspPayload)
+      : null;
+    const reportBody: CspReportBody | null =
+      payload?.["csp-report"] || payload?.body || (payload as CspReportBody | null);
 
-    const documentUri = sanitizeUrl(
-      (reportBody as any)?.["document-uri"] ?? (reportBody as Record<string, any>)?.documentURI
-    );
-    const blockedUri = toStringOrNull(
-      (reportBody as any)?.["blocked-uri"] ?? (reportBody as Record<string, any>)?.blockedURL
-    );
-    const violatedDirective = toStringOrNull((reportBody as any)?.["violated-directive"]);
-    const effectiveDirective = toStringOrNull((reportBody as any)?.["effective-directive"]);
-    const disposition = toStringOrNull((reportBody as Record<string, any>)?.disposition);
-    const statusCodeRaw = (reportBody as any)?.["status-code"];
+    const documentUri = sanitizeUrl(reportBody?.["document-uri"] ?? reportBody?.documentURI);
+    const blockedUri = toStringOrNull(reportBody?.["blocked-uri"] ?? reportBody?.blockedURL);
+    const violatedDirective = toStringOrNull(reportBody?.["violated-directive"]);
+    const effectiveDirective = toStringOrNull(reportBody?.["effective-directive"]);
+    const disposition = toStringOrNull(reportBody?.disposition);
+    const statusCodeRaw = reportBody?.["status-code"];
     const statusCode = Number.isFinite(Number(statusCodeRaw)) ? Number(statusCodeRaw) : null;
 
     // Truncate any samples; they can contain page content.
-    const sampleRaw =
-      (reportBody as any)?.["script-sample"] ??
-      (reportBody as any)?.["sample"] ??
-      (reportBody as Record<string, any>)?.sample;
+    const sampleRaw = reportBody?.["script-sample"] ?? reportBody?.["sample"] ?? reportBody?.sample;
     const sample = typeof sampleRaw === "string" ? sampleRaw.slice(0, 120) : null;
 
     logger.warn(

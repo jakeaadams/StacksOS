@@ -180,7 +180,7 @@ export default function InvoicesPage() {
       const entryId =
         typeof fd.invoice_entry === "number"
           ? fd.invoice_entry
-          : parseInt(String((fd as any).invoice_entry ?? ""), 10);
+          : parseInt(String(fd.invoice_entry ?? ""), 10);
       if (!Number.isFinite(entryId)) continue;
       if (!map.has(entryId)) map.set(entryId, []);
       map.get(entryId)!.push(fd);

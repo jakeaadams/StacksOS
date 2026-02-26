@@ -8,6 +8,7 @@ import {
   getRequestMeta,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { requireSaaSAccess } from "@/lib/saas-rbac";
 import { createIncident, listIncidents, resolveIncident } from "@/lib/db/support";
 import { logAuditEvent } from "@/lib/audit";
@@ -41,6 +42,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 20,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "admin-incidents",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
 
   try {
     const { actor } = await requireSaaSAccess({

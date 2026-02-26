@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
-import { errorResponse, requireAuthToken, serverErrorResponse, successResponse } from "@/lib/api";
+import { errorResponse, serverErrorResponse, successResponse } from "@/lib/api";
+import { requirePermissions } from "@/lib/permissions";
 import { listEventRegistrations } from "@/lib/db/opac-events";
 import { getEventById } from "@/lib/events-data";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAuthToken();
+    await requirePermissions(["STAFF_LOGIN"]);
 
     const { id: eventId } = await params;
     if (!eventId) {

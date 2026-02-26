@@ -170,26 +170,24 @@ Each dashboard section has its own export button:
 const handleDownloadCirculationStats = useCallback(async () => {
   if (!stats) return;
 
-  const data = [{
-    date: new Date().toISOString().split("T")[0],
-    org_id: orgId,
-    checkouts_today: stats.checkouts_today ?? 0,
-    checkins_today: stats.checkins_today ?? 0,
-    // ... other fields
-  }];
-
-  await exportData(
-    generateExportFilename(`stacksos-circulation-org${orgId}`),
-    data,
+  const data = [
     {
-      headers: {
-        date: "Date",
-        org_id: "Organization ID",
-        checkouts_today: "Checkouts Today",
-        // ... other headers
-      },
-    }
-  );
+      date: new Date().toISOString().split("T")[0],
+      org_id: orgId,
+      checkouts_today: stats.checkouts_today ?? 0,
+      checkins_today: stats.checkins_today ?? 0,
+      // ... other fields
+    },
+  ];
+
+  await exportData(generateExportFilename(`stacksos-circulation-org${orgId}`), data, {
+    headers: {
+      date: "Date",
+      org_id: "Organization ID",
+      checkouts_today: "Checkouts Today",
+      // ... other headers
+    },
+  });
 }, [stats, orgId, exportData]);
 ```
 
@@ -201,11 +199,13 @@ Combines all dashboard data into a single CSV:
 const handleDownloadFullReport = useCallback(async () => {
   if (!stats || !holds) return;
 
-  const data = [{
-    // Combine circulation and holds data
-    ...circulationData,
-    ...holdsData,
-  }];
+  const data = [
+    {
+      // Combine circulation and holds data
+      ...circulationData,
+      ...holdsData,
+    },
+  ];
 
   await exportData(generateExportFilename("stacksos-full-report"), data);
 }, [stats, holds, exportData]);
@@ -235,6 +235,7 @@ const handleDownloadFullReport = useCallback(async () => {
 Converts an array of objects to CSV format.
 
 **Parameters:**
+
 - `data`: Array of objects to convert
 - `options` (optional):
   - `headers`: Record<string, string> - Custom column labels
@@ -248,6 +249,7 @@ Converts an array of objects to CSV format.
 Triggers browser download of a CSV file.
 
 **Parameters:**
+
 - `filename`: Name of the file (auto-appends .csv if missing)
 - `csvContent`: CSV content as string
 
@@ -256,6 +258,7 @@ Triggers browser download of a CSV file.
 Converts data to CSV and triggers download in one step.
 
 **Parameters:**
+
 - `filename`: Name of the file
 - `data`: Array of objects to export
 - `options`: Same as `convertToCSV` options
@@ -265,6 +268,7 @@ Converts data to CSV and triggers download in one step.
 Generates a timestamped filename.
 
 **Parameters:**
+
 - `base`: Base filename (without extension)
 - `extension`: File extension (default: "csv")
 
@@ -275,6 +279,7 @@ Generates a timestamped filename.
 React hook for managing CSV export state.
 
 **Returns:**
+
 - `exportData`: Function to export data (same signature as `exportToCSV`)
 - `isExporting`: boolean - Whether export is in progress
 - `error`: Error | null - Export error if any
@@ -291,11 +296,13 @@ React hook for managing CSV export state.
 ## Browser Compatibility
 
 The CSV export utilities work in all modern browsers:
+
 - Chrome/Edge 88+
 - Firefox 85+
 - Safari 14+
 
 The utilities use:
+
 - Blob API for file creation
 - URL.createObjectURL for downloads
 - UTF-8 BOM for Excel compatibility

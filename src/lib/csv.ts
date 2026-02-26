@@ -131,7 +131,7 @@ export function toCSVWithColumns<T extends Record<string, any>>(
   const rows = data.map((row) =>
     columns
       .map((col) => {
-        const value = (row as any)?.[col.key];
+        const value = (row as Record<string, unknown>)[col.key];
         const formatted = col.formatter ? col.formatter(value, row) : String(value ?? "");
         return escapeCSVValue(formatted);
       })

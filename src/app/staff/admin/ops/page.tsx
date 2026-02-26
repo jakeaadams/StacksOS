@@ -198,7 +198,7 @@ export default function OpsAdminPage() {
                     <Select
                       id="severity"
                       value={incidentSeverity}
-                      onValueChange={(v) => setIncidentSeverity(v as any)}
+                      onValueChange={(v) => setIncidentSeverity(v as "info" | "warning" | "error")}
                     >
                       <SelectTrigger>
                         <SelectValue />
