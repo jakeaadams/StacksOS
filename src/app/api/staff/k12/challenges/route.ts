@@ -9,6 +9,7 @@ import {
   createReadingChallenge,
   listClassChallenges,
   updateChallengeProgress,
+  getChallenge,
   getChallengeLeaderboard,
   getChallengeStats,
 } from "@/lib/db/k12-reading-challenges";
@@ -20,7 +21,7 @@ const createChallengeSchema = z.object({
   action: z.literal("createChallenge"),
   classId: z.number().int().positive(),
   title: z.string().trim().min(1, "Title is required").max(1000),
-  description: z.string().trim().optional(),
+  description: z.string().trim().max(2000).optional(),
   goalType: z.enum(["books", "pages", "minutes"]).default("books"),
   goalValue: z.number().int().positive().optional(),
   startDate: z.string().regex(dateRegex, "Must be YYYY-MM-DD format"),
@@ -74,6 +75,21 @@ export async function GET(req: NextRequest) {
       if (!Number.isFinite(challengeId) || challengeId <= 0) {
         return errorResponse("challengeId must be a positive integer", 400);
       }
+
+      // IDOR check: look up the challenge, get its classId, verify class org ownership
+      const challengeInfo = await getChallenge(challengeId);
+      if (!challengeInfo) {
+        return errorResponse("Challenge not found", 404);
+      }
+      const challengeClassInfo = await getK12ClassById(challengeInfo.classId);
+      if (!challengeClassInfo) {
+        return errorResponse("Class not found", 404);
+      }
+      const actorWsOu = Number.parseInt(String(actorRecord?.ws_ou ?? ""), 10);
+      if (Number.isFinite(actorWsOu) && challengeClassInfo.homeOu !== actorWsOu) {
+        return errorResponse("Forbidden: class does not belong to your organization", 403);
+      }
+
       const [leaderboard, stats] = await Promise.all([
         getChallengeLeaderboard(challengeId),
         getChallengeStats(challengeId),

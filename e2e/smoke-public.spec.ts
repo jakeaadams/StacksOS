@@ -13,7 +13,7 @@ test.describe("Public Smoke", () => {
     for (const route of routes) {
       const response = await page.goto(route);
       expect(response, `no response for ${route}`).toBeTruthy();
-      expect(response?.status(), `bad status for ${route}`).toBeLessThan(400);
+      expect(response?.status(), `bad status for ${route}`).toBe(200);
       await expect(page.locator("body"), `body missing on ${route}`).toBeVisible();
     }
   });
@@ -28,9 +28,9 @@ test.describe("Public Smoke", () => {
 
   test("health endpoints respond", async ({ request }) => {
     const health = await request.get("/api/health");
-    expect(health.status()).toBeLessThan(500);
+    expect([200, 503]).toContain(health.status());
 
     const evergreenPing = await request.get("/api/evergreen/ping");
-    expect(evergreenPing.status()).toBeLessThan(500);
+    expect([200, 503]).toContain(evergreenPing.status());
   });
 });

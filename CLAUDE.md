@@ -84,6 +84,12 @@ Lint policy note:
 - AI audit trail viewable at Staff > Admin > AI Audit Trail; query via `GET /api/ai/audit`.
 - AI cost estimation uses `STACKSOS_AI_PRICING_MAP` env var (JSON) for per-model pricing.
 
+## Route Patterns
+
+- Copilot routes use extracted fallback modules (`fallback.ts`) for testability.
+- K-12 routes follow the canonical security pattern: rate limit -> IDOR -> Zod validation -> audit log.
+- CSV exports use `escapeCsvValue` from `@/lib/k12/export-helpers` with formula injection defense.
+
 ## Evergreen Ops Rules
 
 - Keep Evergreen TLS trust synchronized:

@@ -78,6 +78,8 @@ Dependency rule:
 - Copilot routes: `src/app/api/ai/{holds,patron,acquisitions}-copilot/route.ts` (follow `staff-copilot` pattern)
 - AI audit trail: `src/app/api/ai/audit/route.ts`, `src/app/staff/admin/ai-audit/page.tsx`
 - AI DB functions: `src/lib/db/ai.ts` (`listAiDrafts`, `getAiDraftWithDecisions`)
+- Cataloging copilot fallback: `src/app/api/ai/cataloging-copilot/fallback.ts`
+- Admin copilot fallback: `src/app/api/ai/admin-copilot/fallback.ts`
 
 ### Events Lifecycle
 
@@ -93,6 +95,11 @@ Dependency rule:
 - Roster import: `src/app/api/staff/k12/roster-import/route.ts`
 - Stats: `src/app/api/staff/k12/stats/route.ts`
 - Asset UI: `src/app/staff/circulation/k12-assets/page.tsx`
+- Export helpers: `src/lib/k12/export-helpers.ts` (CSV export and overdue grouping)
+- Challenges API: `src/app/api/staff/k12/challenges/route.ts`
+- Overdue dashboard API: `src/app/api/staff/k12/overdue-dashboard/route.ts`
+- Data export API: `src/app/api/staff/k12/export/route.ts`
+- Barcode generation API: `src/app/api/staff/k12/barcodes/route.ts`
 
 ### Onboarding
 

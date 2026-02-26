@@ -652,6 +652,7 @@ export default function K12ClassCirculationPage() {
                         accept=".csv"
                         className="hidden"
                         onChange={handleFileUpload}
+                        aria-label="Upload roster file"
                       />
                       <Button variant="outline" size="sm" asChild>
                         <span>
@@ -715,6 +716,7 @@ export default function K12ClassCirculationPage() {
                         setStudentForm((prev) => ({ ...prev, firstName: event.target.value }))
                       }
                       placeholder="First name"
+                      aria-label="First name"
                     />
                     <Input
                       value={studentForm.lastName}
@@ -722,6 +724,7 @@ export default function K12ClassCirculationPage() {
                         setStudentForm((prev) => ({ ...prev, lastName: event.target.value }))
                       }
                       placeholder="Last name"
+                      aria-label="Last name"
                     />
                     <Input
                       value={studentForm.studentIdentifier}
@@ -732,6 +735,7 @@ export default function K12ClassCirculationPage() {
                         }))
                       }
                       placeholder="Student ID (optional)"
+                      aria-label="Student ID"
                     />
                   </div>
                   <Button onClick={() => void onCreateStudent()} disabled={saving}>
@@ -782,6 +786,7 @@ export default function K12ClassCirculationPage() {
                         setCheckoutForm((prev) => ({ ...prev, copyBarcode: event.target.value }))
                       }
                       placeholder="Copy barcode"
+                      aria-label="Copy barcode"
                     />
                     <Input
                       value={checkoutForm.title}
@@ -789,6 +794,7 @@ export default function K12ClassCirculationPage() {
                         setCheckoutForm((prev) => ({ ...prev, title: event.target.value }))
                       }
                       placeholder="Title override (optional)"
+                      aria-label="Title override"
                     />
                     <Select
                       value={checkoutForm.studentId || "__class__"}
@@ -825,6 +831,7 @@ export default function K12ClassCirculationPage() {
                         setCheckoutForm((prev) => ({ ...prev, notes: event.target.value }))
                       }
                       placeholder="Notes (optional)"
+                      aria-label="Notes"
                     />
                   </div>
                   <Button onClick={() => void onCheckout()} disabled={saving}>

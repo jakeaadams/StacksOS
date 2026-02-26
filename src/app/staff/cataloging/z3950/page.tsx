@@ -14,13 +14,7 @@ import {
   SetupRequired,
   SETUP_CONFIGS,
 } from "@/components/shared";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useApi } from "@/hooks";
 import { Globe, Search, Download, Loader2, BookOpen, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -104,68 +98,69 @@ export default function Z3950Page() {
   /**
    * Import a Z39.50 record into Evergreen as a bib record
    */
-  const importRecord = useCallback(async (record: Z3950Record) => {
-    if (!record.marcxml) {
-      toast.error("Cannot import record", {
-        description: "No MARC XML data available",
-      });
-      return;
-    }
-
-    setImportingIds((prev) => new Set(prev).add(record.id));
-
-    try {
-      // Determine source based on service
-      const source =
-        record.service.toLowerCase() === "oclc"
-          ? "OCLC"
-          : record.service.toUpperCase();
-
-      const res = await fetchWithAuth("/api/evergreen/marc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          marcxml: record.marcxml,
-          source,
-          auto_tcn: true,
-        }),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok || json.ok === false) {
-        throw new Error(json.error || "Import failed");
+  const importRecord = useCallback(
+    async (record: Z3950Record) => {
+      if (!record.marcxml) {
+        toast.error("Cannot import record", {
+          description: "No MARC XML data available",
+        });
+        return;
       }
 
-      const recordId = json.record?.id;
-      const tcn = json.record?.tcn;
+      setImportingIds((prev) => new Set(prev).add(record.id));
 
-      toast.success("Record imported successfully", {
-        description: `Record ID: ${recordId}${tcn ? ` | TCN: ${tcn}` : ""}`,
-        action: recordId
-          ? {
-              label: "View Record",
-              onClick: () => router.push(`/staff/catalog/record/${recordId}`),
-            }
-          : undefined,
-      });
+      try {
+        // Determine source based on service
+        const source =
+          record.service.toLowerCase() === "oclc" ? "OCLC" : record.service.toUpperCase();
 
-      // Remove the imported record from results
-      setSearchState((prev) => ({
-        ...prev,
-        results: prev.results.filter((r: any) => r.id !== record.id),
-      }));
-    } catch (err: any) {
-      const errorMessage = err?.message || "Import failed";
-      toast.error("Failed to import record", { description: errorMessage });
-    } finally {
-      setImportingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(record.id);
-        return next;
-      });
-    }
-  }, [router]);
+        const res = await fetchWithAuth("/api/evergreen/marc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            marcxml: record.marcxml,
+            source,
+            auto_tcn: true,
+          }),
+        });
+
+        const json = await res.json();
+
+        if (!res.ok || json.ok === false) {
+          throw new Error(json.error || "Import failed");
+        }
+
+        const recordId = json.record?.id;
+        const tcn = json.record?.tcn;
+
+        toast.success("Record imported successfully", {
+          description: `Record ID: ${recordId}${tcn ? ` | TCN: ${tcn}` : ""}`,
+          action: recordId
+            ? {
+                label: "View Record",
+                onClick: () => router.push(`/staff/catalog/record/${recordId}`),
+              }
+            : undefined,
+        });
+
+        // Remove the imported record from results
+        setSearchState((prev) => ({
+          ...prev,
+          results: prev.results.filter((r: any) => r.id !== record.id),
+        }));
+      } catch (err: any) {
+        const errorMessage = err?.message || "Import failed";
+        toast.error("Failed to import record", { description: errorMessage });
+      } finally {
+        setImportingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(record.id);
+          return next;
+        });
+      }
+    },
+    [router]
+  );
 
   // Define table columns
   const columns = useMemo<ColumnDef<Z3950Record>[]>(
@@ -177,9 +172,7 @@ export default function Z3950Page() {
           <div className="max-w-md">
             <div className="font-medium">{row.original.title}</div>
             {row.original.publisher && (
-              <div className="text-xs text-muted-foreground mt-1">
-                {row.original.publisher}
-              </div>
+              <div className="text-xs text-muted-foreground mt-1">{row.original.publisher}</div>
             )}
           </div>
         ),
@@ -198,11 +191,7 @@ export default function Z3950Page() {
         accessorKey: "isbn",
         header: "ISBN",
         cell: ({ row }) =>
-          row.original.isbn ? (
-            <span className="font-mono text-xs">{row.original.isbn}</span>
-          ) : (
-            "—"
-          ),
+          row.original.isbn ? <span className="font-mono text-xs">{row.original.isbn}</span> : "—",
       },
       {
         accessorKey: "service",
@@ -282,9 +271,7 @@ export default function Z3950Page() {
       }
 
       // Flatten results from all services
-      const allRecords = (json.results || []).flatMap(
-        (result: any) => result.records || []
-      );
+      const allRecords = (json.results || []).flatMap((result: any) => result.records || []);
 
       setSearchState((prev) => ({
         ...prev,
@@ -317,7 +304,7 @@ export default function Z3950Page() {
   /**
    * Handle Enter key in search input
    */
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !searchState.isSearching) {
       void handleSearch();
     }
@@ -332,10 +319,7 @@ export default function Z3950Page() {
       <PageHeader
         title="Z39.50 Cataloging Import"
         subtitle="Search external library catalogs and import MARC records into Evergreen"
-        breadcrumbs={[
-          { label: "Cataloging", href: "/staff/cataloging" },
-          { label: "Z39.50" },
-        ]}
+        breadcrumbs={[{ label: "Cataloging", href: "/staff/cataloging" }, { label: "Z39.50" }]}
       >
         <StatusBadge
           label={isOnline ? "Evergreen Online" : "Evergreen Offline"}
@@ -405,7 +389,7 @@ export default function Z3950Page() {
                       onChange={(e) =>
                         setSearchState((prev) => ({ ...prev, query: e.target.value }))
                       }
-                      onKeyPress={handleKeyPress}
+                      onKeyDown={handleKeyDown}
                       className="!pl-14"
                       disabled={searchState.isSearching || !isOnline}
                     />

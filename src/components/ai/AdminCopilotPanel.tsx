@@ -176,7 +176,13 @@ export function AdminCopilotPanel({ orgId, metrics, alerts, className }: AdminCo
             )}
 
             {degraded && response && (
-              <div className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
+              <div
+                className="text-xs rounded-lg p-2"
+                style={{
+                  color: "hsl(var(--status-warning-text))",
+                  backgroundColor: "hsl(var(--status-warning-bg))",
+                }}
+              >
                 AI provider unavailable. Showing threshold-based fallback analysis.
               </div>
             )}
@@ -237,6 +243,7 @@ export function AdminCopilotPanel({ orgId, metrics, alerts, className }: AdminCo
                                 variant="outline"
                                 className="h-7 shrink-0"
                                 onClick={() => router.push(a.deepLink ?? "/")}
+                                aria-label="Go to action"
                               >
                                 <ArrowRight className="h-3 w-3" />
                               </Button>

@@ -1,11 +1,25 @@
 import { NextRequest } from "next/server";
-import { errorResponse, serverErrorResponse, successResponse } from "@/lib/api";
+import { errorResponse, getRequestMeta, serverErrorResponse, successResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
-import { getClassReadingStats } from "@/lib/db/k12-class-circulation";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { getClassReadingStats, getK12ClassById } from "@/lib/db/k12-class-circulation";
 
 export async function GET(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 60,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "k12-stats-get",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
-    await requirePermissions(["STAFF_LOGIN"]);
+    const { actor } = await requirePermissions(["STAFF_LOGIN"]);
+    const actorRecord = actor && typeof actor === "object" ? (actor as Record<string, any>) : null;
 
     const { searchParams } = new URL(req.url);
     const classIdRaw = searchParams.get("classId");
@@ -17,6 +31,16 @@ export async function GET(req: NextRequest) {
     const classId = Number.parseInt(classIdRaw, 10);
     if (!Number.isFinite(classId) || classId <= 0) {
       return errorResponse("classId must be a positive integer", 400);
+    }
+
+    // IDOR check: verify class exists and belongs to the actor's org
+    const classInfo = await getK12ClassById(classId);
+    if (!classInfo) {
+      return errorResponse("Class not found", 404);
+    }
+    const actorWsOu = Number.parseInt(String(actorRecord?.ws_ou ?? ""), 10);
+    if (Number.isFinite(actorWsOu) && classInfo.homeOu !== actorWsOu) {
+      return errorResponse("Forbidden: class does not belong to your organization", 403);
     }
 
     const stats = await getClassReadingStats(classId);

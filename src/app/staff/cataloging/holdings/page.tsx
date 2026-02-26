@@ -182,7 +182,7 @@ function HoldingsContent() {
                   placeholder="Enter Bib Record ID..."
                   value={searchBibId}
                   onChange={(e) => setSearchBibId(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   className="h-9"
                 />
                 <Button size="sm" onClick={handleSearch} disabled={loading || !searchBibId}>

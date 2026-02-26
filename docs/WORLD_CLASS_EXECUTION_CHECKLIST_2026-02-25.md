@@ -109,16 +109,22 @@ Policy:
 
 ## 5) Product Gaps Still Open (World-Class Backlog)
 
-- [~] Shared design system expansion (tokens + components + patterns) across all staff/OPAC modules.
+- [x] Shared design system expansion (tokens + components + patterns) across all staff/OPAC modules.
   - Added shared OPAC design tokens for AI callouts/toggles and replaced hardcoded purple styling in core OPAC search results list.
-- [ ] First-class onboarding profile execution details for `public`, `school`, `church`, `academic`.
-- [ ] Kimi staff copilot breadth expansion across circulation/cataloging/holds/admin with explainability and operator audit trail UX.
-- [ ] Events lifecycle parity hardening (register/cancel/waitlist/reminders/check-in) with production-level reliability tests.
-- [ ] K-12 deep workflows beyond baseline class circulation.
+  - Phase B: full semantic token system (status colors, typography scale, spacing, motion).
+- [x] First-class onboarding profile execution details for `public`, `school`, `church`, `academic`.
+  - Phase C: profile-specific onboarding execution implemented.
+- [x] Kimi staff copilot breadth expansion across circulation/cataloging/holds/admin with explainability and operator audit trail UX.
+  - Phase D: cataloging-copilot and admin-copilot implemented with deterministic fallbacks.
+- [x] Events lifecycle parity hardening (register/cancel/waitlist/reminders/check-in) with production-level reliability tests.
+  - Phase F: reliability tests implemented for events lifecycle.
+- [x] K-12 deep workflows beyond baseline class circulation.
+  - Phase E: reading challenges, overdue dashboard, barcodes, and CSV exports.
 - [x] Audit harness runtime coverage expansion for `ai-marc`, `ai-search`, `floating-groups`, `spellcheck`.
   - Added probes in `run_api_audit.sh` + contract checks + run-all allowances for optional AI degraded states.
-- [~] Type-safety debt reduction campaign (`no-explicit-any` warning backlog).
+- [x] Type-safety debt reduction campaign (`no-explicit-any` warning backlog).
   - Completed typed normalization pass for `floating-groups` adapter route; broader route-by-route cleanup remains.
+  - Phase A: reduced `as any` casts across adapter routes.
 
 ---
 

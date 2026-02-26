@@ -15,10 +15,15 @@ export interface ExportColumn<T extends Record<string, any> = Record<string, any
 
 /**
  * Escapes a value for CSV format
- * Handles special characters (commas, quotes, newlines)
+ * Handles special characters (commas, quotes, newlines) and defends against formula injection.
  */
 function escapeCSVValue(value: unknown): string {
-  const str = String(value ?? "");
+  let str = String(value ?? "");
+
+  // Defend against CSV formula injection: prefix dangerous leading characters
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = "'" + str;
+  }
 
   // If the string contains comma, quote, newline, or carriage return, wrap in quotes
   if (/[\n\r,"]/.test(str)) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { errorResponse, getRequestMeta, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit";
 import {
   getClassReadingStats,
   listK12Students,
@@ -41,7 +42,7 @@ function csvEscape(value: string | null | undefined): string {
 }
 
 export async function GET(req: NextRequest) {
-  const { ip } = getRequestMeta(req);
+  const { ip, userAgent, requestId } = getRequestMeta(req);
   const rate = await checkRateLimit(ip || "unknown", {
     maxAttempts: 30,
     windowMs: 5 * 60 * 1000,
@@ -103,6 +104,23 @@ export async function GET(req: NextRequest) {
         dueTs: c.dueTs,
       })),
     };
+
+    await logAuditEvent({
+      action: "k12.export.download",
+      entity: "k12_class",
+      entityId: classId,
+      status: "success",
+      actor: actorRecord as import("@/lib/audit").AuditActor | null,
+      ip,
+      userAgent,
+      requestId,
+      details: {
+        classId,
+        format,
+        studentCount: exportData.students.length,
+        checkoutCount: exportData.activeCheckouts.length,
+      },
+    });
 
     if (format === "json") {
       return NextResponse.json({

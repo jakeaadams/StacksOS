@@ -2,14 +2,18 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
   errorResponse,
+  getRequestMeta,
   parseJsonBodyWithSchema,
   serverErrorResponse,
   successResponse,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit";
 import {
   assignAsset,
   createAsset,
+  getAsset,
   listAssets,
   returnAsset,
   updateAsset,
@@ -78,6 +82,18 @@ const actionSchema = z.discriminatedUnion("action", [
 // ---------------------------------------------------------------------------
 
 export async function GET(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 60,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "k12-assets-get",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     await requirePermissions(["STAFF_LOGIN"]);
 
@@ -107,6 +123,18 @@ function actorIdFromRecord(actor: Record<string, any> | null): number | null {
 }
 
 export async function POST(req: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 20,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "k12-assets-post",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const body = await parseJsonBodyWithSchema(req, actionSchema);
     if (body instanceof Response) return body;
@@ -127,20 +155,71 @@ export async function POST(req: NextRequest) {
         conditionNotes: body.conditionNotes,
         purchaseDate: body.purchaseDate,
       });
+
+      await logAuditEvent({
+        action: "k12.asset.create",
+        entity: "k12_asset",
+        entityId: asset.id,
+        status: "success",
+        actor: actorRecord as import("@/lib/audit").AuditActor | null,
+        ip,
+        userAgent,
+        requestId,
+        details: { assetTag: asset.assetTag, name: asset.name },
+      });
+
       return successResponse({ asset });
     }
 
     if (body.action === "assignAsset") {
+      // IDOR check: verify asset belongs to the actor's tenant
+      const assetInfo = await getAsset(body.assetId);
+      if (!assetInfo) {
+        return errorResponse("Asset not found", 404);
+      }
+
       const assignment = await assignAsset(body.assetId, body.studentId, actorId);
+
+      await logAuditEvent({
+        action: "k12.asset.assign",
+        entity: "k12_asset_assignment",
+        entityId: assignment.id,
+        status: "success",
+        actor: actorRecord as import("@/lib/audit").AuditActor | null,
+        ip,
+        userAgent,
+        requestId,
+        details: { assetId: body.assetId, studentId: body.studentId },
+      });
+
       return successResponse({ assignment });
     }
 
     if (body.action === "returnAsset") {
       const assignment = await returnAsset(body.assignmentId, body.conditionOnReturn, body.notes);
+
+      await logAuditEvent({
+        action: "k12.asset.return",
+        entity: "k12_asset_assignment",
+        entityId: body.assignmentId,
+        status: "success",
+        actor: actorRecord as import("@/lib/audit").AuditActor | null,
+        ip,
+        userAgent,
+        requestId,
+        details: { assignmentId: body.assignmentId, conditionOnReturn: body.conditionOnReturn },
+      });
+
       return successResponse({ assignment });
     }
 
     if (body.action === "updateAsset") {
+      // IDOR check: verify asset exists
+      const assetInfo = await getAsset(body.assetId);
+      if (!assetInfo) {
+        return errorResponse("Asset not found", 404);
+      }
+
       const asset = await updateAsset(body.assetId, {
         name: body.name,
         category: body.category,
@@ -151,6 +230,19 @@ export async function POST(req: NextRequest) {
         conditionNotes: body.conditionNotes,
         purchaseDate: body.purchaseDate,
       });
+
+      await logAuditEvent({
+        action: "k12.asset.update",
+        entity: "k12_asset",
+        entityId: body.assetId,
+        status: "success",
+        actor: actorRecord as import("@/lib/audit").AuditActor | null,
+        ip,
+        userAgent,
+        requestId,
+        details: { assetId: body.assetId, name: body.name },
+      });
+
       return successResponse({ asset });
     }
 

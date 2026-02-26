@@ -182,6 +182,8 @@ Then diff the two generated folders under `audit/evergreen-footprint/`.
 - **Holds copilot** on holds management page — prioritization advice from queue data
 - **Patron copilot** on patron detail page — interaction guidance from patron history
 - **Acquisitions copilot** on acquisitions page — budget/fund analysis
+- **Cataloging copilot** on cataloging page — MARC record assistance and validation
+- **Admin copilot** on admin page — system configuration guidance
 - All copilots include deterministic fallbacks, thumbs up/down feedback, and expandable reasoning
 - **AI audit trail** admin page at Staff > Admin > AI Audit Trail — filterable DataTable with decision chain, redacted inputs, provider/model detail
 
@@ -199,6 +201,7 @@ Then diff the two generated folders under `audit/evergreen-footprint/`.
 - CSV roster import with validation and preview
 - Class-level reading stats dashboard (checkouts, books/student, avg duration, overdue)
 - K-12 asset management — full CRUD, assign/return, barcode scan, status tracking, condition notes
+- Reading challenges with leaderboards and progress tracking
 
 ### Onboarding Wizard
 
@@ -216,6 +219,10 @@ Then diff the two generated folders under `audit/evergreen-footprint/`.
 - Patron barcode visualization on OPAC account page
 - "Did you mean?" spell correction in OPAC search (no results)
 - Patron review submission (star rating + text) on record detail page
+
+### Design System
+
+- Semantic design tokens (status colors, typography scale, spacing, motion) for consistent theming across staff and OPAC modules
 
 ### Type-Safety Improvements
 

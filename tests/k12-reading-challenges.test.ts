@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildStatsCsvRows,
@@ -276,6 +277,27 @@ describe("export CSV format", () => {
   it("escapeCsvValue handles embedded quotes", () => {
     expect(escapeCsvValue('He said "hello"')).toBe('"He said ""hello"""');
   });
+
+  it("escapeCsvValue prefixes values starting with =", () => {
+    expect(escapeCsvValue('=CMD("calc")')).toBe(`"'=CMD(""calc"")"`);
+  });
+
+  it("escapeCsvValue prefixes values starting with +", () => {
+    expect(escapeCsvValue("+1234")).toBe(`"'+1234"`);
+  });
+
+  it("escapeCsvValue prefixes values starting with -", () => {
+    expect(escapeCsvValue("-1+1")).toBe(`"'-1+1"`);
+  });
+
+  it("escapeCsvValue prefixes values starting with @", () => {
+    expect(escapeCsvValue("@SUM(A1)")).toBe(`"'@SUM(A1)"`);
+  });
+
+  it("escapeCsvValue does NOT prefix normal values", () => {
+    expect(escapeCsvValue("Hello World")).toBe(`"Hello World"`);
+    expect(escapeCsvValue("42")).toBe(`"42"`);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -356,5 +378,37 @@ describe("overdue grouping", () => {
     expect(item.copyBarcode).toBe("BC999");
     expect(item.title).toBeNull();
     expect(item.daysOverdue).toBe(20);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Overdue notice schema tests
+// ---------------------------------------------------------------------------
+
+describe("overdue notice schema", () => {
+  const bulkNoticeSchema = z.object({
+    classId: z.number().int().positive(),
+    studentIds: z.array(z.number().int().positive()).min(1).max(200),
+  });
+
+  it("accepts valid input", () => {
+    const result = bulkNoticeSchema.safeParse({ classId: 1, studentIds: [10, 20] });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects empty studentIds", () => {
+    const result = bulkNoticeSchema.safeParse({ classId: 1, studentIds: [] });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects negative classId", () => {
+    const result = bulkNoticeSchema.safeParse({ classId: -1, studentIds: [1] });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects more than 200 studentIds", () => {
+    const ids = Array.from({ length: 201 }, (_, i) => i + 1);
+    const result = bulkNoticeSchema.safeParse({ classId: 1, studentIds: ids });
+    expect(result.success).toBe(false);
   });
 });

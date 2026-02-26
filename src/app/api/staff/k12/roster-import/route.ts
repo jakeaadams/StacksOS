@@ -1,21 +1,23 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, serverErrorResponse, successResponse } from "@/lib/api";
+import { errorResponse, getRequestMeta, serverErrorResponse, successResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
-import { createK12Student } from "@/lib/db/k12-class-circulation";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit";
+import { createK12Student, getK12ClassById } from "@/lib/db/k12-class-circulation";
 import { logger } from "@/lib/logger";
 
 const rosterRowSchema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
-  student_id: z.string().trim().optional(),
-  grade: z.string().trim().optional(),
-  patron_barcode: z.string().trim().optional(),
+  name: z.string().trim().min(1, "Name is required").max(200),
+  student_id: z.string().trim().max(100).optional(),
+  grade: z.string().trim().max(50).optional(),
+  patron_barcode: z.string().trim().max(100).optional(),
 });
 
 const importBodySchema = z.object({
   classId: z.number().int().positive(),
   rows: z.array(rosterRowSchema).min(1, "At least one row is required").max(500),
-  headers: z.array(z.string()).optional(),
+  headers: z.array(z.string().max(200)).max(50).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -57,6 +59,18 @@ function parseName(fullName: string): { firstName: string; lastName: string } {
 }
 
 export async function POST(req: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 10,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "k12-roster-import-post",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
     const actorRecord = actor && typeof actor === "object" ? (actor as Record<string, any>) : null;
@@ -78,6 +92,16 @@ export async function POST(req: NextRequest) {
     }
 
     const { classId, rows, headers } = parsed.data;
+
+    // IDOR check: verify class exists and belongs to the actor's org
+    const classInfo = await getK12ClassById(classId);
+    if (!classInfo) {
+      return errorResponse("Class not found", 404);
+    }
+    const actorWsOu = Number.parseInt(String(actorRecord?.ws_ou ?? ""), 10);
+    if (Number.isFinite(actorWsOu) && classInfo.homeOu !== actorWsOu) {
+      return errorResponse("Forbidden: class does not belong to your organization", 403);
+    }
     const detectedFormat = headers ? detectSISFormat(headers) : "generic";
     const errors: Array<{ row: number; error: string }> = [];
     let createdCount = 0;
@@ -117,6 +141,24 @@ export async function POST(req: NextRequest) {
       },
       "Roster import completed"
     );
+
+    await logAuditEvent({
+      action: "k12.roster.import",
+      entity: "k12_class",
+      entityId: classId,
+      status: "success",
+      actor: actorRecord as import("@/lib/audit").AuditActor | null,
+      ip,
+      userAgent,
+      requestId,
+      details: {
+        classId,
+        total: rows.length,
+        imported: createdCount,
+        errorCount: errors.length,
+        detectedFormat,
+      },
+    });
 
     return successResponse({
       imported: createdCount,

@@ -20,9 +20,13 @@ export interface K12ExportStats {
   mostActiveReader: string | null;
 }
 
-/** Escape a value for CSV (double-quote escaping per RFC 4180). */
+/** Escape a value for CSV (double-quote escaping per RFC 4180 + formula injection defense). */
 export function escapeCsvValue(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`;
+  let safe = value;
+  if (/^[=+\-@\t\r]/.test(safe)) {
+    safe = "'" + safe;
+  }
+  return `"${safe.replace(/"/g, '""')}"`;
 }
 
 /** Build the stats section rows for the K-12 export CSV. */

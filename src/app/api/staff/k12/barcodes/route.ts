@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { errorResponse, getRequestMeta, serverErrorResponse, successResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit";
 import { listK12Students, getK12ClassById } from "@/lib/db/k12-class-circulation";
 
 export interface BarcodeCard {
@@ -14,7 +15,7 @@ export interface BarcodeCard {
 }
 
 export async function GET(req: NextRequest) {
-  const { ip } = getRequestMeta(req);
+  const { ip, userAgent, requestId } = getRequestMeta(req);
   const rate = await checkRateLimit(ip || "unknown", {
     maxAttempts: 60,
     windowMs: 5 * 60 * 1000,
@@ -65,6 +66,18 @@ export async function GET(req: NextRequest) {
       className: classInfo.name,
       teacherName: classInfo.teacherName,
     }));
+
+    await logAuditEvent({
+      action: "k12.barcodes.generate",
+      entity: "k12_class",
+      entityId: classId,
+      status: "success",
+      actor: actorRecord as import("@/lib/audit").AuditActor | null,
+      ip,
+      userAgent,
+      requestId,
+      details: { classId, className: classInfo.name, cardCount: cards.length },
+    });
 
     return successResponse({ cards, className: classInfo.name });
   } catch (error) {

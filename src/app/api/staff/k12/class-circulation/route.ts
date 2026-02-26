@@ -9,6 +9,7 @@ import {
   successResponse,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   createK12Checkout,
   createK12Class,
@@ -101,6 +102,18 @@ function parseOptionalPositiveInt(input: string | null): number | null {
 }
 
 export async function GET(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 60,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "k12-class-circulation-get",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
     const actorRecord = actor && typeof actor === "object" ? (actor as Record<string, any>) : null;
@@ -113,6 +126,18 @@ export async function GET(req: NextRequest) {
 
     const classes = await listK12Classes(orgId);
     const selectedClassId = requestedClassId || classes[0]?.id || null;
+
+    // IDOR check: if a specific classId was requested, verify it belongs to the actor's org
+    if (requestedClassId) {
+      const classInfo = await getK12ClassById(requestedClassId);
+      if (!classInfo) {
+        return errorResponse("Class not found", 404);
+      }
+      const actorWsOu = Number.parseInt(String(actorRecord?.ws_ou ?? ""), 10);
+      if (Number.isFinite(actorWsOu) && classInfo.homeOu !== actorWsOu) {
+        return errorResponse("Forbidden: class does not belong to your organization", 403);
+      }
+    }
 
     let students = [] as Awaited<ReturnType<typeof listK12Students>>;
     let activeCheckouts = [] as Awaited<ReturnType<typeof listK12ActiveCheckouts>>;
@@ -139,6 +164,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 20,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "k12-class-circulation-post",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const body = await parseJsonBodyWithSchema(req, actionSchema);
     if (body instanceof Response) return body;
@@ -174,6 +210,16 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.action === "createStudent") {
+      // IDOR check
+      const classInfo = await getK12ClassById(body.classId);
+      if (!classInfo) {
+        return errorResponse("Class not found", 404);
+      }
+      const actorWsOu = Number.parseInt(String(actorRecord?.ws_ou ?? ""), 10);
+      if (Number.isFinite(actorWsOu) && classInfo.homeOu !== actorWsOu) {
+        return errorResponse("Forbidden: class does not belong to your organization", 403);
+      }
+
       const created = await createK12Student({
         classId: body.classId,
         firstName: body.firstName,
@@ -199,6 +245,16 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.action === "checkout") {
+      // IDOR check
+      const classInfo = await getK12ClassById(body.classId);
+      if (!classInfo) {
+        return errorResponse("Class not found", 404);
+      }
+      const actorWsOu = Number.parseInt(String(actorRecord?.ws_ou ?? ""), 10);
+      if (Number.isFinite(actorWsOu) && classInfo.homeOu !== actorWsOu) {
+        return errorResponse("Forbidden: class does not belong to your organization", 403);
+      }
+
       const checkout = await createK12Checkout({
         classId: body.classId,
         studentId: body.studentId || null,
@@ -208,8 +264,6 @@ export async function POST(req: NextRequest) {
         notes: body.notes || null,
         actorId,
       });
-
-      const classInfo = await getK12ClassById(body.classId);
       await publishDeveloperEvent({
         tenantId: process.env.STACKSOS_TENANT_ID || "default",
         eventType: "k12.checkout.created",
@@ -254,12 +308,34 @@ export async function POST(req: NextRequest) {
           returnedCount: returned,
         },
       });
+
+      await logAuditEvent({
+        action: "k12.return.by_ids",
+        entity: "k12_checkout",
+        entityId: body.checkoutIds[0] ?? 0,
+        status: "success",
+        actor: actorRecord as import("@/lib/audit").AuditActor | null,
+        ip,
+        userAgent,
+        requestId,
+        details: { checkoutIds: body.checkoutIds, returnedCount: returned },
+      });
+
       return successResponse({ returnedCount: returned });
     }
 
     if (body.action === "returnAllForClass") {
-      const returned = await returnAllActiveK12CheckoutsForClass(body.classId);
+      // IDOR check
       const classInfo = await getK12ClassById(body.classId);
+      if (!classInfo) {
+        return errorResponse("Class not found", 404);
+      }
+      const actorWsOu = Number.parseInt(String(actorRecord?.ws_ou ?? ""), 10);
+      if (Number.isFinite(actorWsOu) && classInfo.homeOu !== actorWsOu) {
+        return errorResponse("Forbidden: class does not belong to your organization", 403);
+      }
+
+      const returned = await returnAllActiveK12CheckoutsForClass(body.classId);
       await publishDeveloperEvent({
         tenantId: process.env.STACKSOS_TENANT_ID || "default",
         eventType: "k12.return.processed",
@@ -267,10 +343,23 @@ export async function POST(req: NextRequest) {
         requestId,
         payload: {
           classId: body.classId,
-          className: classInfo?.name || null,
+          className: classInfo.name,
           returnedCount: returned,
         },
       });
+
+      await logAuditEvent({
+        action: "k12.return.all_for_class",
+        entity: "k12_class",
+        entityId: body.classId,
+        status: "success",
+        actor: actorRecord as import("@/lib/audit").AuditActor | null,
+        ip,
+        userAgent,
+        requestId,
+        details: { classId: body.classId, className: classInfo.name, returnedCount: returned },
+      });
+
       return successResponse({ returnedCount: returned });
     }
 

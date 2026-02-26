@@ -268,7 +268,7 @@ export default function ReadingChallengesPage() {
               value={selectedClassId ? String(selectedClassId) : "__none__"}
               onValueChange={(v) => setSelectedClassId(v === "__none__" ? null : Number(v))}
             >
-              <SelectTrigger className="h-10 max-w-sm">
+              <SelectTrigger className="h-10 max-w-sm" aria-label="Select class">
                 <SelectValue placeholder="Select a class" />
               </SelectTrigger>
               <SelectContent>
