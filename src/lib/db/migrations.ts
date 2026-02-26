@@ -498,6 +498,106 @@ const migration4K12AndDeveloperPlatform: Migration = {
   },
 };
 
+/**
+ * Migration #5 – Add patron_id column to k12_students for patron linking.
+ */
+const migration5StudentPatronLinking: Migration = {
+  version: 5,
+  description: "Add patron_id column to k12_students for Evergreen patron linking",
+  up: async (client: PoolClient) => {
+    await client.query(
+      `ALTER TABLE library.k12_students ADD COLUMN IF NOT EXISTS patron_id INTEGER`
+    );
+  },
+};
+
+/**
+ * Migration #6 – K-12 asset management tables.
+ */
+const migration6K12Assets: Migration = {
+  version: 6,
+  description: "Create K-12 asset management and assignment tables",
+  up: async (client: PoolClient) => {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS library.k12_assets (
+        id SERIAL PRIMARY KEY,
+        tenant_id TEXT NOT NULL DEFAULT 'default',
+        asset_tag TEXT NOT NULL,
+        name TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'device',
+        model TEXT,
+        serial_number TEXT,
+        status TEXT NOT NULL DEFAULT 'available',
+        condition TEXT DEFAULT 'good',
+        condition_notes TEXT,
+        purchase_date DATE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(tenant_id, asset_tag)
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_k12_assets_tenant_status
+      ON library.k12_assets(tenant_id, status, id DESC)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_k12_assets_category
+      ON library.k12_assets(tenant_id, category, id DESC)
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS library.k12_asset_assignments (
+        id SERIAL PRIMARY KEY,
+        asset_id INTEGER NOT NULL REFERENCES library.k12_assets(id),
+        student_id INTEGER NOT NULL REFERENCES library.k12_students(id),
+        assigned_at TIMESTAMP DEFAULT NOW(),
+        returned_at TIMESTAMP,
+        assigned_by INTEGER,
+        condition_on_return TEXT,
+        notes TEXT
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_k12_asset_assignments_asset
+      ON library.k12_asset_assignments(asset_id, returned_at, assigned_at DESC)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_k12_asset_assignments_student
+      ON library.k12_asset_assignments(student_id, returned_at, assigned_at DESC)
+    `);
+  },
+};
+
+/**
+ * Migration #7 – Onboarding task completion persistence.
+ */
+const migration7OnboardingTaskCompletions: Migration = {
+  version: 7,
+  description: "Create library.onboarding_task_completions for onboarding wizard state",
+  up: async (client: PoolClient) => {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS library.onboarding_task_completions (
+        id SERIAL PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        task_id TEXT NOT NULL,
+        completed_at TIMESTAMP DEFAULT NOW(),
+        completed_by INTEGER,
+        notes TEXT,
+        UNIQUE(tenant_id, task_id)
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_onboarding_task_completions_tenant
+      ON library.onboarding_task_completions(tenant_id, task_id)
+    `);
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Ordered list of all migrations.  Append new migrations at the end.
 // ---------------------------------------------------------------------------
@@ -507,6 +607,9 @@ const ALL_MIGRATIONS: Migration[] = [
   migration2AddUpdatedAt,
   migration3SaasRoleBindings,
   migration4K12AndDeveloperPlatform,
+  migration5StudentPatronLinking,
+  migration6K12Assets,
+  migration7OnboardingTaskCompletions,
 ];
 
 // ---------------------------------------------------------------------------

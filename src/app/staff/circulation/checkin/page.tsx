@@ -29,12 +29,23 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
-import { Package, Printer, Trash2, Bell, Truck, AlertTriangle, ThumbsDown, ThumbsUp, HelpCircle } from "lucide-react";
+import {
+  Package,
+  Printer,
+  Trash2,
+  Bell,
+  Truck,
+  AlertTriangle,
+  ThumbsDown,
+  ThumbsUp,
+  HelpCircle,
+} from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { escapeHtml, printHtml } from "@/lib/print";
 import { featureFlags } from "@/lib/feature-flags";
 import { fetchWithAuth } from "@/lib/client-fetch";
+import { useCirculationSound } from "@/hooks/use-circulation-sound";
 
 interface CheckinItem {
   id: string;
@@ -65,7 +76,8 @@ type AiPolicyExplain = {
 };
 
 function buildSlipHtml(item: CheckinItem) {
-  const heading = item.status === "hold" ? "Hold Slip" : item.status === "transit" ? "Transit Slip" : "Slip";
+  const heading =
+    item.status === "hold" ? "Hold Slip" : item.status === "transit" ? "Transit Slip" : "Slip";
 
   const lines: Array<[string, string]> = [
     ["Time", item.timestamp.toLocaleString()],
@@ -75,7 +87,8 @@ function buildSlipHtml(item: CheckinItem) {
 
   if (item.callNumber) lines.push(["Call Number", item.callNumber]);
   if (item.author) lines.push(["Author", item.author]);
-  if (item.status === "hold" && item.holdFor) lines.push(["Hold For", `${item.holdFor.name} (${item.holdFor.barcode})`]);
+  if (item.status === "hold" && item.holdFor)
+    lines.push(["Hold For", `${item.holdFor.name} (${item.holdFor.barcode})`]);
   if (item.status === "transit" && item.transitTo) lines.push(["Transit To", item.transitTo]);
 
   return [
@@ -83,7 +96,10 @@ function buildSlipHtml(item: CheckinItem) {
     `<h1 class="brand">StacksOS</h1>`,
     `<div class="muted">${escapeHtml(heading)}</div>`,
     '<div class="meta">',
-    ...lines.map(([k, v]) => `<div><span class="k">${escapeHtml(k)}:</span> <span class="v">${escapeHtml(v)}</span></div>`),
+    ...lines.map(
+      ([k, v]) =>
+        `<div><span class="k">${escapeHtml(k)}:</span> <span class="v">${escapeHtml(v)}</span></div>`
+    ),
     "</div>",
     "</div>",
   ].join("\n");
@@ -91,7 +107,9 @@ function buildSlipHtml(item: CheckinItem) {
 
 export default function CheckinPage() {
   const canAi = featureFlags.ai;
+  const { play: playSound } = useCirculationSound();
   const [checkedInItems, setCheckedInItems] = useState<CheckinItem[]>([]);
+  const [selectedItems, setSelectedItems] = useState<CheckinItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [printSlips, setPrintSlips] = useState(true);
   const [clearOpen, setClearOpen] = useState(false);
@@ -120,14 +138,20 @@ export default function CheckinPage() {
       if (data.status === "hold_captured" && data.hold) {
         status = "hold";
         holdFor = {
-          name: data.hold.patronName || (data.hold.patronId ? "Patron " + data.hold.patronId : "Patron"),
+          name:
+            data.hold.patronName ||
+            (data.hold.patronId ? "Patron " + data.hold.patronId : "Patron"),
           barcode: data.hold.patronBarcode || String(data.hold.patronId || ""),
         };
-        message = holdFor.barcode ? `Hold for ${holdFor.name} (${holdFor.barcode})` : `Hold for ${holdFor.name}`;
+        message = holdFor.barcode
+          ? `Hold for ${holdFor.name} (${holdFor.barcode})`
+          : `Hold for ${holdFor.name}`;
       } else if (data.status === "in_transit" && data.transit) {
         status = "transit";
         const destId = Number(data.transit.destination);
-        transitTo = Number.isFinite(destId) ? getOrgName(destId) : String(data.transit.destination || "Another branch");
+        transitTo = Number.isFinite(destId)
+          ? getOrgName(destId)
+          : String(data.transit.destination || "Another branch");
         message = transitTo ? `Transit to ${transitTo}` : "In transit";
       } else {
         message = "Reshelve";
@@ -163,6 +187,8 @@ export default function CheckinPage() {
         printHtml(buildSlipHtml(newItem), { title: "StacksOS Slip", tone: "slip" });
       }
 
+      playSound(status === "hold" || status === "transit" ? "info" : "success");
+
       if (!bookdropMode) {
         toast.success("Item checked in", {
           description:
@@ -185,18 +211,24 @@ export default function CheckinPage() {
         setLastErrorDetails({
           code: "PERMISSION_DENIED",
           desc: err.message || "Permission denied",
-          requestId: (err.details as Record<string, any>)?.requestId ? String((err.details as Record<string, any>).requestId) : undefined,
+          requestId: (err.details as Record<string, any>)?.requestId
+            ? String((err.details as Record<string, any>).requestId)
+            : undefined,
         });
         return;
       }
 
       const rawDetails = err instanceof ApiError ? err.details : (err as any)?.details;
       const code =
-        rawDetails && typeof rawDetails === "object" && typeof (rawDetails as Record<string, any>).textcode === "string"
+        rawDetails &&
+        typeof rawDetails === "object" &&
+        typeof (rawDetails as Record<string, any>).textcode === "string"
           ? String((rawDetails as Record<string, any>).textcode)
           : undefined;
       const desc =
-        rawDetails && typeof rawDetails === "object" && typeof (rawDetails as Record<string, any>).desc === "string"
+        rawDetails &&
+        typeof rawDetails === "object" &&
+        typeof (rawDetails as Record<string, any>).desc === "string"
           ? String((rawDetails as Record<string, any>).desc)
           : undefined;
 
@@ -214,9 +246,10 @@ export default function CheckinPage() {
       setCheckedInItems((prev) => [errorItem, ...prev]);
       setItemError(err.message || "Checkin failed");
       setItemSuccess(false);
+      playSound("error");
       setLastErrorDetails({
         code: code || undefined,
-        desc: desc || (err.message || "Checkin failed"),
+        desc: desc || err.message || "Checkin failed",
       });
       toast.error("Checkin failed", { description: err.message });
     },
@@ -319,7 +352,11 @@ export default function CheckinPage() {
   const attentionItems = useMemo(
     () =>
       checkedInItems.filter(
-        (i) => i.status === "error" || i.status === "alert" || i.status === "hold" || i.status === "transit"
+        (i) =>
+          i.status === "error" ||
+          i.status === "alert" ||
+          i.status === "hold" ||
+          i.status === "transit"
       ),
     [checkedInItems]
   );
@@ -384,7 +421,11 @@ export default function CheckinPage() {
               <div className="text-xs text-muted-foreground">{row.original.author}</div>
             )}
             {row.original.message && (
-              <div className={`text-xs ${row.original.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>{row.original.message}</div>
+              <div
+                className={`text-xs ${row.original.status === "error" ? "text-destructive" : "text-muted-foreground"}`}
+              >
+                {row.original.message}
+              </div>
             )}
           </div>
         ),
@@ -439,7 +480,12 @@ export default function CheckinPage() {
             icon: Trash2,
             shortcut: { key: "Escape" },
           },
-          { label: "Walkthrough", onClick: () => window.location.assign("/staff/training?workflow=checkin"), icon: HelpCircle, variant: "outline" },
+          {
+            label: "Walkthrough",
+            onClick: () => window.location.assign("/staff/training?workflow=checkin"),
+            icon: HelpCircle,
+            variant: "outline",
+          },
         ]}
       />
 
@@ -447,7 +493,9 @@ export default function CheckinPage() {
         <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
           <Card className="rounded-2xl border-border/70 shadow-sm">
             <CardContent className="space-y-4 p-5">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Item Check‑In</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Item Check‑In
+              </h3>
               <BarcodeInput
                 ref={itemInputRef}
                 label="Item Barcode"
@@ -493,7 +541,9 @@ export default function CheckinPage() {
                       Generating explanation…
                     </div>
                   ) : aiExplainError ? (
-                    <div className="text-sm text-muted-foreground">AI unavailable: {aiExplainError}</div>
+                    <div className="text-sm text-muted-foreground">
+                      AI unavailable: {aiExplainError}
+                    </div>
                   ) : aiExplain ? (
                     <div className="space-y-2">
                       <div className="text-sm">{aiExplain.explanation}</div>
@@ -506,12 +556,15 @@ export default function CheckinPage() {
                       ) : null}
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground">No AI explanation available.</div>
+                    <div className="text-sm text-muted-foreground">
+                      No AI explanation available.
+                    </div>
                   )}
                 </div>
               )}
               <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                Holds and transits will generate printable slips. Press <span className="font-mono">Ctrl/⌘ + P</span> to print all queued slips.
+                Holds and transits will generate printable slips. Press{" "}
+                <span className="font-mono">Ctrl/⌘ + P</span> to print all queued slips.
               </div>
             </CardContent>
           </Card>
@@ -520,7 +573,9 @@ export default function CheckinPage() {
             <CardContent className="p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Session Summary</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Session Summary
+                  </p>
                   <h3 className="text-2xl font-semibold mt-1">{stats.total}</h3>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-[hsl(var(--brand-1))]/10 flex items-center justify-center text-[hsl(var(--brand-1))]">
@@ -584,11 +639,38 @@ export default function CheckinPage() {
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Check‑In Activity</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Check‑In Activity
+            </h3>
             <Badge variant="secondary" className="rounded-full">
               {stats.total} items
             </Badge>
           </div>
+          {selectedItems.length > 0 && (
+            <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/30 px-4 py-2">
+              <span className="text-sm font-medium">{selectedItems.length} selected</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const slips = selectedItems.filter(
+                    (i) => i.status === "hold" || i.status === "transit"
+                  );
+                  if (slips.length === 0) {
+                    toast.message("No hold/transit slips in selection");
+                    return;
+                  }
+                  const html = slips.map((item) => buildSlipHtml(item)).join("\n");
+                  printHtml(html, { title: "StacksOS Slips", tone: "slip" });
+                }}
+              >
+                <Printer className="h-4 w-4 mr-1" />
+                Print Selected Slips
+              </Button>
+            </div>
+          )}
+
           <DataTable
             columns={columns}
             data={tableData}
@@ -600,6 +682,8 @@ export default function CheckinPage() {
                 description="Scan an item barcode to begin processing returns."
               />
             }
+            selectable
+            onSelectionChange={setSelectedItems}
           />
         </div>
       </PageContent>

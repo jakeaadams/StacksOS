@@ -13,6 +13,11 @@ import {
   isOpenSRFEvent,
   getPatronFleshed,
   getRequestMeta,
+  payloadFirst,
+  AU_FIELDS,
+  AC_FIELDS,
+  AOU_FIELDS,
+  CSP_FIELDS,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
@@ -218,30 +223,30 @@ function formatPatron(patron: Record<string, any>) {
   const profile = patron.profile?.__p || patron.profile || {};
 
   return {
-    id: patron.id || patron.__p?.[0],
-    barcode: Array.isArray(card) ? card[1] : card.barcode || "Unknown",
-    firstName: patron.first_given_name || patron.__p?.[4] || "",
-    lastName: patron.family_name || patron.__p?.[5] || "",
-    email: patron.email || patron.__p?.[11] || "",
-    phone: patron.day_phone || patron.__p?.[12] || "",
-    homeLibrary: patron.home_ou || patron.__p?.[6] || 1,
+    id: patron.id ?? patron.__p?.[AU_FIELDS.id],
+    barcode: Array.isArray(card) ? card[AC_FIELDS.barcode] : card.barcode || "Unknown",
+    firstName: patron.first_given_name || patron.__p?.[AU_FIELDS.first_given_name] || "",
+    lastName: patron.family_name || patron.__p?.[AU_FIELDS.family_name] || "",
+    email: patron.email || patron.__p?.[AU_FIELDS.email] || "",
+    phone: patron.day_phone || patron.__p?.[AU_FIELDS.day_phone] || "",
+    homeLibrary: patron.home_ou || patron.__p?.[AU_FIELDS.home_ou] || 1,
     patronType: profile.name || "Patron",
-    isActive: patron.active === "t" || patron.__p?.[2] === "t",
-    cardExpiry: patron.expire_date || patron.__p?.[10] || "",
+    isActive: patron.active === "t" || patron.__p?.[AU_FIELDS.active] === "t",
+    cardExpiry: patron.expire_date || patron.__p?.[AU_FIELDS.expire_date] || "",
   };
 }
 
 function extractCard(patron: Record<string, any>) {
-  const cards = patron.card || patron.cards || patron.__p?.[1];
+  const cards = patron.card || patron.cards || patron.__p?.[AU_FIELDS.card];
   const card = Array.isArray(cards) ? cards[0] : cards;
   if (!card) return null;
 
   if (Array.isArray(card.__p)) {
     return {
-      active: card.__p[0],
-      barcode: card.__p[1],
-      id: card.__p[2],
-      usr: card.__p[3],
+      active: card.__p[AC_FIELDS.active],
+      barcode: card.__p[AC_FIELDS.barcode],
+      id: card.__p[AC_FIELDS.id],
+      usr: card.__p[AC_FIELDS.usr],
     };
   }
 
@@ -255,13 +260,15 @@ function extractCard(patron: Record<string, any>) {
 
 function normalizePatron(patron: Record<string, any>, fallbackBarcode?: string) {
   const card = extractCard(patron);
-  const rawId = patron.id ?? patron.__p?.[0];
+  const rawId = patron.id ?? patron.__p?.[AU_FIELDS.id];
   const parsedId = typeof rawId === "number" ? rawId : parseInt(String(rawId || ""), 10);
   const patronId = Number.isFinite(parsedId) ? parsedId : (card?.usr ?? card?.id);
-  const firstGiven = patron.first_given_name || patron.firstName || patron.__p?.[26] || "";
-  const familyName = patron.family_name || patron.lastName || patron.__p?.[25] || "";
-  const activeVal = patron.active ?? patron.__p?.[12];
-  const barredVal = patron.barred ?? patron.__p?.[13];
+  const firstGiven =
+    patron.first_given_name || patron.firstName || patron.__p?.[AU_FIELDS.first_given_name] || "";
+  const familyName =
+    patron.family_name || patron.lastName || patron.__p?.[AU_FIELDS.family_name] || "";
+  const activeVal = patron.active ?? patron.__p?.[AU_FIELDS.active];
+  const barredVal = patron.barred ?? patron.__p?.[AU_FIELDS.barred];
 
   return {
     id: patronId,
@@ -270,12 +277,13 @@ function normalizePatron(patron: Record<string, any>, fallbackBarcode?: string) 
     family_name: familyName,
     email: patron.email,
     day_phone: patron.day_phone,
-    home_ou: patron.home_ou || patron.__p?.[27] || patron.__p?.[10],
-    profile: patron.profile || patron.__p?.[41] || patron.__p?.[28],
+    home_ou: patron.home_ou || patron.__p?.[AU_FIELDS.home_ou] || patron.__p?.[AU_FIELDS.ws_ou],
+    profile: patron.profile || patron.__p?.[AU_FIELDS.profile] || patron.__p?.[AU_FIELDS.id],
     active: activeVal === "t" || activeVal === true,
     barred: barredVal === "t" || barredVal === true,
-    expire_date: patron.expire_date || patron.__p?.[24],
-    standing_penalties: patron.standing_penalties || patron.__p?.[0] || [],
+    expire_date: patron.expire_date || patron.__p?.[AU_FIELDS.expire_date],
+    standing_penalties:
+      patron.standing_penalties || patron.__p?.[AU_FIELDS.standing_penalties] || [],
   };
 }
 
@@ -297,7 +305,7 @@ async function resolveHomeOu(provided?: string | number | null) {
   if (Number.isFinite(numeric) && numeric > 0) return numeric;
 
   const tree = await getOrgTree();
-  const rootId = typeof tree?.id === "number" ? tree.id : tree?.__p?.[0] || 1;
+  const rootId = typeof tree?.id === "number" ? tree.id : tree?.__p?.[AOU_FIELDS.id] || 1;
   return typeof rootId === "number" ? rootId : 1;
 }
 
@@ -361,7 +369,7 @@ async function checkUsernameExists(authtoken: string, username: string): Promise
     authtoken,
     username,
   ]);
-  const result = response?.payload?.[0] as any as any;
+  const result = payloadFirst(response);
   if (isOpenSRFEvent(result)) {
     throw result;
   }
@@ -379,7 +387,7 @@ async function checkBarcodeExists(authtoken: string, barcode: string): Promise<b
     authtoken,
     barcode,
   ]);
-  const result = response?.payload?.[0] as any as any;
+  const result = payloadFirst(response);
   if (isOpenSRFEvent(result)) {
     throw result;
   }
@@ -581,7 +589,7 @@ export async function POST(req: NextRequest) {
       patron,
     ]);
 
-    const result = response?.payload?.[0] as any as any;
+    const result = payloadFirst(response);
     if (!result || isOpenSRFEvent(result) || result.ilsevent) {
       return errorResponse(getErrorMessage(result, "Patron creation failed"), 400, result);
     }
@@ -771,7 +779,7 @@ export async function PUT(req: NextRequest) {
       patron,
     ]);
 
-    const result = response?.payload?.[0] as any as any;
+    const result = payloadFirst(response);
     const lastEvent = (result as Record<string, any>)?.last_event;
     if (!result || isOpenSRFEvent(result) || result.ilsevent || isOpenSRFEvent(lastEvent)) {
       return errorResponse(getErrorMessage(result, "Patron update failed"), 400, result);
@@ -872,7 +880,7 @@ export async function PATCH(req: NextRequest) {
         penalty,
       ]);
 
-      const result = response?.payload?.[0] as any as any;
+      const result = payloadFirst(response);
       if (isOpenSRFEvent(result) || result?.ilsevent) {
         return errorResponse(getErrorMessage(result, "Failed to add block"), 400, result);
       }
@@ -904,7 +912,7 @@ export async function PATCH(req: NextRequest) {
         penaltyId,
       ]);
 
-      const result = response?.payload?.[0] as any as any;
+      const result = payloadFirst(response);
       if (isOpenSRFEvent(result) || result?.ilsevent) {
         return errorResponse(getErrorMessage(result, "Failed to remove block"), 400, result);
       }
@@ -949,7 +957,7 @@ export async function PATCH(req: NextRequest) {
         note,
       ]);
 
-      const result = response?.payload?.[0] as any as any;
+      const result = payloadFirst(response);
       if (isOpenSRFEvent(result) || result?.ilsevent) {
         return errorResponse(getErrorMessage(result, "Failed to add note"), 400, result);
       }
@@ -981,7 +989,7 @@ export async function PATCH(req: NextRequest) {
         noteId,
       ]);
 
-      const result = response?.payload?.[0] as any as any;
+      const result = payloadFirst(response);
       if (isOpenSRFEvent(result) || result?.ilsevent) {
         return errorResponse(getErrorMessage(result, "Failed to delete note"), 400, result);
       }
@@ -1007,7 +1015,7 @@ export async function PATCH(req: NextRequest) {
         { usr: patronId },
       ]);
 
-      const notes = (response?.payload?.[0] as any as any) || [];
+      const notes = payloadFirst(response) || [];
       const formattedNotes = (Array.isArray(notes) ? notes : []).map((n: any) => ({
         id: n.id || n.__p?.[0],
         title: n.title || n.__p?.[1] || "Note",
@@ -1026,13 +1034,13 @@ export async function PATCH(req: NextRequest) {
         "open-ils.actor.standing_penalty.types.retrieve"
       );
 
-      const types = (response?.payload?.[0] as any as any) || [];
+      const types = payloadFirst(response) || [];
       const formattedTypes = (Array.isArray(types) ? types : []).map((t: any) => ({
-        id: t.id || t.__p?.[0],
-        name: t.name || t.__p?.[1] || "Unknown",
-        label: t.label || t.__p?.[2] || t.name || "Unknown",
-        blockList: t.block_list || t.__p?.[3] || "",
-        org: t.org_unit || t.__p?.[4],
+        id: t.id || t.__p?.[CSP_FIELDS.id],
+        name: t.name || t.__p?.[CSP_FIELDS.name] || "Unknown",
+        label: t.label || t.__p?.[CSP_FIELDS.label] || t.name || "Unknown",
+        blockList: t.block_list || t.__p?.[CSP_FIELDS.block_list] || "",
+        org: t.org_unit || t.__p?.[CSP_FIELDS.staff_alert], // csp has no org_unit; index 4 = staff_alert (legacy fallback)
       }));
 
       return successResponse({ penaltyTypes: formattedTypes });

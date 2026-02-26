@@ -41,7 +41,13 @@ const MOONSHOT_PRIMARY_MODEL = "moonshotai/kimi-k2.5";
 const MOONSHOT_FALLBACK_MODEL = "moonshotai/kimi-k2-instruct";
 
 function isCopilotCallType(callType: string): boolean {
-  return callType === "ops_playbooks" || callType === "staff_copilot";
+  return (
+    callType === "ops_playbooks" ||
+    callType === "staff_copilot" ||
+    callType === "holds_copilot" ||
+    callType === "patron_copilot" ||
+    callType === "acquisitions_copilot"
+  );
 }
 
 function clamp(value: number, min: number, max: number): number {

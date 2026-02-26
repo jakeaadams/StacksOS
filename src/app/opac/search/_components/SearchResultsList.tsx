@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { BookCard } from "@/components/opac/book-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Sparkles, AlertCircle } from "lucide-react";
+import { BookOpen, Sparkles, AlertCircle, Search } from "lucide-react";
 import Link from "next/link";
 import { featureFlags } from "@/lib/feature-flags";
 import { opacDesign } from "@/lib/design-system/opac";
@@ -241,48 +242,108 @@ export function SearchResultsList({
   // No results
   if (!isLoading && query) {
     return (
-      <div className="text-center py-12">
-        <BookOpen className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-foreground mb-2">{t("noResultsFound")}</h2>
-        <p className="text-muted-foreground mb-6">
-          {`We couldn\u0027t find anything for "${query}". Try different keywords or browse our catalog.`}
-        </p>
-        <div className="flex flex-wrap justify-center gap-3">
-          {aiSmartSearchOn && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onToggleAiSearch}
-              className={`rounded-lg px-4 py-2 ${opacDesign.aiToggleOutline}`}
-            >
-              Try Standard Search
-            </Button>
-          )}
-          {!aiSmartSearchOn && (
-            <Button
-              type="button"
-              size="sm"
-              onClick={onToggleAiSearch}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 ${opacDesign.aiToggleSolid}`}
-            >
-              <Sparkles className="h-4 w-4" />
-              Try AI Smart Search
-            </Button>
-          )}
-          <Link
-            href="/opac"
-            className="rounded-lg bg-[linear-gradient(125deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_88%)] px-4 py-2 text-white hover:brightness-110"
-          >
-            Browse Catalog
-          </Link>
-          <Link href="/opac/help" className={`rounded-lg px-4 py-2 ${opacDesign.subtleAction}`}>
-            Search Tips
-          </Link>
-        </div>
-      </div>
+      <NoResultsWithSpellcheck
+        query={query}
+        aiSmartSearchOn={aiSmartSearchOn}
+        onToggleAiSearch={onToggleAiSearch}
+        onUpdateSearchParams={onUpdateSearchParams}
+        t={t}
+      />
     );
   }
 
   return null;
+}
+
+/** Sub-component with spellcheck state */
+function NoResultsWithSpellcheck({
+  query,
+  aiSmartSearchOn,
+  onToggleAiSearch,
+  onUpdateSearchParams,
+  t,
+}: {
+  query: string;
+  aiSmartSearchOn: boolean;
+  onToggleAiSearch: () => void;
+  onUpdateSearchParams: (updates: Record<string, string | null>) => void;
+  t: (key: string, values?: Record<string, string>) => string;
+}) {
+  const [suggestion, setSuggestion] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!query.trim()) return;
+    let cancelled = false;
+
+    void fetch(`/api/evergreen/spellcheck?q=${encodeURIComponent(query)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.ok && data.suggestion) {
+          setSuggestion(data.suggestion);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [query]);
+
+  return (
+    <div className="text-center py-12">
+      <BookOpen className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
+      <h2 className="text-xl font-semibold text-foreground mb-2">{t("noResultsFound")}</h2>
+      <p className="text-muted-foreground mb-6">
+        {`We couldn\u0027t find anything for "${query}". Try different keywords or browse our catalog.`}
+      </p>
+
+      {suggestion && (
+        <div className="mb-6">
+          <button
+            type="button"
+            onClick={() => onUpdateSearchParams({ q: suggestion, page: null })}
+            className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium text-lg hover:underline"
+          >
+            <Search className="h-5 w-5" />
+            Did you mean: <span className="italic">{suggestion}</span>?
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-wrap justify-center gap-3">
+        {aiSmartSearchOn && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onToggleAiSearch}
+            className={`rounded-lg px-4 py-2 ${opacDesign.aiToggleOutline}`}
+          >
+            Try Standard Search
+          </Button>
+        )}
+        {!aiSmartSearchOn && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={onToggleAiSearch}
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 ${opacDesign.aiToggleSolid}`}
+          >
+            <Sparkles className="h-4 w-4" />
+            Try AI Smart Search
+          </Button>
+        )}
+        <Link
+          href="/opac"
+          className="rounded-lg bg-[linear-gradient(125deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_88%)] px-4 py-2 text-white hover:brightness-110"
+        >
+          Browse Catalog
+        </Link>
+        <Link href="/opac/help" className={`rounded-lg px-4 py-2 ${opacDesign.subtleAction}`}>
+          Search Tips
+        </Link>
+      </div>
+    </div>
+  );
 }

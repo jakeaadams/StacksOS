@@ -7,6 +7,7 @@ import {
   getErrorMessage,
   isSuccessResult,
   getRequestMeta,
+  payloadFirst,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
@@ -223,7 +224,7 @@ export async function GET(req: NextRequest) {
           [authtoken, titleId, {}]
         );
 
-        const buckets = allResponse?.payload?.[0] as any as any;
+        const buckets = payloadFirst(allResponse);
         const holdIds: number[] = [];
 
         if (buckets && typeof buckets === "object") {
@@ -311,7 +312,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = holdsPostSchema.parse(await req.json());
-    const { action } = body as Record<string, any>;
+    const { action } = body;
 
     if (!action) {
       return errorResponse("Action required", 400);
@@ -338,7 +339,7 @@ export async function POST(req: NextRequest) {
 
     // Create hold
     if (action === "create" || action === "place_hold") {
-      const { patronId, holdType, target, targetId, pickupLib } = body as Record<string, any>;
+      const { patronId, holdType, target, targetId, pickupLib } = body;
 
       const resolvedTarget = target ?? targetId;
 
@@ -352,15 +353,15 @@ export async function POST(req: NextRequest) {
         [
           authtoken,
           {
-            patronid: parseInt(patronId),
+            patronid: Number(patronId),
             hold_type: holdType,
-            pickup_lib: parseInt(pickupLib),
+            pickup_lib: Number(pickupLib),
           },
-          [parseInt(resolvedTarget)],
+          [Number(resolvedTarget)],
         ]
       );
 
-      const result = response?.payload?.[0] as any as any;
+      const result = payloadFirst(response);
 
       const createdHoldId =
         typeof result === "number"
@@ -389,7 +390,7 @@ export async function POST(req: NextRequest) {
 
     // Cancel hold
     if (action === "cancel" || action === "cancel_hold") {
-      const { holdId, cause, reason, note } = body as Record<string, any>;
+      const { holdId, cause, reason, note } = body;
 
       if (!holdId) {
         return errorResponse("holdId required", 400);
@@ -397,13 +398,13 @@ export async function POST(req: NextRequest) {
 
       const response = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.cancel", [
         authtoken,
-        parseInt(holdId),
+        Number(holdId),
         cause || reason || 5,
         note || null,
       ]);
 
-      const result = response?.payload?.[0] as any as any;
-      const holdIdNum = parseInt(holdId);
+      const result = payloadFirst(response);
+      const holdIdNum = Number(holdId);
 
       if (isSuccessResult(result) || result === holdIdNum) {
         await audit("success", { holdId, cause: cause || reason || 5, note: note || null });
@@ -417,7 +418,7 @@ export async function POST(req: NextRequest) {
 
     // Freeze hold
     if (action === "freeze") {
-      const { holdId, thawDate } = body as Record<string, any>;
+      const { holdId, thawDate } = body;
 
       if (!holdId) {
         return errorResponse("holdId required", 400);
@@ -425,10 +426,10 @@ export async function POST(req: NextRequest) {
 
       const response = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.update", [
         authtoken,
-        { id: parseInt(holdId), frozen: true, thaw_date: thawDate || null },
+        { id: Number(holdId), frozen: true, thaw_date: thawDate || null },
       ]);
 
-      const result = response?.payload?.[0] as any as any;
+      const result = payloadFirst(response);
 
       if (result && !result.ilsevent) {
         await audit("success", { holdId, thawDate });
@@ -442,7 +443,7 @@ export async function POST(req: NextRequest) {
 
     // Thaw (unfreeze) hold
     if (action === "thaw") {
-      const { holdId } = body as Record<string, any>;
+      const { holdId } = body;
 
       if (!holdId) {
         return errorResponse("holdId required", 400);
@@ -450,10 +451,10 @@ export async function POST(req: NextRequest) {
 
       const response = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.update", [
         authtoken,
-        { id: parseInt(holdId), frozen: false, thaw_date: null },
+        { id: Number(holdId), frozen: false, thaw_date: null },
       ]);
 
-      const result = response?.payload?.[0] as any as any;
+      const result = payloadFirst(response);
 
       if (result && !result.ilsevent) {
         await audit("success", { holdId });
@@ -467,7 +468,7 @@ export async function POST(req: NextRequest) {
 
     // Update pickup library
     if (action === "update_pickup_lib") {
-      const { holdId, pickupLib } = body as Record<string, any>;
+      const { holdId, pickupLib } = body;
 
       if (!holdId || !pickupLib) {
         return errorResponse("holdId and pickupLib required", 400);
@@ -475,10 +476,10 @@ export async function POST(req: NextRequest) {
 
       const response = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.update", [
         authtoken,
-        { id: parseInt(holdId), pickup_lib: parseInt(pickupLib) },
+        { id: Number(holdId), pickup_lib: Number(pickupLib) },
       ]);
 
-      const result = response?.payload?.[0] as any as any;
+      const result = payloadFirst(response);
 
       if (result && !result.ilsevent) {
         await audit("success", { holdId, pickupLib });

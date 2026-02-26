@@ -5,6 +5,18 @@ import {
   errorResponse,
   serverErrorResponse,
   getRequestMeta,
+  payloadFirst,
+  payloadFirstArray,
+  fieldValue,
+  fieldBool,
+  CCMM_FIELDS,
+  CHMM_FIELDS,
+  CRCD_FIELDS,
+  CRRF_FIELDS,
+  CRMF_FIELDS,
+  PGT_FIELDS,
+  AOU_FIELDS,
+  ACPL_FIELDS,
 } from "@/lib/api";
 import { featureFlags } from "@/lib/feature-flags";
 import { requirePermissions } from "@/lib/permissions";
@@ -62,76 +74,69 @@ export async function GET(req: NextRequest) {
           },
         ]);
 
-        const policies = (response?.payload?.[0] || []).map((p: any) => {
-          const extract = (obj: any, field: string, idx: number) => {
-            if (!obj) return null;
-            return obj?.[field] ?? obj?.__p?.[idx];
-          };
-
-          const extractNested = (obj: any, nameField: string, nameIdx: number) => {
-            if (!obj || typeof obj !== "object") return null;
-            return obj?.[nameField] ?? obj?.__p?.[nameIdx];
-          };
-
-          return {
-            id: extract(p, "id", 0),
-            active: extract(p, "active", 1) === "t" || extract(p, "active", 1) === true,
-            orgUnit:
-              typeof p?.org_unit === "object"
-                ? extractNested(p.org_unit, "id", 0)
-                : extract(p, "org_unit", 2),
-            orgUnitName:
-              typeof p?.org_unit === "object" ? extractNested(p.org_unit, "shortname", 2) : null,
-            grp: typeof p?.grp === "object" ? extractNested(p.grp, "id", 0) : extract(p, "grp", 3),
-            grpName: typeof p?.grp === "object" ? extractNested(p.grp, "name", 1) : null,
-            circModifier: extract(p, "circ_modifier", 4),
-            copyLocation:
-              typeof p?.copy_location === "object"
-                ? extractNested(p.copy_location, "id", 0)
-                : extract(p, "copy_location", 5),
-            copyLocationName:
-              typeof p?.copy_location === "object"
-                ? extractNested(p.copy_location, "name", 1)
-                : null,
-            isRenewal: extract(p, "is_renewal", 6),
-            refFlag: extract(p, "ref_flag", 7),
-            usrAgeUpperBound: extract(p, "usr_age_upper_bound", 8),
-            usrAgeLowerBound: extract(p, "usr_age_lower_bound", 9),
-            itemAge: extract(p, "item_age", 10),
-            circulate: extract(p, "circulate", 11) === "t" || extract(p, "circulate", 11) === true,
-            durationRule:
-              typeof p?.duration_rule === "object"
-                ? extractNested(p.duration_rule, "id", 0)
-                : extract(p, "duration_rule", 12),
-            durationRuleName:
-              typeof p?.duration_rule === "object"
-                ? extractNested(p.duration_rule, "name", 1)
-                : null,
-            recurringFineRule:
-              typeof p?.recurring_fine_rule === "object"
-                ? extractNested(p.recurring_fine_rule, "id", 0)
-                : extract(p, "recurring_fine_rule", 13),
-            recurringFineRuleName:
-              typeof p?.recurring_fine_rule === "object"
-                ? extractNested(p.recurring_fine_rule, "name", 1)
-                : null,
-            maxFineRule:
-              typeof p?.max_fine_rule === "object"
-                ? extractNested(p.max_fine_rule, "id", 0)
-                : extract(p, "max_fine_rule", 14),
-            maxFineRuleName:
-              typeof p?.max_fine_rule === "object"
-                ? extractNested(p.max_fine_rule, "name", 1)
-                : null,
-            hardDueDate: extract(p, "hard_due_date", 15),
-            renewals: extract(p, "renewals", 16),
-            gracePeriod: extract(p, "grace_period", 17),
-            scriptTest: extract(p, "script_test", 18),
-            totalCopyHold: extract(p, "total_copy_hold_ratio", 19),
-            availableCopyHold: extract(p, "available_copy_hold_ratio", 20),
-            description: extract(p, "description", 21),
-          };
-        });
+        const policies = payloadFirstArray(response).map((p: any) => ({
+          id: fieldValue(p, "id", CCMM_FIELDS),
+          active: fieldBool(p, "active", CCMM_FIELDS) ?? false,
+          orgUnit:
+            typeof p?.org_unit === "object"
+              ? fieldValue(p.org_unit, "id", AOU_FIELDS)
+              : fieldValue(p, "org_unit", CCMM_FIELDS),
+          orgUnitName:
+            typeof p?.org_unit === "object"
+              ? fieldValue(p.org_unit, "shortname", AOU_FIELDS)
+              : null,
+          grp:
+            typeof p?.grp === "object"
+              ? fieldValue(p.grp, "id", PGT_FIELDS)
+              : fieldValue(p, "grp", CCMM_FIELDS),
+          grpName: typeof p?.grp === "object" ? fieldValue(p.grp, "name", PGT_FIELDS) : null,
+          circModifier: fieldValue(p, "circ_modifier", CCMM_FIELDS),
+          copyLocation:
+            typeof p?.copy_location === "object"
+              ? fieldValue(p.copy_location, "id", ACPL_FIELDS)
+              : fieldValue(p, "copy_location", CCMM_FIELDS),
+          copyLocationName:
+            typeof p?.copy_location === "object"
+              ? fieldValue(p.copy_location, "name", ACPL_FIELDS)
+              : null,
+          isRenewal: fieldValue(p, "is_renewal", CCMM_FIELDS),
+          refFlag: fieldValue(p, "ref_flag", CCMM_FIELDS),
+          usrAgeUpperBound: fieldValue(p, "usr_age_upper_bound", CCMM_FIELDS),
+          usrAgeLowerBound: fieldValue(p, "usr_age_lower_bound", CCMM_FIELDS),
+          itemAge: fieldValue(p, "item_age", CCMM_FIELDS),
+          circulate: fieldBool(p, "circulate", CCMM_FIELDS) ?? false,
+          durationRule:
+            typeof p?.duration_rule === "object"
+              ? fieldValue(p.duration_rule, "id", CRCD_FIELDS)
+              : fieldValue(p, "duration_rule", CCMM_FIELDS),
+          durationRuleName:
+            typeof p?.duration_rule === "object"
+              ? fieldValue(p.duration_rule, "name", CRCD_FIELDS)
+              : null,
+          recurringFineRule:
+            typeof p?.recurring_fine_rule === "object"
+              ? fieldValue(p.recurring_fine_rule, "id", CRRF_FIELDS)
+              : fieldValue(p, "recurring_fine_rule", CCMM_FIELDS),
+          recurringFineRuleName:
+            typeof p?.recurring_fine_rule === "object"
+              ? fieldValue(p.recurring_fine_rule, "name", CRRF_FIELDS)
+              : null,
+          maxFineRule:
+            typeof p?.max_fine_rule === "object"
+              ? fieldValue(p.max_fine_rule, "id", CRMF_FIELDS)
+              : fieldValue(p, "max_fine_rule", CCMM_FIELDS),
+          maxFineRuleName:
+            typeof p?.max_fine_rule === "object"
+              ? fieldValue(p.max_fine_rule, "name", CRMF_FIELDS)
+              : null,
+          hardDueDate: fieldValue(p, "hard_due_date", CCMM_FIELDS),
+          renewals: fieldValue(p, "renewals", CCMM_FIELDS),
+          gracePeriod: fieldValue(p, "grace_period", CCMM_FIELDS),
+          scriptTest: fieldValue(p, "script_test", CCMM_FIELDS),
+          totalCopyHold: fieldValue(p, "total_copy_hold_ratio", CCMM_FIELDS),
+          availableCopyHold: fieldValue(p, "available_copy_hold_ratio", CCMM_FIELDS),
+          description: fieldValue(p, "description", CCMM_FIELDS),
+        }));
 
         return successResponse({ policies });
       }
@@ -159,88 +164,72 @@ export async function GET(req: NextRequest) {
           },
         ]);
 
-        const policies = (response?.payload?.[0] || []).map((p: any) => {
-          const extract = (obj: any, field: string, idx: number) => {
-            if (!obj) return null;
-            return obj?.[field] ?? obj?.__p?.[idx];
-          };
-
-          const extractNested = (obj: any, nameField: string, nameIdx: number) => {
-            if (!obj || typeof obj !== "object") return null;
-            return obj?.[nameField] ?? obj?.__p?.[nameIdx];
-          };
-
-          return {
-            id: extract(p, "id", 0),
-            active: extract(p, "active", 1) === "t" || extract(p, "active", 1) === true,
-            strictOuMatch:
-              extract(p, "strict_ou_match", 2) === "t" || extract(p, "strict_ou_match", 2) === true,
-            userHomeOu: extract(p, "user_home_ou", 3),
-            requestorGrp:
-              typeof p?.requestor_grp === "object"
-                ? extractNested(p.requestor_grp, "id", 0)
-                : extract(p, "requestor_grp", 4),
-            requestorGrpName:
-              typeof p?.requestor_grp === "object"
-                ? extractNested(p.requestor_grp, "name", 1)
-                : null,
-            usrGrp:
-              typeof p?.usr_grp === "object"
-                ? extractNested(p.usr_grp, "id", 0)
-                : extract(p, "usr_grp", 5),
-            usrGrpName: typeof p?.usr_grp === "object" ? extractNested(p.usr_grp, "name", 1) : null,
-            pickupOu:
-              typeof p?.pickup_ou === "object"
-                ? extractNested(p.pickup_ou, "id", 0)
-                : extract(p, "pickup_ou", 6),
-            pickupOuName:
-              typeof p?.pickup_ou === "object" ? extractNested(p.pickup_ou, "shortname", 2) : null,
-            requestOu:
-              typeof p?.request_ou === "object"
-                ? extractNested(p.request_ou, "id", 0)
-                : extract(p, "request_ou", 7),
-            requestOuName:
-              typeof p?.request_ou === "object"
-                ? extractNested(p.request_ou, "shortname", 2)
-                : null,
-            itemOwningOu:
-              typeof p?.item_owning_ou === "object"
-                ? extractNested(p.item_owning_ou, "id", 0)
-                : extract(p, "item_owning_ou", 8),
-            itemOwningOuName:
-              typeof p?.item_owning_ou === "object"
-                ? extractNested(p.item_owning_ou, "shortname", 2)
-                : null,
-            itemCircOu:
-              typeof p?.item_circ_ou === "object"
-                ? extractNested(p.item_circ_ou, "id", 0)
-                : extract(p, "item_circ_ou", 9),
-            itemCircOuName:
-              typeof p?.item_circ_ou === "object"
-                ? extractNested(p.item_circ_ou, "shortname", 2)
-                : null,
-            circModifier: extract(p, "circ_modifier", 10),
-            marcTypeCode: extract(p, "marc_type", 11),
-            marcFormCode: extract(p, "marc_form", 12),
-            marcVrFormat: extract(p, "marc_vr_format", 13),
-            refFlag: extract(p, "ref_flag", 14),
-            itemAge: extract(p, "item_age", 15),
-            holdable: extract(p, "holdable", 16) === "t" || extract(p, "holdable", 16) === true,
-            distanceIsFromOwning:
-              extract(p, "distance_is_from_owning", 17) === "t" ||
-              extract(p, "distance_is_from_owning", 17) === true,
-            transitRange: extract(p, "transit_range", 18),
-            maxHolds: extract(p, "max_holds", 19),
-            includeLocallyFrozen:
-              extract(p, "include_frozen_holds", 20) === "t" ||
-              extract(p, "include_frozen_holds", 20) === true,
-            stopBlockedUser:
-              extract(p, "stop_blocked_user", 21) === "t" ||
-              extract(p, "stop_blocked_user", 21) === true,
-            ageProtection: extract(p, "age_hold_protect_rule", 22),
-            description: extract(p, "description", 23),
-          };
-        });
+        const policies = payloadFirstArray(response).map((p: any) => ({
+          id: fieldValue(p, "id", CHMM_FIELDS),
+          active: fieldBool(p, "active", CHMM_FIELDS) ?? false,
+          strictOuMatch: fieldBool(p, "strict_ou_match", CHMM_FIELDS) ?? false,
+          userHomeOu: fieldValue(p, "user_home_ou", CHMM_FIELDS),
+          requestorGrp:
+            typeof p?.requestor_grp === "object"
+              ? fieldValue(p.requestor_grp, "id", PGT_FIELDS)
+              : fieldValue(p, "requestor_grp", CHMM_FIELDS),
+          requestorGrpName:
+            typeof p?.requestor_grp === "object"
+              ? fieldValue(p.requestor_grp, "name", PGT_FIELDS)
+              : null,
+          usrGrp:
+            typeof p?.usr_grp === "object"
+              ? fieldValue(p.usr_grp, "id", PGT_FIELDS)
+              : fieldValue(p, "usr_grp", CHMM_FIELDS),
+          usrGrpName:
+            typeof p?.usr_grp === "object" ? fieldValue(p.usr_grp, "name", PGT_FIELDS) : null,
+          pickupOu:
+            typeof p?.pickup_ou === "object"
+              ? fieldValue(p.pickup_ou, "id", AOU_FIELDS)
+              : fieldValue(p, "pickup_ou", CHMM_FIELDS),
+          pickupOuName:
+            typeof p?.pickup_ou === "object"
+              ? fieldValue(p.pickup_ou, "shortname", AOU_FIELDS)
+              : null,
+          requestOu:
+            typeof p?.request_ou === "object"
+              ? fieldValue(p.request_ou, "id", AOU_FIELDS)
+              : fieldValue(p, "request_ou", CHMM_FIELDS),
+          requestOuName:
+            typeof p?.request_ou === "object"
+              ? fieldValue(p.request_ou, "shortname", AOU_FIELDS)
+              : null,
+          itemOwningOu:
+            typeof p?.item_owning_ou === "object"
+              ? fieldValue(p.item_owning_ou, "id", AOU_FIELDS)
+              : fieldValue(p, "item_owning_ou", CHMM_FIELDS),
+          itemOwningOuName:
+            typeof p?.item_owning_ou === "object"
+              ? fieldValue(p.item_owning_ou, "shortname", AOU_FIELDS)
+              : null,
+          itemCircOu:
+            typeof p?.item_circ_ou === "object"
+              ? fieldValue(p.item_circ_ou, "id", AOU_FIELDS)
+              : fieldValue(p, "item_circ_ou", CHMM_FIELDS),
+          itemCircOuName:
+            typeof p?.item_circ_ou === "object"
+              ? fieldValue(p.item_circ_ou, "shortname", AOU_FIELDS)
+              : null,
+          circModifier: fieldValue(p, "circ_modifier", CHMM_FIELDS),
+          marcTypeCode: fieldValue(p, "marc_type", CHMM_FIELDS),
+          marcFormCode: fieldValue(p, "marc_form", CHMM_FIELDS),
+          marcVrFormat: fieldValue(p, "marc_vr_format", CHMM_FIELDS),
+          refFlag: fieldValue(p, "ref_flag", CHMM_FIELDS),
+          itemAge: fieldValue(p, "item_age", CHMM_FIELDS),
+          holdable: fieldBool(p, "holdable", CHMM_FIELDS) ?? false,
+          distanceIsFromOwning: fieldBool(p, "distance_is_from_owner", CHMM_FIELDS) ?? false,
+          transitRange: fieldValue(p, "transit_range", CHMM_FIELDS),
+          maxHolds: fieldValue(p, "max_holds", CHMM_FIELDS),
+          includeLocallyFrozen: fieldBool(p, "include_frozen_holds", CHMM_FIELDS) ?? false,
+          stopBlockedUser: fieldBool(p, "stop_blocked_user", CHMM_FIELDS) ?? false,
+          ageProtection: fieldValue(p, "age_hold_protect_rule", CHMM_FIELDS),
+          description: fieldValue(p, "description", CHMM_FIELDS),
+        }));
 
         return successResponse({ policies });
       }
@@ -253,22 +242,15 @@ export async function GET(req: NextRequest) {
           { limit: 500, order_by: { crcd: "name" } },
         ]);
 
-        const rules = (response?.payload?.[0] || []).map((r: any) => {
-          const extract = (obj: any, field: string, idx: number) => {
-            if (!obj) return null;
-            return obj?.[field] ?? obj?.__p?.[idx];
-          };
-
-          return {
-            id: extract(r, "id", 0),
-            name: extract(r, "name", 1),
-            extended: extract(r, "extended", 2),
-            normal: extract(r, "normal", 3),
-            shrt: extract(r, "shrt", 4),
-            maxRenewals: extract(r, "max_renewals", 5),
-            maxAutoRenewals: extract(r, "max_auto_renewals", 6),
-          };
-        });
+        const rules = payloadFirstArray(response).map((r: any) => ({
+          id: fieldValue(r, "id", CRCD_FIELDS),
+          name: fieldValue(r, "name", CRCD_FIELDS),
+          extended: fieldValue(r, "extended", CRCD_FIELDS),
+          normal: fieldValue(r, "normal", CRCD_FIELDS),
+          shrt: fieldValue(r, "shrt", CRCD_FIELDS),
+          maxRenewals: fieldValue(r, "max_renewals", CRCD_FIELDS),
+          maxAutoRenewals: fieldValue(r, "max_auto_renewals", CRCD_FIELDS),
+        }));
 
         return successResponse({ rules });
       }
@@ -281,22 +263,15 @@ export async function GET(req: NextRequest) {
           { limit: 500, order_by: { crrf: "name" } },
         ]);
 
-        const rules = (response?.payload?.[0] || []).map((r: any) => {
-          const extract = (obj: any, field: string, idx: number) => {
-            if (!obj) return null;
-            return obj?.[field] ?? obj?.__p?.[idx];
-          };
-
-          return {
-            id: extract(r, "id", 0),
-            name: extract(r, "name", 1),
-            high: extract(r, "high", 2),
-            normal: extract(r, "normal", 3),
-            low: extract(r, "low", 4),
-            recurrenceInterval: extract(r, "recurrence_interval", 5),
-            gracePeriod: extract(r, "grace_period", 6),
-          };
-        });
+        const rules = payloadFirstArray(response).map((r: any) => ({
+          id: fieldValue(r, "id", CRRF_FIELDS),
+          name: fieldValue(r, "name", CRRF_FIELDS),
+          high: fieldValue(r, "high", CRRF_FIELDS),
+          normal: fieldValue(r, "normal", CRRF_FIELDS),
+          low: fieldValue(r, "low", CRRF_FIELDS),
+          recurrenceInterval: fieldValue(r, "recurrence_interval", CRRF_FIELDS),
+          gracePeriod: fieldValue(r, "grace_period", CRRF_FIELDS),
+        }));
 
         return successResponse({ rules });
       }
@@ -309,20 +284,12 @@ export async function GET(req: NextRequest) {
           { limit: 500, order_by: { crmf: "name" } },
         ]);
 
-        const rules = (response?.payload?.[0] || []).map((r: any) => {
-          const extract = (obj: any, field: string, idx: number) => {
-            if (!obj) return null;
-            return obj?.[field] ?? obj?.__p?.[idx];
-          };
-
-          return {
-            id: extract(r, "id", 0),
-            name: extract(r, "name", 1),
-            amount: extract(r, "amount", 2),
-            isByPercent:
-              extract(r, "is_percent", 3) === "t" || extract(r, "is_percent", 3) === true,
-          };
-        });
+        const rules = payloadFirstArray(response).map((r: any) => ({
+          id: fieldValue(r, "id", CRMF_FIELDS),
+          name: fieldValue(r, "name", CRMF_FIELDS),
+          amount: fieldValue(r, "amount", CRMF_FIELDS),
+          isByPercent: fieldBool(r, "is_percent", CRMF_FIELDS) ?? false,
+        }));
 
         return successResponse({ rules });
       }
@@ -351,7 +318,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = policiesPostSchema.parse(await req.json());
-    const { action, type, data } = body as Record<string, any>;
+    const { action } = body;
+    const { type, data } = body as Record<string, any>;
 
     // Require admin permissions for modifications
     const { authtoken, actor } = await requirePermissions(["ADMIN_CIRC_MATRIX_MATCHPOINT"]);
@@ -432,7 +400,7 @@ export async function POST(req: NextRequest) {
             newPolicy,
           ]);
 
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -530,7 +498,7 @@ export async function POST(req: NextRequest) {
             updatePayload,
           ]);
 
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -568,7 +536,7 @@ export async function POST(req: NextRequest) {
             data.id,
           ]);
 
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -636,7 +604,7 @@ export async function POST(req: NextRequest) {
             newPolicy,
           ]);
 
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -736,7 +704,7 @@ export async function POST(req: NextRequest) {
             updatePayload,
           ]);
 
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -774,7 +742,7 @@ export async function POST(req: NextRequest) {
             data.id,
           ]);
 
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({

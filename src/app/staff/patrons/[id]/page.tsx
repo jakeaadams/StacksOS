@@ -29,9 +29,16 @@ import {
   Camera,
   CreditCard,
   Edit,
+  Loader2,
   RefreshCw,
+  Sparkles,
+  ThumbsDown,
+  ThumbsUp,
   Users,
 } from "lucide-react";
+import { featureFlags } from "@/lib/feature-flags";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 import type {
   PatronDetails,
@@ -48,6 +55,225 @@ import { useCheckoutColumns, useHoldColumns, useBillColumns } from "./_component
 import { PatronDialogs } from "./_components/PatronDialogs";
 import { TasksNotesCard } from "./_components/TasksNotesCard";
 import { PatronActivityTabs } from "./_components/PatronActivityTabs";
+
+type PatronCopilotGuidance = {
+  id: string;
+  title: string;
+  why: string;
+  impact: "high" | "medium" | "low";
+  steps: string[];
+  deepLink: string;
+};
+
+type PatronCopilotData = {
+  summary: string;
+  riskFactors: string[];
+  guidance: PatronCopilotGuidance[];
+  caveats?: string[];
+  drilldowns: Array<{ label: string; url: string }>;
+};
+
+function PatronCopilotWidget({
+  patronId,
+  checkoutsCount,
+  holdsCount,
+  overdueCount,
+  balanceOwed,
+  alertCount,
+  active,
+  barred,
+  profileGroup,
+}: {
+  patronId: number;
+  checkoutsCount: number;
+  holdsCount: number;
+  overdueCount: number;
+  balanceOwed: number;
+  alertCount: number;
+  active: boolean;
+  barred: boolean;
+  profileGroup?: string;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [data, setData] = useState<PatronCopilotData | null>(null);
+  const [feedback, setFeedback] = useState<null | "accepted" | "rejected">(null);
+  const autoRequested = useRef(false);
+
+  const generate = useCallback(async () => {
+    if (!featureFlags.ai) return;
+    setLoading(true);
+    setError(null);
+    setData(null);
+    setDraftId(null);
+    setFeedback(null);
+    try {
+      const res = await fetchWithAuth("/api/ai/patron-copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patronId,
+          checkoutsCount,
+          holdsCount,
+          overdueCount,
+          balanceOwed,
+          alertCount,
+          active,
+          barred,
+          profileGroup,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.ok === false) {
+        throw new Error(json.error || "Patron copilot failed");
+      }
+      const response = (json.response || null) as PatronCopilotData | null;
+      if (!response) throw new Error("Patron copilot returned an empty payload");
+      setData(response);
+      setDraftId(typeof json.draftId === "string" ? json.draftId : null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    patronId,
+    checkoutsCount,
+    holdsCount,
+    overdueCount,
+    balanceOwed,
+    alertCount,
+    active,
+    barred,
+    profileGroup,
+  ]);
+
+  const submitFeedback = useCallback(
+    async (decision: "accepted" | "rejected") => {
+      if (!draftId) return;
+      setFeedback(decision);
+      try {
+        await fetchWithAuth(`/api/ai/drafts/${draftId}/decision`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision, suggestionId: "patron_copilot" }),
+        });
+      } catch {
+        // Best-effort only.
+      }
+    },
+    [draftId]
+  );
+
+  useEffect(() => {
+    if (!featureFlags.ai || autoRequested.current) return;
+    autoRequested.current = true;
+    void generate();
+  }, [generate]);
+
+  if (!featureFlags.ai) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Patron Copilot (Kimi 2.5 Pro)
+            </CardTitle>
+            <CardDescription>AI-powered patron interaction guidance.</CardDescription>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="outline" onClick={() => void generate()} disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Refresh
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void submitFeedback("accepted")}
+              disabled={!draftId || feedback !== null}
+              title="Useful"
+            >
+              <ThumbsUp className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void submitFeedback("rejected")}
+              disabled={!draftId || feedback !== null}
+              title="Not useful"
+            >
+              <ThumbsDown className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {loading && (
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Analyzing patron context...
+          </div>
+        )}
+        {error && (
+          <div className="text-sm text-muted-foreground">Assistant unavailable: {error}</div>
+        )}
+        {!loading && !error && !data && (
+          <div className="text-sm text-muted-foreground">
+            Refresh to generate patron interaction guidance.
+          </div>
+        )}
+        {data && (
+          <div className="space-y-3">
+            <div className="text-sm">{data.summary}</div>
+            {data.riskFactors.length > 0 ? (
+              <div className="grid gap-2">
+                {data.riskFactors.slice(0, 4).map((factor, idx) => (
+                  <div key={idx} className="rounded-lg border bg-muted/20 px-3 py-2 text-sm">
+                    {factor}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {Array.isArray(data.caveats) && data.caveats.length > 0 ? (
+              <div className="rounded-lg border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                <div className="font-medium text-foreground/80 mb-1">Caveats</div>
+                <ul className="list-disc list-inside space-y-1">
+                  {data.caveats.slice(0, 3).map((caveat, idx) => (
+                    <li key={idx}>{caveat}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {data.guidance.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Guidance
+                </div>
+                {data.guidance.slice(0, 4).map((item) => (
+                  <div key={item.id} className="rounded-lg border bg-muted/15 px-3 py-2">
+                    <div className="text-sm font-semibold">{item.title}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{item.why}</div>
+                    <div className="mt-2 text-xs">
+                      {item.steps.slice(0, 3).map((step, index) => (
+                        <div key={`${item.id}-step-${index}`} className="text-muted-foreground">
+                          {index + 1}. {step}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function PatronDetailPage() {
   const params = useParams();
@@ -625,6 +851,18 @@ export default function PatronDetailPage() {
               overdueCount: checkouts.filter((c) => c.status === "Overdue").length,
             }}
             variant="detailed"
+          />
+
+          <PatronCopilotWidget
+            patronId={patronId}
+            checkoutsCount={checkouts.length}
+            holdsCount={holds.length}
+            overdueCount={checkouts.filter((c) => c.status === "Overdue").length}
+            balanceOwed={bills.reduce((sum, b) => sum + b.balance, 0)}
+            alertCount={penalties.length}
+            active={patron.active}
+            barred={patron.barred}
+            profileGroup={patron.profile?.name}
           />
 
           <TasksNotesCard

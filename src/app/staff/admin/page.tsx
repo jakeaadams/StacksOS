@@ -29,6 +29,8 @@ import {
   SlidersHorizontal,
   ArrowRight,
   Globe,
+  Rocket,
+  Sparkles,
 } from "lucide-react";
 
 type AdminCard = {
@@ -141,6 +143,21 @@ export default function AdminHubPage() {
         href: "/staff/admin/go-live",
         icon: ClipboardCheck,
         tone: "bg-teal-500/10 text-teal-700",
+      },
+      {
+        title: "Onboarding Wizard",
+        description: "Profile-guided onboarding with phased task execution and probes.",
+        href: "/staff/admin/onboarding",
+        icon: Rocket,
+        tone: "bg-violet-500/10 text-violet-700",
+      },
+      {
+        title: "AI Audit Trail",
+        description: "Review AI-generated drafts, decisions, and provider telemetry.",
+        href: "/staff/admin/ai-audit",
+        icon: Sparkles,
+        tone: "bg-purple-500/10 text-purple-700",
+        enabled: featureFlags.ai,
       },
       {
         title: "Item Statuses",

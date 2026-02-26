@@ -11,6 +11,9 @@ export const DEVELOPER_EVENT_TYPES = [
   "k12.return.processed",
   "ai.ops.playbook.generated",
   "ai.staff.copilot.generated",
+  "ai.holds.copilot.generated",
+  "ai.patron.copilot.generated",
+  "ai.acquisitions.copilot.generated",
   "system.webhook.test",
 ] as const;
 

@@ -333,6 +333,42 @@ export default function AccountDashboard() {
                 </div>
               </div>
 
+              {/* Scannable library card barcode */}
+              {patron?.cardNumber && (
+                <div className="mb-4 p-3 bg-white rounded-lg border border-border/70 text-center">
+                  <svg
+                    viewBox="0 0 200 55"
+                    className="w-full max-w-[200px] mx-auto h-14"
+                    role="img"
+                    aria-label={`Library card barcode: ${patron.cardNumber}`}
+                  >
+                    {patron.cardNumber.split("").map((ch, i) => {
+                      const code = ch.charCodeAt(0);
+                      const x = 10 + i * (160 / Math.max(patron.cardNumber!.length, 1));
+                      const w = code % 2 === 0 ? 2 : 1.2;
+                      return <rect key={i} x={x} y={2} width={w} height={36} fill="black" />;
+                    })}
+                    <rect x={2} y={2} width={2} height={40} fill="black" />
+                    <rect x={5} y={2} width={1} height={40} fill="black" />
+                    <rect x={192} y={2} width={2} height={40} fill="black" />
+                    <rect x={196} y={2} width={1} height={40} fill="black" />
+                    <text
+                      x="100"
+                      y="52"
+                      textAnchor="middle"
+                      fontSize="8"
+                      fontFamily="monospace"
+                      fill="black"
+                    >
+                      {patron.cardNumber}
+                    </text>
+                  </svg>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Show at the desk for quick lookup
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-3 text-sm">
                 {patron?.email && (
                   <div className="flex items-center gap-3 text-muted-foreground">

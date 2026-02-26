@@ -6,6 +6,7 @@ import { requireSaaSAccess } from "@/lib/saas-rbac";
 import { getTenantConfig } from "@/lib/tenant/config";
 import { loadTenantConfigFromDisk } from "@/lib/tenant/store";
 import { buildProfileOnboardingPlaybook } from "@/lib/tenant/onboarding-playbooks";
+import { logger } from "@/lib/logger";
 
 function toStatus(ok: boolean): "pass" | "warn" | "fail" {
   if (ok) return "pass";
@@ -29,7 +30,19 @@ export async function GET(req: NextRequest) {
 
     const base = tenant.evergreenBaseUrl.replace(/\/+$/, "");
 
-    const [eg2Probe, osrfProbe, dbProbe, settingsProbe, workstationProbe] = await Promise.all([
+    const [
+      eg2Probe,
+      osrfProbe,
+      dbProbe,
+      settingsProbe,
+      workstationProbe,
+      k12TablesProbe,
+      courseReservesProbe,
+      opacKidsProbe,
+      opacEventsProbe,
+      patronNoticeProbe,
+    ] = await Promise.all([
+      // --- evergreenEg2 ---
       (async () => {
         const started = Date.now();
         try {
@@ -54,6 +67,7 @@ export async function GET(req: NextRequest) {
           };
         }
       })(),
+      // --- evergreenGateway ---
       (async () => {
         const started = Date.now();
         try {
@@ -78,6 +92,7 @@ export async function GET(req: NextRequest) {
           };
         }
       })(),
+      // --- database ---
       (async () => {
         const started = Date.now();
         try {
@@ -98,6 +113,7 @@ export async function GET(req: NextRequest) {
           };
         }
       })(),
+      // --- stacksosNoticeSettings ---
       (async () => {
         try {
           const pool = getEvergreenPool();
@@ -129,6 +145,7 @@ export async function GET(req: NextRequest) {
           };
         }
       })(),
+      // --- workstationFootprint ---
       (async () => {
         try {
           const pool = getEvergreenPool();
@@ -157,6 +174,154 @@ export async function GET(req: NextRequest) {
           };
         }
       })(),
+      // --- k12Tables ---
+      (async () => {
+        try {
+          const pool = getEvergreenPool();
+          const result = await pool.query(
+            `SELECT EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_schema = 'library' AND table_name = 'k12_classes'
+            ) AS exists`
+          );
+          const exists = result.rows[0]?.exists === true;
+          return {
+            status: exists ? ("pass" as const) : ("warn" as const),
+            ok: exists,
+            detail: exists
+              ? "library.k12_classes table exists"
+              : "library.k12_classes table not found",
+          };
+        } catch (error) {
+          return {
+            status: "fail" as const,
+            ok: false,
+            detail: error instanceof Error ? error.message : String(error),
+          };
+        }
+      })(),
+      // --- courseReservesData ---
+      (async () => {
+        try {
+          const pool = getEvergreenPool();
+          const result = await pool.query(
+            `SELECT EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_schema = 'asset' AND table_name = 'course_module_course'
+            ) AS exists`
+          );
+          const tableExists = result.rows[0]?.exists === true;
+          if (!tableExists) {
+            return {
+              status: "warn" as const,
+              ok: false,
+              detail: "Course reserves table (asset.course_module_course) not found",
+              courseCount: 0,
+            };
+          }
+          const countResult = await pool.query(
+            "SELECT COUNT(*)::int AS count FROM asset.course_module_course"
+          );
+          const courseCount = Number(countResult.rows[0]?.count || 0);
+          const ok = courseCount > 0;
+          return {
+            status: ok ? ("pass" as const) : ("warn" as const),
+            ok,
+            detail: `courseCount=${courseCount}`,
+            courseCount,
+          };
+        } catch (error) {
+          return {
+            status: "fail" as const,
+            ok: false,
+            detail: error instanceof Error ? error.message : String(error),
+            courseCount: 0,
+          };
+        }
+      })(),
+      // --- opacKidsRoutes ---
+      (async () => {
+        const started = Date.now();
+        try {
+          // Lightweight internal health check for /opac/kids route availability
+          const appBase =
+            process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || "http://127.0.0.1:3000";
+          const res = await fetch(`${appBase}/opac/kids`, {
+            method: "HEAD",
+            redirect: "manual",
+            cache: "no-store",
+            signal: AbortSignal.timeout(5000),
+          });
+          const ok = res.status >= 200 && res.status < 400;
+          return {
+            status: toStatus(ok),
+            ok,
+            latencyMs: Date.now() - started,
+            detail: `HTTP ${res.status}`,
+          };
+        } catch (error) {
+          logger.debug({ error: String(error) }, "opacKidsRoutes probe failed (non-blocking)");
+          return {
+            status: "warn" as const,
+            ok: false,
+            latencyMs: Date.now() - started,
+            detail: error instanceof Error ? error.message : String(error),
+          };
+        }
+      })(),
+      // --- opacEventsSource ---
+      (async () => {
+        const started = Date.now();
+        try {
+          const appBase =
+            process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || "http://127.0.0.1:3000";
+          const res = await fetch(`${appBase}/api/opac/events?limit=1`, {
+            method: "GET",
+            cache: "no-store",
+            signal: AbortSignal.timeout(5000),
+          });
+          const ok = res.status >= 200 && res.status < 400;
+          return {
+            status: toStatus(ok),
+            ok,
+            latencyMs: Date.now() - started,
+            detail: ok ? "Events API reachable" : `HTTP ${res.status}`,
+          };
+        } catch (error) {
+          logger.debug({ error: String(error) }, "opacEventsSource probe failed (non-blocking)");
+          return {
+            status: "warn" as const,
+            ok: false,
+            latencyMs: Date.now() - started,
+            detail: error instanceof Error ? error.message : String(error),
+          };
+        }
+      })(),
+      // --- patronNoticeTemplates ---
+      (async () => {
+        try {
+          const pool = getEvergreenPool();
+          const result = await pool.query(
+            `SELECT COUNT(*)::int AS count FROM library.notification_templates WHERE status = 'active'`
+          );
+          const count = Number(result.rows[0]?.count || 0);
+          const ok = count > 0;
+          return {
+            status: ok ? ("pass" as const) : ("warn" as const),
+            ok,
+            detail: `activeTemplates=${count}`,
+            templateCount: count,
+          };
+        } catch (error) {
+          // Table may not exist yet if migrations haven't run
+          return {
+            status: "warn" as const,
+            ok: false,
+            detail: error instanceof Error ? error.message : String(error),
+            templateCount: 0,
+          };
+        }
+      })(),
     ]);
 
     const checks = {
@@ -165,6 +330,11 @@ export async function GET(req: NextRequest) {
       database: dbProbe,
       stacksosNoticeSettings: settingsProbe,
       workstationFootprint: workstationProbe,
+      k12Tables: k12TablesProbe,
+      courseReservesData: courseReservesProbe,
+      opacKidsRoutes: opacKidsProbe,
+      opacEventsSource: opacEventsProbe,
+      patronNoticeTemplates: patronNoticeProbe,
     };
     const profileType = tenant.profile?.type || "public";
     const profilePlaybook = buildProfileOnboardingPlaybook(profileType, checks);
@@ -188,6 +358,16 @@ export async function GET(req: NextRequest) {
     if (selectedTenant && requestedTenantId !== activeTenant.tenantId) {
       recommendations.push(
         "DB checks are against the currently configured Evergreen DB tunnel; validate DB connectivity separately for non-active tenants."
+      );
+    }
+    if (!k12TablesProbe.ok) {
+      recommendations.push(
+        "K-12 tables not found. Run migrations to create library.k12_classes and related tables."
+      );
+    }
+    if (!patronNoticeProbe.ok) {
+      recommendations.push(
+        "No active patron notice templates found. Configure email templates in Administration > Notifications."
       );
     }
 

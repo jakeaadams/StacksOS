@@ -57,6 +57,9 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { escapeHtml, printHtml } from "@/lib/print";
 import { featureFlags } from "@/lib/feature-flags";
 import { fetchWithAuth } from "@/lib/client-fetch";
+import { useCirculationSound } from "@/hooks/use-circulation-sound";
+import { useCirculationPatron } from "@/contexts/patron-context";
+import { CalendarDays } from "lucide-react";
 
 interface CheckoutItem {
   id: string;
@@ -93,6 +96,7 @@ type CheckoutVariables = {
   itemBarcode: string;
   override?: boolean;
   overrideReason?: string;
+  dueDate?: string;
 };
 
 function buildReceiptHtml(params: {
@@ -134,27 +138,35 @@ function buildReceiptHtml(params: {
     '<div class="brand">StacksOS</div>',
     '<h1 style="margin-top:4px">Checkout Receipt</h1>',
     `<div class="muted">${escapeHtml(now.toLocaleString())}</div>`,
-    "<div class=\"meta\">",
-    safePatronName ? `<div><span class="k">Patron:</span> <span class="v">${safePatronName}</span></div>` : "",
-    safePatronBarcode ? `<div><span class="k">Barcode:</span> <span class="v mono">${safePatronBarcode}</span></div>` : "",
+    '<div class="meta">',
+    safePatronName
+      ? `<div><span class="k">Patron:</span> <span class="v">${safePatronName}</span></div>`
+      : "",
+    safePatronBarcode
+      ? `<div><span class="k">Barcode:</span> <span class="v mono">${safePatronBarcode}</span></div>`
+      : "",
     `<div><span class="k">Items:</span> <span class="v">${total}</span></div>`,
     `<div><span class="k">OK:</span> <span class="v">${okCount}</span></div>`,
-    warnCount ? `<div><span class="k">Warnings:</span> <span class="v">${warnCount}</span></div>` : "",
+    warnCount
+      ? `<div><span class="k">Warnings:</span> <span class="v">${warnCount}</span></div>`
+      : "",
     errCount ? `<div><span class="k">Errors:</span> <span class="v">${errCount}</span></div>` : "",
     "</div>",
     "</div>",
     "<h2>Items</h2>",
     "<table>",
     `<thead><tr><th scope="col">Barcode</th><th scope="col">Title</th><th scope="col">Call #</th><th scope="col">Due</th><th scope="col" class="right">Status</th></tr></thead>`,
-    `<tbody>${rows || "<tr><td colspan=\"5\" class=\"muted\">No items.</td></tr>"}</tbody>`,
+    `<tbody>${rows || '<tr><td colspan="5" class="muted">No items.</td></tr>'}</tbody>`,
     "</table>",
-    "<div class=\"muted\" style=\"margin-top:16px\">Questions? Ask your library staff.</div>",
+    '<div class="muted" style="margin-top:16px">Questions? Ask your library staff.</div>',
   ].join("\n");
 }
 
 export default function CheckoutPage() {
   const router = useRouter();
   const canAi = featureFlags.ai;
+  const { play: playSound } = useCirculationSound();
+  const { setPatron: setContextPatron } = useCirculationPatron();
 
   const {
     selectedPatron: patron,
@@ -165,7 +177,17 @@ export default function CheckoutPage() {
     clear: clearPatron,
   } = usePatronLookup({
     onError: (err) => toast.error("Patron not found", { description: err.message }),
-    onFound: (p) => toast.success("Loaded: " + p.displayName),
+    onFound: (p) => {
+      toast.success("Loaded: " + p.displayName);
+      setContextPatron({
+        id: p.id,
+        barcode: p.barcode,
+        displayName: p.displayName,
+        alerts: p.alertCount > 0 ? [`${p.alertCount} alert(s)`] : undefined,
+        balance: p.balanceOwed,
+        isBlocked: p.barred,
+      });
+    },
   });
 
   const searchParams = useSearchParams();
@@ -177,8 +199,13 @@ export default function CheckoutPage() {
   const [itemError, setItemError] = useState<string | undefined>(undefined);
   const [itemSuccess, setItemSuccess] = useState(false);
   const [dueDatesOpen, setDueDatesOpen] = useState(false);
+  const [specificDueDate, setSpecificDueDate] = useState("");
+  const [selectedItems, setSelectedItems] = useState<CheckoutItem[]>([]);
 
-  const [overridePrompt, setOverridePrompt] = useState<null | { itemBarcode: string; details: CheckoutBlockDetails }>(null);
+  const [overridePrompt, setOverridePrompt] = useState<null | {
+    itemBarcode: string;
+    details: CheckoutBlockDetails;
+  }>(null);
   const [overrideReason, setOverrideReason] = useState("");
   const [overrideError, setOverrideError] = useState<string | null>(null);
   const [isOverriding, setIsOverriding] = useState(false);
@@ -249,6 +276,7 @@ export default function CheckoutPage() {
       setCheckedOutItems((prev) => [newItem, ...prev]);
       setItemError(undefined);
       setItemSuccess(true);
+      playSound("success");
       toast.success("Item checked out", { description: "Due: " + dueDate });
     },
     onError: (err, variables) => {
@@ -303,6 +331,7 @@ export default function CheckoutPage() {
         return;
       }
 
+      playSound("error");
       toast.error("Checkout failed", { description: explain });
       if (variables.override) {
         setOverrideError(explain);
@@ -456,6 +485,7 @@ export default function CheckoutPage() {
         action: "checkout",
         patronBarcode: patron.barcode,
         itemBarcode: nextBarcode,
+        dueDate: specificDueDate || undefined,
       });
     } finally {
       setIsCheckingOut(false);
@@ -465,12 +495,14 @@ export default function CheckoutPage() {
     }
   }, [patron, isCheckingOut, overridePrompt, scanQueue, checkoutMutation]);
 
-  React.useEffect(() => { // Process queue when it changes
+  React.useEffect(() => {
+    // Process queue when it changes
     void processNextCheckout();
   }, [scanQueue.length, patron, isCheckingOut, overridePrompt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleNewSession = useCallback(() => {
     clearPatron();
+    setContextPatron(null);
     setCheckedOutItems([]);
     setItemBarcode("");
     setScanQueue([]);
@@ -478,12 +510,14 @@ export default function CheckoutPage() {
     setItemError(undefined);
     setItemSuccess(false);
     setDueDatesOpen(false);
+    setSpecificDueDate("");
+    setSelectedItems([]);
     setOverridePrompt(null);
     setOverrideReason("");
     setOverrideError(null);
     setIsOverriding(false);
     patronInputRef.current?.focus();
-  }, [clearPatron]);
+  }, [clearPatron, setContextPatron]);
 
   const handlePrintReceipt = useCallback(() => {
     if (!patron) {
@@ -548,7 +582,8 @@ export default function CheckoutPage() {
         header: "Status",
         cell: ({ row }) => {
           const status = row.original.status;
-          const label = status === "success" ? "Checked Out" : status === "warning" ? "Warning" : "Failed";
+          const label =
+            status === "success" ? "Checked Out" : status === "warning" ? "Warning" : "Failed";
           return (
             <StatusBadge
               label={label}
@@ -564,8 +599,12 @@ export default function CheckoutPage() {
         cell: ({ row }) => (
           <div className="space-y-0.5">
             <div className="font-medium">{row.original.title}</div>
-            {row.original.author && <div className="text-xs text-muted-foreground">{row.original.author}</div>}
-            {row.original.message && <div className="text-xs text-amber-600">{row.original.message}</div>}
+            {row.original.author && (
+              <div className="text-xs text-muted-foreground">{row.original.author}</div>
+            )}
+            {row.original.message && (
+              <div className="text-xs text-amber-600">{row.original.message}</div>
+            )}
           </div>
         ),
       },
@@ -597,7 +636,15 @@ export default function CheckoutPage() {
     []
   );
 
-const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No items checked out yet"        description="Scan a patron and item to start circulating materials."      />    ),    []  );
+  const checkoutEmptyState = useMemo(
+    () => (
+      <EmptyState
+        title="No items checked out yet"
+        description="Scan a patron and item to start circulating materials."
+      />
+    ),
+    []
+  );
   return (
     <PageContainer>
       <PageHeader
@@ -605,15 +652,34 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
         subtitle="Scan patron and item barcodes to circulate materials."
         breadcrumbs={[{ label: "Circulation" }, { label: "Check Out" }]}
         actions={[
-          { label: "New Session", onClick: handleNewSession, icon: RotateCcw, shortcut: { key: "Escape" } },
-          { label: "Print Receipt", onClick: handlePrintReceipt, icon: Printer, shortcut: { key: "p", ctrl: true } },
-          { label: "Walkthrough", onClick: () => window.location.assign("/staff/training?workflow=checkout"), icon: HelpCircle, variant: "outline" },
+          {
+            label: "New Session",
+            onClick: handleNewSession,
+            icon: RotateCcw,
+            shortcut: { key: "Escape" },
+          },
+          {
+            label: "Print Receipt",
+            onClick: handlePrintReceipt,
+            icon: Printer,
+            shortcut: { key: "p", ctrl: true },
+          },
+          {
+            label: "Walkthrough",
+            onClick: () => window.location.assign("/staff/training?workflow=checkout"),
+            icon: HelpCircle,
+            variant: "outline",
+          },
         ]}
       >
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary" className="rounded-full">Active Session</Badge>
+          <Badge variant="secondary" className="rounded-full">
+            Active Session
+          </Badge>
           {patron && (
-            <Badge variant="outline" className="rounded-full">Patron: {patron.displayName}</Badge>
+            <Badge variant="outline" className="rounded-full">
+              Patron: {patron.displayName}
+            </Badge>
           )}
         </div>
       </PageHeader>
@@ -623,7 +689,9 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
           <Card className="rounded-2xl border-border/70 shadow-sm">
             <CardContent className="space-y-4 p-5">
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Patron & Item Scan</h3>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Patron & Item Scan
+                </h3>
 
                 <BarcodeInput
                   ref={patronInputRef}
@@ -658,6 +726,37 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
                   disabled={!patron}
                   autoClear
                 />
+                {/* Due date override */}
+                {patron && (
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Label
+                      htmlFor="specific-due-date"
+                      className="text-xs text-muted-foreground whitespace-nowrap"
+                    >
+                      Specific Due Date
+                    </Label>
+                    <input
+                      id="specific-due-date"
+                      type="date"
+                      value={specificDueDate}
+                      onChange={(e) => setSpecificDueDate(e.target.value)}
+                      className="h-8 rounded-md border border-border/70 bg-background px-2 text-xs flex-1 min-w-0"
+                    />
+                    {specificDueDate && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-xs"
+                        onClick={() => setSpecificDueDate("")}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                )}
+
                 {isCheckingOut && (
                   <div aria-live="polite" aria-atomic="true">
                     <LoadingInline message="Processing checkout..." />
@@ -684,7 +783,9 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
               <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Session Totals</p>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Session Totals
+                    </p>
                     <h3 className="text-2xl font-semibold mt-1">{sessionStats.total}</h3>
                   </div>
                   <div className="h-10 w-10 rounded-full bg-[hsl(var(--brand-1))]/10 flex items-center justify-center text-[hsl(var(--brand-1))]">
@@ -715,21 +816,38 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
               <CardContent className="p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Quick Actions</p>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Quick Actions
+                    </p>
                     <h3 className="text-base font-semibold mt-1">Session Tools</h3>
                   </div>
                   <CreditCard className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="space-y-2">
-                  <Button variant="outline" className="w-full justify-between" onClick={handlePrintReceipt} disabled={!patron}>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between"
+                    onClick={handlePrintReceipt}
+                    disabled={!patron}
+                  >
                     Print Receipt
                     <Printer className="h-4 w-4 text-muted-foreground" />
                   </Button>
-                  <Button variant="outline" className="w-full justify-between" onClick={handleViewBills} disabled={!patron}>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between"
+                    onClick={handleViewBills}
+                    disabled={!patron}
+                  >
                     View Patron Bills
                     <CreditCard className="h-4 w-4 text-muted-foreground" />
                   </Button>
-                  <Button variant="outline" className="w-full justify-between" onClick={handleViewDueDates} disabled={checkedOutItems.length === 0}>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between"
+                    onClick={handleViewDueDates}
+                    disabled={checkedOutItems.length === 0}
+                  >
                     View Due Dates
                     <Clock className="h-4 w-4 text-muted-foreground" />
                   </Button>
@@ -741,9 +859,42 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Checkout Activity</h3>
-            <Badge variant="secondary" className="rounded-full">{sessionStats.total} items</Badge>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Checkout Activity
+            </h3>
+            <Badge variant="secondary" className="rounded-full">
+              {sessionStats.total} items
+            </Badge>
           </div>
+
+          {selectedItems.length > 0 && (
+            <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/30 px-4 py-2">
+              <span className="text-sm font-medium">{selectedItems.length} selected</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const successful = selectedItems.filter((i) => i.status === "success");
+                  if (successful.length === 0) {
+                    toast.message("No successful checkouts selected");
+                    return;
+                  }
+                  printHtml(
+                    buildReceiptHtml({
+                      patronName: patron?.displayName,
+                      patronBarcode: patron?.barcode,
+                      items: successful,
+                    }),
+                    { title: "StacksOS Receipt", tone: "receipt" }
+                  );
+                }}
+              >
+                <Printer className="h-4 w-4 mr-1" />
+                Print Selected
+              </Button>
+            </div>
+          )}
 
           <DataTable
             paginated={false}
@@ -752,6 +903,8 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
             searchable
             searchPlaceholder="Search by title, barcode, call number..."
             emptyState={checkoutEmptyState}
+            selectable
+            onSelectionChange={setSelectedItems}
           />
         </div>
       </PageContent>
@@ -768,7 +921,8 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
           <DialogHeader>
             <DialogTitle>Override Required</DialogTitle>
             <DialogDescription>
-              Evergreen blocked this checkout. If you have permission, you can override with a reason.
+              Evergreen blocked this checkout. If you have permission, you can override with a
+              reason.
             </DialogDescription>
           </DialogHeader>
 
@@ -776,27 +930,39 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
             <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
               <div className="text-sm font-medium">Blocked action</div>
               <div className="text-sm text-muted-foreground mt-1">
-                {overridePrompt?.details.desc || overridePrompt?.details.code || itemError || "Checkout blocked."}
+                {overridePrompt?.details.desc ||
+                  overridePrompt?.details.code ||
+                  itemError ||
+                  "Checkout blocked."}
               </div>
-              {Array.isArray(overridePrompt?.details.nextSteps) && overridePrompt.details.nextSteps.length > 0 && (
-                <ul className="mt-3 space-y-1 text-xs text-muted-foreground list-disc list-inside">
-                  {overridePrompt.details.nextSteps.map((step, idx) => (
-                    <li key={idx}>{step}</li>
-                  ))}
-                </ul>
-              )}
+              {Array.isArray(overridePrompt?.details.nextSteps) &&
+                overridePrompt.details.nextSteps.length > 0 && (
+                  <ul className="mt-3 space-y-1 text-xs text-muted-foreground list-disc list-inside">
+                    {overridePrompt.details.nextSteps.map((step, idx) => (
+                      <li key={idx}>{step}</li>
+                    ))}
+                  </ul>
+                )}
               <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground font-mono">
                 {overridePrompt?.itemBarcode && (
-                  <span className="rounded-full border px-2 py-0.5">Item {overridePrompt.itemBarcode}</span>
+                  <span className="rounded-full border px-2 py-0.5">
+                    Item {overridePrompt.itemBarcode}
+                  </span>
                 )}
                 {overridePrompt?.details.code && (
-                  <span className="rounded-full border px-2 py-0.5">Code {overridePrompt.details.code}</span>
+                  <span className="rounded-full border px-2 py-0.5">
+                    Code {overridePrompt.details.code}
+                  </span>
                 )}
                 {overridePrompt?.details.overridePerm && (
-                  <span className="rounded-full border px-2 py-0.5">Perm {overridePrompt.details.overridePerm}</span>
+                  <span className="rounded-full border px-2 py-0.5">
+                    Perm {overridePrompt.details.overridePerm}
+                  </span>
                 )}
                 {overridePrompt?.details.requestId && (
-                  <span className="rounded-full border px-2 py-0.5">Req {overridePrompt.details.requestId}</span>
+                  <span className="rounded-full border px-2 py-0.5">
+                    Req {overridePrompt.details.requestId}
+                  </span>
                 )}
               </div>
             </div>
@@ -833,7 +999,9 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
                     Generating explanation…
                   </div>
                 ) : aiExplainError ? (
-                  <div className="text-sm text-muted-foreground">AI unavailable: {aiExplainError}</div>
+                  <div className="text-sm text-muted-foreground">
+                    AI unavailable: {aiExplainError}
+                  </div>
                 ) : aiExplain ? (
                   <div className="space-y-2">
                     <div className="text-sm">{aiExplain.explanation}</div>
@@ -847,13 +1015,19 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
                     {aiExplain.suggestedNote ? (
                       <div className="rounded-lg border bg-muted/30 p-2 space-y-2">
                         <div className="text-xs text-muted-foreground">
-                          <div className="font-medium text-foreground/80">Suggested override note</div>
+                          <div className="font-medium text-foreground/80">
+                            Suggested override note
+                          </div>
                           <div className="mt-1 whitespace-pre-wrap">{aiExplain.suggestedNote}</div>
                         </div>
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setOverrideReason((prev) => (prev ? prev : aiExplain.suggestedNote || ""))}
+                          onClick={() =>
+                            setOverrideReason((prev) =>
+                              prev ? prev : aiExplain.suggestedNote || ""
+                            )
+                          }
                         >
                           Use note
                         </Button>
@@ -883,7 +1057,10 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
             <Button variant="outline" onClick={closeOverridePrompt} disabled={isOverriding}>
               Cancel
             </Button>
-            <Button onClick={handleOverrideCheckout} disabled={isOverriding || !overrideReason.trim()}>
+            <Button
+              onClick={handleOverrideCheckout}
+              disabled={isOverriding || !overrideReason.trim()}
+            >
               {isOverriding && (
                 <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
               )}
@@ -911,12 +1088,20 @@ const checkoutEmptyState = useMemo(    () => (      <EmptyState        title="No
               </div>
               <div className="grid gap-2">
                 {dueDateGroups.map((g) => (
-                  <div key={g.dueDate} className="flex items-center justify-between rounded-xl border border-border/70 px-3 py-2">
+                  <div
+                    key={g.dueDate}
+                    className="flex items-center justify-between rounded-xl border border-border/70 px-3 py-2"
+                  >
                     <div>
                       <div className="font-medium">{g.dueDate}</div>
-                      <div className="text-xs text-muted-foreground mono">{g.barcodes.slice(0, 4).join(", ")}{g.barcodes.length > 4 ? "…" : ""}</div>
+                      <div className="text-xs text-muted-foreground mono">
+                        {g.barcodes.slice(0, 4).join(", ")}
+                        {g.barcodes.length > 4 ? "…" : ""}
+                      </div>
                     </div>
-                    <Badge variant="secondary" className="rounded-full">{g.count} item{g.count === 1 ? "" : "s"}</Badge>
+                    <Badge variant="secondary" className="rounded-full">
+                      {g.count} item{g.count === 1 ? "" : "s"}
+                    </Badge>
                   </div>
                 ))}
               </div>

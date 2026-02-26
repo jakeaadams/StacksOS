@@ -18,11 +18,16 @@ import {
   HelpCircle,
   Inbox,
   ListChecks,
+  Loader2,
   Printer,
   RefreshCw,
   Search,
+  Sparkles,
+  ThumbsDown,
+  ThumbsUp,
   Trash2,
 } from "lucide-react";
+import { featureFlags } from "@/lib/feature-flags";
 
 import {
   BarcodeInput,
@@ -43,6 +48,195 @@ import {
   useExpiredColumns,
 } from "./_components/holds-columns";
 import { HoldsDialogs } from "./_components/HoldsDialogs";
+
+type HoldsCopilotAction = {
+  id: string;
+  title: string;
+  why: string;
+  impact: "high" | "medium" | "low";
+  etaMinutes: number;
+  steps: string[];
+  deepLink: string;
+};
+
+type HoldsCopilotData = {
+  summary: string;
+  highlights: string[];
+  actions: HoldsCopilotAction[];
+  caveats?: string[];
+  drilldowns: Array<{ label: string; url: string }>;
+};
+
+function HoldsCopilotWidget({ orgId }: { orgId: number }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [data, setData] = useState<HoldsCopilotData | null>(null);
+  const [feedback, setFeedback] = useState<null | "accepted" | "rejected">(null);
+  const autoRequested = useRef(false);
+
+  const generate = useCallback(async () => {
+    if (!featureFlags.ai) return;
+    setLoading(true);
+    setError(null);
+    setData(null);
+    setDraftId(null);
+    setFeedback(null);
+    try {
+      const res = await fetchWithAuth("/api/ai/holds-copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orgId,
+          holds: { available: 0, pending: 0, in_transit: 0, total: 0 },
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.ok === false) {
+        throw new Error(json.error || "Holds copilot failed");
+      }
+      const response = (json.response || null) as HoldsCopilotData | null;
+      if (!response) throw new Error("Holds copilot returned an empty payload");
+      setData(response);
+      setDraftId(typeof json.draftId === "string" ? json.draftId : null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId]);
+
+  const submitFeedback = useCallback(
+    async (decision: "accepted" | "rejected") => {
+      if (!draftId) return;
+      setFeedback(decision);
+      try {
+        await fetchWithAuth(`/api/ai/drafts/${draftId}/decision`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision, suggestionId: "holds_copilot" }),
+        });
+      } catch {
+        // Best-effort only.
+      }
+    },
+    [draftId]
+  );
+
+  useEffect(() => {
+    if (!featureFlags.ai || autoRequested.current) return;
+    autoRequested.current = true;
+    void generate();
+  }, [generate]);
+
+  if (!featureFlags.ai) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Holds Copilot (Kimi 2.5 Pro)
+            </CardTitle>
+            <CardDescription>AI-powered hold queue prioritization guidance.</CardDescription>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="outline" onClick={() => void generate()} disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Refresh
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void submitFeedback("accepted")}
+              disabled={!draftId || feedback !== null}
+              title="Useful"
+            >
+              <ThumbsUp className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void submitFeedback("rejected")}
+              disabled={!draftId || feedback !== null}
+              title="Not useful"
+            >
+              <ThumbsDown className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {loading && (
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Analyzing hold queues...
+          </div>
+        )}
+        {error && (
+          <div className="text-sm text-muted-foreground">Assistant unavailable: {error}</div>
+        )}
+        {!loading && !error && !data && (
+          <div className="text-sm text-muted-foreground">
+            Refresh to generate prioritized hold management actions.
+          </div>
+        )}
+        {data && (
+          <div className="space-y-3">
+            <div className="text-sm">{data.summary}</div>
+            <div className="grid gap-2">
+              {data.highlights.slice(0, 4).map((highlight, idx) => (
+                <div key={idx} className="rounded-lg border bg-muted/20 px-3 py-2 text-sm">
+                  {highlight}
+                </div>
+              ))}
+            </div>
+            {Array.isArray(data.caveats) && data.caveats.length > 0 ? (
+              <div className="rounded-lg border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                <div className="font-medium text-foreground/80 mb-1">Caveats</div>
+                <ul className="list-disc list-inside space-y-1">
+                  {data.caveats.slice(0, 3).map((caveat, idx) => (
+                    <li key={idx}>{caveat}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {data.actions.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Recommended Actions
+                </div>
+                {data.actions.slice(0, 4).map((action) => (
+                  <div key={action.id} className="rounded-lg border bg-muted/15 px-3 py-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm font-semibold">{action.title}</div>
+                      <Badge
+                        variant={action.impact === "high" ? "destructive" : "outline"}
+                        className="capitalize"
+                      >
+                        {action.impact} impact
+                      </Badge>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">{action.why}</div>
+                    <div className="mt-2 text-xs">
+                      {action.steps.slice(0, 3).map((step, index) => (
+                        <div key={`${action.id}-step-${index}`} className="text-muted-foreground">
+                          {index + 1}. {step}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function HoldsManagementPage() {
   const router = useRouter();
@@ -569,6 +763,8 @@ export default function HoldsManagementPage() {
       </PageHeader>
 
       <PageContent className="space-y-6">
+        <HoldsCopilotWidget orgId={orgId} />
+
         {error && (
           <ErrorMessage
             message={error}

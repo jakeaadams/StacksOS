@@ -8,7 +8,12 @@ export type OnboardingCheckKey =
   | "evergreenGateway"
   | "database"
   | "stacksosNoticeSettings"
-  | "workstationFootprint";
+  | "workstationFootprint"
+  | "k12Tables"
+  | "courseReservesData"
+  | "opacKidsRoutes"
+  | "opacEventsSource"
+  | "patronNoticeTemplates";
 
 export interface OnboardingTaskDefinition {
   id: string;
@@ -76,7 +81,7 @@ const PROFILE_TASKS: Record<
         description:
           "Enable kids/teens/events digital discovery entry points and verify language/location filters.",
         deepLink: "/opac/search",
-        checkKeys: ["evergreenGateway"],
+        checkKeys: ["evergreenGateway", "opacKidsRoutes"],
       },
       {
         id: "public-patron-communications",
@@ -84,7 +89,15 @@ const PROFILE_TASKS: Record<
         title: "Harden patron communications",
         description: "Verify holds/bills notice previews and outbound messaging provider behavior.",
         deepLink: "/staff/admin/notifications",
-        checkKeys: ["stacksosNoticeSettings"],
+        checkKeys: ["stacksosNoticeSettings", "patronNoticeTemplates"],
+      },
+      {
+        id: "public-events-data",
+        phase: "optimization",
+        title: "Verify events data source",
+        description: "Confirm events data source is available and publishing to public discovery.",
+        deepLink: "/opac/events",
+        checkKeys: ["opacEventsSource"],
       },
     ],
   },
@@ -99,7 +112,7 @@ const PROFILE_TASKS: Record<
         description:
           "Run classroom circulation pilot, validate teacher roster handling, and verify return workflows.",
         deepLink: "/staff/circulation/class-circulation",
-        checkKeys: ["database", "evergreenGateway"],
+        checkKeys: ["database", "evergreenGateway", "k12Tables"],
       },
       {
         id: "school-course-reserves",
@@ -108,7 +121,7 @@ const PROFILE_TASKS: Record<
         description:
           "Validate reserve course/term setup and reserve visibility in student discovery paths.",
         deepLink: "/staff/course-reserves",
-        checkKeys: ["database"],
+        checkKeys: ["database", "courseReservesData"],
       },
     ],
   },
@@ -132,7 +145,7 @@ const PROFILE_TASKS: Record<
         description:
           "Verify events publishing and patron communications for ministry and community programs.",
         deepLink: "/opac/events",
-        checkKeys: ["stacksosNoticeSettings"],
+        checkKeys: ["stacksosNoticeSettings", "opacEventsSource", "patronNoticeTemplates"],
       },
     ],
   },
@@ -156,7 +169,16 @@ const PROFILE_TASKS: Record<
         description:
           "Validate course reserves operations and audit-ready change management for policy updates.",
         deepLink: "/staff/course-reserves",
-        checkKeys: ["database", "stacksosNoticeSettings"],
+        checkKeys: ["database", "stacksosNoticeSettings", "courseReservesData"],
+      },
+      {
+        id: "academic-patron-notices",
+        phase: "optimization",
+        title: "Verify patron notice templates",
+        description:
+          "Ensure email templates for holds, overdue, and recall notices are configured.",
+        deepLink: "/staff/admin/notifications",
+        checkKeys: ["patronNoticeTemplates"],
       },
     ],
   },

@@ -856,6 +856,9 @@ export default function RecordDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Write a Review */}
+            <ReviewForm recordId={record.id} isLoggedIn={isLoggedIn} />
           </div>
         </div>
       </div>
@@ -960,6 +963,138 @@ export default function RecordDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** Inline review form for patrons */
+function ReviewForm({ recordId, isLoggedIn }: { recordId: number; isLoggedIn: boolean }) {
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [text, setText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  if (!isLoggedIn) {
+    return (
+      <div className="stx-surface rounded-xl p-6 text-center">
+        <h2 className="text-lg font-semibold text-foreground mb-2">Write a Review</h2>
+        <p className="text-muted-foreground text-sm mb-4">
+          Log in to share your thoughts about this title.
+        </p>
+        <Link
+          href={`/opac/login?redirect=${encodeURIComponent(`/opac/record/${recordId}`)}`}
+          className="inline-flex items-center gap-2 rounded-lg bg-[linear-gradient(125deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_88%)] px-4 py-2 text-white hover:brightness-110 text-sm font-medium"
+        >
+          Log in to review
+        </Link>
+      </div>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <div className="stx-surface rounded-xl p-6 text-center">
+        <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+        <h2 className="text-lg font-semibold text-foreground mb-1">Thank you!</h2>
+        <p className="text-muted-foreground text-sm">Your review has been submitted.</p>
+      </div>
+    );
+  }
+
+  const handleSubmit = async () => {
+    if (rating === 0 || !text.trim()) {
+      toast.error("Please provide a rating and review text");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/opac/reviews", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bibId: recordId, rating, text: text.trim() }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.ok !== false) {
+        setSubmitted(true);
+        toast.success("Review submitted!");
+      } else {
+        toast.error(data?.error || "Failed to submit review");
+      }
+    } catch {
+      toast.error("Failed to submit review");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="stx-surface rounded-xl p-6">
+      <h2 className="text-lg font-semibold text-foreground mb-4">Write a Review</h2>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-foreground/80 mb-2">Your Rating</label>
+          <div className="flex items-center gap-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                className="p-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 rounded"
+                onMouseEnter={() => setHoverRating(star)}
+                onMouseLeave={() => setHoverRating(0)}
+                onClick={() => setRating(star)}
+                aria-label={`Rate ${star} star${star !== 1 ? "s" : ""}`}
+              >
+                <Star
+                  className={`h-7 w-7 transition-colors ${
+                    star <= (hoverRating || rating)
+                      ? "text-yellow-400 fill-current"
+                      : "text-muted-foreground/30"
+                  }`}
+                />
+              </button>
+            ))}
+            {rating > 0 && <span className="ml-2 text-sm text-muted-foreground">{rating}/5</span>}
+          </div>
+        </div>
+
+        <div>
+          <label
+            htmlFor="review-text"
+            className="block text-sm font-medium text-foreground/80 mb-2"
+          >
+            Your Review
+          </label>
+          <textarea
+            id="review-text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="What did you think of this title?"
+            rows={4}
+            maxLength={2000}
+            className="w-full rounded-lg border border-border/70 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary-600"
+          />
+          <div className="text-xs text-muted-foreground text-right mt-1">{text.length}/2000</div>
+        </div>
+
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={isSubmitting || rating === 0 || !text.trim()}
+          className="bg-[linear-gradient(125deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_88%)] text-white hover:brightness-110 disabled:opacity-50"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Submitting...
+            </>
+          ) : (
+            "Submit Review"
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

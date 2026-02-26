@@ -40,16 +40,47 @@ export {
   fmDate,
 } from "./fieldmapper";
 
+// Fieldmapper index maps
+export {
+  AU_FIELDS,
+  AC_FIELDS,
+  CIRC_FIELDS,
+  AHR_FIELDS,
+  ACP_FIELDS,
+  MVR_FIELDS,
+  ACN_FIELDS,
+  PGT_FIELDS,
+  PPL_FIELDS,
+  PGPM_FIELDS,
+  CCMM_FIELDS,
+  CHMM_FIELDS,
+  CRCD_FIELDS,
+  CRRF_FIELDS,
+  CRMF_FIELDS,
+  AUSP_FIELDS,
+  CSP_FIELDS,
+  AOU_FIELDS,
+  ACPL_FIELDS,
+  FIELDMAPPER_MAPS,
+} from "./fieldmapper-maps";
+
+// Typed payload extraction helpers
+export {
+  fieldValue,
+  fieldString,
+  fieldNumber,
+  fieldBool,
+  payloadFirst,
+  payloadFirstArray,
+  payloadAll,
+  nestedFieldValue,
+} from "./extract-payload";
+
 // pcrud helpers
 export { callPcrud } from "./pcrud";
 
 // Request utilities
-export {
-  getRequestMeta,
-  getClientIp,
-  getUserAgent,
-  getRequestId,
-} from "./requests";
+export { getRequestMeta, getClientIp, getUserAgent, getRequestId } from "./requests";
 
 // Response helpers
 export {

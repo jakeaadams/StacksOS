@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import {
   errorResponse,
+  getClientIp,
   parseJsonBodyWithSchema,
   serverErrorResponse,
   successResponse,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/db/opac-events";
 import { getEventById } from "@/lib/events-data";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const reminderChannelSchema = z.enum(["none", "email", "sms", "both"]);
@@ -96,6 +98,18 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIp(req) || "unknown";
+    const rateLimit = await checkRateLimit(ip, {
+      maxAttempts: 10,
+      windowMs: 60_000,
+      endpoint: "opac-event-registrations",
+    });
+    if (!rateLimit.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      });
+    }
+
     const { patronId } = await requirePatronSession();
 
     const parsed = await parseJsonBodyWithSchema(req, postSchema);

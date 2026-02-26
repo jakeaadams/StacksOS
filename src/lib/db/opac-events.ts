@@ -97,6 +97,38 @@ function computeReminderSchedule(
   return eventDateObj.toISOString();
 }
 
+/**
+ * Fire-and-forget: notify a patron they were promoted from waitlist to registered.
+ * Uses the notification system if available; otherwise logs for manual follow-up.
+ */
+async function triggerWaitlistPromotionNotification(
+  patronId: number,
+  eventId: string,
+  eventDate: string
+): Promise<void> {
+  try {
+    const notifications = await import("@/lib/db/notifications");
+    const notificationId = `waitlist-promotion-${patronId}-${eventId}-${Date.now()}`;
+    await notifications.createNotificationEvent({
+      id: notificationId,
+      channel: "email",
+      noticeType: "event_waitlist_promotion",
+      patronId,
+      context: {
+        eventId,
+        eventDate,
+        promotedAt: new Date().toISOString(),
+      },
+    });
+    logger.info({ patronId, eventId }, "Waitlist promotion notification created");
+  } catch {
+    logger.info(
+      { patronId, eventId },
+      "Waitlist promotion notification skipped (notification system unavailable)"
+    );
+  }
+}
+
 async function ensureOpacEventTables(): Promise<void> {
   if (opacEventTablesReady) return;
   if (opacEventTablesInit) {
@@ -458,25 +490,6 @@ export async function registerPatronForEvent(args: {
       },
     });
 
-    // Update queue positions if user moved from waitlist to registered.
-    if (
-      existing?.status === "waitlisted" &&
-      saved.status === "registered" &&
-      existing.waitlist_position
-    ) {
-      await client.query(
-        `
-          UPDATE library.opac_event_registrations
-          SET waitlist_position = waitlist_position - 1,
-              updated_at = NOW()
-          WHERE event_id = $1
-            AND status = 'waitlisted'
-            AND waitlist_position > $2
-        `,
-        [eventId, existing.waitlist_position]
-      );
-    }
-
     return {
       registration: saved,
       action,
@@ -665,6 +678,9 @@ export async function cancelPatronEventRegistration(args: {
             promotedFrom: promoted.waitlist_position,
           },
         });
+
+        // Fire-and-forget notification for the promoted patron
+        void triggerWaitlistPromotionNotification(promoted.patron_id, eventId, args.eventDate);
       }
     }
 
@@ -799,4 +815,112 @@ export async function listPatronEventHistory(
         : {},
     createdAt: row.created_at,
   }));
+}
+
+/**
+ * List all registrations for a specific event (staff use).
+ */
+export async function listEventRegistrations(
+  eventId: string,
+  options?: { includeCanceled?: boolean }
+): Promise<EventRegistrationRecord[]> {
+  await ensureOpacEventTables();
+
+  const filters: string[] = ["event_id = $1"];
+  const params: unknown[] = [eventId];
+
+  if (!options?.includeCanceled) {
+    filters.push("status <> 'canceled'");
+  }
+
+  const rows = await query<EventRegistrationRow>(
+    `
+      SELECT
+        id,
+        event_id,
+        patron_id,
+        status,
+        waitlist_position,
+        reminder_channel,
+        reminder_opt_in,
+        reminder_scheduled_for,
+        reminder_sent_at,
+        registered_at,
+        canceled_at,
+        updated_at
+      FROM library.opac_event_registrations
+      WHERE ${filters.join(" AND ")}
+      ORDER BY status ASC, waitlist_position ASC NULLS LAST, registered_at ASC
+    `,
+    params as any[]
+  );
+
+  return rows.map(toRegistrationRecord);
+}
+
+/**
+ * Get reminders that are due for delivery (events in next 24h with unnotified registrants).
+ */
+export async function getDueReminders(): Promise<
+  Array<{
+    registrationId: number;
+    eventId: string;
+    patronId: number;
+    reminderChannel: EventReminderChannel;
+    reminderScheduledFor: string;
+  }>
+> {
+  await ensureOpacEventTables();
+
+  const rows = await query<{
+    id: number | string;
+    event_id: string;
+    patron_id: number;
+    reminder_channel: string;
+    reminder_scheduled_for: string;
+  }>(
+    `
+      SELECT
+        id,
+        event_id,
+        patron_id,
+        reminder_channel,
+        reminder_scheduled_for
+      FROM library.opac_event_registrations
+      WHERE status IN ('registered', 'waitlisted')
+        AND reminder_opt_in = TRUE
+        AND reminder_channel <> 'none'
+        AND reminder_scheduled_for IS NOT NULL
+        AND reminder_scheduled_for <= NOW()
+        AND reminder_sent_at IS NULL
+      ORDER BY reminder_scheduled_for ASC
+      LIMIT 200
+    `
+  );
+
+  return rows.map((row) => ({
+    registrationId: typeof row.id === "number" ? row.id : parseInt(String(row.id), 10),
+    eventId: row.event_id,
+    patronId: row.patron_id,
+    reminderChannel: normalizeReminderChannel(row.reminder_channel),
+    reminderScheduledFor: row.reminder_scheduled_for,
+  }));
+}
+
+/**
+ * Mark a reminder as sent (idempotent).
+ */
+export async function markReminderSent(registrationId: number): Promise<void> {
+  await ensureOpacEventTables();
+
+  await query(
+    `
+      UPDATE library.opac_event_registrations
+      SET reminder_sent_at = NOW(),
+          updated_at = NOW()
+      WHERE id = $1
+        AND reminder_sent_at IS NULL
+    `,
+    [registrationId]
+  );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageContainer, PageContent, PageHeader, EmptyState } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +17,18 @@ import {
 } from "@/components/ui/select";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { featureFlags } from "@/lib/feature-flags";
-import { GraduationCap, Loader2, RefreshCw, RotateCcw, School, UserPlus } from "lucide-react";
+import {
+  AlertTriangle,
+  BarChart3,
+  BookOpen,
+  GraduationCap,
+  Loader2,
+  RefreshCw,
+  RotateCcw,
+  School,
+  Upload,
+  UserPlus,
+} from "lucide-react";
 
 type ClassOverview = {
   id: number;
@@ -35,6 +46,22 @@ type Student = {
   firstName: string;
   lastName: string;
   studentIdentifier: string | null;
+  patronId: number | null;
+};
+
+type ClassStats = {
+  totalCheckouts: number;
+  booksPerStudent: number;
+  avgCheckoutDurationDays: number;
+  overdueCount: number;
+  mostActiveReader: string | null;
+};
+
+type RosterPreviewRow = {
+  name: string;
+  student_id?: string;
+  grade?: string;
+  patron_barcode?: string;
 };
 
 type ActiveCheckout = {
@@ -89,6 +116,15 @@ export default function K12ClassCirculationPage() {
     notes: "",
   });
 
+  // Stats state
+  const [classStats, setClassStats] = useState<ClassStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  // Roster import state
+  const [showRosterImport, setShowRosterImport] = useState(false);
+  const [rosterPreview, setRosterPreview] = useState<RosterPreviewRow[]>([]);
+  const [rosterImporting, setRosterImporting] = useState(false);
+
   const selectedClass = useMemo(
     () => state.classes.find((item) => item.id === selectedClassId) || null,
     [state.classes, selectedClassId]
@@ -117,6 +153,11 @@ export default function K12ClassCirculationPage() {
       setState(nextState);
       setSelectedClassId(nextState.selectedClassId);
       setSelectedCheckoutIds([]);
+      if (nextState.selectedClassId) {
+        void loadStats(nextState.selectedClassId);
+      } else {
+        setClassStats(null);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       toast.error(`Failed to load class circulation: ${message}`);
@@ -128,8 +169,105 @@ export default function K12ClassCirculationPage() {
     }
   }
 
+  const loadStats = useCallback(async (classId: number) => {
+    setStatsLoading(true);
+    try {
+      const response = await fetchWithAuth(`/api/staff/k12/stats?classId=${classId}`, {
+        cache: "no-store",
+      });
+      const json = await response.json();
+      if (!response.ok || json.ok !== true) {
+        setClassStats(null);
+        return;
+      }
+      setClassStats(json.stats as ClassStats);
+    } catch {
+      setClassStats(null);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  function parseCSV(text: string): RosterPreviewRow[] {
+    const lines = text.split(/\r?\n/).filter((line) => line.trim());
+    if (lines.length < 2) return [];
+
+    const header = lines[0]!.split(",").map((h) => h.trim().toLowerCase());
+    const nameIdx = header.indexOf("name");
+    if (nameIdx < 0) return [];
+
+    const studentIdIdx = header.indexOf("student_id");
+    const gradeIdx = header.indexOf("grade");
+    const barcodeIdx = header.indexOf("patron_barcode");
+
+    const rows: RosterPreviewRow[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i]!.split(",").map((c) => c.trim());
+      const name = cols[nameIdx] || "";
+      if (!name) continue;
+      rows.push({
+        name,
+        student_id: studentIdIdx >= 0 ? cols[studentIdIdx] : undefined,
+        grade: gradeIdx >= 0 ? cols[gradeIdx] : undefined,
+        patron_barcode: barcodeIdx >= 0 ? cols[barcodeIdx] : undefined,
+      });
+    }
+    return rows;
+  }
+
+  function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result;
+      if (typeof text !== "string") return;
+      const rows = parseCSV(text);
+      if (rows.length === 0) {
+        toast.error("No valid rows found. CSV must have a 'name' column header.");
+        return;
+      }
+      setRosterPreview(rows);
+      setShowRosterImport(true);
+    };
+    reader.readAsText(file);
+  }
+
+  async function onConfirmImport() {
+    if (!selectedClassId || rosterPreview.length === 0) return;
+    setRosterImporting(true);
+    try {
+      const response = await fetchWithAuth("/api/staff/k12/roster-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          classId: selectedClassId,
+          rows: rosterPreview,
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok || json.ok !== true) {
+        throw new Error(json.error || `HTTP ${response.status}`);
+      }
+      const imported = json.imported as number;
+      const errors = json.errors as Array<{ row: number; error: string }>;
+      toast.success(
+        `Imported ${imported} student(s)${errors.length > 0 ? `, ${errors.length} error(s)` : ""}`
+      );
+      setShowRosterImport(false);
+      setRosterPreview([]);
+      await loadData(selectedClassId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`Import failed: ${message}`);
+    } finally {
+      setRosterImporting(false);
+    }
+  }
+
   useEffect(() => {
     void loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function runAction(payload: Record<string, any>, successMessage: string) {
@@ -318,6 +456,63 @@ export default function K12ClassCirculationPage() {
           </Card>
         </div>
 
+        {/* Class-level reading stats */}
+        {selectedClassId && classStats ? (
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  Total Checkouts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold">{classStats.totalCheckouts}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Avg Books/Student
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold">{classStats.booksPerStudent}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Overdue Items
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold">{classStats.overdueCount}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  Most Active Reader
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg font-semibold truncate">
+                  {classStats.mostActiveReader || "N/A"}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : selectedClassId && statsLoading ? (
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading class stats...
+          </div>
+        ) : null}
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Create Class</CardTitle>
@@ -415,7 +610,70 @@ export default function K12ClassCirculationPage() {
             {selectedClassId ? (
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-lg border p-4 space-y-3">
-                  <h3 className="text-sm font-semibold">Add Student</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold">Add Student</h3>
+                    <label>
+                      <input
+                        type="file"
+                        accept=".csv"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                      />
+                      <Button variant="outline" size="sm" asChild>
+                        <span>
+                          <Upload className="mr-1 h-3 w-3" />
+                          Import Roster
+                        </span>
+                      </Button>
+                    </label>
+                  </div>
+
+                  {/* Roster import preview dialog */}
+                  {showRosterImport && rosterPreview.length > 0 ? (
+                    <div className="rounded border bg-muted/40 p-3 space-y-3">
+                      <h4 className="text-xs uppercase text-muted-foreground tracking-wide">
+                        CSV Preview ({rosterPreview.length} rows)
+                      </h4>
+                      <div className="max-h-48 overflow-auto space-y-1">
+                        {rosterPreview.map((row, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between rounded border bg-background px-2 py-1.5 text-xs"
+                          >
+                            <span className="font-medium">{row.name}</span>
+                            <span className="text-muted-foreground">
+                              {row.student_id || ""}
+                              {row.grade ? ` | Gr. ${row.grade}` : ""}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => void onConfirmImport()}
+                          disabled={rosterImporting}
+                        >
+                          {rosterImporting ? (
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          ) : null}
+                          Confirm Import
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setShowRosterImport(false);
+                            setRosterPreview([]);
+                          }}
+                          disabled={rosterImporting}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+
                   <div className="grid gap-3 md:grid-cols-3">
                     <Input
                       value={studentForm.firstName}
@@ -464,9 +722,16 @@ export default function K12ClassCirculationPage() {
                             <span>
                               {student.firstName} {student.lastName}
                             </span>
-                            <span className="text-xs text-muted-foreground">
-                              {student.studentIdentifier || "No ID"}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              {student.patronId ? (
+                                <Badge variant="outline" className="text-xs">
+                                  Patron #{student.patronId}
+                                </Badge>
+                              ) : null}
+                              <span className="text-xs text-muted-foreground">
+                                {student.studentIdentifier || "No ID"}
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>

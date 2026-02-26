@@ -10,6 +10,9 @@ export type PromptTemplateId =
   | "analytics_summary"
   | "ops_playbooks"
   | "staff_copilot"
+  | "holds_copilot"
+  | "patron_copilot"
+  | "acquisitions_copilot"
   | "semantic_rerank"
   | "ai_search"
   | "ai_search_explain"
@@ -277,6 +280,117 @@ export function buildAiSearchExplanationPrompt(args: {
   );
 
   return { id: "ai_search_explain", version: 1, system, user };
+}
+
+// ---------------------------------------------------------------------------
+// AI MARC Record Generation
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Holds Copilot
+// ---------------------------------------------------------------------------
+
+export function buildHoldsCopilotPrompt(inputRedacted: unknown): PromptTemplate {
+  const system = [
+    "You are StacksOS Holds Copilot (Kimi 2.5 Pro).",
+    "Goal: analyze a hold queue snapshot and produce prioritized actions for library staff.",
+    "Rules:",
+    "- Output JSON only, matching the schema.",
+    "- Each action must include: id, title, why, impact (high|medium|low), etaMinutes, steps, deepLink.",
+    "- Prioritize actions that reduce patron wait time and shelf backlog first.",
+    "- Never include patron-level PII or fabricated facts.",
+    "- If data is incomplete, explicitly call this out in caveats.",
+    "- Prefer links to existing StacksOS pages for execution.",
+  ].join("\n");
+
+  const user = JSON.stringify(
+    {
+      task: "Analyze hold queue stats and generate prioritized hold management actions",
+      input: inputRedacted,
+      knownPages: [
+        { label: "Holds Management", url: "/staff/circulation/holds-management" },
+        { label: "Pull List", url: "/staff/circulation/pull-list" },
+        { label: "Holds Shelf", url: "/staff/circulation/holds-shelf" },
+        { label: "Transits", url: "/staff/circulation/transits" },
+        { label: "Check In", url: "/staff/circulation/checkin" },
+      ],
+    },
+    null,
+    2
+  );
+
+  return { id: "holds_copilot", version: 1, system, user };
+}
+
+// ---------------------------------------------------------------------------
+// Patron Copilot
+// ---------------------------------------------------------------------------
+
+export function buildPatronCopilotPrompt(inputRedacted: unknown): PromptTemplate {
+  const system = [
+    "You are StacksOS Patron Copilot (Kimi 2.5 Pro).",
+    "Goal: provide contextual guidance to library staff for a specific patron interaction.",
+    "Rules:",
+    "- Output JSON only, matching the schema.",
+    "- Produce a brief interaction summary, highlight any alerts or risk factors, and suggest next steps.",
+    "- Never suggest actions that violate patron privacy or library policy.",
+    "- Never fabricate patron history or invent checkout/hold details.",
+    "- If data is incomplete, note missing information in caveats.",
+    "- Prefer links to existing StacksOS pages for execution.",
+  ].join("\n");
+
+  const user = JSON.stringify(
+    {
+      task: "Generate patron interaction guidance from the provided summary",
+      input: inputRedacted,
+      knownPages: [
+        { label: "Patron Detail", url: "/staff/patrons/{id}" },
+        { label: "Checkout", url: "/staff/circulation/checkout" },
+        { label: "Check In", url: "/staff/circulation/checkin" },
+        { label: "Bills", url: "/staff/circulation/bills" },
+        { label: "Holds Management", url: "/staff/circulation/holds-management" },
+      ],
+    },
+    null,
+    2
+  );
+
+  return { id: "patron_copilot", version: 1, system, user };
+}
+
+// ---------------------------------------------------------------------------
+// Acquisitions Copilot
+// ---------------------------------------------------------------------------
+
+export function buildAcquisitionsCopilotPrompt(inputRedacted: unknown): PromptTemplate {
+  const system = [
+    "You are StacksOS Acquisitions Copilot (Kimi 2.5 Pro).",
+    "Goal: analyze fund balances and purchase order data to produce budget management actions.",
+    "Rules:",
+    "- Output JSON only, matching the schema.",
+    "- Each action must include: id, title, why, impact (high|medium|low), etaMinutes, steps, deepLink.",
+    "- Prioritize spend-rate anomalies, low-balance funds, and pending orders that need attention.",
+    "- Never include vendor contract details or financial account numbers.",
+    "- If data is incomplete, explicitly call this out in caveats.",
+    "- Prefer links to existing StacksOS pages for execution.",
+  ].join("\n");
+
+  const user = JSON.stringify(
+    {
+      task: "Analyze fund balances and order data to generate budget management actions",
+      input: inputRedacted,
+      knownPages: [
+        { label: "Acquisitions", url: "/staff/acquisitions" },
+        { label: "Purchase Orders", url: "/staff/acquisitions/orders" },
+        { label: "Receiving", url: "/staff/acquisitions/receiving" },
+        { label: "Reports", url: "/staff/reports" },
+      ],
+    },
+    null,
+    2
+  );
+
+  return { id: "acquisitions_copilot", version: 1, system, user };
 }
 
 // ---------------------------------------------------------------------------

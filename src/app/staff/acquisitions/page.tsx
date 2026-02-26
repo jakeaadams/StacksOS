@@ -2,29 +2,25 @@
 
 import { fetchWithAuth } from "@/lib/client-fetch";
 
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { featureFlags } from "@/lib/feature-flags";
 
 import {
-
   PageContainer,
   PageHeader,
   PageContent,
   EmptyState,
   ErrorMessage,
 } from "@/components/shared";
+import { useAuth } from "@/contexts/auth-context";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -47,6 +43,9 @@ import {
   FileText,
   Loader2,
   Globe,
+  Sparkles,
+  ThumbsDown,
+  ThumbsUp,
 } from "lucide-react";
 
 interface PurchaseOrder {
@@ -75,8 +74,217 @@ interface Vendor {
   active: boolean;
 }
 
+type AcqCopilotAction = {
+  id: string;
+  title: string;
+  why: string;
+  impact: "high" | "medium" | "low";
+  etaMinutes: number;
+  steps: string[];
+  deepLink: string;
+};
+
+type AcqCopilotData = {
+  summary: string;
+  highlights: string[];
+  actions: AcqCopilotAction[];
+  caveats?: string[];
+  drilldowns: Array<{ label: string; url: string }>;
+};
+
+function AcquisitionsCopilotWidget({
+  orgId,
+  funds,
+  orderCounts,
+  vendorCount,
+}: {
+  orgId: number;
+  funds: Fund[];
+  orderCounts: { total: number; pending: number; onOrder: number; received: number };
+  vendorCount: number;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [data, setData] = useState<AcqCopilotData | null>(null);
+  const [feedback, setFeedback] = useState<null | "accepted" | "rejected">(null);
+  const autoRequested = useRef(false);
+
+  const generate = useCallback(async () => {
+    if (!featureFlags.ai) return;
+    setLoading(true);
+    setError(null);
+    setData(null);
+    setDraftId(null);
+    setFeedback(null);
+    try {
+      const res = await fetchWithAuth("/api/ai/acquisitions-copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orgId,
+          funds: funds.map((f) => ({
+            id: f.id,
+            name: f.name,
+            code: f.code,
+            year: f.year,
+            currency: f.currency,
+          })),
+          orderCounts,
+          vendorCount,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.ok === false) {
+        throw new Error(json.error || "Acquisitions copilot failed");
+      }
+      const response = (json.response || null) as AcqCopilotData | null;
+      if (!response) throw new Error("Acquisitions copilot returned an empty payload");
+      setData(response);
+      setDraftId(typeof json.draftId === "string" ? json.draftId : null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId, funds, orderCounts, vendorCount]);
+
+  const submitFeedback = useCallback(
+    async (decision: "accepted" | "rejected") => {
+      if (!draftId) return;
+      setFeedback(decision);
+      try {
+        await fetchWithAuth(`/api/ai/drafts/${draftId}/decision`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision, suggestionId: "acquisitions_copilot" }),
+        });
+      } catch {
+        // Best-effort only.
+      }
+    },
+    [draftId]
+  );
+
+  useEffect(() => {
+    if (!featureFlags.ai || autoRequested.current) return;
+    autoRequested.current = true;
+    void generate();
+  }, [generate]);
+
+  if (!featureFlags.ai) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Acquisitions Copilot (Kimi 2.5 Pro)
+            </CardTitle>
+            <CardDescription>AI-powered budget and ordering guidance.</CardDescription>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="outline" onClick={() => void generate()} disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Refresh
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void submitFeedback("accepted")}
+              disabled={!draftId || feedback !== null}
+              title="Useful"
+            >
+              <ThumbsUp className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void submitFeedback("rejected")}
+              disabled={!draftId || feedback !== null}
+              title="Not useful"
+            >
+              <ThumbsDown className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {loading && (
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Analyzing acquisitions data...
+          </div>
+        )}
+        {error && (
+          <div className="text-sm text-muted-foreground">Assistant unavailable: {error}</div>
+        )}
+        {!loading && !error && !data && (
+          <div className="text-sm text-muted-foreground">
+            Refresh to generate budget management recommendations.
+          </div>
+        )}
+        {data && (
+          <div className="space-y-3">
+            <div className="text-sm">{data.summary}</div>
+            <div className="grid gap-2">
+              {data.highlights.slice(0, 4).map((highlight, idx) => (
+                <div key={idx} className="rounded-lg border bg-muted/20 px-3 py-2 text-sm">
+                  {highlight}
+                </div>
+              ))}
+            </div>
+            {Array.isArray(data.caveats) && data.caveats.length > 0 ? (
+              <div className="rounded-lg border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                <div className="font-medium text-foreground/80 mb-1">Caveats</div>
+                <ul className="list-disc list-inside space-y-1">
+                  {data.caveats.slice(0, 3).map((caveat, idx) => (
+                    <li key={idx}>{caveat}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {data.actions.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Recommended Actions
+                </div>
+                {data.actions.slice(0, 4).map((action) => (
+                  <div key={action.id} className="rounded-lg border bg-muted/15 px-3 py-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm font-semibold">{action.title}</div>
+                      <Badge
+                        variant={action.impact === "high" ? "destructive" : "outline"}
+                        className="capitalize"
+                      >
+                        {action.impact} impact
+                      </Badge>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">{action.why}</div>
+                    <div className="mt-2 text-xs">
+                      {action.steps.slice(0, 3).map((step, index) => (
+                        <div key={`${action.id}-step-${index}`} className="text-muted-foreground">
+                          {index + 1}. {step}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AcquisitionsPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const orgId = user?.homeLibraryId || 1;
 
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [funds, setFunds] = useState<Fund[]>([]);
@@ -174,12 +382,18 @@ export default function AcquisitionsPage() {
     if (!q) return orders;
 
     return orders.filter((order) => {
-      const vendorName = (vendorMap.get(order.provider)?.name || `Provider ${order.provider}`).toLowerCase();
+      const vendorName = (
+        vendorMap.get(order.provider)?.name || `Provider ${order.provider}`
+      ).toLowerCase();
       return (
         String(order.id).toLowerCase().includes(q) ||
-        String(order.name || "").toLowerCase().includes(q) ||
+        String(order.name || "")
+          .toLowerCase()
+          .includes(q) ||
         vendorName.includes(q) ||
-        String(order.state || "").toLowerCase().includes(q)
+        String(order.state || "")
+          .toLowerCase()
+          .includes(q)
       );
     });
   }, [orders, searchQuery, vendorMap]);
@@ -212,17 +426,20 @@ export default function AcquisitionsPage() {
           <div className="bg-muted/50 border-b px-4 py-2 flex items-center gap-2">
             <Button asChild size="sm">
               <Link href="/staff/acquisitions/orders">
-                <Plus className="h-4 w-4 mr-1" />New Order
+                <Plus className="h-4 w-4 mr-1" />
+                New Order
               </Link>
             </Button>
             <Button asChild size="sm" variant="outline">
               <Link href="/staff/acquisitions/receiving">
-                <Package className="h-4 w-4 mr-1" />Receive Items
+                <Package className="h-4 w-4 mr-1" />
+                Receive Items
               </Link>
             </Button>
             <Button asChild size="sm" variant="outline">
               <Link href="/staff/reports">
-                <FileText className="h-4 w-4 mr-1" />Reports
+                <FileText className="h-4 w-4 mr-1" />
+                Reports
               </Link>
             </Button>
             <div className="flex-1" />
@@ -243,17 +460,32 @@ export default function AcquisitionsPage() {
             </div>
           )}
 
-          <div className="flex-1 p-4 overflow-auto">
+          <div className="flex-1 p-4 overflow-auto space-y-4">
+            <AcquisitionsCopilotWidget
+              orgId={orgId}
+              funds={funds}
+              orderCounts={{
+                total: orders.length,
+                pending: orders.filter((o) => o.state === "pending").length,
+                onOrder: orders.filter((o) => o.state === "on-order").length,
+                received: orders.filter((o) => o.state === "received").length,
+              }}
+              vendorCount={vendors.length}
+            />
+
             <Tabs defaultValue="orders" className="h-full flex flex-col">
               <TabsList>
                 <TabsTrigger value="orders" className="flex items-center gap-2">
-                  <ShoppingCart className="h-4 w-4" />Purchase Orders ({orders.length})
+                  <ShoppingCart className="h-4 w-4" />
+                  Purchase Orders ({orders.length})
                 </TabsTrigger>
                 <TabsTrigger value="funds" className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />Funds ({funds.length})
+                  <DollarSign className="h-4 w-4" />
+                  Funds ({funds.length})
                 </TabsTrigger>
                 <TabsTrigger value="vendors" className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />Vendors ({vendors.length})
+                  <Building2 className="h-4 w-4" />
+                  Vendors ({vendors.length})
                 </TabsTrigger>
               </TabsList>
 
@@ -262,7 +494,8 @@ export default function AcquisitionsPage() {
                   <CardHeader className="py-3">
                     <CardTitle className="text-base flex items-center justify-between">
                       <span className="flex items-center gap-2">
-                        <ShoppingCart className="h-4 w-4" />Purchase Orders
+                        <ShoppingCart className="h-4 w-4" />
+                        Purchase Orders
                       </span>
                       <Badge variant="outline">
                         {filteredOrders.length} shown
@@ -335,9 +568,7 @@ export default function AcquisitionsPage() {
                         <EmptyState
                           icon={DollarSign}
                           title="No funds"
-                          description={
-                            fundsMessage || "No funds configured or permission denied."
-                          }
+                          description={fundsMessage || "No funds configured or permission denied."}
                           action={{
                             label: "Setup Guide",
                             onClick: () => router.push("/staff/help#evergreen-setup"),
@@ -375,7 +606,8 @@ export default function AcquisitionsPage() {
                 <Card className="h-full">
                   <CardHeader className="py-3">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />Vendor Directory
+                      <Building2 className="h-4 w-4" />
+                      Vendor Directory
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">

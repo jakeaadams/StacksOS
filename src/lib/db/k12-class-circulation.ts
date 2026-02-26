@@ -20,6 +20,7 @@ export interface K12Student {
   firstName: string;
   lastName: string;
   studentIdentifier: string | null;
+  patronId: number | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -58,6 +59,7 @@ type StudentRow = {
   first_name: string;
   last_name: string;
   student_identifier: string | null;
+  patron_id: number | null;
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -104,6 +106,7 @@ function toStudent(row: StudentRow): K12Student {
     firstName: row.first_name,
     lastName: row.last_name,
     studentIdentifier: row.student_identifier,
+    patronId: row.patron_id ?? null,
     active: Boolean(row.active),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -171,6 +174,7 @@ export async function listK12Students(classId: number): Promise<K12Student[]> {
         first_name,
         last_name,
         student_identifier,
+        patron_id,
         active,
         created_at,
         updated_at
@@ -264,6 +268,7 @@ export async function createK12Student(args: {
   firstName: string;
   lastName: string;
   studentIdentifier?: string | null;
+  patronId?: number | null;
   actorId?: number | null;
 }): Promise<K12Student> {
   const row = await querySingle<StudentRow>(
@@ -273,19 +278,21 @@ export async function createK12Student(args: {
         first_name,
         last_name,
         student_identifier,
+        patron_id,
         active,
         created_by,
         updated_by,
         created_at,
         updated_at
       )
-      VALUES ($1, $2, $3, $4, TRUE, $5, $5, NOW(), NOW())
+      VALUES ($1, $2, $3, $4, $5, TRUE, $6, $6, NOW(), NOW())
       RETURNING
         id,
         class_id,
         first_name,
         last_name,
         student_identifier,
+        patron_id,
         active,
         created_at,
         updated_at
@@ -295,6 +302,7 @@ export async function createK12Student(args: {
       args.firstName.trim(),
       args.lastName.trim(),
       args.studentIdentifier?.trim() || null,
+      args.patronId ?? null,
       args.actorId ?? null,
     ]
   );
@@ -453,6 +461,113 @@ export async function getK12ClassById(classId: number): Promise<K12ClassOverview
 
   if (!row) return null;
   return toClass(row);
+}
+
+export async function linkStudentToPatron(
+  studentId: number,
+  patronId: number
+): Promise<K12Student> {
+  const row = await querySingle<StudentRow>(
+    `
+      UPDATE library.k12_students
+      SET patron_id = $2, updated_at = NOW()
+      WHERE id = $1
+      RETURNING
+        id,
+        class_id,
+        first_name,
+        last_name,
+        student_identifier,
+        patron_id,
+        active,
+        created_at,
+        updated_at
+    `,
+    [studentId, patronId]
+  );
+
+  if (!row) throw new Error("Student not found");
+  return toStudent(row);
+}
+
+export interface K12ClassStats {
+  totalCheckouts: number;
+  booksPerStudent: number;
+  avgCheckoutDurationDays: number;
+  overdueCount: number;
+  mostActiveReader: string | null;
+}
+
+type StatsRow = {
+  total_checkouts: number;
+  books_per_student: number;
+  avg_checkout_duration_days: number;
+  overdue_count: number;
+  most_active_reader: string | null;
+};
+
+export async function getClassReadingStats(classId: number): Promise<K12ClassStats> {
+  const row = await querySingle<StatsRow>(
+    `
+      WITH student_count AS (
+        SELECT COUNT(*)::int AS cnt
+        FROM library.k12_students
+        WHERE class_id = $1 AND active = TRUE
+      ),
+      checkout_stats AS (
+        SELECT
+          COUNT(*)::int AS total_checkouts,
+          COALESCE(
+            AVG(
+              EXTRACT(EPOCH FROM (COALESCE(co.returned_ts, NOW()) - co.checkout_ts)) / 86400.0
+            ),
+            0
+          )::numeric(10,1) AS avg_checkout_duration_days
+        FROM library.k12_class_checkouts co
+        WHERE co.class_id = $1
+      ),
+      overdue_stats AS (
+        SELECT COUNT(*)::int AS overdue_count
+        FROM library.k12_class_checkouts co
+        WHERE co.class_id = $1
+          AND co.returned_ts IS NULL
+          AND co.due_ts IS NOT NULL
+          AND co.due_ts < NOW()
+      ),
+      top_reader AS (
+        SELECT
+          concat_ws(' ', s.first_name, s.last_name) AS reader_name
+        FROM library.k12_class_checkouts co
+        JOIN library.k12_students s ON s.id = co.student_id
+        WHERE co.class_id = $1 AND co.student_id IS NOT NULL
+        GROUP BY s.id, s.first_name, s.last_name
+        ORDER BY COUNT(*) DESC
+        LIMIT 1
+      )
+      SELECT
+        cs.total_checkouts,
+        CASE
+          WHEN sc.cnt > 0 THEN ROUND(cs.total_checkouts::numeric / sc.cnt, 1)
+          ELSE 0
+        END::numeric(10,1) AS books_per_student,
+        cs.avg_checkout_duration_days,
+        os.overdue_count,
+        tr.reader_name AS most_active_reader
+      FROM checkout_stats cs
+      CROSS JOIN student_count sc
+      CROSS JOIN overdue_stats os
+      LEFT JOIN top_reader tr ON TRUE
+    `,
+    [classId]
+  );
+
+  return {
+    totalCheckouts: Number(row?.total_checkouts || 0),
+    booksPerStudent: Number(row?.books_per_student || 0),
+    avgCheckoutDurationDays: Number(row?.avg_checkout_duration_days || 0),
+    overdueCount: Number(row?.overdue_count || 0),
+    mostActiveReader: row?.most_active_reader || null,
+  };
 }
 
 export async function logK12Summary(homeOu?: number | null): Promise<void> {

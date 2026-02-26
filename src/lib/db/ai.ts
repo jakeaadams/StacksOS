@@ -1,7 +1,38 @@
 import crypto from "crypto";
 import { logger } from "@/lib/logger";
-import { query } from "./evergreen";
+import { query, querySingle } from "./evergreen";
 import { ensureLibrarySchemaExists } from "./library-schema";
+
+export type AiDraftRow = {
+  id: string;
+  type: string;
+  request_id: string | null;
+  actor_id: number | null;
+  provider: string | null;
+  model: string | null;
+  prompt_hash: string | null;
+  prompt_template: string | null;
+  prompt_version: number | null;
+  input_redacted: unknown;
+  output: unknown;
+  created_at: string;
+  decided_at: string | null;
+  decision: string | null;
+  decision_reason: string | null;
+  decided_by: number | null;
+  ip: string | null;
+  user_agent: string | null;
+};
+
+export type AiDraftDecisionRow = {
+  id: number;
+  draft_id: string;
+  suggestion_id: string | null;
+  decision: string;
+  reason: string | null;
+  decided_at: string;
+  decided_by: number | null;
+};
 
 let aiTablesInitialized = false;
 
@@ -161,4 +192,85 @@ export async function decideAiDraft(args: {
     `,
     [args.id, args.decision, args.decidedBy || null, reason]
   );
+}
+
+export async function listAiDrafts(args: {
+  type?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ drafts: AiDraftRow[]; total: number }> {
+  await ensureAiTables();
+
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  let paramIndex = 1;
+
+  if (args.type) {
+    conditions.push(`d.type = $${paramIndex++}`);
+    params.push(args.type);
+  }
+  if (args.dateFrom) {
+    conditions.push(`d.created_at >= $${paramIndex++}::timestamp`);
+    params.push(args.dateFrom);
+  }
+  if (args.dateTo) {
+    conditions.push(`d.created_at <= $${paramIndex++}::timestamp`);
+    params.push(args.dateTo);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const limit = Math.min(Math.max(args.limit || 50, 1), 200);
+  const offset = Math.max(args.offset || 0, 0);
+
+  const countResult = await querySingle<{ count: number }>(
+    `SELECT COUNT(*)::int AS count FROM library.ai_drafts d ${whereClause}`,
+    params
+  );
+  const total = countResult?.count || 0;
+
+  const drafts = await query<AiDraftRow>(
+    `SELECT d.id, d.type, d.request_id, d.actor_id, d.provider, d.model,
+            d.prompt_hash, d.prompt_template, d.prompt_version,
+            d.input_redacted, d.output,
+            d.created_at, d.decided_at, d.decision, d.decision_reason, d.decided_by,
+            d.ip, d.user_agent
+     FROM library.ai_drafts d
+     ${whereClause}
+     ORDER BY d.created_at DESC
+     LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
+    [...params, limit, offset]
+  );
+
+  return { drafts, total };
+}
+
+export async function getAiDraftWithDecisions(
+  draftId: string
+): Promise<{ draft: AiDraftRow; decisions: AiDraftDecisionRow[] } | null> {
+  await ensureAiTables();
+
+  const draft = await querySingle<AiDraftRow>(
+    `SELECT id, type, request_id, actor_id, provider, model,
+            prompt_hash, prompt_template, prompt_version,
+            input_redacted, output,
+            created_at, decided_at, decision, decision_reason, decided_by,
+            ip, user_agent
+     FROM library.ai_drafts
+     WHERE id = $1`,
+    [draftId]
+  );
+
+  if (!draft) return null;
+
+  const decisions = await query<AiDraftDecisionRow>(
+    `SELECT id, draft_id, suggestion_id, decision, reason, decided_at, decided_by
+     FROM library.ai_draft_decisions
+     WHERE draft_id = $1
+     ORDER BY decided_at ASC`,
+    [draftId]
+  );
+
+  return { draft, decisions };
 }

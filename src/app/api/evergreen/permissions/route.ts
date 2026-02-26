@@ -5,6 +5,13 @@ import {
   errorResponse,
   serverErrorResponse,
   getRequestMeta,
+  payloadFirst,
+  payloadFirstArray,
+  fieldValue,
+  fieldBool,
+  PGT_FIELDS,
+  PPL_FIELDS,
+  PGPM_FIELDS,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { featureFlags } from "@/lib/feature-flags";
@@ -51,25 +58,18 @@ export async function GET(req: NextRequest) {
           },
         ]);
 
-        const groups = (response?.payload?.[0] || []).map((g: any) => {
-          const extract = (obj: any, field: string, idx: number) => {
-            if (!obj) return null;
-            return obj?.[field] ?? obj?.__p?.[idx];
-          };
-
-          return {
-            id: extract(g, "id", 0),
-            name: extract(g, "name", 1),
-            parent: extract(g, "parent", 2),
-            parentName:
-              typeof g?.parent === "object" ? (g.parent?.name ?? g.parent?.__p?.[1]) : null,
-            description: extract(g, "description", 3),
-            permInterval: extract(g, "perm_interval", 4),
-            application_perm: extract(g, "application_perm", 5),
-            userPenaltyThreshold: extract(g, "userpenalty", 6),
-            holdPriority: extract(g, "hold_priority", 7),
-          };
-        });
+        const groups = payloadFirstArray(response).map((g: any) => ({
+          id: fieldValue(g, "id", PGT_FIELDS),
+          name: fieldValue(g, "name", PGT_FIELDS),
+          parent: fieldValue(g, "parent", PGT_FIELDS),
+          parentName:
+            typeof g?.parent === "object" ? fieldValue(g.parent, "name", PGT_FIELDS) : null,
+          description: fieldValue(g, "description", PGT_FIELDS),
+          permInterval: fieldValue(g, "perm_interval", PGT_FIELDS),
+          application_perm: fieldValue(g, "application_perm", PGT_FIELDS),
+          userPenaltyThreshold: fieldValue(g, "usergroup", PGT_FIELDS),
+          holdPriority: fieldValue(g, "hold_priority", PGT_FIELDS),
+        }));
 
         return successResponse({ groups });
       }
@@ -82,18 +82,11 @@ export async function GET(req: NextRequest) {
           { limit: 1000, order_by: { ppl: "code" } },
         ]);
 
-        const permissions = (response?.payload?.[0] || []).map((p: any) => {
-          const extract = (obj: any, field: string, idx: number) => {
-            if (!obj) return null;
-            return obj?.[field] ?? obj?.__p?.[idx];
-          };
-
-          return {
-            id: extract(p, "id", 0),
-            code: extract(p, "code", 1),
-            description: extract(p, "description", 2),
-          };
-        });
+        const permissions = payloadFirstArray(response).map((p: any) => ({
+          id: fieldValue(p, "id", PPL_FIELDS),
+          code: fieldValue(p, "code", PPL_FIELDS),
+          description: fieldValue(p, "description", PPL_FIELDS),
+        }));
 
         return successResponse({ permissions });
       }
@@ -118,23 +111,18 @@ export async function GET(req: NextRequest) {
           },
         ]);
 
-        const groupPerms = (response?.payload?.[0] || []).map((gp: any) => {
-          const extract = (obj: any, field: string, idx: number) => {
-            if (!obj) return null;
-            return obj?.[field] ?? obj?.__p?.[idx];
-          };
-
+        const groupPerms = payloadFirstArray(response).map((gp: any) => {
           const permObj = gp?.perm ?? null;
 
           return {
-            id: extract(gp, "id", 0),
-            grp: extract(gp, "grp", 1),
-            perm: extract(gp, "perm", 2),
-            permCode: typeof permObj === "object" ? (permObj?.code ?? permObj?.__p?.[1]) : null,
+            id: fieldValue(gp, "id", PGPM_FIELDS),
+            grp: fieldValue(gp, "grp", PGPM_FIELDS),
+            perm: fieldValue(gp, "perm", PGPM_FIELDS),
+            permCode: typeof permObj === "object" ? fieldValue(permObj, "code", PPL_FIELDS) : null,
             permDescription:
-              typeof permObj === "object" ? (permObj?.description ?? permObj?.__p?.[2]) : null,
-            depth: extract(gp, "depth", 3),
-            grantable: extract(gp, "grantable", 4) === "t" || extract(gp, "grantable", 4) === true,
+              typeof permObj === "object" ? fieldValue(permObj, "description", PPL_FIELDS) : null,
+            depth: fieldValue(gp, "depth", PGPM_FIELDS),
+            grantable: fieldBool(gp, "grantable", PGPM_FIELDS) ?? false,
           };
         });
 
@@ -165,7 +153,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = permissionsPostSchema.parse(await req.json());
-    const { action, type, data } = body as Record<string, any>;
+    const { action } = body;
+    const { type, data } = body as Record<string, any>;
 
     // Require admin permissions for modifications
     const { authtoken, actor } = await requirePermissions(["GROUP_APPLICATION_PERM"]);
@@ -228,7 +217,7 @@ export async function POST(req: NextRequest) {
             newGroup,
           ]);
 
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -245,7 +234,7 @@ export async function POST(req: NextRequest) {
             return errorResponse(result.textcode || "Failed to create group", 400, result);
           }
 
-          const createdId = result?.id ?? result?.__p?.[0];
+          const createdId = result?.id ?? result?.__p?.[PGT_FIELDS.id];
           await audit({
             action: "perm.group.create",
             entity: "pgt",
@@ -276,7 +265,7 @@ export async function POST(req: NextRequest) {
             data.id,
           ]);
 
-          const existing = fetchResponse?.payload?.[0] as any;
+          const existing = payloadFirst(fetchResponse);
           if (!existing) {
             return errorResponse("Group not found", 404);
           }
@@ -300,7 +289,7 @@ export async function POST(req: NextRequest) {
             updatePayload,
           ]);
 
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -353,7 +342,7 @@ export async function POST(req: NextRequest) {
             newMapping,
           ]);
 
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -371,7 +360,7 @@ export async function POST(req: NextRequest) {
             return errorResponse(result.textcode || "Failed to add permission", 400, result);
           }
 
-          const createdId = result?.id ?? result?.__p?.[0];
+          const createdId = result?.id ?? result?.__p?.[PGPM_FIELDS.id];
           await audit({
             action: "perm.group_perm.add",
             entity: "pgpm",
@@ -403,7 +392,7 @@ export async function POST(req: NextRequest) {
             data.id,
           ]);
 
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
@@ -443,7 +432,7 @@ export async function POST(req: NextRequest) {
             [authtoken, data.id]
           );
 
-          const existing = fetchResponse?.payload?.[0] as any;
+          const existing = payloadFirst(fetchResponse);
           if (!existing) {
             return errorResponse("Permission mapping not found", 404);
           }
@@ -468,7 +457,7 @@ export async function POST(req: NextRequest) {
             updatePayload,
           ]);
 
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
             await audit({
