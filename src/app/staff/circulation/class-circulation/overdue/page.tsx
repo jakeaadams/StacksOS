@@ -109,14 +109,31 @@ export default function OverdueDashboardPage() {
     );
   }
 
-  // TODO: Placeholder – bulk overdue notice sending is not yet implemented.
-  // This will be replaced with a real notification dispatch in a future update.
-  function onBulkNotice() {
-    if (selectedStudentIds.length === 0) return;
-    toast("Coming soon", {
-      description: "Bulk overdue notices will be available in a future update.",
-    });
-    setSelectedStudentIds([]);
+  const [sendingNotices, setSendingNotices] = useState(false);
+
+  async function onBulkNotice() {
+    if (selectedStudentIds.length === 0 || !selectedClassId || sendingNotices) return;
+    setSendingNotices(true);
+    try {
+      const response = await fetchWithAuth("/api/staff/k12/overdue-dashboard", {
+        method: "POST",
+        body: JSON.stringify({ classId: selectedClassId, studentIds: selectedStudentIds }),
+      });
+      const json = await response.json();
+      if (!response.ok || json.ok !== true) {
+        throw new Error(json.error || `HTTP ${response.status}`);
+      }
+      const { noticesSent, overdueItemCount } = json.response ?? {};
+      toast.success(
+        `Overdue notices sent for ${noticesSent ?? 0} student(s) covering ${overdueItemCount ?? 0} item(s).`
+      );
+      setSelectedStudentIds([]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`Failed to send notices: ${message}`);
+    } finally {
+      setSendingNotices(false);
+    }
   }
 
   return (
@@ -179,10 +196,14 @@ export default function OverdueDashboardPage() {
                 variant="outline"
                 size="sm"
                 onClick={onBulkNotice}
-                disabled={selectedStudentIds.length === 0}
+                disabled={selectedStudentIds.length === 0 || sendingNotices}
               >
-                <Bell className="mr-2 h-4 w-4" />
-                Send Notice ({selectedStudentIds.length})
+                {sendingNotices ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Bell className="mr-2 h-4 w-4" />
+                )}
+                {sendingNotices ? "Sending..." : `Send Notice (${selectedStudentIds.length})`}
               </Button>
             </div>
 

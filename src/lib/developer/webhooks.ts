@@ -11,6 +11,7 @@ export const DEVELOPER_EVENT_TYPES = [
   "k12.return.processed",
   "k12.reading_challenge.created",
   "k12.challenge_progress.updated",
+  "k12.overdue_notice.sent",
   "opac.event.registration.created",
   "opac.event.registration.canceled",
   "ai.ops.playbook.generated",
