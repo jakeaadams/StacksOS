@@ -7,6 +7,7 @@ import {
   serverErrorResponse,
   getErrorMessage,
   getRequestMeta,
+  payloadFirst,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
@@ -51,7 +52,10 @@ function parseWorkstations(rawData: any): Array<{ id: number; name: string; owni
     if ((ws as Record<string, any>).ilsevent !== undefined) return null;
 
     // Fieldmapper shape (raw)
-    if (typeof (ws as Record<string, any>).__c === "string" && Array.isArray((ws as Record<string, any>).__p)) {
+    if (
+      typeof (ws as Record<string, any>).__c === "string" &&
+      Array.isArray((ws as Record<string, any>).__p)
+    ) {
       const p = (ws as Record<string, any>).__p as unknown[];
       const id = typeof p[0] === "number" ? p[0] : parseInt(String(p[0] ?? ""), 10);
       const owningLib = typeof p[2] === "number" ? p[2] : parseInt(String(p[2] ?? ""), 10);
@@ -70,7 +74,10 @@ function parseWorkstations(rawData: any): Array<{ id: number; name: string; owni
     if (!Number.isFinite(id) || id <= 0) return null;
 
     const nameRaw = (ws as Record<string, any>).name ?? (ws as Record<string, any>).wsname;
-    const owningLibRaw = (ws as Record<string, any>).owning_lib ?? (ws as Record<string, any>).owner ?? (ws as Record<string, any>).org_unit;
+    const owningLibRaw =
+      (ws as Record<string, any>).owning_lib ??
+      (ws as Record<string, any>).owner ??
+      (ws as Record<string, any>).org_unit;
     const owningLib =
       typeof owningLibRaw === "number" ? owningLibRaw : parseInt(String(owningLibRaw ?? ""), 10);
     const name = typeof nameRaw === "string" ? nameRaw : String(nameRaw ?? "");
@@ -127,20 +134,19 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const orgId = searchParams.get("org_id") || "1";
 
-    const response = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.workstation.list",
-      [authtoken, parseInt(orgId)]
-    );
+    const response = await callOpenSRF("open-ils.actor", "open-ils.actor.workstation.list", [
+      authtoken,
+      parseInt(orgId),
+    ]);
 
     // Parse the response into consistent format
-    const rawData = response?.payload?.[0] as any as any;
+    const rawData = payloadFirst(response);
     const workstations = parseWorkstations(rawData);
 
     return successResponse({
       workstations,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Workstations GET", req);
   }
 }
@@ -159,15 +165,18 @@ export async function POST(req: NextRequest) {
     const orgId = org_id;
     const { authtoken, actor } = await requirePermissions(["REGISTER_WORKSTATION"], orgId);
 
-    logger.info({ requestId, route: "api.evergreen.workstations", name, orgId }, "Registering workstation");
-
-    const response = await callOpenSRF(
-      "open-ils.actor",
-      "open-ils.actor.workstation.register",
-      [authtoken, name, orgId]
+    logger.info(
+      { requestId, route: "api.evergreen.workstations", name, orgId },
+      "Registering workstation"
     );
 
-    const result = response?.payload?.[0] as any as any;
+    const response = await callOpenSRF("open-ils.actor", "open-ils.actor.workstation.register", [
+      authtoken,
+      name,
+      orgId,
+    ]);
+
+    const result = payloadFirst(response);
 
     const numericResult =
       typeof result === "number"
@@ -209,12 +218,8 @@ export async function POST(req: NextRequest) {
       error: getErrorMessage(result, "Registration failed"),
     });
 
-    return errorResponse(
-      getErrorMessage(result, "Registration failed"),
-      400,
-      result
-    );
-  } catch (error: any) {
+    return errorResponse(getErrorMessage(result, "Registration failed"), 400, result);
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Workstations POST", req);
   }
 }

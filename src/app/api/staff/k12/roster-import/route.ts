@@ -15,7 +15,36 @@ const rosterRowSchema = z.object({
 const importBodySchema = z.object({
   classId: z.number().int().positive(),
   rows: z.array(rosterRowSchema).min(1, "At least one row is required").max(500),
+  headers: z.array(z.string()).optional(),
 });
+
+// ---------------------------------------------------------------------------
+// SIS format detection
+// ---------------------------------------------------------------------------
+
+type SISFormat = "powerschool" | "clever" | "generic";
+
+const POWERSCHOOL_HEADERS = [
+  "student_number",
+  "last_name",
+  "first_name",
+  "grade_level",
+  "schoolid",
+];
+
+const CLEVER_HEADERS = ["sis_id", "student_first_name", "student_last_name", "school_id", "grade"];
+
+function detectSISFormat(headers: string[]): SISFormat {
+  const normalized = headers.map((h) => h.trim().toLowerCase());
+
+  const powerschoolMatches = POWERSCHOOL_HEADERS.filter((h) => normalized.includes(h));
+  if (powerschoolMatches.length >= 3) return "powerschool";
+
+  const cleverMatches = CLEVER_HEADERS.filter((h) => normalized.includes(h));
+  if (cleverMatches.length >= 3) return "clever";
+
+  return "generic";
+}
 
 function parseName(fullName: string): { firstName: string; lastName: string } {
   const parts = fullName.trim().split(/\s+/);
@@ -48,7 +77,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const { classId, rows } = parsed.data;
+    const { classId, rows, headers } = parsed.data;
+    const detectedFormat = headers ? detectSISFormat(headers) : "generic";
     const errors: Array<{ row: number; error: string }> = [];
     let createdCount = 0;
 
@@ -83,6 +113,7 @@ export async function POST(req: NextRequest) {
         total: rows.length,
         created: createdCount,
         errors: errors.length,
+        detectedFormat,
       },
       "Roster import completed"
     );
@@ -91,6 +122,7 @@ export async function POST(req: NextRequest) {
       imported: createdCount,
       total: rows.length,
       errors,
+      detectedFormat,
     });
   } catch (error) {
     return serverErrorResponse(error, "POST /api/staff/k12/roster-import", req);

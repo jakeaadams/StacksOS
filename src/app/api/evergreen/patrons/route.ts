@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
         [authtoken, barcode, ["card", "cards", "standing_penalties", "home_ou", "profile"]]
       );
 
-      const patron = patronResponse?.payload?.[0] as any;
+      const patron = payloadFirst(patronResponse) as Record<string, unknown> | null;
       if (patron && !patron.ilsevent) {
         const normalized = normalizePatron(patron, barcode);
         return successResponse({ patron: normalized });
@@ -94,7 +94,9 @@ export async function GET(req: NextRequest) {
     const fleshFields = ["card", "home_ou", "profile"];
     const searchOu =
       Number(
-        (actor as Record<string, any>)?.ws_ou ?? (actor as Record<string, any>)?.home_ou ?? 1
+        (actor as Record<string, unknown>)?.ws_ou ??
+          (actor as Record<string, unknown>)?.home_ou ??
+          1
       ) || 1;
     const offset = parseInt(searchParams.get("offset") || "0");
 
@@ -105,7 +107,7 @@ export async function GET(req: NextRequest) {
         [authtoken, query, fleshFields]
       );
 
-      const patron = searchResponse?.payload?.[0] as any;
+      const patron = payloadFirst(searchResponse) as Record<string, unknown> | null;
       if (patron && !patron.ilsevent) {
         return successResponse({
           count: 1,
@@ -123,7 +125,7 @@ export async function GET(req: NextRequest) {
         // sort list delegates ordering to Evergreen defaults and avoids that bug.
         const sort: string[] = [];
 
-        let search: Record<string, any>;
+        let search: Record<string, unknown>;
         if (searchType === "name") {
           search = { name: { value: query } };
         } else if (searchType === "email") {
@@ -143,11 +145,11 @@ export async function GET(req: NextRequest) {
 
         const results = Array.isArray(searchResponse?.payload) ? searchResponse.payload : [];
         const patrons = results
-          .filter((p: any) => p && !(p as Record<string, any>).ilsevent)
+          .filter((p: Record<string, unknown>) => p && !p.ilsevent)
           .map(formatPatron);
 
         return successResponse({ count: patrons.length, patrons });
-      } catch (err: any) {
+      } catch (err: unknown) {
         logger.warn(
           {
             requestId: getRequestMeta(req).requestId,
@@ -162,7 +164,7 @@ export async function GET(req: NextRequest) {
         const parts = q.split(/\s+/).filter(Boolean);
         const qOr = (v: string) => ({ "~*": v });
 
-        const orConditions: Record<string, any>[] = [
+        const orConditions: Record<string, unknown>[] = [
           { usrname: qOr(q) },
           { first_given_name: qOr(q) },
           { family_name: qOr(q) },
@@ -178,7 +180,7 @@ export async function GET(req: NextRequest) {
           orConditions.push({ family_name: qOr(part) });
         }
 
-        const baseFilter: Record<string, any> = {
+        const baseFilter: Record<string, unknown> = {
           deleted: "f",
           "-or": orConditions,
         };
@@ -205,70 +207,78 @@ export async function GET(req: NextRequest) {
 
         const results = Array.isArray(pcrudResponse?.payload?.[0]) ? pcrudResponse.payload[0] : [];
         const patrons = results
-          .filter((p: any) => p && !(p as Record<string, any>).ilsevent)
-          .map((p: any) => normalizePatron(p as Record<string, any>));
+          .filter((p: Record<string, unknown>) => p && !p.ilsevent)
+          .map((p: Record<string, unknown>) => normalizePatron(p as Record<string, unknown>));
 
         return successResponse({ count: patrons.length, patrons });
       }
     }
 
     return successResponse({ count: 0, patrons: [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Patrons GET", req);
   }
 }
 
-function formatPatron(patron: Record<string, any>) {
-  const card = patron.card?.__p || patron.card || {};
-  const profile = patron.profile?.__p || patron.profile || {};
+function formatPatron(patron: Record<string, unknown>) {
+  const cardRaw = patron.card as Record<string, unknown> | undefined;
+  const card = cardRaw?.__p || cardRaw || {};
+  const profileRaw = patron.profile as Record<string, unknown> | undefined;
+  const profile = profileRaw?.__p || profileRaw || {};
+  const __p = patron.__p as unknown[] | undefined;
 
   return {
-    id: patron.id ?? patron.__p?.[AU_FIELDS.id],
-    barcode: Array.isArray(card) ? card[AC_FIELDS.barcode] : card.barcode || "Unknown",
-    firstName: patron.first_given_name || patron.__p?.[AU_FIELDS.first_given_name] || "",
-    lastName: patron.family_name || patron.__p?.[AU_FIELDS.family_name] || "",
-    email: patron.email || patron.__p?.[AU_FIELDS.email] || "",
-    phone: patron.day_phone || patron.__p?.[AU_FIELDS.day_phone] || "",
-    homeLibrary: patron.home_ou || patron.__p?.[AU_FIELDS.home_ou] || 1,
-    patronType: profile.name || "Patron",
-    isActive: patron.active === "t" || patron.__p?.[AU_FIELDS.active] === "t",
-    cardExpiry: patron.expire_date || patron.__p?.[AU_FIELDS.expire_date] || "",
+    id: patron.id ?? __p?.[AU_FIELDS.id],
+    barcode: Array.isArray(card)
+      ? card[AC_FIELDS.barcode]
+      : (card as Record<string, unknown>).barcode || "Unknown",
+    firstName: patron.first_given_name || __p?.[AU_FIELDS.first_given_name] || "",
+    lastName: patron.family_name || __p?.[AU_FIELDS.family_name] || "",
+    email: patron.email || __p?.[AU_FIELDS.email] || "",
+    phone: patron.day_phone || __p?.[AU_FIELDS.day_phone] || "",
+    homeLibrary: patron.home_ou || __p?.[AU_FIELDS.home_ou] || 1,
+    patronType: (profile as Record<string, unknown>).name || "Patron",
+    isActive: patron.active === "t" || __p?.[AU_FIELDS.active] === "t",
+    cardExpiry: patron.expire_date || __p?.[AU_FIELDS.expire_date] || "",
   };
 }
 
-function extractCard(patron: Record<string, any>) {
-  const cards = patron.card || patron.cards || patron.__p?.[AU_FIELDS.card];
+function extractCard(patron: Record<string, unknown>) {
+  const __p = patron.__p as unknown[] | undefined;
+  const cards = patron.card || patron.cards || __p?.[AU_FIELDS.card];
   const card = Array.isArray(cards) ? cards[0] : cards;
   if (!card) return null;
 
-  if (Array.isArray(card.__p)) {
+  const cardObj = card as Record<string, unknown>;
+  if (Array.isArray(cardObj.__p)) {
+    const cp = cardObj.__p as unknown[];
     return {
-      active: card.__p[AC_FIELDS.active],
-      barcode: card.__p[AC_FIELDS.barcode],
-      id: card.__p[AC_FIELDS.id],
-      usr: card.__p[AC_FIELDS.usr],
+      active: cp[AC_FIELDS.active],
+      barcode: cp[AC_FIELDS.barcode],
+      id: cp[AC_FIELDS.id],
+      usr: cp[AC_FIELDS.usr],
     };
   }
 
   return {
-    active: card.active,
-    barcode: card.barcode,
-    id: card.id,
-    usr: card.usr,
+    active: cardObj.active,
+    barcode: cardObj.barcode,
+    id: cardObj.id,
+    usr: cardObj.usr,
   };
 }
 
-function normalizePatron(patron: Record<string, any>, fallbackBarcode?: string) {
+function normalizePatron(patron: Record<string, unknown>, fallbackBarcode?: string) {
   const card = extractCard(patron);
-  const rawId = patron.id ?? patron.__p?.[AU_FIELDS.id];
+  const __p = patron.__p as unknown[] | undefined;
+  const rawId = patron.id ?? __p?.[AU_FIELDS.id];
   const parsedId = typeof rawId === "number" ? rawId : parseInt(String(rawId || ""), 10);
   const patronId = Number.isFinite(parsedId) ? parsedId : (card?.usr ?? card?.id);
   const firstGiven =
-    patron.first_given_name || patron.firstName || patron.__p?.[AU_FIELDS.first_given_name] || "";
-  const familyName =
-    patron.family_name || patron.lastName || patron.__p?.[AU_FIELDS.family_name] || "";
-  const activeVal = patron.active ?? patron.__p?.[AU_FIELDS.active];
-  const barredVal = patron.barred ?? patron.__p?.[AU_FIELDS.barred];
+    patron.first_given_name || patron.firstName || __p?.[AU_FIELDS.first_given_name] || "";
+  const familyName = patron.family_name || patron.lastName || __p?.[AU_FIELDS.family_name] || "";
+  const activeVal = patron.active ?? __p?.[AU_FIELDS.active];
+  const barredVal = patron.barred ?? __p?.[AU_FIELDS.barred];
 
   return {
     id: patronId,
@@ -277,13 +287,12 @@ function normalizePatron(patron: Record<string, any>, fallbackBarcode?: string) 
     family_name: familyName,
     email: patron.email,
     day_phone: patron.day_phone,
-    home_ou: patron.home_ou || patron.__p?.[AU_FIELDS.home_ou] || patron.__p?.[AU_FIELDS.ws_ou],
-    profile: patron.profile || patron.__p?.[AU_FIELDS.profile] || patron.__p?.[AU_FIELDS.id],
+    home_ou: patron.home_ou || __p?.[AU_FIELDS.home_ou] || __p?.[AU_FIELDS.ws_ou],
+    profile: patron.profile || __p?.[AU_FIELDS.profile] || __p?.[AU_FIELDS.id],
     active: activeVal === "t" || activeVal === true,
     barred: barredVal === "t" || barredVal === true,
-    expire_date: patron.expire_date || patron.__p?.[AU_FIELDS.expire_date],
-    standing_penalties:
-      patron.standing_penalties || patron.__p?.[AU_FIELDS.standing_penalties] || [],
+    expire_date: patron.expire_date || __p?.[AU_FIELDS.expire_date],
+    standing_penalties: patron.standing_penalties || __p?.[AU_FIELDS.standing_penalties] || [],
   };
 }
 
@@ -311,10 +320,10 @@ async function resolveHomeOu(provided?: string | number | null) {
 
 async function getDefaultProfileId(_authtoken: string): Promise<number> {
   const groupsResponse = await callOpenSRF("open-ils.actor", "open-ils.actor.groups.tree.retrieve");
-  const tree = groupsResponse?.payload?.[0] as any;
+  const tree = payloadFirst(groupsResponse);
   const candidates: Array<{ id: number; name: string }> = [];
 
-  const walk = (node: Record<string, any>) => {
+  const walk = (node: Record<string, unknown>) => {
     if (!node) return;
     const name = node.name ?? node[2];
     const id = node.id ?? node[0];
@@ -325,25 +334,25 @@ async function getDefaultProfileId(_authtoken: string): Promise<number> {
       }
     }
     const children = node.children || node[3] || [];
-    if (Array.isArray(children)) children.forEach(walk);
+    if (Array.isArray(children)) children.forEach((c: Record<string, unknown>) => walk(c));
   };
 
   if (Array.isArray(tree)) {
-    tree.forEach(walk);
-  } else if (tree) {
-    walk(tree);
+    tree.forEach((t: Record<string, unknown>) => walk(t));
+  } else if (tree && typeof tree === "object") {
+    walk(tree as Record<string, unknown>);
   }
 
   if (candidates.length === 0) return 2;
 
-  const normalized = candidates.map((c: any) => ({
+  const normalized = candidates.map((c) => ({
     ...c,
     nameLower: c.name.toLowerCase(),
   }));
 
   const best =
-    normalized.find((c: any) => /\bpatrons?\b/.test(c.nameLower) && !c.nameLower.includes("api")) ||
-    normalized.find((c: any) => !c.nameLower.includes("api")) ||
+    normalized.find((c) => /\bpatrons?\b/.test(c.nameLower) && !c.nameLower.includes("api")) ||
+    normalized.find((c) => !c.nameLower.includes("api")) ||
     normalized[0];
 
   return best?.id ?? 2;
@@ -355,12 +364,13 @@ async function getDefaultPatronSettings(authtoken: string, homeOu: number) {
     "open-ils.actor.ou_setting.ancestor_default.batch",
     [homeOu, ["ui.patron.default_ident_type", "ui.patron.default_country"], authtoken]
   );
-  const settings = (settingsResponse?.payload?.[0] as any) || {};
+  const settings = (payloadFirst(settingsResponse) as Record<string, unknown>) || {};
 
   const identTypeRaw = settings["ui.patron.default_ident_type"];
-  const identType = Number.isFinite(parseInt(identTypeRaw, 10)) ? parseInt(identTypeRaw, 10) : 1;
+  const identTypeParsed = parseInt(String(identTypeRaw ?? ""), 10);
+  const identType = Number.isFinite(identTypeParsed) ? identTypeParsed : 1;
 
-  const country = settings["ui.patron.default_country"] || "US";
+  const country = (settings["ui.patron.default_country"] as string) || "US";
   return { identType, country };
 }
 
@@ -469,8 +479,8 @@ export async function POST(req: NextRequest) {
 
     const addressInput =
       typeof body.address === "object" && body.address !== null
-        ? (body.address as Record<string, any>)
-        : ({} as Record<string, any>);
+        ? (body.address as Record<string, unknown>)
+        : ({} as Record<string, unknown>);
     const street1 = String(addressInput["street1"] || body.street1 || "").trim();
     const street2 = String(addressInput["street2"] || body.street2 || "").trim();
     const city = String(addressInput["city"] || body.city || "").trim();
@@ -599,7 +609,7 @@ export async function POST(req: NextRequest) {
     await logAuditEvent({
       action: "patron.create",
       entity: "patron",
-      entityId: normalized.id,
+      entityId: normalized.id as number | undefined,
       status: "success",
       actor,
       orgId: homeOu,
@@ -630,7 +640,7 @@ export async function POST(req: NextRequest) {
       resp.headers.set("x-credential-warning", "true");
     }
     return resp;
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Patrons POST", req);
   }
 }
@@ -656,23 +666,23 @@ export async function PUT(req: NextRequest) {
 
     const toLinkId = (value: unknown): number | null => {
       if (!value || typeof value !== "object") return null;
-      const raw = (value as Record<string, any>).id;
+      const raw = (value as Record<string, unknown>).id;
       if (typeof raw === "number" && Number.isFinite(raw)) return raw;
       const parsed = parseInt(String(raw ?? ""), 10);
       return Number.isFinite(parsed) ? parsed : null;
     };
 
-    const toFieldmapperObject = (value: unknown): Record<string, any> | null => {
+    const toFieldmapperObject = (value: unknown): Record<string, unknown> | null => {
       if (!value || typeof value !== "object") return null;
-      const classId = (value as Record<string, any>).__class;
+      const classId = (value as Record<string, unknown>).__class;
       if (typeof classId !== "string" || !classId.trim()) return null;
-      return encodeFieldmapper(classId, value as Record<string, any>);
+      return encodeFieldmapper(classId, value as Record<string, unknown>);
     };
 
     // Evergreen expects a full-enough patron object for updates (notably:
     // `last_xact_id` for collision checking and required group/home fields).
     // Start from the current patron record and apply only the requested changes.
-    const updates: Record<string, any> = { id: patronId, ischanged: 1 };
+    const updates: Record<string, unknown> = { id: patronId, ischanged: 1 };
     const requestedUpdates: string[] = [];
 
     for (const [key, value] of Object.entries(currentPatron)) {
@@ -690,30 +700,32 @@ export async function PUT(req: NextRequest) {
     // (at least for many installs). If we send `[]`, Evergreen can accept the call but
     // silently drop unrelated field updates (email/profile/etc). Preserve the existing
     // collections and only mutate them when explicitly requested.
-    updates.cards = Array.isArray((currentPatron as Record<string, any>).cards)
-      ? ((currentPatron as Record<string, any>).cards as Record<string, any>[])
+    updates.cards = Array.isArray((currentPatron as Record<string, unknown>).cards)
+      ? ((currentPatron as Record<string, unknown>).cards as Record<string, unknown>[])
           .map((c: unknown) => toFieldmapperObject(c))
           .filter(Boolean)
       : [];
-    updates.addresses = Array.isArray((currentPatron as Record<string, any>).addresses)
-      ? ((currentPatron as Record<string, any>).addresses as Record<string, any>[])
+    updates.addresses = Array.isArray((currentPatron as Record<string, unknown>).addresses)
+      ? ((currentPatron as Record<string, unknown>).addresses as Record<string, unknown>[])
           .map((a: unknown) => toFieldmapperObject(a))
           .filter(Boolean)
       : [];
 
     // These are optional collections, but Evergreen expects arrayrefs (not null).
-    updates.waiver_entries = Array.isArray((currentPatron as Record<string, any>).waiver_entries)
-      ? (currentPatron as Record<string, any>).waiver_entries
+    updates.waiver_entries = Array.isArray(
+      (currentPatron as Record<string, unknown>).waiver_entries
+    )
+      ? (currentPatron as Record<string, unknown>).waiver_entries
       : [];
     updates.survey_responses = Array.isArray(
-      (currentPatron as Record<string, any>).survey_responses
+      (currentPatron as Record<string, unknown>).survey_responses
     )
-      ? (currentPatron as Record<string, any>).survey_responses
+      ? (currentPatron as Record<string, unknown>).survey_responses
       : [];
     updates.stat_cat_entries = Array.isArray(
-      (currentPatron as Record<string, any>).stat_cat_entries
+      (currentPatron as Record<string, unknown>).stat_cat_entries
     )
-      ? (currentPatron as Record<string, any>).stat_cat_entries
+      ? (currentPatron as Record<string, unknown>).stat_cat_entries
       : [];
 
     // Basic fields
@@ -780,13 +792,13 @@ export async function PUT(req: NextRequest) {
     ]);
 
     const result = payloadFirst(response);
-    const lastEvent = (result as Record<string, any>)?.last_event;
+    const lastEvent = (result as Record<string, unknown>)?.last_event;
     if (!result || isOpenSRFEvent(result) || result.ilsevent || isOpenSRFEvent(lastEvent)) {
       return errorResponse(getErrorMessage(result, "Patron update failed"), 400, result);
     }
 
     const normalized = normalizePatron(result);
-    const mismatch = requestedUpdates.find((k: any) => {
+    const mismatch = requestedUpdates.find((k) => {
       if (k === "passwd") return false;
       if (k === "first_given_name") return normalized.first_given_name !== updates.first_given_name;
       if (k === "family_name") return normalized.family_name !== updates.family_name;
@@ -830,12 +842,12 @@ export async function PUT(req: NextRequest) {
       userAgent,
       requestId,
       details: {
-        updates: requestedUpdates.map((k: any) => (k === "passwd" ? "password" : k)),
+        updates: requestedUpdates.map((k) => (k === "passwd" ? "password" : k)),
       },
     });
 
     return successResponse({ patron: normalized });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Patrons PUT", req);
   }
 }
@@ -1016,14 +1028,19 @@ export async function PATCH(req: NextRequest) {
       ]);
 
       const notes = payloadFirst(response) || [];
-      const formattedNotes = (Array.isArray(notes) ? notes : []).map((n: any) => ({
-        id: n.id || n.__p?.[0],
-        title: n.title || n.__p?.[1] || "Note",
-        value: n.value || n.__p?.[2] || "",
-        public: n.pub === "t" || n.pub === true || n.__p?.[3] === "t",
-        createDate: n.create_date || n.__p?.[4],
-        creator: n.creator || n.__p?.[5],
-      }));
+      const formattedNotes = (Array.isArray(notes) ? notes : []).map(
+        (n: Record<string, unknown>) => {
+          const np = n.__p as unknown[] | undefined;
+          return {
+            id: n.id || np?.[0],
+            title: n.title || np?.[1] || "Note",
+            value: n.value || np?.[2] || "",
+            public: n.pub === "t" || n.pub === true || np?.[3] === "t",
+            createDate: n.create_date || np?.[4],
+            creator: n.creator || np?.[5],
+          };
+        }
+      );
 
       return successResponse({ notes: formattedNotes });
     }
@@ -1035,19 +1052,24 @@ export async function PATCH(req: NextRequest) {
       );
 
       const types = payloadFirst(response) || [];
-      const formattedTypes = (Array.isArray(types) ? types : []).map((t: any) => ({
-        id: t.id || t.__p?.[CSP_FIELDS.id],
-        name: t.name || t.__p?.[CSP_FIELDS.name] || "Unknown",
-        label: t.label || t.__p?.[CSP_FIELDS.label] || t.name || "Unknown",
-        blockList: t.block_list || t.__p?.[CSP_FIELDS.block_list] || "",
-        org: t.org_unit || t.__p?.[CSP_FIELDS.staff_alert], // csp has no org_unit; index 4 = staff_alert (legacy fallback)
-      }));
+      const formattedTypes = (Array.isArray(types) ? types : []).map(
+        (t: Record<string, unknown>) => {
+          const tp = t.__p as unknown[] | undefined;
+          return {
+            id: t.id || tp?.[CSP_FIELDS.id],
+            name: t.name || tp?.[CSP_FIELDS.name] || "Unknown",
+            label: t.label || tp?.[CSP_FIELDS.label] || t.name || "Unknown",
+            blockList: t.block_list || tp?.[CSP_FIELDS.block_list] || "",
+            org: t.org_unit || tp?.[CSP_FIELDS.staff_alert], // csp has no org_unit; index 4 = staff_alert (legacy fallback)
+          };
+        }
+      );
 
       return successResponse({ penaltyTypes: formattedTypes });
     }
 
     return errorResponse("Invalid action", 400);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Patrons PATCH", req);
   }
 }

@@ -6,6 +6,8 @@ import {
   getErrorMessage,
   isOpenSRFEvent,
   parseJsonBodyWithSchema,
+  payloadFirst,
+  payloadFirstArray,
   requireAuthToken,
   serverErrorResponse,
   successResponse,
@@ -74,12 +76,15 @@ export async function GET(req: NextRequest) {
     );
 
     const rows = Array.isArray(response?.payload?.[0])
-      ? (response.payload[0] as Record<string, any>[])
+      ? (response.payload[0] as Record<string, unknown>[])
       : [];
     const entries = rows
-      .map((row: any) => {
-        const ownerObj = row?.owner && typeof row.owner === "object" ? row.owner : null;
-        const ownerId = ownerObj ? toNumber(ownerObj.id) : toNumber(row?.owner);
+      .map((row: Record<string, unknown>) => {
+        const ownerRaw =
+          row?.owner && typeof row.owner === "object"
+            ? (row.owner as Record<string, unknown>)
+            : null;
+        const ownerId = ownerRaw ? toNumber(ownerRaw.id) : toNumber(row?.owner);
         const id = toNumber(row?.id);
         if (!id) return null;
 
@@ -88,13 +93,13 @@ export async function GET(req: NextRequest) {
           statCatId: toNumber(row?.stat_cat),
           value: toString(row?.value).trim(),
           ownerId,
-          ownerName: ownerObj ? toString(ownerObj.shortname || ownerObj.name || "").trim() : null,
+          ownerName: ownerRaw ? toString(ownerRaw.shortname || ownerRaw.name || "").trim() : null,
         };
       })
       .filter(Boolean);
 
     return successResponse({ kind, statCatId, entries, orgId });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "GET /api/evergreen/stat-categories/entries", req);
   }
 }
@@ -135,8 +140,12 @@ export async function POST(req: Request) {
       authtoken,
       payload,
     ]);
-    const resultRow = createResponse?.payload?.[0] as any;
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+    const resultRow = payloadFirst(createResponse);
+    if (
+      !resultRow ||
+      isOpenSRFEvent(resultRow) ||
+      (resultRow as Record<string, unknown>)?.ilsevent
+    ) {
       return errorResponse(
         getErrorMessage(resultRow, "Failed to create stat cat entry"),
         400,
@@ -147,10 +156,10 @@ export async function POST(req: Request) {
     const id =
       typeof resultRow === "number"
         ? resultRow
-        : toNumber((resultRow as Record<string, any>)?.id ?? resultRow);
+        : toNumber((resultRow as Record<string, unknown>)?.id ?? resultRow);
 
     return successResponse({ created: true, kind, id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "POST /api/evergreen/stat-categories/entries", req);
   }
 }
@@ -181,8 +190,8 @@ export async function PUT(req: Request) {
       `open-ils.pcrud.retrieve.${classId}`,
       [authtoken, body.id]
     );
-    const existing = existingResponse?.payload?.[0] as any;
-    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, any>)?.ilsevent) {
+    const existing = payloadFirst(existingResponse);
+    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(existing, "Entry not found"), 404, existing);
     }
 
@@ -191,10 +200,10 @@ export async function PUT(req: Request) {
       result.orgId ??
       actor?.ws_ou ??
       actor?.home_ou ??
-      (existing as Record<string, any>)?.owner;
+      (existing as Record<string, unknown>)?.owner;
     if (!ownerId) return errorResponse("ownerId is required", 400);
 
-    const updateData: Record<string, any> = { ...(existing as Record<string, any>) };
+    const updateData: Record<string, any> = { ...(existing as Record<string, unknown>) };
     updateData.id = body.id;
     updateData.owner = ownerId;
     if (body.value !== undefined) updateData.value = body.value;
@@ -206,13 +215,17 @@ export async function PUT(req: Request) {
       authtoken,
       payload,
     ]);
-    const resultRow = updateResponse?.payload?.[0] as any;
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+    const resultRow = payloadFirst(updateResponse);
+    if (
+      !resultRow ||
+      isOpenSRFEvent(resultRow) ||
+      (resultRow as Record<string, unknown>)?.ilsevent
+    ) {
       return errorResponse(getErrorMessage(resultRow, "Failed to update entry"), 400, resultRow);
     }
 
     return successResponse({ updated: true, kind, id: body.id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "PUT /api/evergreen/stat-categories/entries", req);
   }
 }
@@ -240,13 +253,17 @@ export async function DELETE(req: Request) {
       authtoken,
       body.id,
     ]);
-    const resultRow = delResponse?.payload?.[0] as any;
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+    const resultRow = payloadFirst(delResponse);
+    if (
+      !resultRow ||
+      isOpenSRFEvent(resultRow) ||
+      (resultRow as Record<string, unknown>)?.ilsevent
+    ) {
       return errorResponse(getErrorMessage(resultRow, "Failed to delete entry"), 400, resultRow);
     }
 
     return successResponse({ deleted: true, kind, id: body.id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "DELETE /api/evergreen/stat-categories/entries", req);
   }
 }

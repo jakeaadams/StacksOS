@@ -17,17 +17,21 @@ import {
 } from "@/components/ui/select";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { featureFlags } from "@/lib/feature-flags";
+import Link from "next/link";
 import {
   AlertTriangle,
   BarChart3,
   BookOpen,
+  Download,
   GraduationCap,
   Loader2,
   RefreshCw,
   RotateCcw,
   School,
+  Trophy,
   Upload,
   UserPlus,
+  Barcode,
 } from "lucide-react";
 
 type ClassOverview = {
@@ -454,6 +458,36 @@ export default function K12ClassCirculationPage() {
               </p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Sub-page navigation + Export */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/staff/circulation/class-circulation/challenges">
+            <Button variant="outline" size="sm">
+              <Trophy className="mr-2 h-4 w-4" />
+              Reading Challenges
+            </Button>
+          </Link>
+          <Link href="/staff/circulation/class-circulation/overdue">
+            <Button variant="outline" size="sm">
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Overdue
+            </Button>
+          </Link>
+          <Link href="/staff/circulation/class-circulation/barcodes">
+            <Button variant="outline" size="sm">
+              <Barcode className="mr-2 h-4 w-4" />
+              Barcodes
+            </Button>
+          </Link>
+          {selectedClassId ? (
+            <a href={`/api/staff/k12/export?classId=${selectedClassId}&format=csv`} download>
+              <Button variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                Export CSV
+              </Button>
+            </a>
+          ) : null}
         </div>
 
         {/* Class-level reading stats */}

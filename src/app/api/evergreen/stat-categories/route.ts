@@ -7,6 +7,8 @@ import {
   getErrorMessage,
   isOpenSRFEvent,
   parseJsonBodyWithSchema,
+  payloadFirst,
+  payloadFirstArray,
   requireAuthToken,
   serverErrorResponse,
   successResponse,
@@ -50,9 +52,9 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
 
     if (payload.length > 0 && typeof payload[0] === "object") {
       const map: Record<string, boolean> = {};
-      (payload as Record<string, any>[]).forEach((entry: any) => {
+      (payload as Record<string, unknown>[]).forEach((entry: Record<string, unknown>) => {
         const key = String(entry.perm || entry.code || entry.name);
-        if (key) map[key as string] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
+        if (key) map[key] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
       });
       if (Object.keys(map).length > 0) return map;
     }
@@ -61,8 +63,8 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
   if (typeof payload === "object") {
     const map: Record<string, boolean> = {};
     for (const perm of perms) {
-      if (perm in (payload as Record<string, any>)) {
-        map[perm] = Boolean((payload as Record<string, any>)[perm]);
+      if (perm in (payload as Record<string, unknown>)) {
+        map[perm] = Boolean((payload as Record<string, unknown>)[perm]);
       }
     }
     if (Object.keys(map).length > 0) return map;
@@ -89,7 +91,7 @@ async function checkPerms(
       "open-ils.actor.user.has_work_perm_at.batch",
       params
     );
-    const payload = response?.payload?.[0] as any as any;
+    const payload = payloadFirst(response);
     if (isOpenSRFEvent(payload)) {
       continue;
     }
@@ -164,7 +166,7 @@ export async function GET(req: NextRequest) {
         `
       );
 
-      return result.rows.map((row: any) => ({
+      return result.rows.map((row: Record<string, unknown>) => ({
         id: Number(row.id) || 0,
         name: toString(row.name).trim(),
         ownerId: row.owner ? Number(row.owner) : null,
@@ -203,7 +205,7 @@ export async function GET(req: NextRequest) {
         `
       );
 
-      return result.rows.map((row: any) => ({
+      return result.rows.map((row: Record<string, unknown>) => ({
         id: Number(row.id) || 0,
         name: toString(row.name).trim(),
         ownerId: row.owner ? Number(row.owner) : null,
@@ -218,7 +220,7 @@ export async function GET(req: NextRequest) {
     };
 
     // Prefer direct SQL to avoid high-latency or brittle flesh queries over OpenSRF.
-    let copyCategories: any[] = [];
+    let copyCategories: Record<string, unknown>[] = [];
     try {
       copyCategories = await sqlCopyCategories();
     } catch {
@@ -227,13 +229,15 @@ export async function GET(req: NextRequest) {
         { id: { ">=": 1 } },
         { limit: 1000 },
       ]);
-      const copyEntriesRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.asce.atomic", [
-        authtoken,
-        { id: { ">=": 1 } },
-        { limit: 5000 },
-      ]);
+      const copyEntriesRes = await callOpenSRF(
+        "open-ils.pcrud",
+        "open-ils.pcrud.search.asce.atomic",
+        [authtoken, { id: { ">=": 1 } }, { limit: 5000 }]
+      );
 
-      const copyEntries = Array.isArray(copyEntriesRes?.payload?.[0]) ? (copyEntriesRes.payload[0] as Record<string, any>[]) : [];
+      const copyEntries = Array.isArray(copyEntriesRes?.payload?.[0])
+        ? (copyEntriesRes.payload[0] as Record<string, unknown>[])
+        : [];
       const copyEntryCounts = new Map<number, number>();
       for (const e of copyEntries) {
         const statCatId = toNumber(e?.stat_cat);
@@ -241,9 +245,11 @@ export async function GET(req: NextRequest) {
         copyEntryCounts.set(statCatId, (copyEntryCounts.get(statCatId) || 0) + 1);
       }
 
-      const copyCatsRaw = Array.isArray(copyCatsRes?.payload?.[0]) ? (copyCatsRes.payload[0] as Record<string, any>[]) : [];
+      const copyCatsRaw = Array.isArray(copyCatsRes?.payload?.[0])
+        ? (copyCatsRes.payload[0] as Record<string, unknown>[])
+        : [];
       copyCategories = copyCatsRaw
-        .map((row: any) => {
+        .map((row: Record<string, unknown>) => {
           const id = toNumber(row?.id);
           if (id === null) return null;
           return {
@@ -257,27 +263,31 @@ export async function GET(req: NextRequest) {
             entryCount: copyEntryCounts.get(id) || 0,
           };
         })
-        .filter((x: any) => x != null)
-        .sort((a: any, b: any) => String((a as Record<string, any>)?.name ?? "").localeCompare(String((b as Record<string, any>)?.name ?? "")));
+        .filter((x) => x != null)
+        .sort((a, b) =>
+          String((a as Record<string, unknown>)?.name ?? "").localeCompare(
+            String((b as Record<string, unknown>)?.name ?? "")
+          )
+        );
     }
 
-    let patronCategories: any[] = [];
+    let patronCategories: Record<string, unknown>[] = [];
     try {
       patronCategories = await sqlPatronCategories();
     } catch {
-      const patronCatsRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.actsc.atomic", [
-        authtoken,
-        { id: { ">=": 1 } },
-        { limit: 1000 },
-      ]);
-      const patronEntriesRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.search.actsce.atomic", [
-        authtoken,
-        { id: { ">=": 1 } },
-        { limit: 5000 },
-      ]);
+      const patronCatsRes = await callOpenSRF(
+        "open-ils.pcrud",
+        "open-ils.pcrud.search.actsc.atomic",
+        [authtoken, { id: { ">=": 1 } }, { limit: 1000 }]
+      );
+      const patronEntriesRes = await callOpenSRF(
+        "open-ils.pcrud",
+        "open-ils.pcrud.search.actsce.atomic",
+        [authtoken, { id: { ">=": 1 } }, { limit: 5000 }]
+      );
 
       const patronEntries = Array.isArray(patronEntriesRes?.payload?.[0])
-        ? (patronEntriesRes.payload[0] as Record<string, any>[])
+        ? (patronEntriesRes.payload[0] as Record<string, unknown>[])
         : [];
 
       const patronEntryCounts = new Map<number, number>();
@@ -287,9 +297,11 @@ export async function GET(req: NextRequest) {
         patronEntryCounts.set(statCatId, (patronEntryCounts.get(statCatId) || 0) + 1);
       }
 
-      const patronCatsRaw = Array.isArray(patronCatsRes?.payload?.[0]) ? (patronCatsRes.payload[0] as Record<string, any>[]) : [];
+      const patronCatsRaw = Array.isArray(patronCatsRes?.payload?.[0])
+        ? (patronCatsRes.payload[0] as Record<string, unknown>[])
+        : [];
       patronCategories = patronCatsRaw
-        .map((row: any) => {
+        .map((row: Record<string, unknown>) => {
           const id = toNumber(row?.id);
           if (id === null) return null;
           return {
@@ -305,8 +317,12 @@ export async function GET(req: NextRequest) {
             entryCount: patronEntryCounts.get(id) || 0,
           };
         })
-        .filter((x: any) => x != null)
-        .sort((a: any, b: any) => String((a as Record<string, any>)?.name ?? "").localeCompare(String((b as Record<string, any>)?.name ?? "")));
+        .filter((x) => x != null)
+        .sort((a, b) =>
+          String((a as Record<string, unknown>)?.name ?? "").localeCompare(
+            String((b as Record<string, unknown>)?.name ?? "")
+          )
+        );
     }
 
     return successResponse({
@@ -315,7 +331,7 @@ export async function GET(req: NextRequest) {
       permissions: permMap || {},
       orgId,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "GET /api/evergreen/stat-categories", req);
   }
 }
@@ -368,15 +384,26 @@ export async function POST(req: Request) {
       authtoken,
       payload,
     ]);
-    const resultRow = createResponse?.payload?.[0] as any;
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
-      return errorResponse(getErrorMessage(resultRow, "Failed to create stat category"), 400, resultRow);
+    const resultRow = payloadFirst(createResponse);
+    if (
+      !resultRow ||
+      isOpenSRFEvent(resultRow) ||
+      (resultRow as Record<string, unknown>)?.ilsevent
+    ) {
+      return errorResponse(
+        getErrorMessage(resultRow, "Failed to create stat category"),
+        400,
+        resultRow
+      );
     }
 
-    const id = typeof resultRow === "number" ? resultRow : toNumber((resultRow as Record<string, any>)?.id ?? resultRow);
+    const id =
+      typeof resultRow === "number"
+        ? resultRow
+        : toNumber((resultRow as Record<string, unknown>)?.id ?? resultRow);
 
     return successResponse({ created: true, kind, id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "POST /api/evergreen/stat-categories", req);
   }
 }
@@ -412,23 +439,30 @@ export async function PUT(req: Request) {
       `open-ils.pcrud.retrieve.${classId}`,
       [authtoken, body.id]
     );
-    const existing = existingResponse?.payload?.[0] as any;
-    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, any>)?.ilsevent) {
+    const existing = payloadFirst(existingResponse);
+    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(existing, "Stat category not found"), 404, existing);
     }
 
-    const ownerId = body.ownerId ?? result.orgId ?? actor?.ws_ou ?? actor?.home_ou ?? (existing as Record<string, any>)?.owner;
+    const ownerId =
+      body.ownerId ??
+      result.orgId ??
+      actor?.ws_ou ??
+      actor?.home_ou ??
+      (existing as Record<string, unknown>)?.owner;
     if (!ownerId) return errorResponse("ownerId is required", 400);
 
-    const updateData: Record<string, any> = { ...(existing as Record<string, any>) };
+    const updateData: Record<string, any> = { ...(existing as Record<string, unknown>) };
     updateData.id = body.id;
     updateData.owner = ownerId;
     if (body.name !== undefined) updateData.name = body.name;
     if (body.opacVisible !== undefined) updateData.opac_visible = boolToEg(body.opacVisible);
     if (body.required !== undefined) updateData.required = boolToEg(body.required);
-    if (body.checkoutArchive !== undefined) updateData.checkout_archive = boolToEg(body.checkoutArchive);
+    if (body.checkoutArchive !== undefined)
+      updateData.checkout_archive = boolToEg(body.checkoutArchive);
     if (kind === "patron") {
-      if (body.allowFreetext !== undefined) updateData.allow_freetext = boolToEg(body.allowFreetext);
+      if (body.allowFreetext !== undefined)
+        updateData.allow_freetext = boolToEg(body.allowFreetext);
       if (body.usrSummary !== undefined) updateData.usr_summary = boolToEg(body.usrSummary);
     }
 
@@ -439,13 +473,21 @@ export async function PUT(req: Request) {
       authtoken,
       payload,
     ]);
-    const resultRow = updateResponse?.payload?.[0] as any;
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
-      return errorResponse(getErrorMessage(resultRow, "Failed to update stat category"), 400, resultRow);
+    const resultRow = payloadFirst(updateResponse);
+    if (
+      !resultRow ||
+      isOpenSRFEvent(resultRow) ||
+      (resultRow as Record<string, unknown>)?.ilsevent
+    ) {
+      return errorResponse(
+        getErrorMessage(resultRow, "Failed to update stat category"),
+        400,
+        resultRow
+      );
     }
 
     return successResponse({ updated: true, kind, id: body.id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "PUT /api/evergreen/stat-categories", req);
   }
 }
@@ -473,13 +515,21 @@ export async function DELETE(req: Request) {
       authtoken,
       body.id,
     ]);
-    const resultRow = delResponse?.payload?.[0] as any;
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
-      return errorResponse(getErrorMessage(resultRow, "Failed to delete stat category"), 400, resultRow);
+    const resultRow = payloadFirst(delResponse);
+    if (
+      !resultRow ||
+      isOpenSRFEvent(resultRow) ||
+      (resultRow as Record<string, unknown>)?.ilsevent
+    ) {
+      return errorResponse(
+        getErrorMessage(resultRow, "Failed to delete stat category"),
+        400,
+        resultRow
+      );
     }
 
     return successResponse({ deleted: true, kind, id: body.id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "DELETE /api/evergreen/stat-categories", req);
   }
 }

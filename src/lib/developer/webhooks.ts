@@ -14,6 +14,8 @@ export const DEVELOPER_EVENT_TYPES = [
   "ai.holds.copilot.generated",
   "ai.patron.copilot.generated",
   "ai.acquisitions.copilot.generated",
+  "ai.cataloging.copilot.generated",
+  "ai.admin.copilot.generated",
   "system.webhook.test",
 ] as const;
 

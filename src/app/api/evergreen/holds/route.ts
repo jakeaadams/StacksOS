@@ -67,15 +67,15 @@ export async function GET(req: NextRequest) {
     const offset = parseIntMaybe(offsetRaw) ?? 0;
 
     const defaultOrgId =
-      (actor as Record<string, any>)?.ws_ou ?? (actor as Record<string, any>)?.home_ou ?? 1;
+      (actor as Record<string, unknown>)?.ws_ou ?? (actor as Record<string, unknown>)?.home_ou ?? 1;
 
-    const normalizeListPayload = (payload: any): any[] => {
+    const normalizeListPayload = (payload: unknown): Record<string, unknown>[] => {
       if (!Array.isArray(payload)) return [];
       if (payload.length === 1 && Array.isArray(payload[0])) return payload[0];
       return payload;
     };
 
-    const mapHold = (hold: any, extra: Record<string, any> = {}) => {
+    const mapHold = (hold: Record<string, unknown>, extra: Record<string, unknown> = {}) => {
       return {
         id: hold?.id,
         holdType: hold?.hold_type,
@@ -89,8 +89,8 @@ export async function GET(req: NextRequest) {
         frozenUntil: hold?.thaw_date,
         shelfExpireTime: hold?.shelf_expire_time,
         currentCopy: hold?.current_copy,
-        title: hold?.title || hold?.mvr?.title || "Unknown",
-        author: hold?.author || hold?.mvr?.author || "",
+        title: hold?.title || (hold?.mvr as Record<string, unknown>)?.title || "Unknown",
+        author: hold?.author || (hold?.mvr as Record<string, unknown>)?.author || "",
         status: hold?.status,
         queuePosition: hold?.queue_position,
         potentialCopies: hold?.potential_copies,
@@ -114,9 +114,9 @@ export async function GET(req: NextRequest) {
           authtoken,
           patronId,
         ]);
-        const holds = holdsResponse?.payload?.[0] as any;
+        const holds = payloadFirst(holdsResponse);
         return successResponse({
-          holds: Array.isArray(holds) ? holds.map((h: any) => mapHold(h)) : [],
+          holds: Array.isArray(holds) ? holds.map((h: Record<string, unknown>) => mapHold(h)) : [],
         });
       }
 
@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
           [authtoken, orgId]
         );
         const list = normalizeListPayload(shelfResponse?.payload);
-        return successResponse({ holds: list.map((h: any) => mapHold(h)) });
+        return successResponse({ holds: list.map((h: Record<string, unknown>) => mapHold(h)) });
       }
 
       return errorResponse("Missing action", 400);
@@ -143,7 +143,7 @@ export async function GET(req: NextRequest) {
           authtoken,
           patronId,
         ]);
-        const holds = holdsResponse?.payload?.[0] as any;
+        const holds = payloadFirst(holdsResponse);
 
         if (!Array.isArray(holds) || holds.length === 0) {
           return successResponse({ holds: [] });
@@ -158,10 +158,11 @@ export async function GET(req: NextRequest) {
                 "open-ils.circ.hold.details.retrieve",
                 [authtoken, hold.id]
               );
-              const details = detailsResponse?.payload?.[0] as any;
+              const details = payloadFirst(detailsResponse) as Record<string, unknown> | null;
               return mapHold(hold, {
-                title: details?.title || details?.mvr?.title || "Unknown",
-                author: details?.author || details?.mvr?.author || "",
+                title:
+                  details?.title || (details?.mvr as Record<string, unknown>)?.title || "Unknown",
+                author: details?.author || (details?.mvr as Record<string, unknown>)?.author || "",
                 status: details?.status ?? hold?.status,
                 queuePosition: details?.queue_position,
                 potentialCopies: details?.potential_copies,
@@ -185,7 +186,7 @@ export async function GET(req: NextRequest) {
         );
 
         const list = normalizeListPayload(shelfResponse?.payload);
-        return successResponse({ holds: list.map((h: any) => mapHold(h)) });
+        return successResponse({ holds: list.map((h: Record<string, unknown>) => mapHold(h)) });
       }
 
       case "expired_holds": {
@@ -198,7 +199,7 @@ export async function GET(req: NextRequest) {
         );
 
         const list = normalizeListPayload(expiredResponse?.payload);
-        return successResponse({ holds: list.map((h: any) => mapHold(h)) });
+        return successResponse({ holds: list.map((h: Record<string, unknown>) => mapHold(h)) });
       }
 
       case "pull_list": {
@@ -262,7 +263,7 @@ export async function GET(req: NextRequest) {
 
         const list = normalizeListPayload(detailsResponse?.payload);
         return successResponse({
-          holds: list.map((h: any) => mapHold(h)),
+          holds: list.map((h: Record<string, unknown>) => mapHold(h)),
           holdCount: holdIds.length,
           limit: boundedLimit,
           offset: boundedOffset,
@@ -280,8 +281,8 @@ export async function GET(req: NextRequest) {
           { hold_type: "T", hold_target: titleId, org_unit: orgUnit },
         ]);
 
-        const result = (res?.payload?.[0] as any) || {};
-        const possible = Boolean((result as Record<string, any>)?.copy);
+        const result = (payloadFirst(res) as Record<string, unknown>) || {};
+        const possible = Boolean(result?.copy);
         return successResponse({ possible, result });
       }
 
@@ -302,7 +303,7 @@ export async function GET(req: NextRequest) {
       default:
         return errorResponse("Invalid action", 400);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Holds API GET", req);
   }
 }
@@ -322,7 +323,7 @@ export async function POST(req: NextRequest) {
 
     const audit = async (
       status: "success" | "failure",
-      details?: Record<string, any>,
+      details?: Record<string, unknown>,
       error?: string
     ) => {
       await logAuditEvent({
@@ -368,11 +369,11 @@ export async function POST(req: NextRequest) {
           ? result
           : result &&
               typeof result === "object" &&
-              typeof (result as Record<string, any>).result === "number"
-            ? (result as Record<string, any>).result
+              typeof (result as Record<string, unknown>).result === "number"
+            ? (result as Record<string, unknown>).result
             : null;
 
-      if (createdHoldId && !(result as Record<string, any>)?.ilsevent) {
+      if (createdHoldId && !(result as Record<string, unknown>)?.ilsevent) {
         await audit("success", {
           patronId,
           holdType,
@@ -495,7 +496,7 @@ export async function POST(req: NextRequest) {
       "Invalid action. Use: create/place_hold, cancel/cancel_hold, freeze, thaw, update_pickup_lib",
       400
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Holds POST", req);
   }
 }

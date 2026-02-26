@@ -13,6 +13,8 @@ export type PromptTemplateId =
   | "holds_copilot"
   | "patron_copilot"
   | "acquisitions_copilot"
+  | "cataloging_copilot"
+  | "admin_copilot"
   | "semantic_rerank"
   | "ai_search"
   | "ai_search_explain"
@@ -391,6 +393,81 @@ export function buildAcquisitionsCopilotPrompt(inputRedacted: unknown): PromptTe
   );
 
   return { id: "acquisitions_copilot", version: 1, system, user };
+}
+
+// ---------------------------------------------------------------------------
+// Cataloging Copilot
+// ---------------------------------------------------------------------------
+
+export function buildCatalogingCopilotPrompt(inputRedacted: unknown): PromptTemplate {
+  const system = [
+    "You are StacksOS Cataloging Copilot (Kimi 2.5 Pro).",
+    "Goal: analyze bibliographic MARC data and suggest subject headings, classification, and metadata improvements.",
+    "Rules:",
+    "- Output JSON only, matching the schema.",
+    "- Subject suggestions must cite a source: lcsh, sears, fast, or inferred.",
+    "- Classification suggestions should include DDC and/or LCC when possible.",
+    "- Metadata improvements must specify the field, current value (if any), suggested value, and reason.",
+    "- Never fabricate ISBNs, authors, or publication data not present in the input.",
+    "- If data is incomplete, explicitly call this out in caveats.",
+    "- Suggestions are drafts only; never claim changes were applied.",
+    "- Do not include patron data, barcodes, or emails.",
+  ].join("\n");
+
+  const user = JSON.stringify(
+    {
+      task: "Analyze MARC bibliographic data and suggest subject headings, classification, and metadata improvements",
+      input: inputRedacted,
+      knownPages: [
+        { label: "MARC Editor", url: "/staff/cataloging/marc-editor" },
+        { label: "Authority Control", url: "/staff/cataloging/authority" },
+        { label: "Holdings", url: "/staff/cataloging/holdings" },
+        { label: "Z39.50 Search", url: "/staff/cataloging/z3950" },
+      ],
+    },
+    null,
+    2
+  );
+
+  return { id: "cataloging_copilot", version: 1, system, user };
+}
+
+// ---------------------------------------------------------------------------
+// Admin Copilot
+// ---------------------------------------------------------------------------
+
+export function buildAdminCopilotPrompt(inputRedacted: unknown): PromptTemplate {
+  const system = [
+    "You are StacksOS Admin Copilot (Kimi 2.5 Pro).",
+    "Goal: analyze library operational metrics and produce prioritized administrative actions.",
+    "Rules:",
+    "- Output JSON only, matching the schema.",
+    "- Highlights must include a label, value, and trend direction (up, down, or flat).",
+    "- Actions must include title, description, priority (high|medium|low), category, and optional deepLink.",
+    "- Prioritize actions that address critical operational issues first.",
+    "- Never fabricate metrics or patron-level details.",
+    "- If data is incomplete, explicitly call this out in drilldowns.",
+    "- Prefer links to existing StacksOS admin and staff pages.",
+  ].join("\n");
+
+  const user = JSON.stringify(
+    {
+      task: "Analyze library operational metrics and generate prioritized admin actions",
+      input: inputRedacted,
+      knownPages: [
+        { label: "Administration", url: "/staff/admin" },
+        { label: "Reports", url: "/staff/reports" },
+        { label: "Circulation", url: "/staff/circulation" },
+        { label: "Holds Management", url: "/staff/circulation/holds-management" },
+        { label: "Settings", url: "/staff/admin/settings" },
+        { label: "Ops", url: "/staff/admin/ops" },
+      ],
+    },
+    null,
+    2
+  );
+
+  return { id: "admin_copilot", version: 1, system, user };
 }
 
 // ---------------------------------------------------------------------------

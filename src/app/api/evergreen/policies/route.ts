@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
           },
         ]);
 
-        const policies = payloadFirstArray(response).map((p: any) => ({
+        const policies = payloadFirstArray(response).map((p: Record<string, unknown>) => ({
           id: fieldValue(p, "id", CCMM_FIELDS),
           active: fieldBool(p, "active", CCMM_FIELDS) ?? false,
           orgUnit:
@@ -164,7 +164,7 @@ export async function GET(req: NextRequest) {
           },
         ]);
 
-        const policies = payloadFirstArray(response).map((p: any) => ({
+        const policies = payloadFirstArray(response).map((p: Record<string, unknown>) => ({
           id: fieldValue(p, "id", CHMM_FIELDS),
           active: fieldBool(p, "active", CHMM_FIELDS) ?? false,
           strictOuMatch: fieldBool(p, "strict_ou_match", CHMM_FIELDS) ?? false,
@@ -242,7 +242,7 @@ export async function GET(req: NextRequest) {
           { limit: 500, order_by: { crcd: "name" } },
         ]);
 
-        const rules = payloadFirstArray(response).map((r: any) => ({
+        const rules = payloadFirstArray(response).map((r: Record<string, unknown>) => ({
           id: fieldValue(r, "id", CRCD_FIELDS),
           name: fieldValue(r, "name", CRCD_FIELDS),
           extended: fieldValue(r, "extended", CRCD_FIELDS),
@@ -263,7 +263,7 @@ export async function GET(req: NextRequest) {
           { limit: 500, order_by: { crrf: "name" } },
         ]);
 
-        const rules = payloadFirstArray(response).map((r: any) => ({
+        const rules = payloadFirstArray(response).map((r: Record<string, unknown>) => ({
           id: fieldValue(r, "id", CRRF_FIELDS),
           name: fieldValue(r, "name", CRRF_FIELDS),
           high: fieldValue(r, "high", CRRF_FIELDS),
@@ -284,7 +284,7 @@ export async function GET(req: NextRequest) {
           { limit: 500, order_by: { crmf: "name" } },
         ]);
 
-        const rules = payloadFirstArray(response).map((r: any) => ({
+        const rules = payloadFirstArray(response).map((r: Record<string, unknown>) => ({
           id: fieldValue(r, "id", CRMF_FIELDS),
           name: fieldValue(r, "name", CRMF_FIELDS),
           amount: fieldValue(r, "amount", CRMF_FIELDS),
@@ -300,7 +300,7 @@ export async function GET(req: NextRequest) {
           400
         );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Policies GET", req);
   }
 }
@@ -319,12 +319,17 @@ export async function POST(req: NextRequest) {
 
     const body = policiesPostSchema.parse(await req.json());
     const { action } = body;
-    const { type, data } = body as Record<string, any>;
+    const type = (body as Record<string, unknown>).type as string | undefined;
+    const data = (body as Record<string, unknown>).data as Record<string, unknown> | undefined;
 
     // Require admin permissions for modifications
     const { authtoken, actor } = await requirePermissions(["ADMIN_CIRC_MATRIX_MATCHPOINT"]);
 
     logger.info({ requestId, route: "api.evergreen.policies", action, type }, "Policies update");
+
+    if (!data) {
+      return errorResponse("Request data is required", 400);
+    }
 
     const requestMeta = getRequestMeta(req);
     const auditBase = {
@@ -340,7 +345,7 @@ export async function POST(req: NextRequest) {
       entity: string;
       entityId?: string | number;
       status: "success" | "failure";
-      details?: Record<string, any>;
+      details?: Record<string, unknown>;
       error?: string | null;
     }) => {
       try {
@@ -440,7 +445,7 @@ export async function POST(req: NextRequest) {
             [authtoken, data.id]
           );
 
-          const existing = fetchResponse?.payload?.[0] as any;
+          const existing = payloadFirst(fetchResponse);
           if (!existing) {
             return errorResponse("Policy not found", 404);
           }
@@ -504,7 +509,7 @@ export async function POST(req: NextRequest) {
             await audit({
               action: "policy.circ.update",
               entity: "ccmm",
-              entityId: data.id,
+              entityId: data.id as number | undefined,
               status: "failure",
               details: { type, action, id: data.id, data },
               error: result.textcode || "Failed to update policy",
@@ -515,9 +520,9 @@ export async function POST(req: NextRequest) {
           await audit({
             action: "policy.circ.update",
             entity: "ccmm",
-            entityId: data.id,
+            entityId: data.id as number | undefined,
             status: "success",
-            details: { type, action, id: data.id },
+            details: { type, action, id: data.id as number | undefined },
           });
 
           return successResponse({
@@ -542,9 +547,9 @@ export async function POST(req: NextRequest) {
             await audit({
               action: "policy.circ.delete",
               entity: "ccmm",
-              entityId: data.id,
+              entityId: data.id as number | undefined,
               status: "failure",
-              details: { type, action, id: data.id },
+              details: { type, action, id: data.id as number | undefined },
               error: result.textcode || "Failed to delete policy",
             });
             return errorResponse(result.textcode || "Failed to delete policy", 400, result);
@@ -553,9 +558,9 @@ export async function POST(req: NextRequest) {
           await audit({
             action: "policy.circ.delete",
             entity: "ccmm",
-            entityId: data.id,
+            entityId: data.id as number | undefined,
             status: "success",
-            details: { type, action, id: data.id },
+            details: { type, action, id: data.id as number | undefined },
           });
 
           return successResponse({
@@ -644,7 +649,7 @@ export async function POST(req: NextRequest) {
             [authtoken, data.id]
           );
 
-          const existing = fetchResponse?.payload?.[0] as any;
+          const existing = payloadFirst(fetchResponse);
           if (!existing) {
             return errorResponse("Policy not found", 404);
           }
@@ -710,7 +715,7 @@ export async function POST(req: NextRequest) {
             await audit({
               action: "policy.hold.update",
               entity: "chmm",
-              entityId: data.id,
+              entityId: data.id as number | undefined,
               status: "failure",
               details: { type, action, id: data.id, data },
               error: result.textcode || "Failed to update hold policy",
@@ -721,9 +726,9 @@ export async function POST(req: NextRequest) {
           await audit({
             action: "policy.hold.update",
             entity: "chmm",
-            entityId: data.id,
+            entityId: data.id as number | undefined,
             status: "success",
-            details: { type, action, id: data.id },
+            details: { type, action, id: data.id as number | undefined },
           });
 
           return successResponse({
@@ -748,9 +753,9 @@ export async function POST(req: NextRequest) {
             await audit({
               action: "policy.hold.delete",
               entity: "chmm",
-              entityId: data.id,
+              entityId: data.id as number | undefined,
               status: "failure",
-              details: { type, action, id: data.id },
+              details: { type, action, id: data.id as number | undefined },
               error: result.textcode || "Failed to delete hold policy",
             });
             return errorResponse(result.textcode || "Failed to delete hold policy", 400, result);
@@ -759,9 +764,9 @@ export async function POST(req: NextRequest) {
           await audit({
             action: "policy.hold.delete",
             entity: "chmm",
-            entityId: data.id,
+            entityId: data.id as number | undefined,
             status: "success",
-            details: { type, action, id: data.id },
+            details: { type, action, id: data.id as number | undefined },
           });
 
           return successResponse({
@@ -776,7 +781,7 @@ export async function POST(req: NextRequest) {
       default:
         return errorResponse("Invalid type. Use: circ or hold", 400);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Policies POST", req);
   }
 }

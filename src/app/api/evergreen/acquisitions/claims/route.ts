@@ -5,6 +5,7 @@ import {
   successResponse,
   errorResponse,
   serverErrorResponse,
+  payloadFirst,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
@@ -88,7 +89,7 @@ export async function GET(req: NextRequest) {
           for (const li of Array.isArray(lineitems) ? lineitems : []) {
             const attrs = Array.isArray(li.attributes) ? li.attributes : [];
             const getAttr = (name: string) => {
-              const attr = attrs.find((a: any) => a.attr_name === name);
+              const attr = attrs.find((a: Record<string, unknown>) => a.attr_name === name);
               return attr?.attr_value || "";
             };
             const details = Array.isArray(li.lineitem_details) ? li.lineitem_details : [];
@@ -131,19 +132,19 @@ export async function GET(req: NextRequest) {
               });
             }
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           logger.warn(
             { route: "api.evergreen.acquisitions.claims", action, err: String(error) },
             "Claimable items lookup failed"
           );
         }
-        claimableItems.sort((a: any, b: any) => b.daysOverdue - a.daysOverdue);
+        claimableItems.sort((a, b) => b.daysOverdue - a.daysOverdue);
         return successResponse({ items: claimableItems, total: claimableItems.length });
       }
       case "history": {
         let claimHistory: ClaimEvent[] = [];
         try {
-          const filters: Record<string, any> = {};
+          const filters: Record<string, unknown> = {};
           if (lineitemId) filters.lineitem = parseInt(lineitemId, 10);
           const response = await callOpenSRF(
             "open-ils.acq",
@@ -156,21 +157,32 @@ export async function GET(req: NextRequest) {
           );
           const payload = response?.payload || [];
           const events = Array.isArray(payload?.[0]) ? payload[0] : payload;
-          claimHistory = (Array.isArray(events) ? events : []).map((ev: any) => ({
-            id: ev.id,
-            lineitemId: typeof ev.lineitem === "object" ? ev.lineitem?.id : ev.lineitem,
-            lineitemDetailId:
-              typeof ev.lineitem_detail === "object" ? ev.lineitem_detail?.id : ev.lineitem_detail,
-            claimType: ev.type || "claim",
-            claimDate: ev.claim_date || ev.create_time,
-            claimCount: ev.claim_count || 1,
-            vendorId: ev.provider || null,
-            vendorName: ev.provider_name || null,
-            notes: ev.note || ev.notes || "",
-            creator: ev.creator,
-            createTime: ev.create_time,
-          }));
-        } catch (error: any) {
+          claimHistory = (Array.isArray(events) ? events : []).map(
+            (ev: Record<string, unknown>) => {
+              const lineitem = ev.lineitem;
+              const lineitemDetail = ev.lineitem_detail;
+              return {
+                id: ev.id as number,
+                lineitemId:
+                  typeof lineitem === "object" && lineitem !== null
+                    ? ((lineitem as Record<string, unknown>).id as number)
+                    : (lineitem as number),
+                lineitemDetailId:
+                  typeof lineitemDetail === "object" && lineitemDetail !== null
+                    ? ((lineitemDetail as Record<string, unknown>).id as number)
+                    : (lineitemDetail as number),
+                claimType: ((ev.type as string) || "claim") as ClaimType,
+                claimDate: (ev.claim_date as string) || (ev.create_time as string),
+                claimCount: (ev.claim_count as number) || 1,
+                vendorId: (ev.provider as number) || undefined,
+                vendorName: (ev.provider_name as string) || undefined,
+                notes: (ev.note as string) || (ev.notes as string) || "",
+                creator: ev.creator as number,
+                createTime: ev.create_time as string,
+              };
+            }
+          );
+        } catch (error: unknown) {
           logger.warn(
             { route: "api.evergreen.acquisitions.claims", action, lineitemId, err: String(error) },
             "Claim history lookup failed"
@@ -188,12 +200,12 @@ export async function GET(req: NextRequest) {
           );
           const payload = response?.payload || [];
           const typeList = Array.isArray(payload?.[0]) ? payload[0] : payload;
-          reasons = (Array.isArray(typeList) ? typeList : []).map((t: any) => ({
-            id: t.id,
-            code: t.code || t.name || "Type " + t.id,
-            description: t.description || t.label || "",
+          reasons = (Array.isArray(typeList) ? typeList : []).map((t: Record<string, unknown>) => ({
+            id: t.id as number,
+            code: (t.code as string) || (t.name as string) || "Type " + t.id,
+            description: (t.description as string) || (t.label as string) || "",
           }));
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           reasons = [
             { id: 1, code: "not_received", description: "Item not received" },
             { id: 2, code: "damaged", description: "Item received damaged" },
@@ -231,10 +243,14 @@ export async function GET(req: NextRequest) {
           const claims = Array.isArray(claimsPayload?.[0]) ? claimsPayload[0] : claimsPayload;
           if (Array.isArray(claims)) {
             summary.totalClaimed = claims.length;
-            summary.pendingClaims = claims.filter((c: any) => !c.resolved_time).length;
-            summary.resolvedClaims = claims.filter((c: any) => c.resolved_time).length;
+            summary.pendingClaims = claims.filter(
+              (c: Record<string, unknown>) => !c.resolved_time
+            ).length;
+            summary.resolvedClaims = claims.filter(
+              (c: Record<string, unknown>) => !!c.resolved_time
+            ).length;
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           logger.warn(
             { route: "api.evergreen.acquisitions.claims", action, err: String(error) },
             "Claims summary lookup failed"
@@ -248,8 +264,9 @@ export async function GET(req: NextRequest) {
           400
         );
     }
-  } catch (err: any) {
-    if (err.name === "AuthenticationError") return errorResponse("Authentication required", 401);
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AuthenticationError")
+      return errorResponse("Authentication required", 401);
     return serverErrorResponse(err, "Claims GET", req);
   }
 }
@@ -260,13 +277,17 @@ export async function POST(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN", "ADMIN_ACQ_CLAIM"]);
     const body = acqClaimsPostSchema.parse(await req.json());
-    const { action } = body as Record<string, any>;
+    const { action } = body;
+    const extra = body as Record<string, unknown>;
     logger.debug({ route: "api.evergreen.acquisitions.claims", action }, "Claims POST");
 
     switch (action) {
       case "claim": {
-        const { lineitemId, lineitemDetailIds, claimTypeId, notes, sendNotification } =
-          body as Record<string, any>;
+        const lineitemId = extra.lineitemId as number | undefined;
+        const lineitemDetailIds = extra.lineitemDetailIds as number[] | undefined;
+        const claimTypeId = extra.claimTypeId as number | undefined;
+        const notes = extra.notes as string | undefined;
+        const sendNotification = extra.sendNotification as boolean | undefined;
         if (!lineitemId && !lineitemDetailIds?.length)
           return errorResponse("Lineitem ID or detail IDs required", 400);
         const claimType = claimTypeId || 1;
@@ -281,11 +302,11 @@ export async function POST(req: NextRequest) {
                   "open-ils.acq.lineitem_detail.claim",
                   [authtoken, detailId, claimType, notes || ""]
                 );
-                const result = response?.payload?.[0] as any as any;
+                const result = payloadFirst(response);
                 if (result?.ilsevent)
                   errors.push("Detail " + detailId + ": " + (result.textcode || "Failed"));
                 else claimedCount++;
-              } catch (error: any) {
+              } catch (error: unknown) {
                 errors.push("Detail " + detailId + ": " + String(error));
               }
             }
@@ -296,15 +317,15 @@ export async function POST(req: NextRequest) {
               claimType,
               notes || "",
             ]);
-            const result = response?.payload?.[0] as any as any;
+            const result = payloadFirst(response);
             if (result?.ilsevent)
               return errorResponse(result.textcode || "Failed to create claim", 400);
             claimedCount = 1;
           }
           if (sendNotification && claimedCount > 0) {
             try {
-              await sendClaimNotification(authtoken, lineitemId, claimType, notes);
-            } catch (emailError: any) {
+              await sendClaimNotification(authtoken, lineitemId!, claimType, notes);
+            } catch (emailError: unknown) {
               logger.warn(
                 { route: "api.evergreen.acquisitions.claims", lineitemId, err: String(emailError) },
                 "Failed to send claim notification"
@@ -315,7 +336,7 @@ export async function POST(req: NextRequest) {
           await logAuditEvent({
             action: "acq.claim.create",
             entity: "acq_claim",
-            entityId: lineitemId || null,
+            entityId: lineitemId || undefined,
             status: errors.length > 0 ? "failure" : "success",
             actor,
             ip,
@@ -335,12 +356,14 @@ export async function POST(req: NextRequest) {
             { claimed: true, count: claimedCount, errors: errors.length > 0 ? errors : undefined },
             "Claimed " + claimedCount + " item(s)"
           );
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           return errorResponse("Failed to create claim", 500);
         }
       }
       case "cancel_claim": {
-        const { claimId, lineitemDetailId, notes } = body as Record<string, any>;
+        const claimId = extra.claimId as number | undefined;
+        const lineitemDetailId = extra.lineitemDetailId as number | undefined;
+        const notes = extra.notes as string | undefined;
         if (!claimId && !lineitemDetailId)
           return errorResponse("Claim ID or lineitem detail ID required", 400);
         try {
@@ -349,7 +372,7 @@ export async function POST(req: NextRequest) {
             claimId || lineitemDetailId,
             notes || "",
           ]);
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
           if (result?.ilsevent)
             return errorResponse(result.textcode || "Failed to cancel claim", 400);
 
@@ -369,12 +392,13 @@ export async function POST(req: NextRequest) {
             { cancelled: true, claimId: claimId || lineitemDetailId },
             "Claim cancelled"
           );
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           return errorResponse("Failed to cancel claim", 500);
         }
       }
       case "receive": {
-        const { lineitemDetailId, notes } = body as Record<string, any>;
+        const lineitemDetailId = extra.lineitemDetailId as number | undefined;
+        const notes = extra.notes as string | undefined;
         if (!lineitemDetailId) return errorResponse("Lineitem detail ID required", 400);
         try {
           const response = await callOpenSRF(
@@ -382,7 +406,7 @@ export async function POST(req: NextRequest) {
             "open-ils.acq.lineitem_detail.receive",
             [authtoken, lineitemDetailId]
           );
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
           if (result?.ilsevent)
             return errorResponse(result.textcode || "Failed to receive item", 400);
           if (notes) {
@@ -392,7 +416,7 @@ export async function POST(req: NextRequest) {
                 lineitemDetailId,
                 notes,
               ]);
-            } catch (resolveError: any) {
+            } catch (resolveError: unknown) {
               logger.warn(
                 {
                   route: "api.evergreen.acquisitions.claims",
@@ -418,12 +442,15 @@ export async function POST(req: NextRequest) {
           });
 
           return successResponse({ received: true, lineitemDetailId }, "Item received");
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           return errorResponse("Failed to receive item", 500);
         }
       }
       case "batch_claim": {
-        const { items, claimTypeId, notes, sendNotification } = body as Record<string, any>;
+        const items = extra.items as Array<Record<string, unknown>> | undefined;
+        const claimTypeId = extra.claimTypeId as number | undefined;
+        const notes = extra.notes as string | undefined;
+        const sendNotification = extra.sendNotification as boolean | undefined;
         if (!items || !Array.isArray(items) || items.length === 0)
           return errorResponse("Items array required", 400);
         const claimType = claimTypeId || 1;
@@ -452,7 +479,7 @@ export async function POST(req: NextRequest) {
               errors.push("Item missing lineitemDetailId or lineitemId");
               continue;
             }
-            const result = response?.payload?.[0] as any as any;
+            const result = payloadFirst(response);
             if (result?.ilsevent)
               errors.push(
                 "Item " + (lineitemDetailId || lineitemId) + ": " + (result.textcode || "Failed")
@@ -462,7 +489,7 @@ export async function POST(req: NextRequest) {
               const li = parseInt(String(lineitemId ?? ""), 10);
               if (sendNotification && Number.isFinite(li) && li > 0) notifiedLineitemIds.add(li);
             }
-          } catch (error: any) {
+          } catch (error: unknown) {
             errors.push("Item " + (lineitemDetailId || lineitemId) + ": " + String(error));
           }
         }
@@ -471,7 +498,7 @@ export async function POST(req: NextRequest) {
           for (const li of notifiedLineitemIds) {
             try {
               await sendClaimNotification(authtoken, li, claimType, notes);
-            } catch (emailError: any) {
+            } catch (emailError: unknown) {
               logger.warn(
                 {
                   route: "api.evergreen.acquisitions.claims",
@@ -513,7 +540,9 @@ export async function POST(req: NextRequest) {
         );
       }
       case "add_note": {
-        const { claimId, lineitemDetailId, note } = body as Record<string, any>;
+        const claimId = extra.claimId as number | undefined;
+        const lineitemDetailId = extra.lineitemDetailId as number | undefined;
+        const note = extra.note as string | undefined;
         if (!claimId && !lineitemDetailId)
           return errorResponse("Claim ID or lineitem detail ID required", 400);
         if (!note) return errorResponse("Note text required", 400);
@@ -523,7 +552,7 @@ export async function POST(req: NextRequest) {
             claimId || lineitemDetailId,
             note,
           ]);
-          const result = response?.payload?.[0] as any as any;
+          const result = payloadFirst(response);
           if (result?.ilsevent) return errorResponse(result.textcode || "Failed to add note", 400);
 
           await logAuditEvent({
@@ -546,7 +575,7 @@ export async function POST(req: NextRequest) {
             { added: true, claimId: claimId || lineitemDetailId },
             "Note added to claim"
           );
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           return errorResponse("Failed to add note", 500);
         }
       }
@@ -556,8 +585,9 @@ export async function POST(req: NextRequest) {
           400
         );
     }
-  } catch (err: any) {
-    if (err.name === "AuthenticationError") return errorResponse("Authentication required", 401);
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AuthenticationError")
+      return errorResponse("Authentication required", 401);
     return serverErrorResponse(err, "Claims POST", req);
   }
 }
@@ -573,16 +603,16 @@ async function sendClaimNotification(
     lineitemId,
     { flesh: 2, flesh_fields: { jub: ["attributes", "purchase_order"], acqpo: ["provider"] } },
   ]);
-  const li = liResponse?.payload?.[0] as any;
+  const li = payloadFirst(liResponse) as Record<string, unknown> | null;
   if (!li) throw new Error("Lineitem not found");
   const attrs = Array.isArray(li.attributes) ? li.attributes : [];
   const getAttr = (name: string) => {
-    const attr = attrs.find((a: any) => a.attr_name === name);
+    const attr = attrs.find((a: Record<string, unknown>) => a.attr_name === name);
     return attr?.attr_value || "";
   };
-  const po = li.purchase_order || {};
-  const provider = typeof po.provider === "object" ? po.provider : {};
-  const vendorEmail = provider.email;
+  const po = (li.purchase_order as Record<string, unknown>) || {};
+  const provider = (typeof po.provider === "object" ? po.provider : {}) as Record<string, unknown>;
+  const vendorEmail = provider.email as string | undefined;
   if (!vendorEmail) {
     logger.warn({ lineitemId, vendorId: provider.id }, "Vendor has no email address");
     return;
@@ -605,7 +635,7 @@ async function sendClaimNotification(
     (notes ? "Notes: " + notes + "\n\n" : "") +
     "Please advise on the status of this order.\n\nThank you,\nLibrary Acquisitions";
   await sendEmail({
-    to: { email: vendorEmail, name: provider.name || "Vendor" },
+    to: { email: vendorEmail, name: (provider.name as string) || "Vendor" },
     from: {
       email: process.env.STACKSOS_EMAIL_FROM || "noreply@library.org",
       name: "Library Acquisitions",

@@ -6,6 +6,7 @@ import {
   getErrorMessage,
   isOpenSRFEvent,
   parseJsonBodyWithSchema,
+  payloadFirst,
   requireAuthToken,
   serverErrorResponse,
   successResponse,
@@ -38,8 +39,8 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
 
     if (payload.length > 0 && typeof payload[0] === "object") {
       const map: Record<string, boolean> = {};
-      payload.forEach((entry: any) => {
-        const key = entry.perm || entry.code || entry.name;
+      payload.forEach((entry: Record<string, unknown>) => {
+        const key = String(entry.perm || entry.code || entry.name || "");
         if (key) map[key] = Boolean(entry.value ?? entry.allowed ?? entry.granted ?? entry.result);
       });
       if (Object.keys(map).length > 0) return map;
@@ -50,7 +51,7 @@ function normalizePermPayload(payload: unknown, perms: string[]): Record<string,
     const map: Record<string, boolean> = {};
     for (const perm of perms) {
       if (perm in payload) {
-        map[perm] = Boolean((payload as any)[perm]);
+        map[perm] = Boolean((payload as Record<string, unknown>)[perm]);
       }
     }
     if (Object.keys(map).length > 0) return map;
@@ -77,7 +78,7 @@ async function checkPerms(
       "open-ils.actor.user.has_work_perm_at.batch",
       params
     );
-    const payload = response?.payload?.[0] as any as any;
+    const payload = payloadFirst(response);
     if (isOpenSRFEvent(payload)) {
       continue;
     }
@@ -111,27 +112,32 @@ export async function GET(req: NextRequest) {
       },
     ]);
 
-    const rows = Array.isArray(response?.payload?.[0]) ? (response?.payload?.[0] as Record<string, any>[]) : [];
+    const rows = Array.isArray(response?.payload?.[0])
+      ? (response?.payload?.[0] as Record<string, unknown>[])
+      : [];
     const tagTypes = rows
-      .map((row: any) => {
-        const ownerObj = row?.owner && typeof row.owner === "object" ? row.owner : null;
-        const ownerId = ownerObj ? toNumber(ownerObj.id) : toNumber(row?.owner);
+      .map((row: Record<string, unknown>) => {
+        const ownerRaw =
+          row?.owner && typeof row.owner === "object"
+            ? (row.owner as Record<string, unknown>)
+            : null;
+        const ownerId = ownerRaw ? toNumber(ownerRaw.id) : toNumber(row?.owner);
 
         return {
           code: toString(row?.code).trim(),
           label: toString(row?.label).trim(),
           ownerId,
-          ownerName: ownerObj ? toString(ownerObj.shortname || ownerObj.name || "").trim() : null,
+          ownerName: ownerRaw ? toString(ownerRaw.shortname || ownerRaw.name || "").trim() : null,
         };
       })
-      .filter((t: any) => t.code.length > 0 && t.label.length > 0);
+      .filter((t) => t.code.length > 0 && t.label.length > 0);
 
     return successResponse({
       tagTypes,
       permissions: permMap || {},
       orgId,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "GET /api/evergreen/copy-tags/types", req);
   }
 }
@@ -167,13 +173,17 @@ export async function POST(req: Request) {
       payload,
     ]);
 
-    const resultRow = createResponse?.payload?.[0] as any;
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+    const resultRow = payloadFirst(createResponse);
+    if (
+      !resultRow ||
+      isOpenSRFEvent(resultRow) ||
+      (resultRow as Record<string, unknown>)?.ilsevent
+    ) {
       return errorResponse(getErrorMessage(resultRow, "Failed to create tag type"), 400, resultRow);
     }
 
     return successResponse({ created: true, code: body.code });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "POST /api/evergreen/copy-tags/types", req);
   }
 }
@@ -199,15 +209,20 @@ export async function PUT(req: Request) {
       authtoken,
       code,
     ]);
-    const existing = existingResponse?.payload?.[0] as any;
-    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, any>)?.ilsevent) {
+    const existing = payloadFirst(existingResponse);
+    if (!existing || isOpenSRFEvent(existing) || (existing as Record<string, unknown>)?.ilsevent) {
       return errorResponse(getErrorMessage(existing, "Tag type not found"), 404, existing);
     }
 
-    const ownerId = body.ownerId ?? result.orgId ?? actor?.ws_ou ?? actor?.home_ou ?? (existing as Record<string, any>)?.owner;
+    const ownerId =
+      body.ownerId ??
+      result.orgId ??
+      actor?.ws_ou ??
+      actor?.home_ou ??
+      (existing as Record<string, unknown>)?.owner;
     if (!ownerId) return errorResponse("ownerId is required", 400);
 
-    const updateData: Record<string, any> = { ...(existing as Record<string, any>) };
+    const updateData: Record<string, any> = { ...(existing as Record<string, unknown>) };
     updateData.code = code;
     if (body.label !== undefined) updateData.label = body.label;
     updateData.owner = ownerId;
@@ -219,13 +234,17 @@ export async function PUT(req: Request) {
       authtoken,
       payload,
     ]);
-    const resultRow = updateResponse?.payload?.[0] as any;
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+    const resultRow = payloadFirst(updateResponse);
+    if (
+      !resultRow ||
+      isOpenSRFEvent(resultRow) ||
+      (resultRow as Record<string, unknown>)?.ilsevent
+    ) {
       return errorResponse(getErrorMessage(resultRow, "Failed to update tag type"), 400, resultRow);
     }
 
     return successResponse({ updated: true, code });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "PUT /api/evergreen/copy-tags/types", req);
   }
 }
@@ -247,13 +266,17 @@ export async function DELETE(req: Request) {
       authtoken,
       body.code,
     ]);
-    const resultRow = delResponse?.payload?.[0] as any;
-    if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+    const resultRow = payloadFirst(delResponse);
+    if (
+      !resultRow ||
+      isOpenSRFEvent(resultRow) ||
+      (resultRow as Record<string, unknown>)?.ilsevent
+    ) {
       return errorResponse(getErrorMessage(resultRow, "Failed to delete tag type"), 400, resultRow);
     }
 
     return successResponse({ deleted: true, code: body.code });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "DELETE /api/evergreen/copy-tags/types", req);
   }
 }

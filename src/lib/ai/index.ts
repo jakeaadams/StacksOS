@@ -46,7 +46,9 @@ function isCopilotCallType(callType: string): boolean {
     callType === "staff_copilot" ||
     callType === "holds_copilot" ||
     callType === "patron_copilot" ||
-    callType === "acquisitions_copilot"
+    callType === "acquisitions_copilot" ||
+    callType === "cataloging_copilot" ||
+    callType === "admin_copilot"
   );
 }
 

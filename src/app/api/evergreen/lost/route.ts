@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import {
-
   callOpenSRF,
   requireAuthToken,
   successResponse,
@@ -12,13 +11,14 @@ import {
   getCopyByBarcode,
   getPatronById,
   getRequestMeta,
+  payloadFirst,
+  payloadFirstArray,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { withIdempotency } from "@/lib/idempotency";
 import { z } from "zod";
-
 
 const ACTION_PERMS: Record<string, string[]> = {
   mark_lost: ["MARK_ITEM_LOST"],
@@ -33,22 +33,26 @@ const ACTION_PERMS: Record<string, string[]> = {
 const resolvePerms = (action?: string) => ACTION_PERMS[action || ""] || ["STAFF_LOGIN"];
 
 // GET - Get patron's lost/missing/damaged items or item status
-const lostPostSchema = z.object({
-  action: z.enum(["mark_lost", "mark_missing", "mark_damaged", "checkin_lost"]),
-  circId: z.coerce.number().int().positive().optional(),
-  copyBarcode: z.string().trim().optional(),
-  copyId: z.coerce.number().int().positive().optional(),
-  billAmount: z.union([z.number(), z.string()]).optional(),
-  billNote: z.string().max(2048).optional(),
-}).passthrough();
+const lostPostSchema = z
+  .object({
+    action: z.enum(["mark_lost", "mark_missing", "mark_damaged", "checkin_lost"]),
+    circId: z.coerce.number().int().positive().optional(),
+    copyBarcode: z.string().trim().optional(),
+    copyId: z.coerce.number().int().positive().optional(),
+    billAmount: z.union([z.number(), z.string()]).optional(),
+    billNote: z.string().max(2048).optional(),
+  })
+  .passthrough();
 
-const lostPutSchema = z.object({
-  action: z.enum(["void_bill", "adjust_bill", "process_refund"]),
-  billId: z.coerce.number().int().positive().optional(),
-  circId: z.coerce.number().int().positive().optional(),
-  amount: z.union([z.number(), z.string()]).optional(),
-  note: z.string().max(2048).optional(),
-}).passthrough();
+const lostPutSchema = z
+  .object({
+    action: z.enum(["void_bill", "adjust_bill", "process_refund"]),
+    billId: z.coerce.number().int().positive().optional(),
+    circId: z.coerce.number().int().positive().optional(),
+    amount: z.union([z.number(), z.string()]).optional(),
+    note: z.string().max(2048).optional(),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   try {
@@ -67,7 +71,7 @@ export async function GET(req: NextRequest) {
         [authtoken, parseInt(patronId)]
       );
 
-      const checkouts = checkoutsResponse?.payload?.[0] as any;
+      const checkouts = payloadFirst(checkoutsResponse);
       const lostCircs = checkouts?.lost || [];
 
       // Get patron's bills related to lost items
@@ -77,10 +81,15 @@ export async function GET(req: NextRequest) {
         [authtoken, parseInt(patronId)]
       );
 
-      const allBills = billsResponse?.payload?.[0] as any || [];
-      const lostBills = allBills.filter((bill: any) =>
-        bill.billing_type?.toLowerCase().includes("lost") ||
-        bill.billing_type?.toLowerCase().includes("replacement")
+      const allBills = payloadFirstArray(billsResponse);
+      const lostBills = allBills.filter(
+        (bill: Record<string, unknown>) =>
+          String(bill.billing_type ?? "")
+            .toLowerCase()
+            .includes("lost") ||
+          String(bill.billing_type ?? "")
+            .toLowerCase()
+            .includes("replacement")
       );
 
       const patron = await getPatronById(authtoken, parseInt(patronId));
@@ -95,7 +104,11 @@ export async function GET(req: NextRequest) {
         lostBills: lostBills,
         summary: {
           totalLostItems: lostCircs.length,
-          totalOwed: lostBills.reduce((sum: number, b: any) => sum + parseFloat(b.balance_owed || 0), 0),
+          totalOwed: lostBills.reduce(
+            (sum: number, b: Record<string, unknown>) =>
+              sum + parseFloat(String(b.balance_owed ?? 0)),
+            0
+          ),
         },
       });
     }
@@ -149,13 +162,12 @@ export async function GET(req: NextRequest) {
     }
 
     if (circId) {
-      const circResponse = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.retrieve",
-        [authtoken, parseInt(circId)]
-      );
+      const circResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.retrieve", [
+        authtoken,
+        parseInt(circId),
+      ]);
 
-      const circ = circResponse?.payload?.[0] as any;
+      const circ = payloadFirst(circResponse);
 
       if (!circ || circ.ilsevent) {
         return notFoundResponse("Circulation not found");
@@ -167,7 +179,7 @@ export async function GET(req: NextRequest) {
         [authtoken, parseInt(circId)]
       );
 
-      const bills = billsResponse?.payload?.[0] as any || [];
+      const bills = payloadFirstArray(billsResponse);
 
       return successResponse({
         circulation: circ,
@@ -176,7 +188,7 @@ export async function GET(req: NextRequest) {
     }
 
     return errorResponse("patron_id, item_barcode, or circ_id required", 400);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Lost API GET", req);
   }
 }
@@ -186,200 +198,212 @@ export async function POST(req: NextRequest) {
   return withIdempotency(req, "api.evergreen.lost.POST", async () => {
     const { ip, userAgent, requestId } = getRequestMeta(req);
     try {
-    const body = lostPostSchema.parse(await req.json());
-    const { action, circId, copyBarcode, copyId } = body as Record<string, any>;
-    const { authtoken, actor } = await requirePermissions(resolvePerms(action));
+      const body = lostPostSchema.parse(await req.json());
+      const { action, circId, copyBarcode, copyId } = body as Record<string, unknown>;
+      const { authtoken, actor } = await requirePermissions(resolvePerms(action as string));
 
-    const audit = async (
-      status: "success" | "failure",
-      details?: Record<string, any>,
-      error?: string
-    ) =>
-      logAuditEvent({
-        action: `lost.${action || "unknown"}`,
-        status,
-        actor,
-        ip,
-        userAgent,
-        requestId,
-        details,
-        error: error || null,
-      });
+      const audit = async (
+        status: "success" | "failure",
+        details?: Record<string, unknown>,
+        error?: string
+      ) =>
+        logAuditEvent({
+          action: `lost.${action || "unknown"}`,
+          status,
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          details,
+          error: error || null,
+        });
 
-    logger.info({ requestId, route: "api.evergreen.lost", action, circId }, "Lost action");
+      logger.info({ requestId, route: "api.evergreen.lost", action, circId }, "Lost action");
 
-    if (action === "mark_lost") {
-      if (!circId) {
-        return errorResponse("circId required for mark_lost", 400);
-      }
+      if (action === "mark_lost") {
+        if (!circId) {
+          return errorResponse("circId required for mark_lost", 400);
+        }
 
-      const lostResponse = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.circulation.set_lost",
-        [authtoken, { circ_id: parseInt(circId) }]
-      );
-
-      const result = lostResponse?.payload?.[0] as any;
-
-      if (isSuccessResult(result)) {
-        const billsResponse = await callOpenSRF(
+        const lostResponse = await callOpenSRF(
           "open-ils.circ",
-          "open-ils.circ.money.billing.retrieve.all",
-          [authtoken, parseInt(circId)]
+          "open-ils.circ.circulation.set_lost",
+          [authtoken, { circ_id: parseInt(String(circId)) }]
         );
 
-        const bills = billsResponse?.payload?.[0] as any || [];
-        const lostBills = bills.filter((b: any) =>
-            b.billing_type?.toLowerCase().includes("lost") ||
-            b.billing_type?.toLowerCase().includes("replacement") ||
-            b.billing_type?.toLowerCase().includes("processing")
-        );
+        const result = payloadFirst(lostResponse);
 
-        await audit("success", { circId });
-        return successResponse(
-          {
-            action: "mark_lost",
-            bills: lostBills,
-            totalBilled: lostBills.reduce((sum: number, b: any) => sum + parseFloat(b.amount || 0), 0),
-          },
-          "Item marked as Lost. Replacement and processing fees have been applied."
-        );
-      } else {
-        const message = getErrorMessage(result, "Failed to mark item as lost");
-        await audit("failure", { circId }, message);
-        return errorResponse(message, 400, result);
-      }
-    }
+        if (isSuccessResult(result)) {
+          const billsResponse = await callOpenSRF(
+            "open-ils.circ",
+            "open-ils.circ.money.billing.retrieve.all",
+            [authtoken, parseInt(String(circId))]
+          );
 
-    if (action === "mark_missing") {
-      if (!copyBarcode && !copyId) {
-        return errorResponse("copyBarcode or copyId required", 400);
-      }
+          const bills = payloadFirstArray(billsResponse);
+          const lostBills = bills.filter(
+            (b: Record<string, unknown>) =>
+              String(b.billing_type ?? "")
+                .toLowerCase()
+                .includes("lost") ||
+              String(b.billing_type ?? "")
+                .toLowerCase()
+                .includes("replacement") ||
+              String(b.billing_type ?? "")
+                .toLowerCase()
+                .includes("processing")
+          );
 
-      let targetCopyId = copyId;
-
-      if (!targetCopyId && copyBarcode) {
-        const copy = await getCopyByBarcode(copyBarcode);
-        if (!copy || copy.ilsevent) {
-          return notFoundResponse("Item not found");
+          await audit("success", { circId });
+          return successResponse(
+            {
+              action: "mark_lost",
+              bills: lostBills,
+              totalBilled: lostBills.reduce(
+                (sum: number, b: Record<string, unknown>) =>
+                  sum + parseFloat(String(b.amount ?? 0)),
+                0
+              ),
+            },
+            "Item marked as Lost. Replacement and processing fees have been applied."
+          );
+        } else {
+          const message = getErrorMessage(result, "Failed to mark item as lost");
+          await audit("failure", { circId }, message);
+          return errorResponse(message, 400, result);
         }
-        targetCopyId = copy.id;
       }
 
-      const missingResponse = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.mark_item_missing",
-        [authtoken, parseInt(targetCopyId)]
-      );
-
-      const result = missingResponse?.payload?.[0] as any;
-
-      if (isSuccessResult(result)) {
-        await audit("success", { copyId: targetCopyId, copyBarcode });
-        return successResponse(
-          {
-            action: "mark_missing",
-            copyId: targetCopyId,
-          },
-          "Item marked as Missing"
-        );
-      } else {
-        const message = getErrorMessage(result, "Failed to mark item as missing");
-        await audit("failure", { copyId: targetCopyId, copyBarcode }, message);
-        return errorResponse(message, 400, result);
-      }
-    }
-
-    if (action === "mark_damaged") {
-      const { billAmount, billNote } = body as Record<string, any>;
-
-      if (!copyBarcode && !copyId) {
-        return errorResponse("copyBarcode or copyId required", 400);
-      }
-
-      let targetCopyId = copyId;
-
-      if (!targetCopyId && copyBarcode) {
-        const copy = await getCopyByBarcode(copyBarcode);
-        if (!copy || copy.ilsevent) {
-          return notFoundResponse("Item not found");
+      if (action === "mark_missing") {
+        if (!copyBarcode && !copyId) {
+          return errorResponse("copyBarcode or copyId required", 400);
         }
-        targetCopyId = copy.id;
-      }
 
-      const args: Record<string, any> = {
-        apply_fines: billAmount ? "apply" : "noapply",
-      };
+        let targetCopyId = copyId;
 
-      if (billAmount && billAmount > 0) {
-        args.override_amount = parseFloat(billAmount);
-      }
+        if (!targetCopyId && copyBarcode) {
+          const copy = await getCopyByBarcode(copyBarcode as string);
+          if (!copy || copy.ilsevent) {
+            return notFoundResponse("Item not found");
+          }
+          targetCopyId = copy.id;
+        }
 
-      if (billNote) {
-        args.override_note = billNote;
-      }
-
-      const damagedResponse = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.mark_item_damaged",
-        [authtoken, parseInt(targetCopyId), args]
-      );
-
-      const result = damagedResponse?.payload?.[0] as any;
-
-      if (isSuccessResult(result)) {
-        await audit("success", { copyId: targetCopyId, copyBarcode, billAmount, billNote });
-        return successResponse(
-          {
-            action: "mark_damaged",
-            copyId: targetCopyId,
-            billed: billAmount || 0,
-          },
-          billAmount ? `Item marked as Damaged. Billed $${billAmount}` : "Item marked as Damaged"
+        const missingResponse = await callOpenSRF(
+          "open-ils.circ",
+          "open-ils.circ.mark_item_missing",
+          [authtoken, parseInt(String(targetCopyId))]
         );
-      } else {
-        const message = getErrorMessage(result, "Failed to mark item as damaged");
-        await audit("failure", { copyId: targetCopyId, copyBarcode, billAmount }, message);
-        return errorResponse(message, 400, result);
+
+        const result = payloadFirst(missingResponse);
+
+        if (isSuccessResult(result)) {
+          await audit("success", { copyId: targetCopyId, copyBarcode });
+          return successResponse(
+            {
+              action: "mark_missing",
+              copyId: targetCopyId,
+            },
+            "Item marked as Missing"
+          );
+        } else {
+          const message = getErrorMessage(result, "Failed to mark item as missing");
+          await audit("failure", { copyId: targetCopyId, copyBarcode }, message);
+          return errorResponse(message, 400, result);
+        }
       }
-    }
 
-    if (action === "checkin_lost") {
-      if (!copyBarcode) {
-        return errorResponse("copyBarcode required", 400);
-      }
+      if (action === "mark_damaged") {
+        const { billAmount, billNote } = body as Record<string, unknown>;
 
-      const checkinResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.checkin", [
-        authtoken,
-        {
-          copy_barcode: copyBarcode,
-          void_overdues: body.voidOverdues || false,
-        },
-      ]);
+        if (!copyBarcode && !copyId) {
+          return errorResponse("copyBarcode or copyId required", 400);
+        }
 
-      const result = checkinResponse?.payload?.[0] as any;
-      const isLostCheckin = result?.ilsevent === 0 && result?.payload?.circ?.stop_fines === "LOST";
+        let targetCopyId = copyId;
 
-      if (isSuccessResult(result) || result?.payload) {
-        await audit("success", { copyBarcode, isLostCheckin });
-        return successResponse(
-          {
-            action: "checkin_lost",
-            isLostCheckin,
-            result: result?.payload,
-          },
-          "Lost item checked in. Check patron account for refund processing."
+        if (!targetCopyId && copyBarcode) {
+          const copy = await getCopyByBarcode(copyBarcode as string);
+          if (!copy || copy.ilsevent) {
+            return notFoundResponse("Item not found");
+          }
+          targetCopyId = copy.id;
+        }
+
+        const args: Record<string, unknown> = {
+          apply_fines: billAmount ? "apply" : "noapply",
+        };
+
+        if (billAmount && Number(billAmount) > 0) {
+          args.override_amount = parseFloat(String(billAmount));
+        }
+
+        if (billNote) {
+          args.override_note = billNote;
+        }
+
+        const damagedResponse = await callOpenSRF(
+          "open-ils.circ",
+          "open-ils.circ.mark_item_damaged",
+          [authtoken, parseInt(String(targetCopyId)), args]
         );
-      } else {
-        const message = getErrorMessage(result, "Failed to check in lost item");
-        await audit("failure", { copyBarcode }, message);
-        return errorResponse(message, 400, result);
-      }
-    }
 
-    await audit("failure", { action }, "Invalid action");
-    return errorResponse("Invalid action", 400);
-    } catch (error: any) {
+        const result = payloadFirst(damagedResponse);
+
+        if (isSuccessResult(result)) {
+          await audit("success", { copyId: targetCopyId, copyBarcode, billAmount, billNote });
+          return successResponse(
+            {
+              action: "mark_damaged",
+              copyId: targetCopyId,
+              billed: billAmount || 0,
+            },
+            billAmount ? `Item marked as Damaged. Billed $${billAmount}` : "Item marked as Damaged"
+          );
+        } else {
+          const message = getErrorMessage(result, "Failed to mark item as damaged");
+          await audit("failure", { copyId: targetCopyId, copyBarcode, billAmount }, message);
+          return errorResponse(message, 400, result);
+        }
+      }
+
+      if (action === "checkin_lost") {
+        if (!copyBarcode) {
+          return errorResponse("copyBarcode required", 400);
+        }
+
+        const checkinResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.checkin", [
+          authtoken,
+          {
+            copy_barcode: copyBarcode,
+            void_overdues: body.voidOverdues || false,
+          },
+        ]);
+
+        const result = payloadFirst(checkinResponse);
+        const isLostCheckin =
+          result?.ilsevent === 0 && result?.payload?.circ?.stop_fines === "LOST";
+
+        if (isSuccessResult(result) || result?.payload) {
+          await audit("success", { copyBarcode, isLostCheckin });
+          return successResponse(
+            {
+              action: "checkin_lost",
+              isLostCheckin,
+              result: result?.payload,
+            },
+            "Lost item checked in. Check patron account for refund processing."
+          );
+        } else {
+          const message = getErrorMessage(result, "Failed to check in lost item");
+          await audit("failure", { copyBarcode }, message);
+          return errorResponse(message, 400, result);
+        }
+      }
+
+      await audit("failure", { action }, "Invalid action");
+      return errorResponse("Invalid action", 400);
+    } catch (error: unknown) {
       return serverErrorResponse(error, "Lost API POST", req);
     }
   });
@@ -390,142 +414,146 @@ export async function PUT(req: NextRequest) {
   return withIdempotency(req, "api.evergreen.lost.PUT", async () => {
     const { ip, userAgent, requestId } = getRequestMeta(req);
     try {
-    const body = lostPutSchema.parse(await req.json());
-    const { action, billId, circId, amount, note } = body as Record<string, any>;
-    const { authtoken, actor } = await requirePermissions(resolvePerms(action));
+      const body = lostPutSchema.parse(await req.json());
+      const { action, billId, circId, amount, note } = body as Record<string, unknown>;
+      const { authtoken, actor } = await requirePermissions(resolvePerms(action as string));
 
-    const audit = async (
-      status: "success" | "failure",
-      details?: Record<string, any>,
-      error?: string
-    ) =>
-      logAuditEvent({
-        action: `lost.${action || "unknown"}`,
-        status,
-        actor,
-        ip,
-        userAgent,
-        requestId,
-        details,
-        error: error || null,
-      });
+      const audit = async (
+        status: "success" | "failure",
+        details?: Record<string, unknown>,
+        error?: string
+      ) =>
+        logAuditEvent({
+          action: `lost.${action || "unknown"}`,
+          status,
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          details,
+          error: error || null,
+        });
 
-    if (action === "void_bill") {
-      if (!billId) {
-        return errorResponse("billId required", 400);
-      }
+      if (action === "void_bill") {
+        if (!billId) {
+          return errorResponse("billId required", 400);
+        }
 
-      const voidResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.money.billing.void", [
-        authtoken,
-        [parseInt(billId)],
-        note || "Voided by staff",
-      ]);
-
-      const result = voidResponse?.payload?.[0] as any;
-
-      if (isSuccessResult(result)) {
-        await audit("success", { billId, note });
-        return successResponse(
-          {
-            action: "void_bill",
-            billId,
-          },
-          "Bill voided successfully"
+        const voidResponse = await callOpenSRF(
+          "open-ils.circ",
+          "open-ils.circ.money.billing.void",
+          [authtoken, [parseInt(String(billId))], note || "Voided by staff"]
         );
-      } else {
-        const message = getErrorMessage(result, "Failed to void bill");
-        await audit("failure", { billId, note }, message);
-        return errorResponse(message, 400, result);
+
+        const result = payloadFirst(voidResponse);
+
+        if (isSuccessResult(result)) {
+          await audit("success", { billId, note });
+          return successResponse(
+            {
+              action: "void_bill",
+              billId,
+            },
+            "Bill voided successfully"
+          );
+        } else {
+          const message = getErrorMessage(result, "Failed to void bill");
+          await audit("failure", { billId, note }, message);
+          return errorResponse(message, 400, result);
+        }
       }
-    }
 
-    if (action === "adjust_bill") {
-      if (!billId || amount === undefined) {
-        return errorResponse("billId and amount required", 400);
-      }
+      if (action === "adjust_bill") {
+        if (!billId || amount === undefined) {
+          return errorResponse("billId and amount required", 400);
+        }
 
-      const adjustResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.money.billing.update", [
-        authtoken,
-        { id: parseInt(billId), amount: parseFloat(amount) },
-      ]);
-
-      const result = adjustResponse?.payload?.[0] as any;
-
-      if (isSuccessResult(result)) {
-        await audit("success", { billId, amount });
-        return successResponse(
-          {
-            action: "adjust_bill",
-            billId,
-            newAmount: amount,
-          },
-          `Bill adjusted to $${amount}`
+        const adjustResponse = await callOpenSRF(
+          "open-ils.circ",
+          "open-ils.circ.money.billing.update",
+          [authtoken, { id: parseInt(String(billId)), amount: parseFloat(String(amount)) }]
         );
-      } else {
-        const message = getErrorMessage(result, "Failed to adjust bill");
-        await audit("failure", { billId, amount }, message);
-        return errorResponse(message, 400, result);
+
+        const result = payloadFirst(adjustResponse);
+
+        if (isSuccessResult(result)) {
+          await audit("success", { billId, amount });
+          return successResponse(
+            {
+              action: "adjust_bill",
+              billId,
+              newAmount: amount,
+            },
+            `Bill adjusted to $${amount}`
+          );
+        } else {
+          const message = getErrorMessage(result, "Failed to adjust bill");
+          await audit("failure", { billId, amount }, message);
+          return errorResponse(message, 400, result);
+        }
       }
-    }
 
-    if (action === "process_refund") {
-      if (!circId) {
-        return errorResponse("circId required", 400);
-      }
+      if (action === "process_refund") {
+        if (!circId) {
+          return errorResponse("circId required", 400);
+        }
 
-      const paymentsResponse = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.money.payment.retrieve.all",
-        [authtoken, parseInt(circId)]
-      );
-
-      const payments = paymentsResponse?.payload?.[0] as any || [];
-      const totalPaid = payments.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0);
-
-      if (totalPaid <= 0) {
-        await audit("success", { circId, refundAmount: 0, totalPaid });
-        return successResponse(
-          {
-            action: "process_refund",
-            refundAmount: 0,
-          },
-          "No payments to refund"
+        const paymentsResponse = await callOpenSRF(
+          "open-ils.circ",
+          "open-ils.circ.money.payment.retrieve.all",
+          [authtoken, parseInt(String(circId))]
         );
-      }
 
-      const refundAmount = body.refundAmount || totalPaid;
-
-      const creditResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.money.payment", [
-        authtoken,
-        {
-          payment_type: "credit",
-          userid: body.patronId,
-          note: note || "Refund for returned lost item",
-          payments: [{ amount: -refundAmount, xact: parseInt(circId) }],
-        },
-      ]);
-
-      const result = creditResponse?.payload?.[0] as any;
-
-      if (isSuccessResult(result)) {
-        await audit("success", { circId, refundAmount, totalPaid });
-        return successResponse(
-          {
-            action: "process_refund",
-            refundAmount,
-          },
-          `Refund of $${refundAmount} processed`
+        const payments = payloadFirstArray(paymentsResponse);
+        const totalPaid = payments.reduce(
+          (sum: number, p: Record<string, unknown>) => sum + parseFloat(String(p.amount ?? 0)),
+          0
         );
-      } else {
-        const message = getErrorMessage(result, "Failed to process refund");
-        await audit("failure", { circId, refundAmount }, message);
-        return errorResponse(message, 400, result);
-      }
-    }
 
-    await audit("failure", { action }, "Invalid action");
-    return errorResponse("Invalid action", 400);
-    } catch (error: any) {
+        if (totalPaid <= 0) {
+          await audit("success", { circId, refundAmount: 0, totalPaid });
+          return successResponse(
+            {
+              action: "process_refund",
+              refundAmount: 0,
+            },
+            "No payments to refund"
+          );
+        }
+
+        const refundAmount = body.refundAmount || totalPaid;
+
+        const creditResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.money.payment", [
+          authtoken,
+          {
+            payment_type: "credit",
+            userid: body.patronId,
+            note: note || "Refund for returned lost item",
+            payments: [{ amount: -refundAmount, xact: parseInt(String(circId)) }],
+          },
+        ]);
+
+        const result = payloadFirst(creditResponse);
+
+        if (isSuccessResult(result)) {
+          await audit("success", { circId, refundAmount, totalPaid });
+          return successResponse(
+            {
+              action: "process_refund",
+              refundAmount,
+            },
+            `Refund of $${refundAmount} processed`
+          );
+        } else {
+          const message = getErrorMessage(result, "Failed to process refund");
+          await audit("failure", { circId, refundAmount }, message);
+          return errorResponse(message, 400, result);
+        }
+      }
+
+      await audit("failure", { action }, "Invalid action");
+      return errorResponse("Invalid action", 400);
+    } catch (error: unknown) {
       return serverErrorResponse(error, "Lost API PUT", req);
     }
   });

@@ -16,13 +16,41 @@ type HoursDay = { open: string | null; close: string | null; note?: string | nul
 
 const HoursSchema = z
   .object({
-    dow0: z.object({ open: z.string().nullable(), close: z.string().nullable(), note: z.string().nullable().optional() }),
-    dow1: z.object({ open: z.string().nullable(), close: z.string().nullable(), note: z.string().nullable().optional() }),
-    dow2: z.object({ open: z.string().nullable(), close: z.string().nullable(), note: z.string().nullable().optional() }),
-    dow3: z.object({ open: z.string().nullable(), close: z.string().nullable(), note: z.string().nullable().optional() }),
-    dow4: z.object({ open: z.string().nullable(), close: z.string().nullable(), note: z.string().nullable().optional() }),
-    dow5: z.object({ open: z.string().nullable(), close: z.string().nullable(), note: z.string().nullable().optional() }),
-    dow6: z.object({ open: z.string().nullable(), close: z.string().nullable(), note: z.string().nullable().optional() }),
+    dow0: z.object({
+      open: z.string().nullable(),
+      close: z.string().nullable(),
+      note: z.string().nullable().optional(),
+    }),
+    dow1: z.object({
+      open: z.string().nullable(),
+      close: z.string().nullable(),
+      note: z.string().nullable().optional(),
+    }),
+    dow2: z.object({
+      open: z.string().nullable(),
+      close: z.string().nullable(),
+      note: z.string().nullable().optional(),
+    }),
+    dow3: z.object({
+      open: z.string().nullable(),
+      close: z.string().nullable(),
+      note: z.string().nullable().optional(),
+    }),
+    dow4: z.object({
+      open: z.string().nullable(),
+      close: z.string().nullable(),
+      note: z.string().nullable().optional(),
+    }),
+    dow5: z.object({
+      open: z.string().nullable(),
+      close: z.string().nullable(),
+      note: z.string().nullable().optional(),
+    }),
+    dow6: z.object({
+      open: z.string().nullable(),
+      close: z.string().nullable(),
+      note: z.string().nullable().optional(),
+    }),
   })
   .strict();
 
@@ -64,8 +92,12 @@ async function ensureCalendarTables() {
         next_closed JSONB
       )
     `);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_calendar_versions_org_id ON library.calendar_versions(org_id)`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_calendar_versions_created_at ON library.calendar_versions(created_at)`);
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_calendar_versions_org_id ON library.calendar_versions(org_id)`
+    );
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_calendar_versions_created_at ON library.calendar_versions(created_at)`
+    );
   });
 }
 
@@ -75,11 +107,11 @@ function isMidnight(value: unknown): boolean {
   return s === "00:00" || s === "00:00:00" || s === "00:00:00.000";
 }
 
-function normalizeDayForRead(openRaw: any, closeRaw: any, noteRaw: any): HoursDay {
+function normalizeDayForRead(openRaw: unknown, closeRaw: unknown, noteRaw: unknown): HoursDay {
   // Evergreen represents "closed" as open==close==00:00 (NOT NULL columns).
   const open = openRaw ?? null;
   const close = closeRaw ?? null;
-  const note = noteRaw ?? null;
+  const note = noteRaw != null ? String(noteRaw) : null;
 
   if (isMidnight(open) && isMidnight(close)) {
     return { open: null, close: null, note };
@@ -98,7 +130,9 @@ function normalizeDayForWrite(day: HoursDay): { open: string; close: string; not
   const note = day?.note ?? null;
 
   if ((open === null) !== (close === null)) {
-    throw new Error("Invalid hours: open and close must both be provided (or both be null) for each day");
+    throw new Error(
+      "Invalid hours: open and close must both be provided (or both be null) for each day"
+    );
   }
 
   // Evergreen schema requires NOT NULL time columns. Use 00:00 to represent closed days.
@@ -109,9 +143,13 @@ function normalizeDayForWrite(day: HoursDay): { open: string; close: string; not
   return { open: String(open), close: String(close), note };
 }
 
-function normalizeHoursRow(row: any): Record<string, HoursDay> {
+function normalizeHoursRow(row: Record<string, unknown>): Record<string, HoursDay> {
   const mk = (dow: number): HoursDay =>
-    normalizeDayForRead(row?.[`dow_${dow}_open`], row?.[`dow_${dow}_close`], row?.[`dow_${dow}_note`]);
+    normalizeDayForRead(
+      row?.[`dow_${dow}_open`],
+      row?.[`dow_${dow}_close`],
+      row?.[`dow_${dow}_note`]
+    );
   return {
     dow0: mk(0),
     dow1: mk(1),
@@ -124,7 +162,9 @@ function normalizeHoursRow(row: any): Record<string, HoursDay> {
 }
 
 async function readCalendarSnapshot(client: any, orgId: number) {
-  const hoursRes = await client.query(`select * from actor.hours_of_operation where id = $1`, [orgId]);
+  const hoursRes = await client.query(`select * from actor.hours_of_operation where id = $1`, [
+    orgId,
+  ]);
   const hours = hoursRes.rows[0] ? normalizeHoursRow(hoursRes.rows[0]) : null;
 
   const closedRes = await client.query(
@@ -136,7 +176,7 @@ async function readCalendarSnapshot(client: any, orgId: number) {
     `,
     [orgId]
   );
-  const closed = closedRes.rows.map((r: any) => ({
+  const closed = closedRes.rows.map((r: Record<string, unknown>) => ({
     id: r.id,
     closeStart: r.close_start,
     closeEnd: r.close_end,
@@ -215,18 +255,36 @@ async function writeHours(client: any, orgId: number, hours: Record<string, Hour
     `,
     [
       row.id,
-      row.dow_0_open, row.dow_0_close, row.dow_0_note,
-      row.dow_1_open, row.dow_1_close, row.dow_1_note,
-      row.dow_2_open, row.dow_2_close, row.dow_2_note,
-      row.dow_3_open, row.dow_3_close, row.dow_3_note,
-      row.dow_4_open, row.dow_4_close, row.dow_4_note,
-      row.dow_5_open, row.dow_5_close, row.dow_5_note,
-      row.dow_6_open, row.dow_6_close, row.dow_6_note,
+      row.dow_0_open,
+      row.dow_0_close,
+      row.dow_0_note,
+      row.dow_1_open,
+      row.dow_1_close,
+      row.dow_1_note,
+      row.dow_2_open,
+      row.dow_2_close,
+      row.dow_2_note,
+      row.dow_3_open,
+      row.dow_3_close,
+      row.dow_3_note,
+      row.dow_4_open,
+      row.dow_4_close,
+      row.dow_4_note,
+      row.dow_5_open,
+      row.dow_5_close,
+      row.dow_5_note,
+      row.dow_6_open,
+      row.dow_6_close,
+      row.dow_6_note,
     ]
   );
 }
 
-async function replaceClosedDates(client: any, orgId: number, closedDates: Array<z.infer<typeof ClosedDateSchema>>) {
+async function replaceClosedDates(
+  client: any,
+  orgId: number,
+  closedDates: Array<z.infer<typeof ClosedDateSchema>>
+) {
   // Safe semantics for pilots: "set exact list" for the org.
   // We keep it auditable and versioned; rollback is always available.
   await client.query(`delete from actor.org_unit_closed where org_unit = $1`, [orgId]);
@@ -236,7 +294,14 @@ async function replaceClosedDates(client: any, orgId: number, closedDates: Array
         insert into actor.org_unit_closed (org_unit, close_start, close_end, reason, full_day, multi_day)
         values ($1, $2, $3, $4, $5, $6)
       `,
-      [orgId, cd.closeStart, cd.closeEnd, cd.reason ?? null, cd.fullDay ? "t" : "f", cd.multiDay ? "t" : "f"]
+      [
+        orgId,
+        cd.closeStart,
+        cd.closeEnd,
+        cd.reason ?? null,
+        cd.fullDay ? "t" : "f",
+        cd.multiDay ? "t" : "f",
+      ]
     );
   }
 }
@@ -262,7 +327,7 @@ export async function GET(req: NextRequest) {
     });
 
     return successResponse({ orgId, ...result });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Calendars GET", req);
   }
 }
@@ -293,13 +358,19 @@ export async function POST(req: NextRequest) {
       const result = await withTransaction(async (client) => {
         const prev = await readCalendarSnapshot(client, orgId);
         const nextHours = body.hours ? HoursSchema.parse(body.hours) : prev.hours;
-        const nextClosed = body.closedDates ? body.closedDates.map((d) => ClosedDateSchema.parse(d)) : prev.closed;
+        const nextClosed = body.closedDates
+          ? body.closedDates.map((d) => ClosedDateSchema.parse(d))
+          : prev.closed;
 
         if (nextHours) {
-          await writeHours(client, orgId, nextHours as any);
+          await writeHours(client, orgId, nextHours as Record<string, HoursDay>);
         }
         if (nextClosed) {
-          await replaceClosedDates(client, orgId, nextClosed as any);
+          await replaceClosedDates(
+            client,
+            orgId,
+            nextClosed as Array<z.infer<typeof ClosedDateSchema>>
+          );
         }
 
         const next = await readCalendarSnapshot(client, orgId);
@@ -309,7 +380,15 @@ export async function POST(req: NextRequest) {
             insert into library.calendar_versions (org_id, created_by, note, prev_hours, next_hours, prev_closed, next_closed)
             values ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, $7::jsonb)
           `,
-          [orgId, actor?.id ?? null, note, JSON.stringify(prev.hours), JSON.stringify(next.hours), JSON.stringify(prev.closed), JSON.stringify(next.closed)]
+          [
+            orgId,
+            actor?.id ?? null,
+            note,
+            JSON.stringify(prev.hours),
+            JSON.stringify(next.hours),
+            JSON.stringify(prev.closed),
+            JSON.stringify(next.closed),
+          ]
         );
 
         return { prev, next };
@@ -354,9 +433,19 @@ export async function POST(req: NextRequest) {
         const targetClosed = ver.prev_closed ?? null;
 
         if (targetHours) {
-          await writeHours(client, orgId, HoursSchema.parse(targetHours as any) as any);
+          await writeHours(
+            client,
+            orgId,
+            HoursSchema.parse(targetHours as Record<string, HoursDay>) as Record<string, HoursDay>
+          );
         }
-        await replaceClosedDates(client, orgId, Array.isArray(targetClosed) ? (targetClosed as any) : []);
+        await replaceClosedDates(
+          client,
+          orgId,
+          Array.isArray(targetClosed)
+            ? (targetClosed as Array<z.infer<typeof ClosedDateSchema>>)
+            : []
+        );
 
         const next = await readCalendarSnapshot(client, orgId);
         await client.query(
@@ -364,7 +453,15 @@ export async function POST(req: NextRequest) {
             insert into library.calendar_versions (org_id, created_by, note, prev_hours, next_hours, prev_closed, next_closed)
             values ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, $7::jsonb)
           `,
-          [orgId, actor?.id ?? null, `Rollback to version ${versionId}`, JSON.stringify(prev.hours), JSON.stringify(next.hours), JSON.stringify(prev.closed), JSON.stringify(next.closed)]
+          [
+            orgId,
+            actor?.id ?? null,
+            `Rollback to version ${versionId}`,
+            JSON.stringify(prev.hours),
+            JSON.stringify(next.hours),
+            JSON.stringify(prev.closed),
+            JSON.stringify(next.closed),
+          ]
         );
 
         return { prev, next };
@@ -388,7 +485,7 @@ export async function POST(req: NextRequest) {
     }
 
     return errorResponse("Invalid action", 400);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Calendars POST", req);
   }
 }

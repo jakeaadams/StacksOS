@@ -6,6 +6,7 @@ import {
   serverErrorResponse,
   isOpenSRFEvent,
   getRequestMeta,
+  payloadFirst,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -108,22 +109,24 @@ async function getPatronPreferences(
     settingTypes,
   ]);
 
-  const settings = (response?.payload?.[0] as any as any) || {};
+  const settings = (payloadFirst(response) as Record<string, unknown>) || {};
+
+  const sv = (key: string) => (settings[key] as Record<string, unknown> | undefined)?.value;
 
   return {
     patronId,
-    emailEnabled: settings["stacksos.email.notices.enabled"]?.value !== false,
-    smsEnabled: settings["stacksos.sms.notices.enabled"]?.value !== false,
-    holdReady: settings["stacksos.email.notices.hold_ready"]?.value !== false,
-    overdue: settings["stacksos.email.notices.overdue"]?.value !== false,
-    preOverdue: settings["stacksos.email.notices.pre_overdue"]?.value !== false,
-    cardExpiration: settings["stacksos.email.notices.card_expiration"]?.value !== false,
-    fineBill: settings["stacksos.email.notices.fine_bill"]?.value !== false,
-    smsHoldReady: settings["stacksos.sms.notices.hold_ready"]?.value !== false,
-    smsOverdue: settings["stacksos.sms.notices.overdue"]?.value !== false,
-    smsPreOverdue: settings["stacksos.sms.notices.pre_overdue"]?.value !== false,
-    smsCardExpiration: settings["stacksos.sms.notices.card_expiration"]?.value !== false,
-    smsFineBill: settings["stacksos.sms.notices.fine_bill"]?.value !== false,
+    emailEnabled: sv("stacksos.email.notices.enabled") !== false,
+    smsEnabled: sv("stacksos.sms.notices.enabled") !== false,
+    holdReady: sv("stacksos.email.notices.hold_ready") !== false,
+    overdue: sv("stacksos.email.notices.overdue") !== false,
+    preOverdue: sv("stacksos.email.notices.pre_overdue") !== false,
+    cardExpiration: sv("stacksos.email.notices.card_expiration") !== false,
+    fineBill: sv("stacksos.email.notices.fine_bill") !== false,
+    smsHoldReady: sv("stacksos.sms.notices.hold_ready") !== false,
+    smsOverdue: sv("stacksos.sms.notices.overdue") !== false,
+    smsPreOverdue: sv("stacksos.sms.notices.pre_overdue") !== false,
+    smsCardExpiration: sv("stacksos.sms.notices.card_expiration") !== false,
+    smsFineBill: sv("stacksos.sms.notices.fine_bill") !== false,
   };
 }
 
@@ -166,7 +169,7 @@ async function getLibraryInfo(authtoken: string, orgId: number) {
     orgId,
   ]);
 
-  const org = response?.payload?.[0] as any as any;
+  const org = payloadFirst(response) as Record<string, unknown>;
   if (!org || isOpenSRFEvent(org)) {
     return {
       name: "Library",
@@ -177,9 +180,9 @@ async function getLibraryInfo(authtoken: string, orgId: number) {
   }
 
   return {
-    name: org.name || "Library",
-    phone: org.phone || undefined,
-    email: org.email || undefined,
+    name: (org.name as string) || "Library",
+    phone: (org.phone as string) || undefined,
+    email: (org.email as string) || undefined,
     website: org.opac_visible ? `https://${org.opac_visible}` : undefined,
   };
 }
@@ -217,7 +220,7 @@ export async function GET(req: NextRequest) {
     const preferences = await getPatronPreferences(authtoken, patronId);
 
     return successResponse({ preferences });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Notices GET", req);
   }
 }
@@ -229,8 +232,7 @@ export async function POST(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
     const body = noticesPostSchema.parse(await req.json());
-    const { patron_id, notice_type, items, holds, bills, expiration_date, channel } =
-      body as Record<string, any>;
+    const { patron_id, notice_type, items, holds, bills, expiration_date, channel } = body;
     const noticeChannel = channel === "sms" ? "sms" : "email";
 
     if (!patron_id || !notice_type) {
@@ -246,7 +248,7 @@ export async function POST(req: NextRequest) {
       [authtoken, patron_id, ["card", "home_ou"]]
     );
 
-    const patron = patronResponse?.payload?.[0] as any;
+    const patron = payloadFirst(patronResponse) as Record<string, unknown> | null;
     if (!patron || isOpenSRFEvent(patron)) {
       return errorResponse("Patron not found", 404);
     }
@@ -258,22 +260,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Get library info
-    const library = await getLibraryInfo(authtoken, patron.home_ou || 1);
+    const library = await getLibraryInfo(authtoken, (patron.home_ou as number) || 1);
 
     // Build notice context
     const context: NoticeContext = {
       patron: {
-        id: patron.id,
-        firstName: patron.first_given_name || "",
-        lastName: patron.family_name || "",
-        email: patron.email || "patron@example.org",
-        barcode: patron.card?.barcode || undefined,
+        id: patron.id as number,
+        firstName: (patron.first_given_name as string) || "",
+        lastName: (patron.family_name as string) || "",
+        email: (patron.email as string) || "patron@example.org",
+        barcode: (patron.card as Record<string, unknown>)?.barcode as string | undefined,
       },
       library,
-      items: items || undefined,
-      holds: holds || undefined,
-      bills: bills || undefined,
-      expirationDate: expiration_date || undefined,
+      items: (items as NoticeContext["items"]) || undefined,
+      holds: (holds as NoticeContext["holds"]) || undefined,
+      bills: (bills as NoticeContext["bills"]) || undefined,
+      expirationDate: (expiration_date as string) || undefined,
       preferencesUrl: `${process.env.STACKSOS_BASE_URL || ""}/opac/account/settings`,
       unsubscribeUrl: `${process.env.STACKSOS_BASE_URL || ""}/opac/account/settings?unsubscribe=email`,
     };
@@ -321,8 +323,8 @@ export async function POST(req: NextRequest) {
       try {
         await sendSms({ to: phone, message });
         if (delId) await markDeliveryAttempt({ deliveryId: delId, status: "sent" });
-      } catch (e: any) {
-        const msg = e instanceof Error ? (e as Error).message : String(e);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
         if (delId) await markDeliveryAttempt({ deliveryId: delId, status: "failed", error: msg });
         throw e;
       }
@@ -358,8 +360,8 @@ export async function POST(req: NextRequest) {
       notificationEventId,
       deliveryId,
     });
-  } catch (error: any) {
-    const errorMsg = error instanceof Error ? (error as Error).message : String(error);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
     logger.error({ error: String(error) }, "Route /api/evergreen/notices failed");
 
     await logAuditEvent({
@@ -382,7 +384,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
     const body = noticesPatchSchema.parse(await req.json());
-    const { patron_id, preferences } = body as Record<string, any>;
+    const { patron_id, preferences } = body;
 
     if (!patron_id || !preferences) {
       return errorResponse("patron_id and preferences required", 400);
@@ -403,7 +405,7 @@ export async function PATCH(req: NextRequest) {
     });
 
     return successResponse({ updated: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Notices PATCH", req);
   }
 }

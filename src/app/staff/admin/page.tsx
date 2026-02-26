@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth-context";
 import { useApi } from "@/hooks";
 import { featureFlags } from "@/lib/feature-flags";
+import { AdminCopilotPanel } from "@/components/ai/AdminCopilotPanel";
 
 import {
   Cable,
@@ -309,6 +310,20 @@ export default function AdminHubPage() {
             </CardContent>
           </Card>
         </div>
+
+        {featureFlags.ai && (
+          <AdminCopilotPanel
+            orgId={user?.activeOrgId || 1}
+            metrics={{
+              circulationToday: 0,
+              circulationWeek: 0,
+              overdueRate: 0,
+              holdFillRate: 0,
+              activePatrons: 0,
+              collectionSize: 0,
+            }}
+          />
+        )}
       </PageContent>
     </PageContainer>
   );

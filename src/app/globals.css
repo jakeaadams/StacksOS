@@ -90,6 +90,66 @@
   --surface-strong: 34 33% 92%;
   --surface-elevated: 0 0% 100%;
   --shadow-tint: 222 30% 11%;
+
+  /* ── Status Indicators ── */
+  --status-success: 142 71% 45%;
+  --status-success-bg: 142 76% 96%;
+  --status-success-text: 142 72% 29%;
+  --status-warning: 38 92% 50%;
+  --status-warning-bg: 48 96% 95%;
+  --status-warning-text: 38 92% 30%;
+  --status-error: 0 70% 52%;
+  --status-error-bg: 0 70% 97%;
+  --status-error-text: 0 72% 38%;
+  --status-info: 208 62% 44%;
+  --status-info-bg: 208 62% 96%;
+  --status-info-text: 208 62% 30%;
+
+  /* ── Typography Scale ── */
+  --text-heading-1: 2rem;
+  --text-heading-2: 1.5rem;
+  --text-heading-3: 1.25rem;
+  --text-heading-4: 1.125rem;
+  --text-body: 0.9375rem;
+  --text-body-sm: 0.8125rem;
+  --text-caption: 0.75rem;
+  --text-heading-weight: 600;
+  --text-body-weight: 400;
+  --text-heading-tracking: -0.02em;
+  --text-body-tracking: -0.01em;
+  --text-heading-leading: 1.2;
+  --text-body-leading: 1.5;
+
+  /* ── Spacing Scale ── */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* ── Motion ── */
+  --motion-duration-fast: 150ms;
+  --motion-duration-normal: 250ms;
+  --motion-duration-slow: 400ms;
+  --motion-easing-default: cubic-bezier(0.2, 0.68, 0.14, 1);
+  --motion-easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-easing-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --motion-easing-accelerate: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ── Component Tokens ── */
+  --card-radius: var(--radius);
+  --input-radius: calc(var(--radius) - 4px);
+  --button-radius: calc(var(--radius) - 4px);
+  --badge-radius: 999px;
+  --avatar-radius: 999px;
+  --sidebar-width: 16rem;
+  --topbar-height: 3.5rem;
 }
 
 .dark {
@@ -120,6 +180,20 @@
   --surface-strong: 224 22% 17%;
   --surface-elevated: 224 24% 14%;
   --shadow-tint: 216 30% 4%;
+
+  /* ── Status Indicators (Dark) ── */
+  --status-success: 142 71% 55%;
+  --status-success-bg: 142 40% 15%;
+  --status-success-text: 142 60% 75%;
+  --status-warning: 38 92% 60%;
+  --status-warning-bg: 38 40% 15%;
+  --status-warning-text: 38 80% 75%;
+  --status-error: 0 70% 62%;
+  --status-error-bg: 0 40% 15%;
+  --status-error-text: 0 60% 75%;
+  --status-info: 208 62% 54%;
+  --status-info-bg: 208 40% 15%;
+  --status-info-text: 208 50% 75%;
 }
 
 * {

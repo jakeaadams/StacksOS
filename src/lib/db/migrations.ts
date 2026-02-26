@@ -598,6 +598,53 @@ const migration7OnboardingTaskCompletions: Migration = {
   },
 };
 
+/**
+ * Migration #8 – K-12 reading challenges and progress tracking.
+ */
+const migration8K12ReadingChallenges: Migration = {
+  version: 8,
+  description: "Create K-12 reading challenges and challenge progress tables",
+  up: async (client: PoolClient) => {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS library.k12_reading_challenges (
+        id BIGSERIAL PRIMARY KEY,
+        class_id BIGINT NOT NULL REFERENCES library.k12_classes(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        description TEXT,
+        goal_type TEXT NOT NULL DEFAULT 'books',
+        goal_value INT NOT NULL DEFAULT 10,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        created_by INT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_k12_reading_challenges_class
+      ON library.k12_reading_challenges(class_id, start_date, end_date)
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS library.k12_challenge_progress (
+        id BIGSERIAL PRIMARY KEY,
+        challenge_id BIGINT NOT NULL REFERENCES library.k12_reading_challenges(id) ON DELETE CASCADE,
+        student_id BIGINT NOT NULL REFERENCES library.k12_students(id) ON DELETE CASCADE,
+        progress_value INT NOT NULL DEFAULT 0,
+        completed_at TIMESTAMPTZ,
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE (challenge_id, student_id)
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_k12_challenge_progress_challenge
+      ON library.k12_challenge_progress(challenge_id, progress_value DESC)
+    `);
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Ordered list of all migrations.  Append new migrations at the end.
 // ---------------------------------------------------------------------------
@@ -610,6 +657,7 @@ const ALL_MIGRATIONS: Migration[] = [
   migration5StudentPatronLinking,
   migration6K12Assets,
   migration7OnboardingTaskCompletions,
+  migration8K12ReadingChallenges,
 ];
 
 // ---------------------------------------------------------------------------

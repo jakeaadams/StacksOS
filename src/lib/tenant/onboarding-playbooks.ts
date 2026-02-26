@@ -13,7 +13,9 @@ export type OnboardingCheckKey =
   | "courseReservesData"
   | "opacKidsRoutes"
   | "opacEventsSource"
-  | "patronNoticeTemplates";
+  | "patronNoticeTemplates"
+  | "summerReadingConfig"
+  | "bookingResourceTypes";
 
 export interface OnboardingTaskDefinition {
   id: string;
@@ -99,6 +101,23 @@ const PROFILE_TASKS: Record<
         deepLink: "/opac/events",
         checkKeys: ["opacEventsSource"],
       },
+      {
+        id: "public-summer-reading",
+        phase: "launch",
+        title: "Configure Summer Reading Program",
+        description:
+          "Set up reading program parameters including date range, goals, and age groups.",
+        deepLink: "/staff/admin/programs/summer-reading",
+        checkKeys: ["summerReadingConfig"],
+      },
+      {
+        id: "public-community-room",
+        phase: "launch",
+        title: "Set Up Community Room Booking",
+        description: "Configure room resources, booking policies, and reservation rules.",
+        deepLink: "/staff/admin/rooms",
+        checkKeys: ["bookingResourceTypes"],
+      },
     ],
   },
   school: {
@@ -123,6 +142,32 @@ const PROFILE_TASKS: Record<
         deepLink: "/staff/course-reserves",
         checkKeys: ["database", "courseReservesData"],
       },
+      {
+        id: "school-sis-integration",
+        phase: "launch",
+        title: "Configure SIS Integration",
+        description:
+          "Set up roster sync for PowerSchool, Clever, or CSV. Map student fields to patron records.",
+        deepLink: "/staff/admin/integrations/sis",
+        checkKeys: ["k12Tables"],
+      },
+      {
+        id: "school-reading-levels",
+        phase: "launch",
+        title: "Enable Reading Level Tracking",
+        description:
+          "Configure assessment integration (Lexile, AR, DRA) and level-appropriate suggestions.",
+        deepLink: "/staff/admin/reading-levels",
+        checkKeys: ["k12Tables"],
+      },
+      {
+        id: "school-curriculum-align",
+        phase: "optimization",
+        title: "Configure Curriculum-Aligned Collections",
+        description: "Map collections to curriculum standards and grade levels.",
+        deepLink: "/staff/admin/collections/curriculum",
+        checkKeys: ["courseReservesData"],
+      },
     ],
   },
   church: {
@@ -146,6 +191,31 @@ const PROFILE_TASKS: Record<
           "Verify events publishing and patron communications for ministry and community programs.",
         deepLink: "/opac/events",
         checkKeys: ["stacksosNoticeSettings", "opacEventsSource", "patronNoticeTemplates"],
+      },
+      {
+        id: "church-donation-tracking",
+        phase: "launch",
+        title: "Configure Donation Tracking",
+        description:
+          "Set up hooks for material donations, acknowledgment letters, and tax receipts.",
+        deepLink: "/staff/admin/donations",
+        checkKeys: ["database"],
+      },
+      {
+        id: "church-ministry-lending",
+        phase: "launch",
+        title: "Set Up Ministry Lending Collections",
+        description: "Create collections for children's ministry, small groups, missions, media.",
+        deepLink: "/staff/admin/collections/ministry",
+        checkKeys: ["database"],
+      },
+      {
+        id: "church-volunteer-training",
+        phase: "launch",
+        title: "Complete Volunteer Training",
+        description: "Guide volunteers through circulation basics using the training sandbox.",
+        deepLink: "/staff/training/volunteers",
+        checkKeys: ["database"],
       },
     ],
   },
@@ -180,6 +250,22 @@ const PROFILE_TASKS: Record<
         deepLink: "/staff/admin/notifications",
         checkKeys: ["patronNoticeTemplates"],
       },
+      {
+        id: "academic-ill-workflows",
+        phase: "launch",
+        title: "Configure ILL Workflows",
+        description: "Set up request routing, lending policies, and notification templates.",
+        deepLink: "/staff/ill/config",
+        checkKeys: ["evergreenGateway"],
+      },
+      {
+        id: "academic-thesis-repository",
+        phase: "optimization",
+        title: "Set Up Thesis Repository Linking",
+        description: "Configure catalog-repository integration for theses and dissertations.",
+        deepLink: "/staff/admin/integrations/repository",
+        checkKeys: ["database"],
+      },
     ],
   },
   custom: {
@@ -201,6 +287,23 @@ const PROFILE_TASKS: Record<
         description:
           "Define change approvals, incident ownership, and rollback procedures for tenant config.",
         deepLink: "/staff/admin/ops",
+        checkKeys: ["database"],
+      },
+      {
+        id: "custom-integration-hooks",
+        phase: "launch",
+        title: "Configure External Webhooks",
+        description: "Set up webhook endpoints for checkout, checkin, hold, patron events.",
+        deepLink: "/staff/admin/integrations/webhooks",
+        checkKeys: ["database"],
+      },
+      {
+        id: "custom-reporting-templates",
+        phase: "optimization",
+        title: "Set Up Report Templates",
+        description:
+          "Configure reusable templates for circulation stats, collection analysis, demographics.",
+        deepLink: "/staff/admin/reports/templates",
         checkKeys: ["database"],
       },
     ],

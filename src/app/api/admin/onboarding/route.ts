@@ -41,6 +41,8 @@ export async function GET(req: NextRequest) {
       opacKidsProbe,
       opacEventsProbe,
       patronNoticeProbe,
+      summerReadingProbe,
+      bookingResourceProbe,
     ] = await Promise.all([
       // --- evergreenEg2 ---
       (async () => {
@@ -322,6 +324,78 @@ export async function GET(req: NextRequest) {
           };
         }
       })(),
+      // --- summerReadingConfig ---
+      (async () => {
+        try {
+          const pool = getEvergreenPool();
+          const result = await pool.query(
+            `SELECT EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_schema = 'library' AND table_name = 'summer_reading_config'
+            ) AS exists`
+          );
+          const tableExists = result.rows[0]?.exists === true;
+          if (!tableExists) {
+            return {
+              status: "warn" as const,
+              ok: false,
+              detail: "library.summer_reading_config table not found",
+            };
+          }
+          const countResult = await pool.query(
+            "SELECT COUNT(*)::int AS count FROM library.summer_reading_config"
+          );
+          const count = Number(countResult.rows[0]?.count || 0);
+          const ok = count > 0;
+          return {
+            status: ok ? ("pass" as const) : ("warn" as const),
+            ok,
+            detail: `summerReadingConfigs=${count}`,
+          };
+        } catch (error) {
+          return {
+            status: "warn" as const,
+            ok: false,
+            detail: error instanceof Error ? error.message : String(error),
+          };
+        }
+      })(),
+      // --- bookingResourceTypes ---
+      (async () => {
+        try {
+          const pool = getEvergreenPool();
+          const result = await pool.query(
+            `SELECT EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_schema = 'booking' AND table_name = 'resource_type'
+            ) AS exists`
+          );
+          const tableExists = result.rows[0]?.exists === true;
+          if (!tableExists) {
+            return {
+              status: "warn" as const,
+              ok: false,
+              detail: "booking.resource_type table not found",
+            };
+          }
+          const countResult = await pool.query(
+            "SELECT COUNT(*)::int AS count FROM booking.resource_type"
+          );
+          const count = Number(countResult.rows[0]?.count || 0);
+          const ok = count > 0;
+          return {
+            status: ok ? ("pass" as const) : ("warn" as const),
+            ok,
+            detail: `bookingResourceTypes=${count}`,
+          };
+        } catch (error) {
+          return {
+            status: "warn" as const,
+            ok: false,
+            detail: error instanceof Error ? error.message : String(error),
+          };
+        }
+      })(),
     ]);
 
     const checks = {
@@ -335,6 +409,8 @@ export async function GET(req: NextRequest) {
       opacKidsRoutes: opacKidsProbe,
       opacEventsSource: opacEventsProbe,
       patronNoticeTemplates: patronNoticeProbe,
+      summerReadingConfig: summerReadingProbe,
+      bookingResourceTypes: bookingResourceProbe,
     };
     const profileType = tenant.profile?.type || "public";
     const profilePlaybook = buildProfileOnboardingPlaybook(profileType, checks);
