@@ -35,15 +35,15 @@ test.describe("Events Lifecycle", () => {
   test("events page does not render a server error", async ({ page }) => {
     await page.goto("/opac/events");
 
-    const bodyText = await page
-      .locator("body")
-      .textContent({ timeout: 10000 })
-      .catch(() => "");
+    // Use the visible main content area (not raw body which includes hydration scripts)
+    const mainContent = page.locator("main, #__next, [role='main']").first();
+    const visibleText = await mainContent.textContent({ timeout: 10000 }).catch(() => "");
 
-    // Should not show unhandled server errors
-    expect(bodyText).not.toMatch(/Internal Server Error/i);
-    expect(bodyText).not.toMatch(/Application error/i);
-    expect(bodyText).not.toMatch(/500/);
+    // Should not show unhandled server errors in visible content
+    expect(visibleText).not.toMatch(/Internal Server Error/i);
+    expect(visibleText).not.toMatch(/Application error/i);
+    // Check for HTTP 500 error patterns (not bare "500" which appears in framework code)
+    expect(visibleText).not.toMatch(/\b500\s+(Internal\s+)?Server\s+Error/i);
   });
 
   test("events page handles empty state gracefully", async ({ page }) => {
