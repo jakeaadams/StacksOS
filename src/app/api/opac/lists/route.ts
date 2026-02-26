@@ -1,7 +1,15 @@
 import { NextRequest } from "next/server";
-import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
+import {
+  callOpenSRF,
+  successResponse,
+  errorResponse,
+  serverErrorResponse,
+  getRequestMeta,
+} from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 // In a production app, lists would be stored in a database (PostgreSQL)
@@ -72,6 +80,18 @@ export async function GET(req: NextRequest) {
 
 // POST /api/opac/lists - Create a new list
 export async function POST(req: NextRequest) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 25,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-lists-create",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many list creation requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const { patronToken, patronId } = await requirePatronSession();
 
@@ -99,6 +119,22 @@ export async function POST(req: NextRequest) {
     if (result?.ilsevent) {
       return errorResponse(result.textcode || "Failed to create list");
     }
+
+    await logAuditEvent({
+      action: "opac.list.create",
+      entity: "bookbag",
+      entityId: typeof result === "number" ? result : undefined,
+      status: "success",
+      actor: null,
+      ip,
+      userAgent,
+      requestId,
+      details: {
+        patronId,
+        listName: name.trim(),
+        visibility: visibility || "private",
+      },
+    });
 
     const newList = {
       id: result,

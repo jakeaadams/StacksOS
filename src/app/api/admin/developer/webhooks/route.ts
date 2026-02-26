@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requireSaaSAccess } from "@/lib/saas-rbac";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   DEVELOPER_EVENT_TYPES,
   createWebhookSubscription,
@@ -69,6 +70,20 @@ function actorIdFromContextActor(actor: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+async function enforceWebhookMutationRateLimit(ip: string | null): Promise<Response | null> {
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 30,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "admin-webhooks-mutation",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many webhook requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const ctx = await requireSaaSAccess({
@@ -94,6 +109,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+  const limited = await enforceWebhookMutationRateLimit(ip);
+  if (limited) return limited;
 
   try {
     const body = await parseJsonBodyWithSchema(req, postSchema);
@@ -149,6 +166,8 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+  const limited = await enforceWebhookMutationRateLimit(ip);
+  if (limited) return limited;
 
   try {
     const body = await parseJsonBodyWithSchema(req, updateSchema);
@@ -193,6 +212,8 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+  const limited = await enforceWebhookMutationRateLimit(ip);
+  if (limited) return limited;
 
   try {
     const body = await parseJsonBodyWithSchema(req, deleteSchema);

@@ -12,6 +12,7 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 // POST /api/opac/lists/[listId]/items - Add an item to a list (bookbag)
@@ -23,7 +24,17 @@ const addListItemSchema = z
   .passthrough();
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ listId: string }> }) {
-  const { ip } = getRequestMeta(req);
+  const { ip, userAgent, requestId } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 40,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-list-add-item",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many list requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
 
   try {
     const { patronToken } = await requirePatronSession();
@@ -70,6 +81,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ lis
       status: "success",
       actor: null,
       ip,
+      userAgent,
+      requestId,
       details: { listId: listNumeric, bibId },
     });
 
