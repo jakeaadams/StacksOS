@@ -136,12 +136,17 @@ export async function recordPatronChangeEvent(args: RecordPatronChangeEventArgs)
         JSON.stringify(changes),
       ]
     );
-  } catch (error: any) {
-    logger.warn({ error: String(error), component: "patron-change" }, "Failed to record patron-change event");
+  } catch (error: unknown) {
+    logger.warn(
+      { error: String(error), component: "patron-change" },
+      "Failed to record patron-change event"
+    );
   }
 }
 
-export async function listPatronChangeEvents(args: ListPatronChangeEventsArgs): Promise<PatronChangeEventRow[]> {
+export async function listPatronChangeEvents(
+  args: ListPatronChangeEventsArgs
+): Promise<PatronChangeEventRow[]> {
   await ensurePatronChangeTables();
 
   const limit = Math.min(Math.max(1, args.limit), 200);

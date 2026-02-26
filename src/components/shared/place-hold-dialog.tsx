@@ -130,10 +130,11 @@ export function PlaceHoldDialog({
 
       setPatron(loaded);
       toast.success("Patron loaded", { description: getPatronDisplayName(loaded) });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setPatron(null);
-      setError(err?.message || "Patron lookup failed");
-      toast.error(err?.message || "Patron lookup failed");
+      const message = (err instanceof Error ? err.message : String(err)) || "Patron lookup failed";
+      setError(message);
+      toast.error(message);
     } finally {
       setIsLookingUp(false);
     }
@@ -192,8 +193,8 @@ export function PlaceHoldDialog({
       }
 
       onOpenChange(false);
-    } catch (err: any) {
-      const message = err?.message || "Failed to place hold";
+    } catch (err: unknown) {
+      const message = (err instanceof Error ? err.message : String(err)) || "Failed to place hold";
       setError(message);
       toast.error(message);
     } finally {

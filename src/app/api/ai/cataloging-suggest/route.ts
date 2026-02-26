@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit";
 import {
   catalogingSuggestResponseSchema,
+  type CatalogingSuggestResponse,
   generateAiJson,
   promptMetadata,
   redactAiInput,
@@ -21,6 +22,38 @@ const requestSchema = z.object({
   marcXml: z.string().trim().min(1).optional(),
   allowExternalLookups: z.boolean().optional().default(false),
 });
+
+type AiErrorClass = "disabled" | "misconfigured" | "transient" | "unknown";
+
+function classifyAiError(message: string): AiErrorClass {
+  const m = message.toLowerCase();
+  if (m.includes("ai is disabled")) return "disabled";
+  if (
+    m.includes("not configured") ||
+    m.includes("misconfigured") ||
+    (m.includes("missing") && m.includes("api_key"))
+  ) {
+    return "misconfigured";
+  }
+  if (
+    m.includes("timeout") ||
+    m.includes("timed out") ||
+    m.includes("aborted") ||
+    m.includes("fetch failed") ||
+    m.includes("econnreset") ||
+    m.includes("socket hang up") ||
+    m.includes("network")
+  ) {
+    return "transient";
+  }
+  return "unknown";
+}
+
+function deterministicFallback(): CatalogingSuggestResponse {
+  return {
+    suggestions: [],
+  };
+}
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
@@ -49,9 +82,11 @@ export async function POST(req: NextRequest) {
     const system = prompt.system;
     const user = prompt.user;
 
-    let data;
-    let completion;
-    let config;
+    let data: CatalogingSuggestResponse;
+    let completion: { provider: string; model?: string; usage?: unknown } | null = null;
+    let config: { model?: string } | null = null;
+    let degraded = false;
+
     try {
       const out = await generateAiJson({
         requestId: requestId || undefined,
@@ -70,13 +105,15 @@ export async function POST(req: NextRequest) {
       config = out.config;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg.toLowerCase().includes("ai is disabled")) {
-        return errorResponse("AI is disabled for this tenant", 503);
-      }
-      if (msg.toLowerCase().includes("not configured") || msg.toLowerCase().includes("misconfigured")) {
-        return errorResponse("AI is not configured", 501);
-      }
-      throw e;
+      const errorClass = classifyAiError(msg);
+      if (errorClass === "disabled") return errorResponse("AI is disabled for this tenant", 503);
+      if (errorClass === "misconfigured") return errorResponse("AI is not configured", 501);
+      if (errorClass !== "transient") throw e;
+
+      data = deterministicFallback();
+      degraded = true;
+      completion = { provider: "fallback", model: "deterministic" };
+      config = { model: "deterministic" };
     }
 
     const meta = promptMetadata(system, user);
@@ -85,8 +122,8 @@ export async function POST(req: NextRequest) {
       type: "cataloging_suggest",
       requestId: requestId || undefined,
       actorId: actor?.id,
-      provider: completion.provider,
-      model: completion.model || config.model,
+      provider: completion?.provider || "unknown",
+      model: completion?.model || config?.model,
       promptHash: meta.promptHash,
       promptTemplateId: prompt.id,
       promptVersion: prompt.version,
@@ -108,9 +145,9 @@ export async function POST(req: NextRequest) {
       details: {
         type: "cataloging_suggest",
         draftId,
-        provider: completion.provider,
-        model: completion.model || config.model,
-        promptHash: meta.promptHash,
+        provider: completion?.provider || "unknown",
+        model: completion?.model || config?.model || null,
+        degraded,
         promptTemplate: prompt.id,
         promptVersion: prompt.version,
       },
@@ -120,12 +157,13 @@ export async function POST(req: NextRequest) {
       draftId,
       response: data,
       meta: {
-        provider: completion.provider,
-        model: completion.model || config.model,
-        usage: completion.usage || null,
+        provider: completion?.provider || "unknown",
+        model: completion?.model || config?.model || null,
+        usage: completion?.usage || null,
         promptHash: meta.promptHash,
         promptTemplate: prompt.id,
         promptVersion: prompt.version,
+        degraded,
       },
     });
   } catch (error) {

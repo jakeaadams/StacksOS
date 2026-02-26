@@ -151,8 +151,8 @@ export default function StatCategoriesPage() {
       setCopyCategories(Array.isArray(json.copyCategories) ? json.copyCategories : []);
       setPatronCategories(Array.isArray(json.patronCategories) ? json.patronCategories : []);
       setPermissions((json.permissions || {}) as PermissionMap);
-    } catch (e: any) {
-      setError(e instanceof Error ? (e as Error).message : String(e));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -244,8 +244,8 @@ export default function StatCategoriesPage() {
       setCategoryDialogOpen(false);
       setEditingCategory(null);
       await loadCategories();
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Save failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setCategorySaving(false);
     }
@@ -271,8 +271,8 @@ export default function StatCategoriesPage() {
       setDeleteCategoryOpen(false);
       setCategoryToDelete(null);
       await loadCategories();
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Delete failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
     } finally {
       setDeletingCategory(false);
     }
@@ -291,8 +291,8 @@ export default function StatCategoriesPage() {
       const json = await res.json();
       if (!res.ok || json?.ok !== true) throw new Error(json?.error || `HTTP ${res.status}`);
       setEntries(Array.isArray(json.entries) ? json.entries : []);
-    } catch (e: any) {
-      setEntriesError(e instanceof Error ? (e as Error).message : String(e));
+    } catch (e: unknown) {
+      setEntriesError(e instanceof Error ? e.message : String(e));
       setEntries([]);
     } finally {
       setEntriesLoading(false);
@@ -352,8 +352,8 @@ export default function StatCategoriesPage() {
       setEditingEntry(null);
       await loadEntries(entriesKind, entriesCategory.id);
       await loadCategories();
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Save failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setEntrySaving(false);
     }
@@ -382,8 +382,8 @@ export default function StatCategoriesPage() {
         await loadEntries(entriesKind, entriesCategory.id);
         await loadCategories();
       }
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Delete failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
     } finally {
       setDeletingEntry(false);
     }

@@ -177,7 +177,7 @@ export async function withIdempotency(
           keyHash,
           requestId
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         logger.error(
           { error: String(err), route, requestId },
           "Redis idempotency failed; falling back to file store"

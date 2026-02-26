@@ -151,17 +151,20 @@ export default function ItemStatusPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchWithAuth(`/api/evergreen/items?barcode=${encodeURIComponent(value.trim())}&include=bib,history`);
+      const res = await fetchWithAuth(
+        `/api/evergreen/items?barcode=${encodeURIComponent(value.trim())}&include=bib,history`
+      );
       const data = await res.json();
       if (!res.ok || data.ok === false) {
         throw new Error(data.error || "Item not found");
       }
       setItem(data.item);
       toast.success("Item found");
-    } catch (err: any) {
-      setError(err?.message || "Item lookup failed");
+    } catch (err: unknown) {
+      const message = (err instanceof Error ? err.message : String(err)) || "Item lookup failed";
+      setError(message);
       setItem(null);
-      toast.error(err?.message || "Item lookup failed");
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -179,10 +182,7 @@ export default function ItemStatusPage() {
       <PageHeader
         title="Item Status"
         subtitle="Live item metadata and circulation status."
-        breadcrumbs={[
-          { label: "Catalog", href: "/staff/catalog" },
-          { label: "Item Status" },
-        ]}
+        breadcrumbs={[{ label: "Catalog", href: "/staff/catalog" }, { label: "Item Status" }]}
       />
       <PageContent>
         {error && (
@@ -234,15 +234,23 @@ export default function ItemStatusPage() {
                       {item.author || "Unknown Author"} • {item.barcode}
                     </CardDescription>
                     <div className="mt-2 text-xs text-muted-foreground">
-                      <span className="font-medium">Status</span> (e.g. “Reshelving”) is Evergreen’s copy status.
-                      <span className="ml-2 font-medium">Circulates/Holdable</span> are item attributes.
+                      <span className="font-medium">Status</span> (e.g. “Reshelving”) is Evergreen’s
+                      copy status.
+                      <span className="ml-2 font-medium">Circulates/Holdable</span> are item
+                      attributes.
                       <span className="ml-2">
                         Configure in{" "}
-                        <Link href="/staff/admin/item-statuses" className="underline underline-offset-2">
+                        <Link
+                          href="/staff/admin/item-statuses"
+                          className="underline underline-offset-2"
+                        >
                           Admin → Item Statuses
                         </Link>{" "}
                         and{" "}
-                        <Link href="/staff/admin/policy-inspector" className="underline underline-offset-2">
+                        <Link
+                          href="/staff/admin/policy-inspector"
+                          className="underline underline-offset-2"
+                        >
                           Policy Inspector
                         </Link>
                         .
@@ -328,7 +336,12 @@ export default function ItemStatusPage() {
                   data={item.history || []}
                   searchable={false}
                   paginated={false}
-                  emptyState={<EmptyState title="No circulation history" description="No prior checkouts returned." />}
+                  emptyState={
+                    <EmptyState
+                      title="No circulation history"
+                      description="No prior checkouts returned."
+                    />
+                  }
                 />
               </CardContent>
             </Card>
@@ -339,16 +352,31 @@ export default function ItemStatusPage() {
                 <CardDescription>Take action on this item</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => window.location.href = `/staff/circulation/checkout?item=${item.barcode}`}>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    (window.location.href = `/staff/circulation/checkout?item=${item.barcode}`)
+                  }
+                >
                   <BookOpen className="h-4 w-4 mr-2" />
                   Check Out
                 </Button>
-                <Button variant="outline" onClick={() => window.location.href = `/staff/circulation/checkin?item=${item.barcode}`}>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    (window.location.href = `/staff/circulation/checkin?item=${item.barcode}`)
+                  }
+                >
                   <Package className="h-4 w-4 mr-2" />
                   Check In
                 </Button>
                 {item.recordId && (
-                  <Button variant="outline" onClick={() => window.location.href = `/staff/cataloging/marc-editor?id=${item.recordId}`}>
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      (window.location.href = `/staff/cataloging/marc-editor?id=${item.recordId}`)
+                    }
+                  >
                     <FileText className="h-4 w-4 mr-2" />
                     Edit MARC
                   </Button>

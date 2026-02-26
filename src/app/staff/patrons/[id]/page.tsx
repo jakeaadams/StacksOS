@@ -420,8 +420,9 @@ export default function PatronDetailPage() {
       const penaltiesData = await penaltiesRes.json();
       if (penaltiesData.ok && Array.isArray(penaltiesData.penaltyTypes))
         setPenaltyTypes(penaltiesData.penaltyTypes);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load patron");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message || "Failed to load patron");
     } finally {
       setIsLoading(false);
     }
@@ -589,8 +590,9 @@ export default function PatronDetailPage() {
       toast.success("Patron updated - changes saved successfully.");
       setEditDialogOpen(false);
       loadPatronData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to update patron");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(message || "Failed to update patron");
     }
   };
 
@@ -612,8 +614,9 @@ export default function PatronDetailPage() {
       setBlockDialogOpen(false);
       setBlockForm({ penaltyType: "", note: "" });
       loadPatronData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to add block");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(message || "Failed to add block");
     }
   };
 
@@ -628,8 +631,9 @@ export default function PatronDetailPage() {
       if (!data.ok) throw new Error(data.error || "Failed to remove block");
       toast.success("Block removed from patron.");
       loadPatronData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to remove block");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(message || "Failed to remove block");
     }
   };
 
@@ -652,8 +656,9 @@ export default function PatronDetailPage() {
       setNoteDialogOpen(false);
       setNoteForm({ title: "", value: "", public: false });
       loadPatronData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to add note");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(message || "Failed to add note");
     }
   };
 
@@ -668,8 +673,9 @@ export default function PatronDetailPage() {
       if (!data.ok) throw new Error(data.error || "Failed to delete note");
       toast.success("Note deleted from patron record.");
       loadPatronData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to delete note");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(message || "Failed to delete note");
     }
   };
 

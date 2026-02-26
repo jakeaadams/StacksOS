@@ -203,8 +203,10 @@ export function SearchAutocomplete({
         setIsOpen(mapped.length > 0);
         setActiveIndex(-1);
         setShowPopular(false);
-      } catch (err: any) {
-        if (err.name !== "AbortError") {
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") {
+          // ignore abort
+        } else {
           setSuggestions([]);
         }
       } finally {

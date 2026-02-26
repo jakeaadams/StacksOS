@@ -55,7 +55,7 @@ export async function getRedisClient(): Promise<Client | null> {
     await connecting;
     g[GLOBAL_CONNECTING_KEY] = undefined;
     return client;
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error({ error: String(err) }, "Failed to connect to Redis; continuing without it");
     return null;
   }

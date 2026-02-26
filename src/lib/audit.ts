@@ -3,6 +3,7 @@ import "server-only";
 import fs from "fs/promises";
 import path from "path";
 import { callOpenSRF, isOpenSRFEvent } from "@/lib/api";
+import { payloadFirst } from "@/lib/api/extract-payload";
 import { logger } from "@/lib/logger";
 import { recordPatronChangeEvent } from "@/lib/db/patron-change";
 
@@ -69,7 +70,7 @@ export async function getActorFromToken(authtoken?: string | null): Promise<Audi
     const response = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [
       authtoken,
     ]);
-    const user = response?.payload?.[0] as any as any;
+    const user = payloadFirst(response);
     if (!user || isOpenSRFEvent(user)) return null;
 
     const first = user.first_given_name || "";
@@ -105,7 +106,7 @@ export async function logAuditEvent(event: AuditEvent): Promise<void> {
     try {
       await fs.mkdir(path.dirname(AUDIT_LOG_PATH), { recursive: true });
       await fs.appendFile(AUDIT_LOG_PATH, line, "utf8");
-    } catch (err: any) {
+    } catch (err: unknown) {
       const e =
         err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) };
       logger.warn({ error: e, path: AUDIT_LOG_PATH }, "Failed to write audit log");
@@ -146,7 +147,7 @@ export async function logAuditEvent(event: AuditEvent): Promise<void> {
       requestId: sanitized.requestId ?? null,
       changes,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.warn({ error: String(error) }, "Failed to persist audit activity");
   }
 }

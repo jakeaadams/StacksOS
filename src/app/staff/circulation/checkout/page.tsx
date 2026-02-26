@@ -429,9 +429,9 @@ export default function CheckoutPage() {
         setAiExplainDraftId(json.draftId || null);
         setAiExplain(json.response || null);
         setAiExplainLoading(false);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (cancelled) return;
-        setAiExplainError(e instanceof Error ? (e as Error).message : String(e));
+        setAiExplainError(e instanceof Error ? e.message : String(e));
         setAiExplainLoading(false);
       }
     })();

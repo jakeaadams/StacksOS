@@ -239,7 +239,7 @@ export function useCSVExport() {
       } else {
         exportToCSV(filename, data, options);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
       setError(error);
       throw error;

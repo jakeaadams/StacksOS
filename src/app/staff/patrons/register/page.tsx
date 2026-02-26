@@ -5,7 +5,6 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-
   PageContainer,
   PageHeader,
   PageContent,
@@ -17,7 +16,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { UserPlus } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -66,7 +71,9 @@ export default function PatronRegisterPage() {
   const [duplicates, setDuplicates] = useState<DuplicatePatron[]>([]);
   const [generated, setGenerated] = useState<GeneratedCredentials | null>(null);
 
-  const { data: groupsData } = useApi<any>("/api/evergreen/patrons?action=groups", { immediate: true });
+  const { data: groupsData } = useApi<any>("/api/evergreen/patrons?action=groups", {
+    immediate: true,
+  });
   const { data: envData } = useApi<any>("/api/env", { immediate: true });
 
   const patronBarcodeMode = String(envData?.env?.patronBarcodeMode || "generate").toLowerCase();
@@ -115,7 +122,9 @@ export default function PatronRegisterPage() {
   const checkDuplicates = async () => {
     if (!lastName.trim()) return;
     try {
-      const res = await fetchWithAuth(`/api/evergreen/patrons?q=${encodeURIComponent(lastName.trim())}`);
+      const res = await fetchWithAuth(
+        `/api/evergreen/patrons?q=${encodeURIComponent(lastName.trim())}`
+      );
       const data = await res.json();
       if (!res.ok || data.ok === false) return;
       const patrons = (data.patrons || []).map((p: any) => ({
@@ -218,9 +227,10 @@ export default function PatronRegisterPage() {
       if (createdBarcode) {
         router.push(`/staff/patrons?q=${encodeURIComponent(createdBarcode)}&type=barcode`);
       }
-    } catch (err: any) {
-      setError(err?.message || "Registration failed");
-      toast.error(err?.message || "Registration failed");
+    } catch (err: unknown) {
+      const message = (err instanceof Error ? err.message : String(err)) || "Registration failed";
+      setError(message);
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }
@@ -257,23 +267,41 @@ export default function PatronRegisterPage() {
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="first-name">First Name *</Label>
-                <Input id="first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} onBlur={checkDuplicates} />
+                <Input
+                  id="first-name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  onBlur={checkDuplicates}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="last-name">Last Name *</Label>
-                <Input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} onBlur={checkDuplicates} />
+                <Input
+                  id="last-name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  onBlur={checkDuplicates}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
                 <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="barcode-barcodeisrequired-optional">Barcode {barcodeIsRequired ? "*" : "(optional)"}</Label>
-                <Input id="barcode-barcodeisrequired-optional"
+                <Label htmlFor="barcode-barcodeisrequired-optional">
+                  Barcode {barcodeIsRequired ? "*" : "(optional)"}
+                </Label>
+                <Input
+                  id="barcode-barcodeisrequired-optional"
                   value={barcode}
                   onChange={(e) => setBarcode(e.target.value)}
                   placeholder={
@@ -285,7 +313,12 @@ export default function PatronRegisterPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="expiration-date">Expiration Date</Label>
-                <Input id="expiration-date" type="date" value={expireDate} onChange={(e) => setExpireDate(e.target.value)} />
+                <Input
+                  id="expiration-date"
+                  type="date"
+                  value={expireDate}
+                  onChange={(e) => setExpireDate(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="patron-group">Patron Group *</Label>
@@ -323,11 +356,21 @@ export default function PatronRegisterPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="username">Username (optional)</Label>
-                <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Leave blank to auto-generate" />
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Leave blank to auto-generate"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="pin-password">PIN / Password (optional)</Label>
-                <Input id="pin-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Leave blank to auto-generate" />
+                <Input
+                  id="pin-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Leave blank to auto-generate"
+                />
               </div>
 
               <div className="md:col-span-2 border-t pt-4">
@@ -378,7 +421,9 @@ export default function PatronRegisterPage() {
                   data={duplicates}
                   searchable={false}
                   paginated={false}
-                  emptyState={<EmptyState title="No duplicates" description="No matching patrons found." />}
+                  emptyState={
+                    <EmptyState title="No duplicates" description="No matching patrons found." />
+                  }
                 />
               </CardContent>
             </Card>

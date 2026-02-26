@@ -130,23 +130,23 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
           setPatron(data.patron);
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       clientLogger.error("Session check error:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-	  const login = async (cardNumber: string, pin: string): Promise<boolean> => {
-	    try {
-	      setError(null);
-	      setIsLoading(true);
+  const login = async (cardNumber: string, pin: string): Promise<boolean> => {
+    try {
+      setError(null);
+      setIsLoading(true);
 
-	      const response = await fetchWithAuth("/api/opac/login", {
-	        method: "POST",
-	        headers: { "Content-Type": "application/json" },
-	        body: JSON.stringify({ barcode: cardNumber, pin }),
-	      });
+      const response = await fetchWithAuth("/api/opac/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ barcode: cardNumber, pin }),
+      });
 
       const data = await response.json();
 
@@ -156,16 +156,12 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
       }
 
       setPatron(data.patron);
-      
+
       // Fetch initial data after login
-      await Promise.all([
-        fetchCheckouts(),
-        fetchHolds(),
-        fetchFines(),
-      ]);
+      await Promise.all([fetchCheckouts(), fetchHolds(), fetchFines()]);
 
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       clientLogger.error("Login error:", err);
       setError("Unable to connect to the library system");
       return false;
@@ -174,15 +170,15 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
-	  const logout = async () => {
-	    try {
-	      await fetchWithAuth("/api/opac/logout", {
-	        method: "POST",
-	      });
-	    } catch (err: any) {
-	      clientLogger.error("Logout error:", err);
-	    } finally {
-	      setPatron(null);
+  const logout = async () => {
+    try {
+      await fetchWithAuth("/api/opac/logout", {
+        method: "POST",
+      });
+    } catch (err: unknown) {
+      clientLogger.error("Logout error:", err);
+    } finally {
+      setPatron(null);
       setCheckouts([]);
       setHolds([]);
       setFines([]);
@@ -192,22 +188,18 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
   const refreshSession = async () => {
     await checkSession();
     if (patron) {
-      await Promise.all([
-        fetchCheckouts(),
-        fetchHolds(),
-        fetchFines(),
-      ]);
+      await Promise.all([fetchCheckouts(), fetchHolds(), fetchFines()]);
     }
   };
 
   const fetchCheckouts = useCallback(async () => {
     if (!patron) return;
-    
+
     try {
       const response = await fetch(`/api/opac/checkouts`, {
         credentials: "include",
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         const raw = Array.isArray(data?.checkouts) ? data.checkouts : [];
@@ -218,21 +210,34 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
 
             const recordIdRaw = c.recordId ?? c.record_id ?? c.bibId ?? c.bib_id;
             const recordIdParsed =
-              typeof recordIdRaw === "number" ? recordIdRaw : parseInt(String(recordIdRaw ?? ""), 10);
-            const recordId = Number.isFinite(recordIdParsed) && recordIdParsed > 0 ? recordIdParsed : null;
+              typeof recordIdRaw === "number"
+                ? recordIdRaw
+                : parseInt(String(recordIdRaw ?? ""), 10);
+            const recordId =
+              Number.isFinite(recordIdParsed) && recordIdParsed > 0 ? recordIdParsed : null;
 
-            const isbnRaw = typeof c.isbn === "string" ? c.isbn : typeof c.isbn === "number" ? String(c.isbn) : "";
+            const isbnRaw =
+              typeof c.isbn === "string"
+                ? c.isbn
+                : typeof c.isbn === "number"
+                  ? String(c.isbn)
+                  : "";
             const cleanIsbn = isbnRaw.replace(/[^0-9Xx]/g, "");
-            const coverUrl = cleanIsbn ? `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg` : undefined;
+            const coverUrl = cleanIsbn
+              ? `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg`
+              : undefined;
 
-            const renewalsRemainingRaw = c.renewalsRemaining ?? c.renewals_remaining ?? c.renewal_remaining;
+            const renewalsRemainingRaw =
+              c.renewalsRemaining ?? c.renewals_remaining ?? c.renewal_remaining;
             const renewalsRemainingParsed =
               typeof renewalsRemainingRaw === "number"
                 ? renewalsRemainingRaw
                 : renewalsRemainingRaw != null
                   ? parseInt(String(renewalsRemainingRaw), 10)
                   : NaN;
-            const renewalsRemaining = Number.isFinite(renewalsRemainingParsed) ? renewalsRemainingParsed : null;
+            const renewalsRemaining = Number.isFinite(renewalsRemainingParsed)
+              ? renewalsRemainingParsed
+              : null;
 
             return {
               id: circId,
@@ -251,19 +256,19 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
           .filter(Boolean) as PatronCheckout[];
         setCheckouts(normalized);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       clientLogger.error("Error fetching checkouts:", err);
     }
   }, [patron]);
 
   const fetchHolds = useCallback(async () => {
     if (!patron) return;
-    
+
     try {
       const response = await fetch(`/api/opac/holds`, {
         credentials: "include",
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         const raw = Array.isArray(data.holds) ? data.holds : [];
@@ -311,7 +316,9 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
               author: String(h.author || ""),
               coverUrl,
               status: status as PatronHold["status"],
-              queuePosition: Number.isFinite(queuePosition as any) ? (queuePosition as number) : null,
+              queuePosition: Number.isFinite(queuePosition as any)
+                ? (queuePosition as number)
+                : null,
               totalHolds: Number.isFinite(totalHolds as any) ? (totalHolds as number) : null,
               pickupLocationId: Number.isFinite(pickupId) ? pickupId : null,
               pickupLocationName: String(h.pickupLocationName || h.pickupLocation || "Library"),
@@ -324,24 +331,24 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
 
         setHolds(normalized);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       clientLogger.error("Error fetching holds:", err);
     }
   }, [patron]);
 
   const fetchFines = useCallback(async () => {
     if (!patron) return;
-    
+
     try {
       const response = await fetch(`/api/opac/fines`, {
         credentials: "include",
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setFines(data.fines || []);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       clientLogger.error("Error fetching fines:", err);
     }
   }, [patron]);
@@ -350,179 +357,201 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
     if (!raw || typeof raw !== "object") return undefined;
     const code = typeof raw.code === "string" ? raw.code : undefined;
     const nextSteps = Array.isArray((raw as Record<string, any>).nextSteps)
-      ? (raw as Record<string, any>).nextSteps.filter((s: any) => typeof s === "string" && s.trim().length > 0)
+      ? (raw as Record<string, any>).nextSteps.filter(
+          (s: any) => typeof s === "string" && s.trim().length > 0
+        )
       : undefined;
     if (!code && (!nextSteps || nextSteps.length === 0)) return undefined;
     return { code, nextSteps };
   };
 
-	  const renewItem = async (checkoutId: number) => {
-	    try {
-	      const response = await fetchWithAuth(`/api/opac/renew`, {
-	        method: "POST",
-	        headers: { "Content-Type": "application/json" },
-	        body: JSON.stringify({ checkoutId }),
-	      });
-      
+  const renewItem = async (checkoutId: number) => {
+    try {
+      const response = await fetchWithAuth(`/api/opac/renew`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checkoutId }),
+      });
+
       const data = await response.json();
-      
+
       if (response.ok) {
         await fetchCheckouts();
         return { success: true, message: data.message || "Item renewed successfully" };
       }
-      
+
       return { success: false, message: data.error || "Renewal failed" };
     } catch {
       return { success: false, message: "Unable to connect to the library system" };
     }
   };
 
-		  const renewAll = async () => {
-		    try {
-		      const response = await fetchWithAuth(`/api/opac/renew-all`, {
-		        method: "POST",
-		      });
-	      
-	      const data = await response.json();
-	      await fetchCheckouts();
-	      
-	      const renewed =
-	        typeof data?.results?.totalRenewed === "number"
-	          ? data.results.totalRenewed
-	          : typeof data?.renewed === "number"
-	            ? data.renewed
-	            : 0;
-	      const failed =
-	        typeof data?.results?.totalFailed === "number"
-	          ? data.results.totalFailed
-	          : typeof data?.failed === "number"
-	            ? data.failed
-	            : 0;
+  const renewAll = async () => {
+    try {
+      const response = await fetchWithAuth(`/api/opac/renew-all`, {
+        method: "POST",
+      });
 
-	      return {
-	        success: Boolean(data?.success),
-	        renewed,
-	        failed,
-	      };
-	    } catch {
-	      return { success: false, renewed: 0, failed: checkouts.length };
-	    }
-		  };
-
-	  const placeHold = async (recordId: number, pickupLocation: number) => {
-	    try {
-	      const response = await fetchWithAuth(`/api/opac/holds`, {
-	        method: "POST",
-	        headers: { "Content-Type": "application/json" },
-	        body: JSON.stringify({ recordId, pickupLocation }),
-	      });
-      
       const data = await response.json();
-      
+      await fetchCheckouts();
+
+      const renewed =
+        typeof data?.results?.totalRenewed === "number"
+          ? data.results.totalRenewed
+          : typeof data?.renewed === "number"
+            ? data.renewed
+            : 0;
+      const failed =
+        typeof data?.results?.totalFailed === "number"
+          ? data.results.totalFailed
+          : typeof data?.failed === "number"
+            ? data.failed
+            : 0;
+
+      return {
+        success: Boolean(data?.success),
+        renewed,
+        failed,
+      };
+    } catch {
+      return { success: false, renewed: 0, failed: checkouts.length };
+    }
+  };
+
+  const placeHold = async (recordId: number, pickupLocation: number) => {
+    try {
+      const response = await fetchWithAuth(`/api/opac/holds`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recordId, pickupLocation }),
+      });
+
+      const data = await response.json();
+
       if (response.ok) {
         try {
           localStorage.setItem("stacksos:last_pickup_location", String(pickupLocation));
         } catch {
           // ignore
         }
-	        await fetchHolds();
-	        return { success: true, message: data.message || "Hold placed successfully" };
-	      }
-      
-	      return { success: false, message: data.error || "Unable to place hold", details: parseActionDetails(data.details) };
-	    } catch {
-	      return { success: false, message: "Unable to connect to the library system" };
-	    }
-	  };
+        await fetchHolds();
+        return { success: true, message: data.message || "Hold placed successfully" };
+      }
 
-		  const cancelHold = async (holdId: number) => {
-		    try {
-	      const response = await fetchWithAuth(`/api/opac/holds`, {
-	        method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ holdId }),
-	      });
-      
+      return {
+        success: false,
+        message: data.error || "Unable to place hold",
+        details: parseActionDetails(data.details),
+      };
+    } catch {
+      return { success: false, message: "Unable to connect to the library system" };
+    }
+  };
+
+  const cancelHold = async (holdId: number) => {
+    try {
+      const response = await fetchWithAuth(`/api/opac/holds`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ holdId }),
+      });
+
       const data = await response.json();
-      
+
       if (response.ok) {
         await fetchHolds();
         return { success: true, message: data.message || "Hold cancelled" };
       }
-      
-	      return { success: false, message: data.error || "Unable to cancel hold", details: parseActionDetails(data.details) };
-	    } catch {
-	      return { success: false, message: "Unable to connect to the library system" };
-	    }
-	  };
 
-	  const suspendHold = async (holdId: number, until?: string) => {
-	    try {
-	      const response = await fetchWithAuth(`/api/opac/holds`, {
-	        method: "PATCH",
-	        headers: { "Content-Type": "application/json" },
-	        body: JSON.stringify({ holdId, action: "suspend", suspendUntil: until }),
-	      });
-      
+      return {
+        success: false,
+        message: data.error || "Unable to cancel hold",
+        details: parseActionDetails(data.details),
+      };
+    } catch {
+      return { success: false, message: "Unable to connect to the library system" };
+    }
+  };
+
+  const suspendHold = async (holdId: number, until?: string) => {
+    try {
+      const response = await fetchWithAuth(`/api/opac/holds`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ holdId, action: "suspend", suspendUntil: until }),
+      });
+
       const data = await response.json();
-      
-	      if (response.ok) {
-	        await fetchHolds();
-	        return { success: true, message: data.message || "Hold suspended" };
-	      }
-      
-	      return { success: false, message: data.error || "Unable to suspend hold", details: parseActionDetails(data.details) };
-	    } catch {
-	      return { success: false, message: "Unable to connect to the library system" };
-	    }
-	  };
 
-	  const activateHold = async (holdId: number) => {
-	    try {
-	      const response = await fetchWithAuth(`/api/opac/holds`, {
-	        method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ holdId, action: "activate" }),
-	      });
-      
+      if (response.ok) {
+        await fetchHolds();
+        return { success: true, message: data.message || "Hold suspended" };
+      }
+
+      return {
+        success: false,
+        message: data.error || "Unable to suspend hold",
+        details: parseActionDetails(data.details),
+      };
+    } catch {
+      return { success: false, message: "Unable to connect to the library system" };
+    }
+  };
+
+  const activateHold = async (holdId: number) => {
+    try {
+      const response = await fetchWithAuth(`/api/opac/holds`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ holdId, action: "activate" }),
+      });
+
       const data = await response.json();
-      
-	      if (response.ok) {
-	        await fetchHolds();
-	        return { success: true, message: data.message || "Hold activated" };
-	      }
-      
-	      return { success: false, message: data.error || "Unable to activate hold", details: parseActionDetails(data.details) };
-	    } catch {
-	      return { success: false, message: "Unable to connect to the library system" };
-	    }
-		  };
 
-	  const changeHoldPickup = async (holdId: number, pickupLocation: number) => {
-	    try {
-	      const response = await fetchWithAuth(`/api/opac/holds`, {
-	        method: "PATCH",
-	        headers: { "Content-Type": "application/json" },
-	        body: JSON.stringify({ holdId, action: "change_pickup", pickupLocation }),
-	      });
+      if (response.ok) {
+        await fetchHolds();
+        return { success: true, message: data.message || "Hold activated" };
+      }
 
-	      const data = await response.json();
+      return {
+        success: false,
+        message: data.error || "Unable to activate hold",
+        details: parseActionDetails(data.details),
+      };
+    } catch {
+      return { success: false, message: "Unable to connect to the library system" };
+    }
+  };
 
-		      if (response.ok) {
-	        try {
-	          localStorage.setItem("stacksos:last_pickup_location", String(pickupLocation));
-	        } catch {
-	          // ignore
-	        }
-		        await fetchHolds();
-		        return { success: true, message: data.message || "Pickup location updated" };
-		      }
+  const changeHoldPickup = async (holdId: number, pickupLocation: number) => {
+    try {
+      const response = await fetchWithAuth(`/api/opac/holds`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ holdId, action: "change_pickup", pickupLocation }),
+      });
 
-		      return { success: false, message: data.error || "Unable to change pickup location", details: parseActionDetails(data.details) };
-		    } catch {
-		      return { success: false, message: "Unable to connect to the library system" };
-		    }
-		  };
+      const data = await response.json();
+
+      if (response.ok) {
+        try {
+          localStorage.setItem("stacksos:last_pickup_location", String(pickupLocation));
+        } catch {
+          // ignore
+        }
+        await fetchHolds();
+        return { success: true, message: data.message || "Pickup location updated" };
+      }
+
+      return {
+        success: false,
+        message: data.error || "Unable to change pickup location",
+        details: parseActionDetails(data.details),
+      };
+    } catch {
+      return { success: false, message: "Unable to connect to the library system" };
+    }
+  };
 
   return (
     <PatronSessionContext.Provider
@@ -579,7 +608,10 @@ export function usePatronSession(): PatronSessionContextValue {
       message: "Not logged in",
     }),
     cancelHold: async (_holdId: number) => ({ success: false, message: "Not logged in" }),
-    suspendHold: async (_holdId: number, _until?: string) => ({ success: false, message: "Not logged in" }),
+    suspendHold: async (_holdId: number, _until?: string) => ({
+      success: false,
+      message: "Not logged in",
+    }),
     activateHold: async (_holdId: number) => ({ success: false, message: "Not logged in" }),
     changeHoldPickup: async (_holdId: number, _pickupLocation: number) => ({
       success: false,

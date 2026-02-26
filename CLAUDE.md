@@ -37,7 +37,7 @@ Lint policy note:
 - Local:
   - `npm run lint -- --quiet`: pass
   - `npm run type-check`: pass
-  - `npm run test:run`: pass (`131/131`)
+  - `npm run test:run`: pass (`219/219`)
   - `npm run audit:ui-drift`: pass
   - `npm run audit:opac`: validate in VM/runtime env (requires live app + Evergreen bridge)
   - `npm run audit:task-benchmark`: pass
@@ -45,7 +45,7 @@ Lint policy note:
 - VM (`192.168.1.233`):
   - `npm run lint -- --quiet`: pass
   - `npm run type-check`: pass
-  - `npm run test:run`: pass (`131/131`)
+  - `npm run test:run`: pass (`219/219`)
   - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`61 passed, 2 skipped`)
   - `BASE_URL=http://127.0.0.1:3000 bash audit/run_opac_audit.sh`: pass (`42/42` OPAC pages, `21/21` OPAC APIs, Evergreen bridge `4/4`)
   - `TASK_BENCH_STAFF_USER=jake TASK_BENCH_STAFF_PASS=jake TASK_BENCH_REQUIRE_STAFF=1 TASK_BENCH_ENFORCE=1 node scripts/task-benchmark.mjs`: pass (staff metrics fully populated)

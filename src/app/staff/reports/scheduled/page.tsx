@@ -16,11 +16,24 @@ import {
   SetupRequired,
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/shared/confirm-dialog";
@@ -90,7 +103,9 @@ export default function ScheduledReportsPage() {
   const router = useRouter();
   const { orgs } = useAuth();
 
-  const schedulesApi = useApi<{ schedules: Schedule[] }>("/api/reports/scheduled", { immediate: true });
+  const schedulesApi = useApi<{ schedules: Schedule[] }>("/api/reports/scheduled", {
+    immediate: true,
+  });
   const envApi = useApi<any>("/api/env", { immediate: true });
 
   const schedules = schedulesApi.data?.schedules || [];
@@ -143,7 +158,7 @@ export default function ScheduledReportsPage() {
     setForm({
       name: s.name,
       reportKey: s.report_key,
-      orgId: s.org_id ? String(s.org_id) : (orgs[0]?.id ? String(orgs[0].id) : ""),
+      orgId: s.org_id ? String(s.org_id) : orgs[0]?.id ? String(orgs[0].id) : "",
       cadence: s.cadence,
       timeOfDay: s.time_of_day,
       dayOfWeek: String(s.day_of_week ?? 1),
@@ -188,8 +203,8 @@ export default function ScheduledReportsPage() {
       setCreateOpen(false);
       setEditing(null);
       await schedulesApi.refetch();
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Save failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -204,8 +219,8 @@ export default function ScheduledReportsPage() {
       toast.success("Run complete", { description: `Run #${json.runId}` });
       setSelectedScheduleId(s.id);
       await Promise.all([schedulesApi.refetch(), runsApi.refetch()]);
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Run failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Run failed");
     }
   };
 
@@ -219,8 +234,8 @@ export default function ScheduledReportsPage() {
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "Update failed");
       await schedulesApi.refetch();
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Update failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Update failed");
     }
   };
 
@@ -233,7 +248,9 @@ export default function ScheduledReportsPage() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const res = await fetchWithAuth(`/api/reports/scheduled/${deleteTarget.id}`, { method: "DELETE" });
+      const res = await fetchWithAuth(`/api/reports/scheduled/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "Delete failed");
       toast.success("Schedule deleted");
@@ -241,8 +258,8 @@ export default function ScheduledReportsPage() {
       setDeleteTarget(null);
       setSelectedScheduleId(null);
       await schedulesApi.refetch();
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Delete failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
     } finally {
       setDeleting(false);
     }
@@ -271,7 +288,9 @@ export default function ScheduledReportsPage() {
               checked={row.original.enabled}
               onCheckedChange={(v) => void toggleEnabled(row.original, Boolean(v))}
             />
-            <span className="text-xs text-muted-foreground">{row.original.enabled ? "On" : "Off"}</span>
+            <span className="text-xs text-muted-foreground">
+              {row.original.enabled ? "On" : "Off"}
+            </span>
           </div>
         ),
       },
@@ -288,13 +307,17 @@ export default function ScheduledReportsPage() {
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
             {row.original.last_run_status ? (
-              <Badge variant={row.original.last_run_status === "success" ? "secondary" : "destructive"}>
+              <Badge
+                variant={row.original.last_run_status === "success" ? "secondary" : "destructive"}
+              >
                 {row.original.last_run_status}
               </Badge>
             ) : (
               <Badge variant="outline">—</Badge>
             )}
-            <span className="text-xs font-mono">{formatDateTime(row.original.last_run_finished_at)}</span>
+            <span className="text-xs font-mono">
+              {formatDateTime(row.original.last_run_finished_at)}
+            </span>
           </div>
         ),
       },
@@ -325,17 +348,35 @@ export default function ScheduledReportsPage() {
 
   const runColumns = useMemo<ColumnDef<Run>[]>(
     () => [
-      { accessorKey: "id", header: "Run", cell: ({ row }) => <span className="font-mono text-xs">#{row.original.id}</span> },
+      {
+        accessorKey: "id",
+        header: "Run",
+        cell: ({ row }) => <span className="font-mono text-xs">#{row.original.id}</span>,
+      },
       {
         accessorKey: "status",
         header: "Status",
         cell: ({ row }) => (
-          <Badge variant={row.original.status === "success" ? "secondary" : row.original.status === "failure" ? "destructive" : "outline"}>
+          <Badge
+            variant={
+              row.original.status === "success"
+                ? "secondary"
+                : row.original.status === "failure"
+                  ? "destructive"
+                  : "outline"
+            }
+          >
             {row.original.status}
           </Badge>
         ),
       },
-      { accessorKey: "finished_at", header: "Finished", cell: ({ row }) => <span className="text-xs font-mono">{formatDateTime(row.original.finished_at)}</span> },
+      {
+        accessorKey: "finished_at",
+        header: "Finished",
+        cell: ({ row }) => (
+          <span className="text-xs font-mono">{formatDateTime(row.original.finished_at)}</span>
+        ),
+      },
       {
         id: "download",
         header: "Download",
@@ -344,13 +385,21 @@ export default function ScheduledReportsPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => window.open(`/api/reports/scheduled/runs/${row.original.id}/download`, "_blank", "noopener,noreferrer")}
+              onClick={() =>
+                window.open(
+                  `/api/reports/scheduled/runs/${row.original.id}/download`,
+                  "_blank",
+                  "noopener,noreferrer"
+                )
+              }
             >
               <Download className="h-4 w-4 mr-2" />
               Download
             </Button>
           ) : (
-            <span className="text-xs text-muted-foreground">{row.original.error ? "Error" : "—"}</span>
+            <span className="text-xs text-muted-foreground">
+              {row.original.error ? "Error" : "—"}
+            </span>
           ),
       },
     ],
@@ -366,12 +415,14 @@ export default function ScheduledReportsPage() {
       <PageHeader
         title="Scheduled Reports"
         subtitle="Automated report generation and delivery."
-        breadcrumbs={[
-          { label: "Reports", href: "/staff/reports" },
-          { label: "Scheduled" },
-        ]}
+        breadcrumbs={[{ label: "Reports", href: "/staff/reports" }, { label: "Scheduled" }]}
         actions={[
-          { label: "Refresh", onClick: () => void schedulesApi.refetch(), icon: RefreshCw, variant: "outline" as const },
+          {
+            label: "Refresh",
+            onClick: () => void schedulesApi.refetch(),
+            icon: RefreshCw,
+            variant: "outline" as const,
+          },
           { label: "Add Schedule", onClick: openCreate, icon: Plus },
         ]}
       />
@@ -413,7 +464,10 @@ export default function ScheduledReportsPage() {
                   title="No scheduled reports"
                   description="Create your first schedule to automatically deliver KPIs, holds summaries, or overdue lists."
                   action={{ label: "Add Schedule", onClick: openCreate, icon: Plus }}
-                  secondaryAction={{ label: "Runbook", onClick: () => router.push("/staff/help#runbook") }}
+                  secondaryAction={{
+                    label: "Runbook",
+                    onClick: () => router.push("/staff/help#runbook"),
+                  }}
                 />
               }
             />
@@ -433,7 +487,12 @@ export default function ScheduledReportsPage() {
                 isLoading={runsApi.isLoading}
                 searchable={false}
                 paginated={(runsApi.data?.runs || []).length > 10}
-                emptyState={<EmptyState title="No runs yet" description="Use “Run now” to generate the first run." />}
+                emptyState={
+                  <EmptyState
+                    title="No runs yet"
+                    description="Use “Run now” to generate the first run."
+                  />
+                }
               />
             </CardContent>
           </Card>
@@ -444,37 +503,63 @@ export default function ScheduledReportsPage() {
         <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit schedule" : "Create schedule"}</DialogTitle>
-            <DialogDescription>Schedules create a stored run and email a download link.</DialogDescription>
+            <DialogDescription>
+              Schedules create a stored run and email a download link.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. Daily KPIs" />
+              <Input
+                id="name"
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="e.g. Daily KPIs"
+              />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="report">Report</Label>
-              <Select id="report" value={form.reportKey} onValueChange={(v) => setForm((p) => ({ ...p, reportKey: v as any }))}>
-                <SelectTrigger><SelectValue placeholder="Select report" /></SelectTrigger>
+              <Select
+                id="report"
+                value={form.reportKey}
+                onValueChange={(v) => setForm((p) => ({ ...p, reportKey: v as any }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select report" />
+                </SelectTrigger>
                 <SelectContent>
                   {SCHEDULED_REPORT_DEFINITIONS.map((r: any) => (
-                    <SelectItem key={r.key} value={r.key}>{r.label}</SelectItem>
+                    <SelectItem key={r.key} value={r.key}>
+                      {r.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <div className="text-xs text-muted-foreground">
-                {SCHEDULED_REPORT_DEFINITIONS.find((r: any) => r.key === form.reportKey)?.description}
+                {
+                  SCHEDULED_REPORT_DEFINITIONS.find((r: any) => r.key === form.reportKey)
+                    ?.description
+                }
               </div>
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="organization">Organization</Label>
-              <Select id="organization" value={form.orgId} onValueChange={(v) => setForm((p) => ({ ...p, orgId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select org" /></SelectTrigger>
+              <Select
+                id="organization"
+                value={form.orgId}
+                onValueChange={(v) => setForm((p) => ({ ...p, orgId: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select org" />
+                </SelectTrigger>
                 <SelectContent>
                   {orgs.map((o: any) => (
-                    <SelectItem key={o.id} value={String(o.id)}>{o.shortname} — {o.name}</SelectItem>
+                    <SelectItem key={o.id} value={String(o.id)}>
+                      {o.shortname} — {o.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -483,8 +568,14 @@ export default function ScheduledReportsPage() {
             <div className="grid gap-2 sm:grid-cols-3">
               <div className="grid gap-2">
                 <Label htmlFor="cadence">Cadence</Label>
-                <Select id="cadence" value={form.cadence} onValueChange={(v) => setForm((p) => ({ ...p, cadence: v as any }))}>
-                  <SelectTrigger><SelectValue placeholder="Cadence" /></SelectTrigger>
+                <Select
+                  id="cadence"
+                  value={form.cadence}
+                  onValueChange={(v) => setForm((p) => ({ ...p, cadence: v as any }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Cadence" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="daily">Daily</SelectItem>
                     <SelectItem value="weekly">Weekly</SelectItem>
@@ -494,14 +585,25 @@ export default function ScheduledReportsPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="time">Time</Label>
-                <Input id="time" value={form.timeOfDay} onChange={(e) => setForm((p) => ({ ...p, timeOfDay: e.target.value }))} placeholder="08:00" />
+                <Input
+                  id="time"
+                  value={form.timeOfDay}
+                  onChange={(e) => setForm((p) => ({ ...p, timeOfDay: e.target.value }))}
+                  placeholder="08:00"
+                />
                 <div className="text-[11px] text-muted-foreground">Server local time</div>
               </div>
               {form.cadence === "weekly" ? (
                 <div className="grid gap-2">
                   <Label htmlFor="day">Day</Label>
-                  <Select id="day" value={form.dayOfWeek} onValueChange={(v) => setForm((p) => ({ ...p, dayOfWeek: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
+                  <Select
+                    id="day"
+                    value={form.dayOfWeek}
+                    onValueChange={(v) => setForm((p) => ({ ...p, dayOfWeek: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Day" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">Mon</SelectItem>
                       <SelectItem value="2">Tue</SelectItem>
@@ -516,14 +618,25 @@ export default function ScheduledReportsPage() {
               ) : form.cadence === "monthly" ? (
                 <div className="grid gap-2">
                   <Label htmlFor="day-2">Day</Label>
-                  <Input id="day-2" value={form.dayOfMonth} onChange={(e) => setForm((p) => ({ ...p, dayOfMonth: e.target.value }))} placeholder="1" />
+                  <Input
+                    id="day-2"
+                    value={form.dayOfMonth}
+                    onChange={(e) => setForm((p) => ({ ...p, dayOfMonth: e.target.value }))}
+                    placeholder="1"
+                  />
                 </div>
               ) : (
                 <div className="grid gap-2">
                   <Label htmlFor="enabled">Enabled</Label>
                   <div className="flex items-center gap-3 h-9">
-                    <Switch id="enabled" checked={form.enabled} onCheckedChange={(v) => setForm((p) => ({ ...p, enabled: Boolean(v) }))} />
-                    <span className="text-xs text-muted-foreground">{form.enabled ? "On" : "Off"}</span>
+                    <Switch
+                      id="enabled"
+                      checked={form.enabled}
+                      onCheckedChange={(v) => setForm((p) => ({ ...p, enabled: Boolean(v) }))}
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {form.enabled ? "On" : "Off"}
+                    </span>
                   </div>
                 </div>
               )}
@@ -533,15 +646,22 @@ export default function ScheduledReportsPage() {
               <div className="grid gap-2">
                 <Label htmlFor="enabled-2">Enabled</Label>
                 <div className="flex items-center gap-3 h-9">
-                  <Switch id="enabled-2" checked={form.enabled} onCheckedChange={(v) => setForm((p) => ({ ...p, enabled: Boolean(v) }))} />
-                  <span className="text-xs text-muted-foreground">{form.enabled ? "On" : "Off"}</span>
+                  <Switch
+                    id="enabled-2"
+                    checked={form.enabled}
+                    onCheckedChange={(v) => setForm((p) => ({ ...p, enabled: Boolean(v) }))}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {form.enabled ? "On" : "Off"}
+                  </span>
                 </div>
               </div>
             )}
 
             <div className="grid gap-2">
               <Label htmlFor="recipients">Recipients</Label>
-              <Input id="recipients"
+              <Input
+                id="recipients"
                 value={form.recipients}
                 onChange={(e) => setForm((p) => ({ ...p, recipients: e.target.value }))}
                 placeholder="email1@library.org, email2@library.org"
@@ -551,7 +671,9 @@ export default function ScheduledReportsPage() {
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>Cancel</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>
+              Cancel
+            </Button>
             <Button onClick={() => void saveSchedule()} disabled={saving}>
               {saving ? "Saving…" : editing ? "Save changes" : "Create"}
             </Button>

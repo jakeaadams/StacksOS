@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
         [null, null, "biblio", "pub"]
       );
       bookbags = searchResponse?.payload?.[0] || [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.info({ error: String(error) }, "Public lists not available - method not supported");
       return successResponse({
         lists: [],
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
       : [];
 
     return successResponse({ lists });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ error: String(error) }, "Error fetching public lists");
     return successResponse({ lists: [], message: "Unable to fetch public lists" });
   }

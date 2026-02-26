@@ -6,6 +6,7 @@ import {
   serverErrorResponse,
   getRequestMeta,
 } from "@/lib/api";
+import { payloadFirst } from "@/lib/api/extract-payload";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -34,13 +35,15 @@ function maskEmail(email: string): string {
  * POST /api/opac/forgot-pin
  * Request a PIN reset email via Evergreen's password reset system
  */
-const forgotPinSchema = z.object({
-  barcode: z.string().trim().min(1).optional(),
-  email: z.string().email().optional(),
-  username: z.string().trim().min(1).optional(),
-}).refine((b) => Boolean(b.barcode) || Boolean(b.email) || Boolean(b.username), {
-  message: "barcode, email, or username required",
-});
+const forgotPinSchema = z
+  .object({
+    barcode: z.string().trim().min(1).optional(),
+    email: z.string().email().optional(),
+    username: z.string().trim().min(1).optional(),
+  })
+  .refine((b) => Boolean(b.barcode) || Boolean(b.email) || Boolean(b.username), {
+    message: "barcode, email, or username required",
+  });
 
 export async function POST(req: NextRequest) {
   let identifier: string | undefined;
@@ -80,7 +83,7 @@ export async function POST(req: NextRequest) {
       [username]
     );
 
-    const result = resetResponse?.payload?.[0] as any;
+    const result = payloadFirst(resetResponse);
 
     // Check for errors
     if (result?.ilsevent && result.ilsevent !== 0) {
@@ -143,7 +146,7 @@ export async function POST(req: NextRequest) {
       maskedEmail: maskEmail(result?.email || ""),
       message: "PIN reset instructions have been sent to your email.",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // SECURITY FIX: Log exception during reset
     await logAuditEvent({
       action: "patron.pin.reset.request",

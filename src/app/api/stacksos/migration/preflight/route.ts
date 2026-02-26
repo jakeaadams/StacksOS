@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       },
       results,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Migration Preflight POST", req);
   }
 }

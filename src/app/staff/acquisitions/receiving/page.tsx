@@ -15,13 +15,7 @@ import {
   SetupRequired,
   SETUP_CONFIGS,
 } from "@/components/shared";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -38,18 +32,24 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { 
-  Globe, 
-  Package, 
-  PackageCheck, 
-  PackageX, 
+import {
+  Globe,
+  Package,
+  PackageCheck,
+  PackageX,
   AlertTriangle,
   Undo2,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface PurchaseOrder {
   id: number;
@@ -79,7 +79,7 @@ interface LineItem {
   receivedCount?: number;
 }
 
-type ReceiveAction = 'receive_all' | 'partial_receive' | 'unreceive' | 'mark_damaged';
+type ReceiveAction = "receive_all" | "partial_receive" | "unreceive" | "mark_damaged";
 
 interface CancelReason {
   id: number;
@@ -97,10 +97,9 @@ interface ClaimType {
 export default function ReceivingPage() {
   const router = useRouter();
 
-  const { data, isLoading } = useApi<any>(
-    "/api/evergreen/acquisitions/purchase-orders",
-    { immediate: true }
-  );
+  const { data, isLoading } = useApi<any>("/api/evergreen/acquisitions/purchase-orders", {
+    immediate: true,
+  });
 
   const orders: PurchaseOrder[] = data?.orders || [];
   const ordersMessage = typeof data?.message === "string" ? data.message : "";
@@ -116,9 +115,9 @@ export default function ReceivingPage() {
   // Dialog states
   const [receiveDialogOpen, setReceiveDialogOpen] = useState(false);
   const [receiveTarget, setReceiveTarget] = useState<LineItem | null>(null);
-  const [receiveAction, setReceiveAction] = useState<ReceiveAction>('receive_all');
+  const [receiveAction, setReceiveAction] = useState<ReceiveAction>("receive_all");
   const [selectedDetails, setSelectedDetails] = useState<Set<number>>(new Set());
-  
+
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
   const [claimTarget, setClaimTarget] = useState<LineItem | null>(null);
   const [claimTypes, setClaimTypes] = useState<ClaimType[]>([]);
@@ -132,7 +131,10 @@ export default function ReceivingPage() {
   const [cancelReasonId, setCancelReasonId] = useState<number | null>(null);
 
   const [damagedDialogOpen, setDamagedDialogOpen] = useState(false);
-  const [damagedTarget, setDamagedTarget] = useState<{ lineitem: LineItem; copyBarcode: string } | null>(null);
+  const [damagedTarget, setDamagedTarget] = useState<{
+    lineitem: LineItem;
+    copyBarcode: string;
+  } | null>(null);
   const [damagedNote, setDamagedNote] = useState("");
   const [damagedBillAmount, setDamagedBillAmount] = useState<string>("");
 
@@ -151,8 +153,9 @@ export default function ReceivingPage() {
       }
       setLineitems(json.lineitems || []);
       setPoMessage(typeof json.message === "string" ? json.message : "");
-    } catch (err: any) {
-      setDetailsError(err?.message || "Failed to load purchase order");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setDetailsError(message || "Failed to load purchase order");
       setLineitems([]);
     } finally {
       setDetailsLoading(false);
@@ -160,7 +163,7 @@ export default function ReceivingPage() {
   }, []);
 
   const toggleLineItemExpanded = useCallback((lineitemId: number) => {
-    setExpandedLineItems(prev => {
+    setExpandedLineItems((prev) => {
       const next = new Set(prev);
       if (next.has(lineitemId)) {
         next.delete(lineitemId);
@@ -171,26 +174,29 @@ export default function ReceivingPage() {
     });
   }, []);
 
-  const openReceiveDialog = useCallback((lineitem: LineItem, action: ReceiveAction = 'receive_all') => {
-    setReceiveTarget(lineitem);
-    setReceiveAction(action);
-    setSelectedDetails(new Set());
-    setReceiveDialogOpen(true);
-  }, []);
+  const openReceiveDialog = useCallback(
+    (lineitem: LineItem, action: ReceiveAction = "receive_all") => {
+      setReceiveTarget(lineitem);
+      setReceiveAction(action);
+      setSelectedDetails(new Set());
+      setReceiveDialogOpen(true);
+    },
+    []
+  );
 
   const handleReceive = useCallback(async () => {
     if (!receiveTarget) return;
-    
+
     setActionLoadingId(receiveTarget.id);
-    
+
     try {
-      if (receiveAction === 'receive_all') {
+      if (receiveAction === "receive_all") {
         const res = await fetchWithAuth("/api/evergreen/acquisitions/receiving", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            action: "receive_lineitem", 
-            lineitemId: receiveTarget.id 
+          body: JSON.stringify({
+            action: "receive_lineitem",
+            lineitemId: receiveTarget.id,
           }),
         });
         const json = await res.json();
@@ -198,21 +204,21 @@ export default function ReceivingPage() {
           throw new Error(json.error || "Failed to receive line item");
         }
         toast.success("All items received");
-      } else if (receiveAction === 'partial_receive') {
+      } else if (receiveAction === "partial_receive") {
         if (selectedDetails.size === 0) {
           toast.error("Please select at least one item to receive");
           return;
         }
-        
+
         // Receive each selected detail
         const detailIds = Array.from(selectedDetails);
         for (const detailId of detailIds) {
           const res = await fetchWithAuth("/api/evergreen/acquisitions/receiving", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              action: "receive_lineitem_detail", 
-              lineitemDetailId: detailId 
+            body: JSON.stringify({
+              action: "receive_lineitem_detail",
+              lineitemDetailId: detailId,
             }),
           });
           const json = await res.json();
@@ -221,20 +227,20 @@ export default function ReceivingPage() {
           }
         }
         toast.success(`Received ${detailIds.length} item(s)`);
-      } else if (receiveAction === 'unreceive') {
+      } else if (receiveAction === "unreceive") {
         if (selectedDetails.size === 0) {
           toast.error("Please select at least one item to unreceive");
           return;
         }
-        
+
         const detailIds = Array.from(selectedDetails);
         for (const detailId of detailIds) {
           const res = await fetchWithAuth("/api/evergreen/acquisitions/receiving", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              action: "unreceive_lineitem_detail", 
-              lineitemDetailId: detailId 
+            body: JSON.stringify({
+              action: "unreceive_lineitem_detail",
+              lineitemDetailId: detailId,
             }),
           });
           const json = await res.json();
@@ -244,11 +250,12 @@ export default function ReceivingPage() {
         }
         toast.success(`Unreceived ${detailIds.length} item(s)`);
       }
-      
+
       if (selectedPo) await loadPurchaseOrder(selectedPo);
       setReceiveDialogOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || "Operation failed");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(message || "Operation failed");
     } finally {
       setActionLoadingId(null);
     }
@@ -277,9 +284,10 @@ export default function ReceivingPage() {
         .filter((t: any) => Number.isFinite(t.id) && t.code);
       setClaimTypes(mapped);
       if (!claimTypeId && mapped.length > 0) setClaimTypeId(mapped[0].id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setClaimTypes([]);
-      setClaimTypesError(err?.message || "Failed to load claim types");
+      const message = err instanceof Error ? err.message : String(err);
+      setClaimTypesError(message || "Failed to load claim types");
     }
   }, [claimTypeId]);
 
@@ -309,8 +317,9 @@ export default function ReceivingPage() {
       toast.success("Claim submitted");
       if (selectedPo) await loadPurchaseOrder(selectedPo);
       setClaimDialogOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || "Claim failed");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(message || "Claim failed");
     } finally {
       setActionLoadingId(null);
     }
@@ -342,16 +351,17 @@ export default function ReceivingPage() {
         .filter((r: any) => Number.isFinite(r.id) && r.label);
       setCancelReasons(mapped);
       if (!cancelReasonId && mapped.length > 0) setCancelReasonId(mapped[0].id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setCancelReasons([]);
-      setCancelReasonsError(err?.message || "Failed to load cancellation reasons");
+      const message = err instanceof Error ? err.message : String(err);
+      setCancelReasonsError(message || "Failed to load cancellation reasons");
     }
   }, [cancelReasonId]);
 
   const handleCancel = useCallback(async () => {
     if (!cancelTarget) return;
     setActionLoadingId(cancelTarget.id);
-    
+
     try {
       if (!cancelReasonId) {
         toast.error("Select a cancellation reason");
@@ -361,8 +371,8 @@ export default function ReceivingPage() {
       const res = await fetchWithAuth("/api/evergreen/acquisitions/receiving", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          action: "cancel_lineitem", 
+        body: JSON.stringify({
+          action: "cancel_lineitem",
           lineitemId: cancelTarget.id,
           reason: cancelReasonId,
         }),
@@ -374,8 +384,9 @@ export default function ReceivingPage() {
       toast.success("Line item cancelled");
       if (selectedPo) await loadPurchaseOrder(selectedPo);
       setCancelDialogOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to cancel line item");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(message || "Failed to cancel line item");
     } finally {
       setActionLoadingId(null);
     }
@@ -391,7 +402,7 @@ export default function ReceivingPage() {
   const handleMarkDamaged = useCallback(async () => {
     if (!damagedTarget) return;
     setActionLoadingId(damagedTarget.lineitem.id);
-    
+
     try {
       if (!damagedTarget.copyBarcode) {
         toast.error("Missing copy barcode");
@@ -406,8 +417,8 @@ export default function ReceivingPage() {
       const res = await fetchWithAuth("/api/evergreen/acquisitions/receiving", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          action: "mark_damaged", 
+        body: JSON.stringify({
+          action: "mark_damaged",
           copyBarcode: damagedTarget.copyBarcode,
           billAmount,
           billNote: damagedNote,
@@ -420,8 +431,9 @@ export default function ReceivingPage() {
       toast.success("Item marked as damaged");
       if (selectedPo) await loadPurchaseOrder(selectedPo);
       setDamagedDialogOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to mark as damaged");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(message || "Failed to mark as damaged");
     } finally {
       setActionLoadingId(null);
     }
@@ -456,9 +468,7 @@ export default function ReceivingPage() {
         accessorKey: "order_date",
         header: "Order Date",
         cell: ({ row }) =>
-          row.original.order_date
-            ? new Date(row.original.order_date).toLocaleDateString()
-            : "—",
+          row.original.order_date ? new Date(row.original.order_date).toLocaleDateString() : "—",
       },
       {
         accessorKey: "lineitem_count",
@@ -489,8 +499,14 @@ export default function ReceivingPage() {
               }}
               title={isExpanded ? "Collapse details" : "Expand details"}
             >
-              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              <span className="sr-only">{isExpanded ? "Collapse" : "Expand"} line item details</span>
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+              <span className="sr-only">
+                {isExpanded ? "Collapse" : "Expand"} line item details
+              </span>
             </Button>
           );
         },
@@ -523,9 +539,7 @@ export default function ReceivingPage() {
           const total = row.original.item_count ?? 0;
           const allReceived = received === total && total > 0;
           return (
-            <span className={cn(allReceived && "text-green-600 font-medium")}>
-              {received}
-            </span>
+            <span className={cn(allReceived && "text-green-600 font-medium")}>{received}</span>
           );
         },
       },
@@ -533,9 +547,9 @@ export default function ReceivingPage() {
         id: "actions",
         header: "Actions",
         cell: ({ row }) => {
-          const hasUnreceived = row.original.details?.some(d => !d.recv_time);
-          const hasReceived = row.original.details?.some(d => d.recv_time);
-          
+          const hasUnreceived = row.original.details?.some((d) => !d.recv_time);
+          const hasReceived = row.original.details?.some((d) => d.recv_time);
+
           return (
             <div className="flex items-center gap-1">
               {hasUnreceived && (
@@ -545,7 +559,7 @@ export default function ReceivingPage() {
                     variant="outline"
                     onClick={(e) => {
                       e.stopPropagation();
-                      openReceiveDialog(row.original, 'receive_all');
+                      openReceiveDialog(row.original, "receive_all");
                     }}
                     disabled={actionLoadingId === row.original.id}
                   >
@@ -557,7 +571,7 @@ export default function ReceivingPage() {
                     variant="outline"
                     onClick={(e) => {
                       e.stopPropagation();
-                      openReceiveDialog(row.original, 'partial_receive');
+                      openReceiveDialog(row.original, "partial_receive");
                     }}
                     disabled={actionLoadingId === row.original.id}
                   >
@@ -572,7 +586,7 @@ export default function ReceivingPage() {
                   variant="ghost"
                   onClick={(e) => {
                     e.stopPropagation();
-                    openReceiveDialog(row.original, 'unreceive');
+                    openReceiveDialog(row.original, "unreceive");
                   }}
                   disabled={actionLoadingId === row.original.id}
                 >
@@ -610,15 +624,23 @@ export default function ReceivingPage() {
         },
       },
     ],
-    [expandedLineItems, actionLoadingId, toggleLineItemExpanded, openReceiveDialog, openClaimDialog, openCancelDialog]
+    [
+      expandedLineItems,
+      actionLoadingId,
+      toggleLineItemExpanded,
+      openReceiveDialog,
+      openClaimDialog,
+      openCancelDialog,
+    ]
   );
 
   // Show SetupRequired if no orders and there's a message indicating setup needed
-  const showSetupRequired = !isLoading && orders.length === 0 && (
-    ordersMessage.includes('configured') || 
-    ordersMessage.includes('permission') ||
-    ordersMessage.includes('not found')
-  );
+  const showSetupRequired =
+    !isLoading &&
+    orders.length === 0 &&
+    (ordersMessage.includes("configured") ||
+      ordersMessage.includes("permission") ||
+      ordersMessage.includes("not found"));
 
   const lineitemsEmptyState = !selectedPo ? (
     <EmptyState
@@ -650,10 +672,7 @@ export default function ReceivingPage() {
       <PageContent>
         {detailsError && (
           <div className="mb-4">
-            <ErrorMessage
-              message={detailsError}
-              onRetry={() => setDetailsError(null)}
-            />
+            <ErrorMessage message={detailsError} onRetry={() => setDetailsError(null)} />
           </div>
         )}
 
@@ -697,7 +716,9 @@ export default function ReceivingPage() {
               <CardHeader>
                 <CardTitle>Line Items</CardTitle>
                 <CardDescription>
-                  {selectedPo ? `PO ${selectedPo.name}` : "Select a purchase order to view line items"}
+                  {selectedPo
+                    ? `PO ${selectedPo.name}`
+                    : "Select a purchase order to view line items"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -711,52 +732,60 @@ export default function ReceivingPage() {
                     paginated={false}
                     emptyState={lineitemsEmptyState}
                   />
-                  
+
                   {/* Expanded details */}
-                  {lineitems.filter(li => expandedLineItems.has(li.id)).map(lineitem => (
-                    <div key={lineitem.id} className="ml-8 mt-2 border-l-2 border-muted pl-4">
-                      <div className="text-sm font-medium mb-2">Item Details</div>
-                      <div className="space-y-1">
-                        {lineitem.details?.map((detail, idx) => (
-                          <div 
-                            key={detail.id} 
-                            className={cn(
-                              "flex items-center gap-4 p-2 rounded text-sm",
-                              detail.recv_time ? "bg-green-50 dark:bg-green-950/20" : "bg-muted/50"
-                            )}
-                          >
-                            <span className="w-8 text-muted-foreground">#{idx + 1}</span>
-                            <span className="flex-1 font-mono">{detail.barcode || "No barcode"}</span>
-                            <span className={cn(
-                              "px-2 py-0.5 rounded text-xs",
-                              detail.recv_time 
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" 
-                                : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
-                            )}>
-                              {detail.recv_time ? "Received" : "Pending"}
-                            </span>
-                            {detail.recv_time && (
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(detail.recv_time).toLocaleString()}
+                  {lineitems
+                    .filter((li) => expandedLineItems.has(li.id))
+                    .map((lineitem) => (
+                      <div key={lineitem.id} className="ml-8 mt-2 border-l-2 border-muted pl-4">
+                        <div className="text-sm font-medium mb-2">Item Details</div>
+                        <div className="space-y-1">
+                          {lineitem.details?.map((detail, idx) => (
+                            <div
+                              key={detail.id}
+                              className={cn(
+                                "flex items-center gap-4 p-2 rounded text-sm",
+                                detail.recv_time
+                                  ? "bg-green-50 dark:bg-green-950/20"
+                                  : "bg-muted/50"
+                              )}
+                            >
+                              <span className="w-8 text-muted-foreground">#{idx + 1}</span>
+                              <span className="flex-1 font-mono">
+                                {detail.barcode || "No barcode"}
                               </span>
-                            )}
-                            {!detail.recv_time && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => openDamagedDialog(lineitem, detail.barcode || "")}
-                                disabled={!detail.barcode}
+                              <span
+                                className={cn(
+                                  "px-2 py-0.5 rounded text-xs",
+                                  detail.recv_time
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                    : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
+                                )}
                               >
-                                <PackageX className="h-3 w-3 mr-1" />
-                                Mark Damaged
-                              </Button>
-                            )}
-                          </div>
-                        ))}
+                                {detail.recv_time ? "Received" : "Pending"}
+                              </span>
+                              {detail.recv_time && (
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(detail.recv_time).toLocaleString()}
+                                </span>
+                              )}
+                              {!detail.recv_time && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => openDamagedDialog(lineitem, detail.barcode || "")}
+                                  disabled={!detail.barcode}
+                                >
+                                  <PackageX className="h-3 w-3 mr-1" />
+                                  Mark Damaged
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </CardContent>
             </Card>
@@ -768,59 +797,62 @@ export default function ReceivingPage() {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>
-                {receiveAction === 'receive_all' && "Receive All Items"}
-                {receiveAction === 'partial_receive' && "Partial Receive"}
-                {receiveAction === 'unreceive' && "Unreceive Items"}
+                {receiveAction === "receive_all" && "Receive All Items"}
+                {receiveAction === "partial_receive" && "Partial Receive"}
+                {receiveAction === "unreceive" && "Unreceive Items"}
               </DialogTitle>
               <DialogDescription>
-                {receiveAction === 'receive_all' && `Receive all items for: ${receiveTarget?.title}`}
-                {receiveAction === 'partial_receive' && "Select items to receive"}
-                {receiveAction === 'unreceive' && "Select items to unreceive"}
+                {receiveAction === "receive_all" &&
+                  `Receive all items for: ${receiveTarget?.title}`}
+                {receiveAction === "partial_receive" && "Select items to receive"}
+                {receiveAction === "unreceive" && "Select items to unreceive"}
               </DialogDescription>
             </DialogHeader>
-            
-            {(receiveAction === 'partial_receive' || receiveAction === 'unreceive') && receiveTarget && (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {receiveTarget.details
-                  ?.filter(detail => 
-                    receiveAction === 'partial_receive' ? !detail.recv_time : detail.recv_time
-                  )
-                  .map((detail, idx) => (
-                    <div key={detail.id} className="flex items-center gap-3 p-2 border rounded">
-                      <Checkbox
-                        checked={selectedDetails.has(detail.id)}
-                        onCheckedChange={(checked) => {
-                          setSelectedDetails(prev => {
-                            const next = new Set(prev);
-                            if (checked) {
-                              next.add(detail.id);
-                            } else {
-                              next.delete(detail.id);
-                            }
-                            return next;
-                          });
-                        }}
-                      />
-                      <span className="w-8 text-muted-foreground">#{idx + 1}</span>
-                      <span className="flex-1 font-mono">{detail.barcode || "No barcode"}</span>
-                      {detail.recv_time && (
-                        <span className="text-xs text-muted-foreground">
-                          Received: {new Date(detail.recv_time).toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-              </div>
-            )}
-            
+
+            {(receiveAction === "partial_receive" || receiveAction === "unreceive") &&
+              receiveTarget && (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {receiveTarget.details
+                    ?.filter((detail) =>
+                      receiveAction === "partial_receive" ? !detail.recv_time : detail.recv_time
+                    )
+                    .map((detail, idx) => (
+                      <div key={detail.id} className="flex items-center gap-3 p-2 border rounded">
+                        <Checkbox
+                          checked={selectedDetails.has(detail.id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedDetails((prev) => {
+                              const next = new Set(prev);
+                              if (checked) {
+                                next.add(detail.id);
+                              } else {
+                                next.delete(detail.id);
+                              }
+                              return next;
+                            });
+                          }}
+                        />
+                        <span className="w-8 text-muted-foreground">#{idx + 1}</span>
+                        <span className="flex-1 font-mono">{detail.barcode || "No barcode"}</span>
+                        {detail.recv_time && (
+                          <span className="text-xs text-muted-foreground">
+                            Received: {new Date(detail.recv_time).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              )}
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setReceiveDialogOpen(false)}>
                 Cancel
               </Button>
               <Button onClick={handleReceive} disabled={actionLoadingId !== null}>
-                {receiveAction === 'receive_all' && "Receive All"}
-                {receiveAction === 'partial_receive' && `Receive Selected (${selectedDetails.size})`}
-                {receiveAction === 'unreceive' && `Unreceive Selected (${selectedDetails.size})`}
+                {receiveAction === "receive_all" && "Receive All"}
+                {receiveAction === "partial_receive" &&
+                  `Receive Selected (${selectedDetails.size})`}
+                {receiveAction === "unreceive" && `Unreceive Selected (${selectedDetails.size})`}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -842,7 +874,8 @@ export default function ReceivingPage() {
             <div className="text-sm text-destructive">{claimTypesError}</div>
           ) : claimTypes.length === 0 ? (
             <div className="text-sm text-muted-foreground">
-              No claim types are configured in Evergreen. Configure acquisitions claim types before using this action.
+              No claim types are configured in Evergreen. Configure acquisitions claim types before
+              using this action.
             </div>
           ) : (
             <div className="space-y-2">
@@ -857,7 +890,8 @@ export default function ReceivingPage() {
                 <SelectContent>
                   {claimTypes.map((ct: any) => (
                     <SelectItem key={ct.id} value={String(ct.id)}>
-                      {ct.code}{ct.description ? ` — ${ct.description}` : ""}
+                      {ct.code}
+                      {ct.description ? ` — ${ct.description}` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -871,7 +905,9 @@ export default function ReceivingPage() {
           open={cancelDialogOpen}
           onOpenChange={setCancelDialogOpen}
           title="Cancel line item"
-          description={cancelTarget ? `Cancel line item: ${cancelTarget.title}?` : "Cancel line item?"}
+          description={
+            cancelTarget ? `Cancel line item: ${cancelTarget.title}?` : "Cancel line item?"
+          }
           confirmText="Cancel Line Item"
           onConfirm={handleCancel}
           variant="danger"

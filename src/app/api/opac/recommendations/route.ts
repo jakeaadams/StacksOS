@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { callOpenSRF, successResponse, serverErrorResponse } from "@/lib/api";
+import { payloadFirst } from "@/lib/api/extract-payload";
 import { logger } from "@/lib/logger";
 import { getOpacPrivacyPrefs } from "@/lib/db/opac";
 import { requirePatronSession } from "@/lib/opac-auth";
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
     }
 
     return await getPopularItems(limit);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ error: String(error) }, "Error fetching recommendations");
     return serverErrorResponse(error, "Failed to fetch recommendations", req);
   }
@@ -72,7 +73,7 @@ async function getPersonalizedRecommendations(
           "open-ils.actor.patron.settings.retrieve",
           [authtoken, patronId, ["history.circ.retention_start"]]
         );
-        const raw = (settingsResponse?.payload?.[0] as any) || {};
+        const raw = payloadFirst(settingsResponse) || {};
         allowHistory = raw["history.circ.retention_start"] != null;
       } catch {
         allowHistory = false;
@@ -215,7 +216,7 @@ async function getPersonalizedRecommendations(
         }
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ error: String(error) }, "Error building personalized recommendations");
   }
 
@@ -310,7 +311,7 @@ async function getTrendingItems(limit: number) {
       }
     }
     recommendations.sort((a: any, b: any) => (b.holdCount || 0) - (a.holdCount || 0));
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ error: String(error) }, "Error getting trending items");
   }
   return successResponse({ recommendations: recommendations.slice(0, limit), type: "trending" });
@@ -400,7 +401,7 @@ async function getSimilarItems(bibId: number, limit: number) {
         /* best-effort */
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ error: String(error) }, "Error getting similar items");
   }
   return successResponse({ recommendations });
@@ -439,7 +440,7 @@ async function collectPopularItems(limit: number) {
           });
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ error: String(error) }, "Error getting popular items");
   }
   return recommendations;

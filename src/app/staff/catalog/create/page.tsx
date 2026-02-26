@@ -124,9 +124,10 @@ export default function CreateRecordPage() {
       if (!data.records || data.records.length === 0) {
         toast.message("No records found");
       }
-    } catch (err: any) {
-      setError(err?.message || "Search failed");
-      toast.error(err?.message || "Search failed");
+    } catch (err: unknown) {
+      const message = (err instanceof Error ? err.message : String(err)) || "Search failed";
+      setError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -172,9 +173,11 @@ export default function CreateRecordPage() {
       });
 
       toast.success("AI MARC record generated. Review below before saving.");
-    } catch (err: any) {
-      setAiError(err?.message || "AI MARC generation failed");
-      toast.error(err?.message || "AI MARC generation failed");
+    } catch (err: unknown) {
+      const message =
+        (err instanceof Error ? err.message : String(err)) || "AI MARC generation failed";
+      setAiError(message);
+      toast.error(message);
     } finally {
       setAiGenerating(false);
     }

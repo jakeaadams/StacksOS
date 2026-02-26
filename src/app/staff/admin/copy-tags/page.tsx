@@ -147,8 +147,8 @@ export default function CopyTagsPage() {
       setTags(Array.isArray(tagsJson.tags) ? tagsJson.tags : []);
       setTypePermissions((typesJson.permissions || {}) as TypePermissions);
       setTagPermissions((tagsJson.permissions || {}) as TagPermissions);
-    } catch (e: any) {
-      setError(e instanceof Error ? (e as Error).message : String(e));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -366,8 +366,8 @@ export default function CopyTagsPage() {
       setTypeDialogOpen(false);
       setEditingType(null);
       await load();
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Save failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setTypeSaving(false);
     }
@@ -393,8 +393,8 @@ export default function CopyTagsPage() {
       setDeleteTypeOpen(false);
       setTypeToDelete(null);
       await load();
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Delete failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
     } finally {
       setDeletingType(false);
     }
@@ -460,8 +460,8 @@ export default function CopyTagsPage() {
       setTagDialogOpen(false);
       setEditingTag(null);
       await load();
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Save failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setTagSaving(false);
     }
@@ -487,8 +487,8 @@ export default function CopyTagsPage() {
       setDeleteTagOpen(false);
       setTagToDelete(null);
       await load();
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Delete failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
     } finally {
       setDeletingTag(false);
     }

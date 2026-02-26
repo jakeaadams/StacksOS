@@ -4,7 +4,6 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useMemo, useState } from "react";
 import {
-
   PageContainer,
   PageHeader,
   PageContent,
@@ -16,7 +15,13 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { useApi } from "@/hooks";
@@ -41,10 +46,9 @@ export default function PurchaseOrdersPage() {
     "/api/evergreen/acquisitions/purchase-orders",
     { immediate: true }
   );
-  const { data: vendorData } = useApi<any>(
-    "/api/evergreen/acquisitions/vendors",
-    { immediate: true }
-  );
+  const { data: vendorData } = useApi<any>("/api/evergreen/acquisitions/vendors", {
+    immediate: true,
+  });
 
   const [poName, setPoName] = useState("");
   const [vendorId, setVendorId] = useState("");
@@ -62,10 +66,13 @@ export default function PurchaseOrdersPage() {
         cell: ({ row }) => {
           const state = String(row.original.state || "pending");
           const status =
-            state === "received" ? "success" :
-            state === "cancelled" ? "muted" :
-            state === "on-order" ? "info" :
-            "pending";
+            state === "received"
+              ? "success"
+              : state === "cancelled"
+                ? "muted"
+                : state === "on-order"
+                  ? "info"
+                  : "pending";
           return <StatusBadge label={state.replace(/_/g, " ")} status={status as any} />;
         },
       },
@@ -73,9 +80,7 @@ export default function PurchaseOrdersPage() {
         accessorKey: "order_date",
         header: "Order Date",
         cell: ({ row }) =>
-          row.original.order_date
-            ? new Date(row.original.order_date).toLocaleDateString()
-            : "—",
+          row.original.order_date ? new Date(row.original.order_date).toLocaleDateString() : "—",
       },
       {
         accessorKey: "lineitem_count",
@@ -108,8 +113,8 @@ export default function PurchaseOrdersPage() {
       toast.success("Purchase order created");
       setPoName("");
       await refetch();
-    } catch (err: any) {
-      toast.error(err?.message || "Create failed");
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : String(err)) || "Create failed");
     } finally {
       setIsCreating(false);
     }
@@ -132,7 +137,9 @@ export default function PurchaseOrdersPage() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Create Purchase Order</CardTitle>
-            <CardDescription>{vendorData?.message || "Requires a vendor configured in Evergreen."}</CardDescription>
+            <CardDescription>
+              {vendorData?.message || "Requires a vendor configured in Evergreen."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-[1fr,220px,140px]">
             <Input

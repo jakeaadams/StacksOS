@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { callOpenSRF, errorResponse, successResponse, serverErrorResponse } from "@/lib/api";
+import { payloadFirst } from "@/lib/api/extract-payload";
 import { requirePermissions } from "@/lib/permissions";
 import type { NoticeContext } from "@/lib/email";
 
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
         "open-ils.actor.user.fleshed.retrieve_by_barcode",
         [authtoken, parsed.data.patronBarcode, ["card", "home_ou"]]
       );
-      const found = patronRes?.payload?.[0] as any;
+      const found = payloadFirst(patronRes);
       if (!found || found.ilsevent) {
         return errorResponse("Patron not found for patron_barcode", 404);
       }
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
       authtoken,
       orgId,
     ]);
-    const org = orgRes?.payload?.[0] as any;
+    const org = payloadFirst(orgRes);
 
     const context: NoticeContext = {
       patron: {
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest) {
       message:
         "Preview context uses live patron/library identity only. Pass patron_barcode for a specific patron context.",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Notifications sample GET", req);
   }
 }

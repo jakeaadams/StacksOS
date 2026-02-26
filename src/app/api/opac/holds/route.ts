@@ -6,6 +6,7 @@ import {
   serverErrorResponse,
   unauthorizedResponse,
 } from "@/lib/api";
+import { payloadFirst } from "@/lib/api/extract-payload";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { upsertOpacPatronPrefs } from "@/lib/db/opac";
@@ -155,7 +156,7 @@ export async function GET(req: NextRequest) {
       patronId,
     ]);
 
-    const holdsData = holdsResponse?.payload?.[0] as any;
+    const holdsData = payloadFirst(holdsResponse);
     const holds = Array.isArray(holdsData) ? holdsData : [];
 
     // Get detailed info for each hold
@@ -176,7 +177,7 @@ export async function GET(req: NextRequest) {
               [hold.target]
             );
 
-            const bib = bibResponse?.payload?.[0] as any;
+            const bib = payloadFirst(bibResponse);
             if (bib) {
               title = bib.title || "Unknown Title";
               author = bib.author || "";
@@ -190,7 +191,7 @@ export async function GET(req: NextRequest) {
               [hold.target]
             );
 
-            const volume = volumeResponse?.payload?.[0] as any;
+            const volume = payloadFirst(volumeResponse);
             if (volume?.record) {
               recordId = volume.record;
               const bibResponse = await callOpenSRF(
@@ -199,7 +200,7 @@ export async function GET(req: NextRequest) {
                 [volume.record]
               );
 
-              const bib = bibResponse?.payload?.[0] as any;
+              const bib = payloadFirst(bibResponse);
               if (bib) {
                 title = bib.title || "Unknown Title";
                 author = bib.author || "";
@@ -214,7 +215,7 @@ export async function GET(req: NextRequest) {
               [hold.target]
             );
 
-            const copy = copyResponse?.payload?.[0] as any;
+            const copy = payloadFirst(copyResponse);
             if (copy?.call_number) {
               const volumeResponse = await callOpenSRF(
                 "open-ils.search",
@@ -222,7 +223,7 @@ export async function GET(req: NextRequest) {
                 [copy.call_number]
               );
 
-              const volume = volumeResponse?.payload?.[0] as any;
+              const volume = payloadFirst(volumeResponse);
               if (volume?.record) {
                 recordId = volume.record;
                 const bibResponse = await callOpenSRF(
@@ -231,7 +232,7 @@ export async function GET(req: NextRequest) {
                   [volume.record]
                 );
 
-                const bib = bibResponse?.payload?.[0] as any;
+                const bib = payloadFirst(bibResponse);
                 if (bib) {
                   title = bib.title || "Unknown Title";
                   author = bib.author || "";
@@ -268,7 +269,7 @@ export async function GET(req: NextRequest) {
               "open-ils.actor.org_unit.retrieve",
               [hold.pickup_lib]
             );
-            const org = orgResponse?.payload?.[0] as any;
+            const org = payloadFirst(orgResponse);
             if (org) {
               pickupLocationName = org.name || org.shortname || "Library";
             }
@@ -295,7 +296,7 @@ export async function GET(req: NextRequest) {
             suspendUntil: hold.thaw_date,
             notesForPatron: hold.hold_notes?.filter((n: any) => n.pub === "t") || [],
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           logger.error({ error: String(error) }, "Error fetching hold details");
           return null;
         }
@@ -309,7 +310,7 @@ export async function GET(req: NextRequest) {
       total: validHolds.length,
       readyCount: validHolds.filter((h: any) => h.status === "ready").length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof PatronAuthError) {
       logger.warn({ error: String(error) }, "Route /api/opac/holds GET auth failed");
       return unauthorizedResponse();
@@ -345,7 +346,7 @@ export async function POST(req: NextRequest) {
       },
     ]);
 
-    const result = holdResponse?.payload?.[0] as any;
+    const result = payloadFirst(holdResponse);
 
     if (result?.ilsevent) {
       // Hold failed
@@ -365,7 +366,7 @@ export async function POST(req: NextRequest) {
       holdId: result,
       message: "Hold placed successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof PatronAuthError) {
       logger.warn({ error: String(error) }, "Route /api/opac/holds POST auth failed");
       return unauthorizedResponse();
@@ -391,7 +392,7 @@ export async function DELETE(req: NextRequest) {
       [patronToken, holdId, 6] // 6 = patron requested cancellation
     );
 
-    const result = cancelResponse?.payload?.[0] as any;
+    const result = payloadFirst(cancelResponse);
 
     if (result?.ilsevent) {
       const mapped = buildHoldErrorDetails(result, { action: "cancel" });
@@ -402,7 +403,7 @@ export async function DELETE(req: NextRequest) {
       success: true,
       message: "Hold cancelled successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof PatronAuthError) {
       logger.warn({ error: String(error) }, "Route /api/opac/holds DELETE auth failed");
       return unauthorizedResponse();
@@ -459,7 +460,7 @@ export async function PATCH(req: NextRequest) {
       return errorResponse("Invalid action", 400);
     }
 
-    const response = result?.payload?.[0] as any;
+    const response = payloadFirst(result);
 
     if (response?.ilsevent) {
       const mapped = buildHoldErrorDetails(response, { action: "update" });
@@ -475,7 +476,7 @@ export async function PATCH(req: NextRequest) {
             ? "Hold activated successfully"
             : "Hold updated successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof PatronAuthError) {
       logger.warn({ error: String(error) }, "Route /api/opac/holds PATCH auth failed");
       return unauthorizedResponse();

@@ -212,7 +212,7 @@ export default function KidsRecordDetailPage() {
         setShowHoldModal(false);
         setHoldSuccess(false);
       }, 2000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setHoldError({
         message: (err instanceof Error ? err.message : String(err)) || t("holdError"),
       });

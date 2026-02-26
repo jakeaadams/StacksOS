@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { callOpenSRF, successResponse } from "@/lib/api";
+import { payloadFirst } from "@/lib/api/extract-payload";
 import { logger } from "@/lib/logger";
 import { z as _z } from "zod";
 
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
         [null, null, "biblio", "pub"]
       );
       bookbags = searchResponse?.payload?.[0] || [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Method may not exist or may require auth - return empty picks
       logger.info(
         { error: String(error) },
@@ -74,7 +75,7 @@ export async function GET(req: NextRequest) {
           [null, bag.id, { limit }]
         );
 
-        const items = itemsResponse?.payload?.[0] as any;
+        const items = payloadFirst(itemsResponse);
         if (!Array.isArray(items)) continue;
 
         const bagName = bag.name || "Staff Picks";
@@ -92,7 +93,7 @@ export async function GET(req: NextRequest) {
               [recordId]
             );
 
-            const bib = bibResponse?.payload?.[0] as any;
+            const bib = payloadFirst(bibResponse);
             if (!bib) continue;
 
             picks.push({
@@ -107,11 +108,11 @@ export async function GET(req: NextRequest) {
               staffBranch,
               review: item.notes || undefined,
             });
-          } catch (_error: any) {
+          } catch (_error: unknown) {
             // Skip individual item _errors
           }
         }
-      } catch (_error: any) {
+      } catch (_error: unknown) {
         // Skip bag _errors
       }
     }
@@ -120,7 +121,7 @@ export async function GET(req: NextRequest) {
       picks: picks.slice(0, limit),
       total: picks.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ error: String(error) }, "Error fetching staff picks");
     // Return empty picks on _error rather than failing
     return successResponse({

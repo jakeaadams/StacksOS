@@ -154,7 +154,7 @@ async function fetchGoogleBook(isbn: string): Promise<{
       rateLimited: false,
       retryAfterSeconds: null,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ error: String(error), isbn }, "Error fetching Google Books data");
     return { data: null, rateLimited: false, retryAfterSeconds: null };
   }
@@ -300,7 +300,7 @@ export async function GET(request: NextRequest) {
 
       const result = await searchGoogleBooks(q, maxResults, startIndex);
       return successResponse({ query: q, ...result });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.warn({ error: String(error), query: q }, "Google Books search failed");
       return errorResponse("Failed to search Google Books", 502);
     }

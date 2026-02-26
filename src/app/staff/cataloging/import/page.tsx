@@ -14,21 +14,27 @@ import {
 } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useApi } from "@/hooks";
-import { 
-  Upload, 
-  FileText, 
-  CheckCircle2, 
-  AlertCircle, 
+import {
+  Upload,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
   BookOpen,
   User,
   Hash,
   Eye,
   Download as DownloadIcon,
   X,
-  ArrowRight
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -69,7 +75,9 @@ interface ImportProgress {
 export default function CatalogImportPage() {
   const router = useRouter();
   const { data: ping } = useApi<any>("/api/evergreen/ping", { immediate: true });
-  const { data: sourcesData } = useApi<any>("/api/evergreen/marc?action=sources", { immediate: true });
+  const { data: sourcesData } = useApi<any>("/api/evergreen/marc?action=sources", {
+    immediate: true,
+  });
   const sources: BibSource[] = sourcesData?.sources || [];
 
   const [files, setFiles] = useState<File[]>([]);
@@ -89,13 +97,13 @@ export default function CatalogImportPage() {
     if (selectedFiles.length === 0) return;
 
     // Validate file types
-    const validFiles = selectedFiles.filter(file => {
+    const validFiles = selectedFiles.filter((file) => {
       const ext = file.name.toLowerCase();
-      return ext.endsWith('.mrc') || ext.endsWith('.xml') || ext.endsWith('.marcxml');
+      return ext.endsWith(".mrc") || ext.endsWith(".xml") || ext.endsWith(".marcxml");
     });
 
     if (validFiles.length === 0) {
-      toast.error('Please select valid MARC files (.mrc, .xml, .marcxml)');
+      toast.error("Please select valid MARC files (.mrc, .xml, .marcxml)");
       return;
     }
 
@@ -114,13 +122,13 @@ export default function CatalogImportPage() {
 
       for (const file of filesToParse) {
         const ext = file.name.toLowerCase();
-        
-        if (ext.endsWith('.xml') || ext.endsWith('.marcxml')) {
+
+        if (ext.endsWith(".xml") || ext.endsWith(".marcxml")) {
           // Parse MARCXML
           const text = await file.text();
           const xmlRecords = parseMARCXML(text);
           records.push(...xmlRecords);
-        } else if (ext.endsWith('.mrc')) {
+        } else if (ext.endsWith(".mrc")) {
           // Parse binary MARC
           const buffer = await file.arrayBuffer();
           const binaryRecords = parseMARCBinary(buffer);
@@ -129,15 +137,15 @@ export default function CatalogImportPage() {
       }
 
       if (records.length === 0) {
-        throw new Error('No valid MARC records found in files');
+        throw new Error("No valid MARC records found in files");
       }
 
       setParsedRecords(records);
-      toast.success(`Parsed ${records.length} record${records.length !== 1 ? 's' : ''}`);
-    } catch (err: any) {
-      const message = err?.message || 'Failed to parse MARC files';
-      setError(message);
-      toast.error(message);
+      toast.success(`Parsed ${records.length} record${records.length !== 1 ? "s" : ""}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message || "Failed to parse MARC files");
+      toast.error(message || "Failed to parse MARC files");
     } finally {
       setIsParsing(false);
     }
@@ -146,17 +154,17 @@ export default function CatalogImportPage() {
   // Parse MARCXML file
   const parseMARCXML = (xmlText: string): ParsedRecord[] => {
     const parser = new DOMParser();
-    const doc = parser.parseFromString(xmlText, 'text/xml');
+    const doc = parser.parseFromString(xmlText, "text/xml");
     const records: ParsedRecord[] = [];
 
     // Handle both single record and collection
-    const recordElements = doc.querySelectorAll('record');
-    
-    recordElements.forEach(recordEl => {
+    const recordElements = doc.querySelectorAll("record");
+
+    recordElements.forEach((recordEl) => {
       const serializer = new XMLSerializer();
       const marcxml = serializer.serializeToString(recordEl);
       const metadata = extractMetadata(recordEl);
-      
+
       records.push({ marcxml, metadata });
     });
 
@@ -172,9 +180,9 @@ export default function CatalogImportPage() {
     while (offset < data.length) {
       try {
         // Read record length from first 5 bytes
-        const recordLengthStr = new TextDecoder('ascii').decode(data.slice(offset, offset + 5));
+        const recordLengthStr = new TextDecoder("ascii").decode(data.slice(offset, offset + 5));
         const recordLength = parseInt(recordLengthStr, 10);
-        
+
         if (isNaN(recordLength) || recordLength <= 0 || recordLength > 99999) {
           // Skip invalid records
           offset++;
@@ -184,13 +192,15 @@ export default function CatalogImportPage() {
         // Extract record
         const recordData = data.slice(offset, offset + recordLength);
         const marcxml = convertMARCToXML(recordData);
-        
+
         if (marcxml) {
           const parser = new DOMParser();
-          const doc = parser.parseFromString(marcxml, 'text/xml');
-          const recordEl = doc.querySelector('record');
-          const metadata = recordEl ? extractMetadata(recordEl) : { title: '', author: '', isbn: '' };
-          
+          const doc = parser.parseFromString(marcxml, "text/xml");
+          const recordEl = doc.querySelector("record");
+          const metadata = recordEl
+            ? extractMetadata(recordEl)
+            : { title: "", author: "", isbn: "" };
+
           records.push({ marcxml, metadata, rawData: recordData.buffer });
         }
 
@@ -207,15 +217,15 @@ export default function CatalogImportPage() {
   // Convert binary MARC to MARCXML
   const convertMARCToXML = (data: Uint8Array): string | null => {
     try {
-      const decoder = new TextDecoder('utf-8', { fatal: false });
-      
+      const decoder = new TextDecoder("utf-8", { fatal: false });
+
       // Read leader
       const leader = decoder.decode(data.slice(0, 24));
-      
+
       // Read base address of data
       const baseAddressStr = leader.substring(12, 17);
       const baseAddress = parseInt(baseAddressStr, 10);
-      
+
       if (isNaN(baseAddress)) return null;
 
       // Build XML
@@ -245,24 +255,24 @@ export default function CatalogImportPage() {
       for (const { tag, length, startPos } of directory) {
         const fieldStart = baseAddress + startPos;
         const fieldEnd = fieldStart + length;
-        
+
         if (fieldEnd > data.length) continue;
 
         const fieldData = data.slice(fieldStart, fieldEnd);
-        const fieldText = decoder.decode(fieldData).replace(/\x1e$/, '').replace(/\x1f$/, '');
+        const fieldText = decoder.decode(fieldData).replace(/\x1e$/, "").replace(/\x1f$/, "");
 
-        if (tag < '010') {
+        if (tag < "010") {
           // Control field
           xml += `<controlfield tag="${tag}">${escapeXml(fieldText)}</controlfield>`;
         } else {
           // Data field
-          const ind1 = fieldText[0] || ' ';
-          const ind2 = fieldText[1] || ' ';
+          const ind1 = fieldText[0] || " ";
+          const ind2 = fieldText[1] || " ";
           xml += `<datafield tag="${tag}" ind1="${ind1}" ind2="${ind2}">`;
 
           // Parse subfields
           const subfieldData = fieldText.substring(2);
-          const subfields = subfieldData.split('\x1f').filter(Boolean);
+          const subfields = subfieldData.split("\x1f").filter(Boolean);
 
           for (const sf of subfields) {
             if (sf.length > 0) {
@@ -272,65 +282,69 @@ export default function CatalogImportPage() {
             }
           }
 
-          xml += '</datafield>';
+          xml += "</datafield>";
         }
       }
 
-      xml += '</record>';
+      xml += "</record>";
       return xml;
-    } catch (err: any) {
-      clientLogger.error('Error converting MARC to XML:', err);
+    } catch (err: unknown) {
+      clientLogger.error("Error converting MARC to XML:", err);
       return null;
     }
   };
 
   // Extract metadata from MARC record
   const extractMetadata = (recordEl: Element): { title: string; author: string; isbn: string } => {
-    let title = '';
-    let author = '';
-    let isbn = '';
+    let title = "";
+    let author = "";
+    let isbn = "";
 
     // Extract title (245 )
     const titleField = recordEl.querySelector('datafield[tag="245"]');
     if (titleField) {
-      const subfieldA = titleField.querySelector('subfield[code="a"]')?.textContent || '';
-      const subfieldB = titleField.querySelector('subfield[code="b"]')?.textContent || '';
-      title = (subfieldA + ' ' + subfieldB).trim();
+      const subfieldA = titleField.querySelector('subfield[code="a"]')?.textContent || "";
+      const subfieldB = titleField.querySelector('subfield[code="b"]')?.textContent || "";
+      title = (subfieldA + " " + subfieldB).trim();
     }
 
     // Extract author (100 or 110)
     const authorField = recordEl.querySelector('datafield[tag="100"], datafield[tag="110"]');
     if (authorField) {
-      author = authorField.querySelector('subfield[code="a"]')?.textContent || '';
+      author = authorField.querySelector('subfield[code="a"]')?.textContent || "";
     }
 
     // Extract ISBN (020)
     const isbnField = recordEl.querySelector('datafield[tag="020"]');
     if (isbnField) {
-      const isbnText = isbnField.querySelector('subfield[code="a"]')?.textContent || '';
+      const isbnText = isbnField.querySelector('subfield[code="a"]')?.textContent || "";
       // Clean ISBN (remove hyphens, spaces, and anything after first space)
-      isbn = isbnText!.split(' ')[0]!.replace(/[^0-9Xx]/g, '');
+      isbn = isbnText!.split(" ")[0]!.replace(/[^0-9Xx]/g, "");
     }
 
     return { title, author, isbn };
   };
 
   // Check for duplicate ISBN
-  const checkDuplicate = async (isbn: string): Promise<{ isDuplicate: boolean; recordId?: number }> => {
+  const checkDuplicate = async (
+    isbn: string
+  ): Promise<{ isDuplicate: boolean; recordId?: number }> => {
     if (!isbn) return { isDuplicate: false };
 
     try {
-      const res = await fetchWithAuth(`/api/evergreen/catalog?query=${encodeURIComponent(isbn)}&searchType=isbn&limit=1`);
+      const res = await fetchWithAuth(
+        `/api/evergreen/catalog?query=${encodeURIComponent(isbn)}&searchType=isbn&limit=1`
+      );
       if (!res.ok) return { isDuplicate: false };
 
       const data = await res.json();
       const records = data?.results || [];
-      
+
       if (records.length > 0) {
         return { isDuplicate: true, recordId: records[0]?.id };
       }
-    } catch (err: any) {
-      clientLogger.error('Duplicate check failed:', err);
+    } catch (err: unknown) {
+      clientLogger.error("Duplicate check failed:", err);
     }
 
     return { isDuplicate: false };
@@ -339,7 +353,7 @@ export default function CatalogImportPage() {
   // Import all records
   const handleBatchImport = async () => {
     if (parsedRecords.length === 0) {
-      toast.error('No records to import');
+      toast.error("No records to import");
       return;
     }
 
@@ -358,11 +372,11 @@ export default function CatalogImportPage() {
 
     for (let i = 0; i < parsedRecords.length; i++) {
       const record = parsedRecords[i];
-      
+
       try {
         // Check for duplicate
         const dupeCheck = await checkDuplicate(record!.metadata.isbn);
-        
+
         if (dupeCheck.isDuplicate) {
           results.push({
             success: false,
@@ -370,27 +384,31 @@ export default function CatalogImportPage() {
             isDuplicate: true,
             duplicateRecordId: dupeCheck.recordId,
           });
-          
-          setImportProgress(prev => prev ? {
-            ...prev,
-            current: i + 1,
-            duplicates: prev.duplicates + 1,
-          } : null);
-          
+
+          setImportProgress((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  current: i + 1,
+                  duplicates: prev.duplicates + 1,
+                }
+              : null
+          );
+
           continue;
         }
 
         // Import record
-        const res = await fetchWithAuth('/api/evergreen/marc', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetchWithAuth("/api/evergreen/marc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ marcxml: record!.marcxml, source }),
         });
 
         const data = await res.json();
 
         if (!res.ok || data.ok === false) {
-          throw new Error(data.error || 'Import failed');
+          throw new Error(data.error || "Import failed");
         }
 
         results.push({
@@ -399,46 +417,55 @@ export default function CatalogImportPage() {
           tcn: data.record?.tcn,
         });
 
-        setImportProgress(prev => prev ? {
-          ...prev,
-          current: i + 1,
-          successful: prev.successful + 1,
-        } : null);
-
-      } catch (err: any) {
+        setImportProgress((prev) =>
+          prev
+            ? {
+                ...prev,
+                current: i + 1,
+                successful: prev.successful + 1,
+              }
+            : null
+        );
+      } catch (err: unknown) {
         results.push({
           success: false,
-          error: (err instanceof Error ? err.message : String(err)) || 'Import failed',
+          error: (err instanceof Error ? err.message : String(err)) || "Import failed",
         });
 
-        setImportProgress(prev => prev ? {
-          ...prev,
-          current: i + 1,
-          failed: prev.failed + 1,
-        } : null);
+        setImportProgress((prev) =>
+          prev
+            ? {
+                ...prev,
+                current: i + 1,
+                failed: prev.failed + 1,
+              }
+            : null
+        );
       }
     }
 
     setImportResults(results);
     setIsImporting(false);
 
-    const successCount = results.filter(r => r.success).length;
+    const successCount = results.filter((r) => r.success).length;
     if (successCount > 0) {
-      toast.success(`Successfully imported ${successCount} record${successCount !== 1 ? 's' : ''}`);
+      toast.success(`Successfully imported ${successCount} record${successCount !== 1 ? "s" : ""}`);
     }
-    if (results.some(r => !r.success)) {
-      toast.error(`${results.filter(r => !r.success).length} record${results.filter(r => !r.success).length !== 1 ? 's' : ''} failed to import`);
+    if (results.some((r) => !r.success)) {
+      toast.error(
+        `${results.filter((r) => !r.success).length} record${results.filter((r) => !r.success).length !== 1 ? "s" : ""} failed to import`
+      );
     }
   };
 
   // Helper function to escape XML
   const escapeXml = (unsafe: string): string => {
     return unsafe
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
   };
 
   // Reset form
@@ -458,9 +485,9 @@ export default function CatalogImportPage() {
         subtitle="Upload and import MARC records into Evergreen with intelligent de-duplication."
         breadcrumbs={[{ label: "Cataloging", href: "/staff/cataloging" }, { label: "MARC Import" }]}
       >
-        <StatusBadge 
-          label={ping?.ok ? "Evergreen Online" : "Evergreen Offline"} 
-          status={ping?.ok ? "success" : "error"} 
+        <StatusBadge
+          label={ping?.ok ? "Evergreen Online" : "Evergreen Offline"}
+          status={ping?.ok ? "success" : "error"}
         />
       </PageHeader>
 
@@ -481,8 +508,15 @@ export default function CatalogImportPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-2">
-              <label htmlFor="record-source" className="text-sm font-medium">Record Source</label>
-              <Select id="record-source" value={source} onValueChange={setSource} disabled={isImporting}>
+              <label htmlFor="record-source" className="text-sm font-medium">
+                Record Source
+              </label>
+              <Select
+                id="record-source"
+                value={source}
+                onValueChange={setSource}
+                disabled={isImporting}
+              >
                 <SelectTrigger className="max-w-sm">
                   <SelectValue placeholder="Select source" />
                 </SelectTrigger>
@@ -501,17 +535,23 @@ export default function CatalogImportPage() {
             </div>
 
             <div className="grid gap-2">
-              <label htmlFor="marc-file-input" className="text-sm font-medium">MARC Files *</label>
+              <label htmlFor="marc-file-input" className="text-sm font-medium">
+                MARC Files *
+              </label>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   className="relative"
                   disabled={isImporting || isParsing}
-                  onClick={() => document.getElementById('marc-file-input')?.click()}
+                  onClick={() => document.getElementById("marc-file-input")?.click()}
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  {isParsing ? 'Parsing...' : files.length > 0 ? `${files.length} file${files.length !== 1 ? 's' : ''} selected` : 'Select Files'}
+                  {isParsing
+                    ? "Parsing..."
+                    : files.length > 0
+                      ? `${files.length} file${files.length !== 1 ? "s" : ""} selected`
+                      : "Select Files"}
                   <input
                     id="marc-file-input"
                     type="file"
@@ -522,27 +562,24 @@ export default function CatalogImportPage() {
                     disabled={isImporting || isParsing}
                   />
                 </Button>
-                
+
                 {files.length > 0 && !isImporting && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleReset}
-                  >
+                  <Button type="button" variant="ghost" size="sm" onClick={handleReset}>
                     <X className="h-4 w-4 mr-1" />
                     Clear
                   </Button>
                 )}
               </div>
-              
+
               {files.length > 0 && (
                 <div className="text-xs text-muted-foreground space-y-1 mt-2">
                   {files.map((file, idx) => (
                     <div key={idx} className="flex items-center gap-2">
                       <FileText className="h-3 w-3" />
                       <span>{file.name}</span>
-                      <span className="text-muted-foreground">({(file.size / 1024).toFixed(1)} KB)</span>
+                      <span className="text-muted-foreground">
+                        ({(file.size / 1024).toFixed(1)} KB)
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -559,7 +596,8 @@ export default function CatalogImportPage() {
                 <div>
                   <CardTitle>Preview Records</CardTitle>
                   <CardDescription>
-                    {parsedRecords.length} record{parsedRecords.length !== 1 ? 's' : ''} ready to import
+                    {parsedRecords.length} record{parsedRecords.length !== 1 ? "s" : ""} ready to
+                    import
                   </CardDescription>
                 </div>
                 <Button onClick={handleBatchImport} disabled={isParsing}>
@@ -641,14 +679,16 @@ export default function CatalogImportPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Progress 
-                value={(importProgress.current / importProgress.total) * 100} 
+              <Progress
+                value={(importProgress.current / importProgress.total) * 100}
                 className="w-full"
               />
-              
+
               <div className="grid grid-cols-4 gap-4 text-center">
                 <div className="space-y-1">
-                  <div className="text-2xl font-bold text-green-600">{importProgress.successful}</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {importProgress.successful}
+                  </div>
                   <div className="text-xs text-muted-foreground">Successful</div>
                 </div>
                 <div className="space-y-1">
@@ -656,7 +696,9 @@ export default function CatalogImportPage() {
                   <div className="text-xs text-muted-foreground">Failed</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-2xl font-bold text-amber-600">{importProgress.duplicates}</div>
+                  <div className="text-2xl font-bold text-amber-600">
+                    {importProgress.duplicates}
+                  </div>
                   <div className="text-xs text-muted-foreground">Duplicates</div>
                 </div>
                 <div className="space-y-1">
@@ -676,9 +718,9 @@ export default function CatalogImportPage() {
                 <div>
                   <CardTitle>Import Results</CardTitle>
                   <CardDescription>
-                    {importResults.filter(r => r.success).length} successful, {' '}
-                    {importResults.filter(r => !r.success && !r.isDuplicate).length} failed, {' '}
-                    {importResults.filter(r => r.isDuplicate).length} duplicates
+                    {importResults.filter((r) => r.success).length} successful,{" "}
+                    {importResults.filter((r) => !r.success && !r.isDuplicate).length} failed,{" "}
+                    {importResults.filter((r) => r.isDuplicate).length} duplicates
                   </CardDescription>
                 </div>
                 <Button onClick={handleReset} variant="outline">
@@ -695,7 +737,9 @@ export default function CatalogImportPage() {
                       "border rounded-lg p-4 flex items-center justify-between",
                       result.success && "bg-green-50 border-green-200 dark:bg-green-950/20",
                       result.isDuplicate && "bg-amber-50 border-amber-200 dark:bg-amber-950/20",
-                      !result.success && !result.isDuplicate && "bg-red-50 border-red-200 dark:bg-red-950/20"
+                      !result.success &&
+                        !result.isDuplicate &&
+                        "bg-red-50 border-red-200 dark:bg-red-950/20"
                     )}
                   >
                     <div className="flex items-center gap-3 flex-1">
@@ -704,7 +748,7 @@ export default function CatalogImportPage() {
                       ) : (
                         <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
                       )}
-                      
+
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">
@@ -716,11 +760,9 @@ export default function CatalogImportPage() {
                             </Badge>
                           )}
                         </div>
-                        
+
                         {result.error && (
-                          <div className="text-sm text-muted-foreground mt-1">
-                            {result.error}
-                          </div>
+                          <div className="text-sm text-muted-foreground mt-1">{result.error}</div>
                         )}
                       </div>
                     </div>
@@ -729,7 +771,9 @@ export default function CatalogImportPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => router.push(`/staff/cataloging/marc-editor?id=${result.recordId}`)}
+                        onClick={() =>
+                          router.push(`/staff/cataloging/marc-editor?id=${result.recordId}`)
+                        }
                       >
                         Open in Editor
                         <ArrowRight className="h-4 w-4 ml-2" />
@@ -740,7 +784,11 @@ export default function CatalogImportPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => router.push(`/staff/cataloging/marc-editor?id=${result.duplicateRecordId}`)}
+                        onClick={() =>
+                          router.push(
+                            `/staff/cataloging/marc-editor?id=${result.duplicateRecordId}`
+                          )
+                        }
                       >
                         View Existing Record
                         <ArrowRight className="h-4 w-4 ml-2" />

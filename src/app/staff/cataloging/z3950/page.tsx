@@ -148,8 +148,8 @@ export default function Z3950Page() {
           ...prev,
           results: prev.results.filter((r: any) => r.id !== record.id),
         }));
-      } catch (err: any) {
-        const errorMessage = err?.message || "Import failed";
+      } catch (err: unknown) {
+        const errorMessage = (err instanceof Error ? err.message : String(err)) || "Import failed";
         toast.error("Failed to import record", { description: errorMessage });
       } finally {
         setImportingIds((prev) => {
@@ -288,8 +288,8 @@ export default function Z3950Page() {
       } else {
         toast.success(`Found ${allRecords.length} record(s)`);
       }
-    } catch (err: any) {
-      const errorMessage = err?.message || "Search failed";
+    } catch (err: unknown) {
+      const errorMessage = (err instanceof Error ? err.message : String(err)) || "Search failed";
       setSearchState((prev) => ({
         ...prev,
         isSearching: false,

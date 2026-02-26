@@ -342,8 +342,10 @@ export default function BookingPage() {
       toast.success("Reservation created");
       setNewBookingOpen(false);
       await loadData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to create reservation");
+    } catch (err: unknown) {
+      toast.error(
+        (err instanceof Error ? err.message : String(err)) || "Failed to create reservation"
+      );
     } finally {
       setIsSaving(false);
     }

@@ -2,11 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { fetchWithAuth } from "@/lib/client-fetch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Plus, Package, Barcode, BookOpen, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -36,7 +49,12 @@ interface CopyStatus {
   name: string;
 }
 
-export function AddItemDialog({ open, onOpenChange, bibRecord, onItemCreated }: AddItemDialogProps) {
+export function AddItemDialog({
+  open,
+  onOpenChange,
+  bibRecord,
+  onItemCreated,
+}: AddItemDialogProps) {
   const { user, orgs } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
   const [locations, setLocations] = useState<CopyLocation[]>([]);
@@ -67,8 +85,9 @@ export function AddItemDialog({ open, onOpenChange, bibRecord, onItemCreated }: 
         if (locData.ok && locData.locations) {
           setLocations(locData.locations);
           // Default to first location or "Stacks"
-          const stacks = locData.locations.find((l: CopyLocation) => 
-            l.name.toLowerCase().includes("stack") || l.name.toLowerCase().includes("general")
+          const stacks = locData.locations.find(
+            (l: CopyLocation) =>
+              l.name.toLowerCase().includes("stack") || l.name.toLowerCase().includes("general")
           );
           if (stacks) setLocationId(stacks.id.toString());
           else if (locData.locations.length > 0) setLocationId(locData.locations[0].id.toString());
@@ -139,14 +158,14 @@ export function AddItemDialog({ open, onOpenChange, bibRecord, onItemCreated }: 
       }
 
       // Success!
-      setCreatedItems(prev => [...prev, { barcode: barcode.trim(), id: data.copyId }]);
+      setCreatedItems((prev) => [...prev, { barcode: barcode.trim(), id: data.copyId }]);
       toast.success(`Item created: ${barcode}`);
       setBarcode(""); // Clear barcode for next item
-      
+
       if (onItemCreated) {
         onItemCreated();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error((err instanceof Error ? err.message : String(err)) || "Failed to create item");
     } finally {
       setIsCreating(false);
@@ -165,9 +184,7 @@ export function AddItemDialog({ open, onOpenChange, bibRecord, onItemCreated }: 
             <Package className="h-5 w-5" />
             Add Items
           </DialogTitle>
-          <DialogDescription>
-            Add physical items to this bibliographic record
-          </DialogDescription>
+          <DialogDescription>Add physical items to this bibliographic record</DialogDescription>
         </DialogHeader>
 
         {/* Bib Record Summary */}
@@ -177,8 +194,12 @@ export function AddItemDialog({ open, onOpenChange, bibRecord, onItemCreated }: 
             <div className="text-xs text-muted-foreground">{bibRecord.author}</div>
           )}
           <div className="flex items-center gap-2 text-xs">
-            <Badge variant="outline" className="font-mono">Bib #{bibRecord.id}</Badge>
-            {bibRecord.isbn && <span className="text-muted-foreground">ISBN: {bibRecord.isbn}</span>}
+            <Badge variant="outline" className="font-mono">
+              Bib #{bibRecord.id}
+            </Badge>
+            {bibRecord.isbn && (
+              <span className="text-muted-foreground">ISBN: {bibRecord.isbn}</span>
+            )}
           </div>
         </div>
 
@@ -311,7 +332,10 @@ export function AddItemDialog({ open, onOpenChange, bibRecord, onItemCreated }: 
           <Button variant="outline" onClick={handleClose}>
             {createdItems.length > 0 ? "Done" : "Cancel"}
           </Button>
-          <Button onClick={handleCreateItem} disabled={isCreating || loadingMeta || !barcode.trim()}>
+          <Button
+            onClick={handleCreateItem}
+            disabled={isCreating || loadingMeta || !barcode.trim()}
+          >
             {isCreating ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

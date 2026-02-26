@@ -5,9 +5,11 @@ import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
-const cspReportSchema = z.object({
-  "csp-report": z.record(z.string(), z.unknown()).optional(),
-}).passthrough();
+const cspReportSchema = z
+  .object({
+    "csp-report": z.record(z.string(), z.unknown()).optional(),
+  })
+  .passthrough();
 
 export const runtime = "nodejs";
 
@@ -49,11 +51,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const rawPayload: any = await req.json().catch(() => null);
-    const payload = rawPayload ? cspReportSchema.safeParse(rawPayload).data ?? rawPayload : null;
-    const reportBody = (payload as any)?.["csp-report"] || (payload as Record<string, any>)?.body || payload;
+    const payload = rawPayload ? (cspReportSchema.safeParse(rawPayload).data ?? rawPayload) : null;
+    const reportBody =
+      (payload as any)?.["csp-report"] || (payload as Record<string, any>)?.body || payload;
 
-    const documentUri = sanitizeUrl((reportBody as any)?.["document-uri"] ?? (reportBody as Record<string, any>)?.documentURI);
-    const blockedUri = toStringOrNull((reportBody as any)?.["blocked-uri"] ?? (reportBody as Record<string, any>)?.blockedURL);
+    const documentUri = sanitizeUrl(
+      (reportBody as any)?.["document-uri"] ?? (reportBody as Record<string, any>)?.documentURI
+    );
+    const blockedUri = toStringOrNull(
+      (reportBody as any)?.["blocked-uri"] ?? (reportBody as Record<string, any>)?.blockedURL
+    );
     const violatedDirective = toStringOrNull((reportBody as any)?.["violated-directive"]);
     const effectiveDirective = toStringOrNull((reportBody as any)?.["effective-directive"]);
     const disposition = toStringOrNull((reportBody as Record<string, any>)?.disposition);
@@ -84,10 +91,9 @@ export async function POST(req: NextRequest) {
       },
       "CSP violation report"
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.debug({ requestId, error: String(error) }, "Failed to parse CSP report (ignored)");
   }
 
   return new Response(null, { status: 204 });
 }
-

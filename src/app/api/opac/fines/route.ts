@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
         count: fines.length,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof PatronAuthError) {
       logger.warn({ error: String(error) }, "Route /api/opac/fines GET auth failed");
       return errorResponse("Authentication required", 401);
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: "Payment recorded successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof PatronAuthError) {
       logger.warn({ error: String(error) }, "Route /api/opac/fines POST auth failed");
       return errorResponse("Authentication required", 401);

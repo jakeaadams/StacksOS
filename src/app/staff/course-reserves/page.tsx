@@ -120,8 +120,8 @@ export default function CourseReservesPage() {
       setCourses(Array.isArray(json.courses) ? json.courses : []);
       setTerms(Array.isArray(json.terms) ? json.terms : []);
       setPermissions((json.permissions || {}) as Permissions);
-    } catch (e: any) {
-      setError(e instanceof Error ? (e as Error).message : String(e));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -346,8 +346,8 @@ export default function CourseReservesPage() {
       setDeleteOpen(false);
       setDeleteTarget(null);
       await load();
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Delete failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
     } finally {
       setDeleting(false);
     }
@@ -405,8 +405,8 @@ export default function CourseReservesPage() {
       setDialogOpen(false);
       setEditingId(null);
       await load();
-    } catch (e: any) {
-      toast.error(e instanceof Error ? (e as Error).message : "Save failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }

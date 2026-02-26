@@ -78,7 +78,7 @@ export default function AccountSettingsPage() {
         const data = await response.json();
         setSettings((prev) => data.settings || prev);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       clientLogger.error("Error fetching settings:", err);
     } finally {
       setIsLoading(false);
