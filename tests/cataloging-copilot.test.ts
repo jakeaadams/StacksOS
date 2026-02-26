@@ -3,170 +3,18 @@
  *
  * Tests deterministic fallback output against the response schema,
  * permission enforcement, and rate limiting.
+ *
+ * Imports production functions directly from the fallback module
+ * instead of maintaining local copies.
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { z } from "zod";
 import { checkRateLimit, clearRateLimit } from "@/lib/rate-limit";
-
-// Mirror the response schema from the cataloging-copilot route
-const subjectSuggestionSchema = z.object({
-  heading: z.string().min(1),
-  source: z.enum(["lcsh", "sears", "fast", "inferred"]),
-  confidence: z.enum(["high", "medium", "low"]),
-  provenance: z.string().min(1),
-});
-
-const metadataImprovementSchema = z.object({
-  field: z.string().min(1),
-  current: z.string().optional(),
-  suggested: z.string().min(1),
-  reason: z.string().min(1),
-});
-
-const responseSchema = z.object({
-  summary: z.string().min(1),
-  subjectSuggestions: z.array(subjectSuggestionSchema).min(1).max(10),
-  classificationSuggestion: z
-    .object({
-      ddc: z.string().optional(),
-      lcc: z.string().optional(),
-      confidence: z.enum(["high", "medium", "low"]),
-      provenance: z.string().min(1),
-    })
-    .optional(),
-  metadataImprovements: z.array(metadataImprovementSchema).max(10),
-  caveats: z.array(z.string().min(1)).optional(),
-});
-
-// Replicates the deterministic fallback logic for testing
-function extractTitleKeywords(title: string): string[] {
-  const stopWords = new Set([
-    "the",
-    "a",
-    "an",
-    "and",
-    "or",
-    "but",
-    "in",
-    "on",
-    "at",
-    "to",
-    "for",
-    "of",
-    "with",
-    "by",
-    "from",
-    "is",
-    "it",
-    "its",
-    "that",
-    "this",
-    "as",
-  ]);
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "")
-    .split(/\s+/)
-    .filter((w) => w.length > 2 && !stopWords.has(w));
-}
-
-type CatalogingInput = {
-  marcData: {
-    title: string;
-    author?: string;
-    isbn?: string;
-    publisher?: string;
-    existingSubjects?: string[];
-    existingClassification?: string;
-    physicalDescription?: string;
-  };
-  bibId?: number;
-};
-
-function deterministicFallback(input: CatalogingInput) {
-  const { marcData, bibId } = input;
-  const title = marcData.title || "Untitled";
-  const keywords = extractTitleKeywords(title);
-
-  const subjectSuggestions: z.infer<typeof subjectSuggestionSchema>[] = [];
-
-  if (keywords.length > 0) {
-    const primaryHeading = keywords
-      .slice(0, 3)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" -- ");
-    subjectSuggestions.push({
-      heading: primaryHeading,
-      source: "inferred",
-      confidence: "low",
-      provenance: "Derived from title keywords (deterministic fallback)",
-    });
-  }
-
-  if (marcData.author) {
-    subjectSuggestions.push({
-      heading: `${marcData.author} -- Authorship`,
-      source: "inferred",
-      confidence: "low",
-      provenance: "Derived from author name (deterministic fallback)",
-    });
-  }
-
-  if (subjectSuggestions.length === 0) {
-    subjectSuggestions.push({
-      heading: "General works",
-      source: "inferred",
-      confidence: "low",
-      provenance: "Default heading; insufficient metadata for inference",
-    });
-  }
-
-  const metadataImprovements: z.infer<typeof metadataImprovementSchema>[] = [];
-
-  if (!marcData.isbn) {
-    metadataImprovements.push({
-      field: "020 (ISBN)",
-      suggested: "Add ISBN if available from publisher or title page verso",
-      reason: "ISBN improves discoverability and deduplication.",
-    });
-  }
-
-  if (!marcData.publisher) {
-    metadataImprovements.push({
-      field: "264 (Publication)",
-      suggested: "Add publisher name and place of publication",
-      reason: "Publication data is required for a complete bibliographic record.",
-    });
-  }
-
-  if (!marcData.physicalDescription) {
-    metadataImprovements.push({
-      field: "300 (Physical Description)",
-      suggested: "Add pagination and dimensions (e.g., 'xii, 320 pages ; 24 cm')",
-      reason: "Physical description helps distinguish editions and formats.",
-    });
-  }
-
-  if (marcData.existingSubjects && marcData.existingSubjects.length === 0) {
-    metadataImprovements.push({
-      field: "650 (Subject)",
-      suggested: "Add at least 2-3 LCSH subject headings",
-      reason: "Subject headings are critical for catalog discovery.",
-    });
-  }
-
-  const bibLabel = bibId ? ` (bib #${bibId})` : "";
-
-  return {
-    summary: `Fallback cataloging copilot analysis for "${title}"${bibLabel}: ${subjectSuggestions.length} subject suggestion(s) and ${metadataImprovements.length} metadata improvement(s) generated deterministically.`,
-    subjectSuggestions: subjectSuggestions.slice(0, 10),
-    metadataImprovements: metadataImprovements.slice(0, 10),
-    caveats: [
-      "AI provider was unavailable; these suggestions were generated deterministically from title keywords and metadata presence checks.",
-    ],
-  };
-}
+import {
+  deterministicFallback,
+  extractTitleKeywords,
+  responseSchema,
+} from "@/app/api/ai/cataloging-copilot/fallback";
 
 describe("Cataloging Copilot", () => {
   describe("Deterministic fallback produces schema-valid output", () => {
@@ -243,6 +91,32 @@ describe("Cataloging Copilot", () => {
       const parsed = responseSchema.safeParse(result);
       expect(parsed.success).toBe(true);
       expect(result.subjectSuggestions.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe("extractTitleKeywords", () => {
+    it("should strip stop words and short words", () => {
+      const keywords = extractTitleKeywords("The History of Public Libraries in America");
+      expect(keywords).toContain("history");
+      expect(keywords).toContain("public");
+      expect(keywords).toContain("libraries");
+      expect(keywords).toContain("america");
+      expect(keywords).not.toContain("the");
+      expect(keywords).not.toContain("of");
+      expect(keywords).not.toContain("in");
+    });
+
+    it("should remove non-alphanumeric characters", () => {
+      const keywords = extractTitleKeywords("Hello, World! (2nd Edition)");
+      expect(keywords).toContain("hello");
+      expect(keywords).toContain("world");
+      expect(keywords).toContain("2nd");
+      expect(keywords).toContain("edition");
+    });
+
+    it("should return empty array for stop-words-only title", () => {
+      const keywords = extractTitleKeywords("The A An");
+      expect(keywords).toEqual([]);
     });
   });
 

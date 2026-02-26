@@ -212,7 +212,7 @@ export async function handleAcquisitionsGet(
               { limit: 200, order_by: { acqinv: "recv_date DESC" } },
             ]
           );
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           try {
             response = await callOpenSRF(
               "open-ils.cstore",
@@ -223,7 +223,7 @@ export async function handleAcquisitionsGet(
                 { limit: 200, order_by: { acqinv: "recv_date DESC" } },
               ]
             );
-          } catch (_error2: any) {
+          } catch (_error2: unknown) {
             // Some Evergreen installs do not expose cstore direct methods for acquisitions.
             // Fall back to pcrud search before treating this as "not available".
             try {
@@ -232,7 +232,7 @@ export async function handleAcquisitionsGet(
                 { receiver: receiverOrgId },
                 { limit: 200, order_by: { acqinv: "recv_date DESC" } },
               ]);
-            } catch (err: any) {
+            } catch (err: unknown) {
               const code =
                 err && typeof err === "object" ? (err as Record<string, any>).code : undefined;
               if (code === "OSRF_METHOD_NOT_FOUND") {
@@ -465,8 +465,8 @@ export async function handleAcquisitionsGet(
       default:
         return errorResponse("Invalid action", 400);
     }
-  } catch (err: any) {
-    if (err.name === "AuthenticationError") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AuthenticationError") {
       return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(err, "Acquisitions GET", req);

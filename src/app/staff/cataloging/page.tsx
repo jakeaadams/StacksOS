@@ -84,7 +84,7 @@ export default function CatalogingPage() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleSearch();
     }
@@ -148,7 +148,7 @@ export default function CatalogingPage() {
                   placeholder="Search catalog records..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   className="pl-14 h-9"
                 />
               </div>

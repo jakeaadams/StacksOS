@@ -27,14 +27,19 @@ export async function GET(req: NextRequest) {
       },
     ]);
 
-    const extract = (obj: any, field: string, idx: number) => {
+    const extract = (
+      obj: Record<string, unknown> | null | undefined,
+      field: string,
+      idx: number
+    ) => {
       if (!obj) return null;
-      return obj?.[field] ?? obj?.__p?.[idx];
+      return obj?.[field] ?? (obj?.__p as unknown[] | undefined)?.[idx];
     };
 
-    const extractNested = (obj: any, field: string, idx: number) => {
+    const extractNested = (obj: unknown, field: string, idx: number) => {
       if (!obj || typeof obj !== "object") return null;
-      return obj?.[field] ?? obj?.__p?.[idx];
+      const rec = obj as Record<string, unknown>;
+      return rec?.[field] ?? (rec?.__p as unknown[] | undefined)?.[idx];
     };
 
     const locations = (response?.payload?.[0] || []).map((loc: any) => {
@@ -56,7 +61,7 @@ export async function GET(req: NextRequest) {
     });
 
     return successResponse({ locations, pagination: { limit, offset, count: locations.length } });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "CopyLocations GET", req);
   }
 }

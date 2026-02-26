@@ -119,7 +119,7 @@ const circulationBodySchema = z.discriminatedUnion("action", [
     .passthrough(),
 ]);
 
-function resolvePerms(action: string, body: any) {
+function resolvePerms(action: string, body: Record<string, unknown>) {
   if (action === "place_hold" && body?.hold_type === "C") {
     return ["COPY_HOLDS"];
   }
@@ -551,7 +551,7 @@ export async function POST(req: NextRequest) {
       default:
         return errorResponse("Invalid action", 400);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Circulation POST", req);
   }
 }
@@ -587,7 +587,7 @@ export async function GET(req: NextRequest) {
                   [hold.hold_type === "T" ? hold.target : hold.current_copy]
                 );
                 bibInfo = payloadFirst(bibResponse);
-              } catch (_error: any) {
+              } catch (_error: unknown) {
                 // Ignore bib fetch _errors
               }
             }
@@ -741,7 +741,7 @@ export async function GET(req: NextRequest) {
     }
 
     return errorResponse("Invalid request parameters", 400);
-  } catch (_error: any) {
+  } catch (_error: unknown) {
     return serverErrorResponse(_error, "Circulation GET", req);
   }
 }

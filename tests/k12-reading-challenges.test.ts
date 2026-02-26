@@ -1,4 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  buildStatsCsvRows,
+  CSV_STATS_HEADER,
+  escapeCsvValue,
+  groupOverdueByStudent,
+  type OverdueRow,
+} from "@/lib/k12/export-helpers";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -184,9 +191,7 @@ describe("k12-reading-challenges", () => {
 
   describe("updateChallengeProgress", () => {
     it("upserts progress for a student", async () => {
-      // First call: get goal_value
-      querySingleMock.mockResolvedValueOnce({ goal_value: 10 });
-      // Second call: upsert progress
+      // Single atomic CTE query returns the upserted row
       querySingleMock.mockResolvedValueOnce({
         id: 1,
         challenge_id: 1,
@@ -199,33 +204,40 @@ describe("k12-reading-challenges", () => {
       const result = await updateChallengeProgress(1, 5, 3);
       expect(result.progressValue).toBe(3);
       expect(result.completedAt).toBeNull();
-      expect(querySingleMock).toHaveBeenCalledTimes(2);
+      expect(querySingleMock).toHaveBeenCalledTimes(1);
     });
 
-    it("throws when challenge not found", async () => {
+    it("throws when challenge not found or CTE returns null", async () => {
       querySingleMock.mockResolvedValueOnce(null);
 
-      await expect(updateChallengeProgress(999, 1, 1)).rejects.toThrow("Challenge not found");
-    });
-
-    it("throws when progress upsert returns null", async () => {
-      querySingleMock.mockResolvedValueOnce({ goal_value: 10 });
-      querySingleMock.mockResolvedValueOnce(null);
-
-      await expect(updateChallengeProgress(1, 1, 1)).rejects.toThrow(
-        "Failed to update challenge progress"
+      await expect(updateChallengeProgress(999, 1, 1)).rejects.toThrow(
+        "Challenge not found or failed to update progress"
       );
+    });
+
+    it("returns completed_at when progress reaches goal", async () => {
+      querySingleMock.mockResolvedValueOnce({
+        id: 2,
+        challenge_id: 1,
+        student_id: 5,
+        progress_value: 10,
+        completed_at: "2026-03-20T12:00:00Z",
+        updated_at: "2026-03-20T12:00:00Z",
+      });
+
+      const result = await updateChallengeProgress(1, 5, 2);
+      expect(result.progressValue).toBe(10);
+      expect(result.completedAt).toBe("2026-03-20T12:00:00Z");
     });
   });
 });
 
 // ---------------------------------------------------------------------------
-// Export format test (CSV structure)
+// Export format test (CSV structure) — uses production helpers
 // ---------------------------------------------------------------------------
 
 describe("export CSV format", () => {
-  it("produces valid CSV with headers", () => {
-    // Simulate CSV generation similar to the export route
+  it("produces valid CSV with headers using production buildStatsCsvRows", () => {
     const stats = {
       totalCheckouts: 15,
       booksPerStudent: 3,
@@ -234,41 +246,44 @@ describe("export CSV format", () => {
       mostActiveReader: 'Jane "The Reader" Doe',
     };
 
-    const csvLines: string[] = [];
-    csvLines.push("Section,Metric,Value");
-    csvLines.push(`Stats,Total Checkouts,${stats.totalCheckouts}`);
-    csvLines.push(`Stats,Books Per Student,${stats.booksPerStudent}`);
-    csvLines.push(`Stats,Avg Checkout Duration (days),${stats.avgCheckoutDurationDays}`);
-    csvLines.push(`Stats,Overdue Count,${stats.overdueCount}`);
-    csvLines.push(
-      `Stats,Most Active Reader,"${(stats.mostActiveReader || "N/A").replace(/"/g, '""')}"`
-    );
+    const rows = buildStatsCsvRows(stats);
+    const csv = rows.join("\n");
 
-    const csv = csvLines.join("\n");
+    expect(rows[0]).toBe(CSV_STATS_HEADER);
     expect(csv).toContain("Section,Metric,Value");
     expect(csv).toContain("Stats,Total Checkouts,15");
+    expect(csv).toContain("Stats,Books Per Student,3");
+    expect(csv).toContain("Stats,Avg Checkout Duration (days),7.5");
+    expect(csv).toContain("Stats,Overdue Count,2");
     // Verify double-quote escaping for CSV
     expect(csv).toContain('""The Reader""');
+  });
+
+  it("handles null mostActiveReader", () => {
+    const stats = {
+      totalCheckouts: 0,
+      booksPerStudent: 0,
+      avgCheckoutDurationDays: 0,
+      overdueCount: 0,
+      mostActiveReader: null,
+    };
+
+    const rows = buildStatsCsvRows(stats);
+    const csv = rows.join("\n");
+    expect(csv).toContain("N/A");
+  });
+
+  it("escapeCsvValue handles embedded quotes", () => {
+    expect(escapeCsvValue('He said "hello"')).toBe('"He said ""hello"""');
   });
 });
 
 // ---------------------------------------------------------------------------
-// Overdue grouping test
+// Overdue grouping test — uses production groupOverdueByStudent
 // ---------------------------------------------------------------------------
 
 describe("overdue grouping", () => {
-  it("groups overdue items by student", () => {
-    type OverdueRow = {
-      checkout_id: number;
-      student_id: number;
-      student_name: string;
-      copy_barcode: string;
-      title: string | null;
-      checkout_ts: string;
-      due_ts: string;
-      days_overdue: number;
-    };
-
+  it("groups overdue items by student using production helper", () => {
     const rows: OverdueRow[] = [
       {
         checkout_id: 1,
@@ -302,36 +317,44 @@ describe("overdue grouping", () => {
       },
     ];
 
-    // Replicate grouping logic from overdue-dashboard route
-    type OverdueGroup = {
-      studentId: number;
-      studentName: string;
-      items: OverdueRow[];
-      totalOverdue: number;
-    };
-
-    const groupMap = new Map<number, OverdueGroup>();
-    for (const row of rows) {
-      const existing = groupMap.get(row.student_id);
-      if (existing) {
-        existing.items.push(row);
-        existing.totalOverdue = existing.items.length;
-      } else {
-        groupMap.set(row.student_id, {
-          studentId: row.student_id,
-          studentName: row.student_name,
-          items: [row],
-          totalOverdue: 1,
-        });
-      }
-    }
-
-    const groups = Array.from(groupMap.values());
+    const groups = groupOverdueByStudent(rows);
 
     expect(groups).toHaveLength(2);
     expect(groups[0]!.studentId).toBe(10);
     expect(groups[0]!.totalOverdue).toBe(2);
+    expect(groups[0]!.items).toHaveLength(2);
+    expect(groups[0]!.items[0]!.checkoutId).toBe(1);
     expect(groups[1]!.studentId).toBe(20);
     expect(groups[1]!.totalOverdue).toBe(1);
+  });
+
+  it("returns empty array for empty input", () => {
+    const groups = groupOverdueByStudent([]);
+    expect(groups).toHaveLength(0);
+  });
+
+  it("maps OverdueRow fields to camelCase correctly", () => {
+    const rows: OverdueRow[] = [
+      {
+        checkout_id: 99,
+        student_id: 5,
+        student_name: "Test Student",
+        copy_barcode: "BC999",
+        title: null,
+        checkout_ts: "2026-01-01",
+        due_ts: "2026-01-10",
+        days_overdue: 20,
+      },
+    ];
+
+    const groups = groupOverdueByStudent(rows);
+    expect(groups).toHaveLength(1);
+    const item = groups[0]!.items[0]!;
+    expect(item.checkoutId).toBe(99);
+    expect(item.studentId).toBe(5);
+    expect(item.studentName).toBe("Test Student");
+    expect(item.copyBarcode).toBe("BC999");
+    expect(item.title).toBeNull();
+    expect(item.daysOverdue).toBe(20);
   });
 });

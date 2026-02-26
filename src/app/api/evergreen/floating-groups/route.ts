@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
       .filter((row): row is FloatingGroup => row.id > 0 && row.name.length > 0);
 
     return successResponse({ groups });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Floating groups GET", req);
   }
 }

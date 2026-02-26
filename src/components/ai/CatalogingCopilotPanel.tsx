@@ -67,10 +67,23 @@ type CatalogingCopilotPanelProps = {
   className?: string;
 };
 
+// Uses design system CSS variables (--status-success-*, --status-warning-*) for theme consistency
 const confidenceColors = {
-  high: "bg-green-100 text-green-700 border-green-200",
-  medium: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  low: "bg-slate-100 text-slate-600 border-slate-200",
+  high: "border-[hsl(var(--status-success))]",
+  medium: "border-[hsl(var(--status-warning))]",
+  low: "border-border text-muted-foreground",
+};
+
+const confidenceInlineStyles: Record<string, React.CSSProperties> = {
+  high: {
+    backgroundColor: "hsl(var(--status-success-bg))",
+    color: "hsl(var(--status-success-text))",
+  },
+  medium: {
+    backgroundColor: "hsl(var(--status-warning-bg))",
+    color: "hsl(var(--status-warning-text))",
+  },
+  low: {},
 };
 
 const sourceLabels: Record<string, string> = {
@@ -148,6 +161,15 @@ export function CatalogingCopilotPanel({
       <CardHeader
         className="pb-2 cursor-pointer select-none"
         onClick={() => setExpanded((v) => !v)}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded((v) => !v);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -187,7 +209,13 @@ export function CatalogingCopilotPanel({
           </Button>
 
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 rounded-lg p-3">
+            <div
+              className="flex items-center gap-2 text-sm rounded-lg p-3"
+              style={{
+                color: "hsl(var(--status-error-text))",
+                backgroundColor: "hsl(var(--status-error-bg))",
+              }}
+            >
               <AlertTriangle className="h-4 w-4 shrink-0" />
               {error}
             </div>
@@ -221,9 +249,22 @@ export function CatalogingCopilotPanel({
                           key={key}
                           className={cn(
                             "border rounded-lg p-3 space-y-1",
-                            accepted && "border-green-300 bg-green-50/50",
-                            rejected && "border-red-200 bg-red-50/30 opacity-60"
+                            accepted && "opacity-100",
+                            rejected && "opacity-60"
                           )}
+                          style={
+                            accepted
+                              ? {
+                                  borderColor: "hsl(var(--status-success-text))",
+                                  backgroundColor: "hsl(var(--status-success-bg) / 0.5)",
+                                }
+                              : rejected
+                                ? {
+                                    borderColor: "hsl(var(--status-error-text) / 0.4)",
+                                    backgroundColor: "hsl(var(--status-error-bg) / 0.3)",
+                                  }
+                                : undefined
+                          }
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1">
@@ -232,6 +273,7 @@ export function CatalogingCopilotPanel({
                                 <Badge
                                   variant="outline"
                                   className={cn("text-[10px]", confidenceColors[s.confidence])}
+                                  style={confidenceInlineStyles[s.confidence]}
                                 >
                                   {s.confidence}
                                 </Badge>
@@ -248,6 +290,7 @@ export function CatalogingCopilotPanel({
                                 className="h-7 w-7 p-0"
                                 onClick={() => handleAcceptSubject(s.heading)}
                                 title="Accept"
+                                aria-label={`Accept subject: ${s.heading}`}
                               >
                                 <Check className="h-3 w-3" />
                               </Button>
@@ -257,6 +300,7 @@ export function CatalogingCopilotPanel({
                                 className="h-7 w-7 p-0"
                                 onClick={() => handleRejectSubject(s.heading)}
                                 title="Reject"
+                                aria-label={`Reject subject: ${s.heading}`}
                               >
                                 <X className="h-3 w-3" />
                               </Button>
@@ -294,6 +338,7 @@ export function CatalogingCopilotPanel({
                           "text-[10px]",
                           confidenceColors[response.classificationSuggestion.confidence]
                         )}
+                        style={confidenceInlineStyles[response.classificationSuggestion.confidence]}
                       >
                         {response.classificationSuggestion.confidence}
                       </Badge>

@@ -283,8 +283,8 @@ export async function GET(req: NextRequest) {
       });
 
     return successResponse({ funds: mappedFunds });
-  } catch (err: any) {
-    if (err && typeof err === "object" && "name" in err && err.name === "AuthenticationError") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AuthenticationError") {
       return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(err, "Funds GET", req);
@@ -397,8 +397,8 @@ export async function POST(req: NextRequest) {
       default:
         return errorResponse("Invalid action. Use create, update, or delete.", 400);
     }
-  } catch (err: any) {
-    if (err && typeof err === "object" && "name" in err && err.name === "AuthenticationError") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AuthenticationError") {
       return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(err, "Funds POST", req);

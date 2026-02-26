@@ -645,6 +645,64 @@ const migration8K12ReadingChallenges: Migration = {
   },
 };
 
+/**
+ * Migration #9 – Summer reading config, missing CHECK constraints, and
+ * created_at column for challenge progress.
+ */
+const migration9SummerReadingAndConstraints: Migration = {
+  version: 9,
+  description:
+    "Create summer_reading_config, add CHECK constraints to reading challenges, add created_at to challenge progress",
+  up: async (client: PoolClient) => {
+    // -- summer_reading_config ------------------------------------------------
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS library.summer_reading_config (
+        id BIGSERIAL PRIMARY KEY,
+        org_unit INT NOT NULL,
+        program_name TEXT NOT NULL DEFAULT 'Summer Reading Program',
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        goal_type TEXT NOT NULL DEFAULT 'books' CHECK (goal_type IN ('books', 'pages', 'minutes')),
+        goal_value INT NOT NULL DEFAULT 10,
+        badge_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_summer_reading_config_org
+      ON library.summer_reading_config (org_unit, active)
+    `);
+
+    // -- Add CHECK constraints missing from migration 8 ----------------------
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE library.k12_reading_challenges
+          ADD CONSTRAINT chk_goal_type CHECK (goal_type IN ('books', 'pages', 'minutes'));
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE library.k12_reading_challenges
+          ADD CONSTRAINT chk_dates CHECK (end_date >= start_date);
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+
+    // -- Add created_at column to k12_challenge_progress ---------------------
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE library.k12_challenge_progress ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Ordered list of all migrations.  Append new migrations at the end.
 // ---------------------------------------------------------------------------
@@ -658,6 +716,7 @@ const ALL_MIGRATIONS: Migration[] = [
   migration6K12Assets,
   migration7OnboardingTaskCompletions,
   migration8K12ReadingChallenges,
+  migration9SummerReadingAndConstraints,
 ];
 
 // ---------------------------------------------------------------------------

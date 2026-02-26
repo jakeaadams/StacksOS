@@ -1,40 +1,34 @@
 import { NextRequest } from "next/server";
-import { errorResponse, serverErrorResponse, successResponse } from "@/lib/api";
+import { errorResponse, getRequestMeta, serverErrorResponse, successResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { query } from "@/lib/db/evergreen";
+import { getK12ClassById } from "@/lib/db/k12-class-circulation";
+import {
+  groupOverdueByStudent,
+  type OverdueItem,
+  type OverdueGroup,
+  type OverdueRow,
+} from "@/lib/k12/export-helpers";
 
-export interface OverdueItem {
-  checkoutId: number;
-  studentId: number;
-  studentName: string;
-  copyBarcode: string;
-  title: string | null;
-  checkoutTs: string;
-  dueTs: string;
-  daysOverdue: number;
-}
-
-export interface OverdueGroup {
-  studentId: number;
-  studentName: string;
-  items: OverdueItem[];
-  totalOverdue: number;
-}
-
-type OverdueRow = {
-  checkout_id: number;
-  student_id: number;
-  student_name: string;
-  copy_barcode: string;
-  title: string | null;
-  checkout_ts: string;
-  due_ts: string;
-  days_overdue: number;
-};
+export type { OverdueItem, OverdueGroup };
 
 export async function GET(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 60,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "k12-overdue-dashboard-get",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
-    await requirePermissions(["STAFF_LOGIN"]);
+    const { actor } = await requirePermissions(["STAFF_LOGIN"]);
+    const actorRecord = actor && typeof actor === "object" ? (actor as Record<string, any>) : null;
 
     const { searchParams } = new URL(req.url);
     const classIdRaw = searchParams.get("classId");
@@ -46,6 +40,16 @@ export async function GET(req: NextRequest) {
     const classId = Number.parseInt(classIdRaw, 10);
     if (!Number.isFinite(classId) || classId <= 0) {
       return errorResponse("classId must be a positive integer", 400);
+    }
+
+    // IDOR check: verify class exists and belongs to the actor's org
+    const classInfo = await getK12ClassById(classId);
+    if (!classInfo) {
+      return errorResponse("Class not found", 404);
+    }
+    const actorWsOu = Number.parseInt(String(actorRecord?.ws_ou ?? ""), 10);
+    if (Number.isFinite(actorWsOu) && classInfo.homeOu !== actorWsOu) {
+      return errorResponse("Forbidden: class does not belong to your organization", 403);
     }
 
     const rows = await query<OverdueRow>(
@@ -71,34 +75,7 @@ export async function GET(req: NextRequest) {
     );
 
     // Group by student
-    const groupMap = new Map<number, OverdueGroup>();
-    for (const row of rows) {
-      const item: OverdueItem = {
-        checkoutId: row.checkout_id,
-        studentId: row.student_id,
-        studentName: row.student_name,
-        copyBarcode: row.copy_barcode,
-        title: row.title,
-        checkoutTs: row.checkout_ts,
-        dueTs: row.due_ts,
-        daysOverdue: Number(row.days_overdue),
-      };
-
-      const existing = groupMap.get(row.student_id);
-      if (existing) {
-        existing.items.push(item);
-        existing.totalOverdue = existing.items.length;
-      } else {
-        groupMap.set(row.student_id, {
-          studentId: row.student_id,
-          studentName: row.student_name,
-          items: [item],
-          totalOverdue: 1,
-        });
-      }
-    }
-
-    const groups = Array.from(groupMap.values());
+    const groups = groupOverdueByStudent(rows);
     const totalOverdueItems = rows.length;
 
     return successResponse({ groups, totalOverdueItems });

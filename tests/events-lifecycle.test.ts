@@ -349,6 +349,78 @@ describe("events lifecycle – registration API", () => {
       })
     );
   });
+
+  it("returns 400 for empty request body", async () => {
+    const { POST } = await import("@/app/api/opac/events/registrations/route");
+    const req = new Request("http://localhost/api/opac/events/registrations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    }) as any;
+    const res = await POST(req);
+
+    expect(res.status).toBe(400);
+    expect(mockRegisterPatronForEvent).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for missing eventId in register action", async () => {
+    const { POST } = await import("@/app/api/opac/events/registrations/route");
+    const res = await POST(makeJsonRequest({ action: "register" }));
+
+    expect(res.status).toBe(400);
+    expect(mockRegisterPatronForEvent).not.toHaveBeenCalled();
+  });
+
+  it("returns error response when DB function throws", async () => {
+    const event = makeMockEvent();
+    mockGetEventById.mockReturnValue(event);
+    mockRegisterPatronForEvent.mockRejectedValue(new Error("DB error"));
+
+    const { POST } = await import("@/app/api/opac/events/registrations/route");
+    const res = await POST(makeJsonRequest({ action: "register", eventId: "evt-001" }));
+
+    expect(res.status).toBe(500);
+  });
+
+  it("handles the already_waitlisted action branch", async () => {
+    const event = makeMockEvent({ capacity: 10, spotsAvailable: 0 });
+    mockGetEventById.mockReturnValue(event);
+
+    const reg = makeRegistrationRecord({
+      status: "waitlisted",
+      waitlistPosition: 2,
+    });
+    mockRegisterPatronForEvent.mockResolvedValue({
+      registration: reg,
+      action: "already_waitlisted",
+      promotedFromWaitlist: false,
+    });
+
+    const { POST } = await import("@/app/api/opac/events/registrations/route");
+    const res = await POST(makeJsonRequest({ action: "register", eventId: "evt-001" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.action).toBe("already_waitlisted");
+    expect(data.message).toMatch(/waitlist/i);
+  });
+
+  it("returns 404 when update_reminders targets a nonexistent registration", async () => {
+    const event = makeMockEvent();
+    mockGetEventById.mockReturnValue(event);
+    mockUpdatePatronEventReminder.mockResolvedValue(null);
+
+    const { POST } = await import("@/app/api/opac/events/registrations/route");
+    const res = await POST(
+      makeJsonRequest({
+        action: "update_reminders",
+        eventId: "evt-001",
+        reminderChannel: "email",
+      })
+    );
+
+    expect(res.status).toBe(404);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -405,6 +477,61 @@ describe("events lifecycle – cron reminders", () => {
 
     expect(data2.processed).toBe(0);
     expect(mockMarkReminderSent).not.toHaveBeenCalled();
+  });
+
+  it("handles duplicate notification gracefully via unique violation (true idempotency)", async () => {
+    // Simulate a scenario where the same reminder is returned on two consecutive cron runs.
+    // On the second run, createNotificationEvent throws a unique violation (code 23505),
+    // which the route handles by swallowing the duplicate. markReminderSent should still be called.
+    const reminder = {
+      registrationId: 10,
+      patronId: 42,
+      eventId: "evt-001",
+      reminderChannel: "email",
+      reminderScheduledFor: "2026-03-04T09:00:00.000Z",
+    };
+
+    mockGetDueReminders.mockResolvedValue([reminder]);
+    mockGetEventById.mockReturnValue({
+      id: "evt-001",
+      title: "Test Event",
+      date: "2026-03-05",
+    });
+    // First call succeeds
+    mockCreateNotificationEvent.mockResolvedValueOnce(undefined);
+    mockMarkReminderSent.mockResolvedValueOnce(undefined);
+
+    const { GET } = await import("@/app/api/cron/event-reminders/route");
+    const res1 = await GET(new Request("http://localhost/api/cron/event-reminders") as any);
+    const data1 = await res1.json();
+
+    expect(data1.sent).toBe(1);
+    expect(mockCreateNotificationEvent).toHaveBeenCalledTimes(1);
+    expect(mockMarkReminderSent).toHaveBeenCalledTimes(1);
+
+    // Second invocation of the same handler (same module).
+    // The same reminder is still returned by getDueReminders (race condition).
+    // createNotificationEvent throws a unique violation, which should be swallowed.
+    vi.clearAllMocks();
+    mockGetDueReminders.mockResolvedValue([reminder]);
+    mockGetEventById.mockReturnValue({
+      id: "evt-001",
+      title: "Test Event",
+      date: "2026-03-05",
+    });
+    const uniqueViolation = Object.assign(new Error("duplicate key"), { code: "23505" });
+    mockCreateNotificationEvent.mockRejectedValueOnce(uniqueViolation);
+    mockMarkReminderSent.mockResolvedValueOnce(undefined);
+
+    const res2 = await GET(new Request("http://localhost/api/cron/event-reminders") as any);
+    const data2 = await res2.json();
+
+    // The route's createNotificationEventIdempotent swallows 23505,
+    // so the reminder should still be marked as sent successfully.
+    expect(data2.processed).toBe(1);
+    expect(data2.sent).toBe(1);
+    expect(data2.failed).toBe(0);
+    expect(mockMarkReminderSent).toHaveBeenCalledTimes(1);
   });
 
   it("processes multiple reminders in a single cron run", async () => {

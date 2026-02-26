@@ -207,15 +207,13 @@ export async function updateChallengeProgress(
   studentId: number,
   delta: number
 ): Promise<ChallengeProgress> {
-  // Fetch the challenge goal to determine completion
-  const challenge = await querySingle<{ goal_value: number }>(
-    `SELECT goal_value FROM library.k12_reading_challenges WHERE id = $1`,
-    [challengeId]
-  );
-  if (!challenge) throw new Error("Challenge not found");
-
+  // Atomic CTE: fetch goal_value and upsert progress in a single statement
+  // to eliminate the TOCTOU race between separate SELECT and INSERT/UPDATE.
   const row = await querySingle<ProgressRow>(
     `
+      WITH challenge AS (
+        SELECT goal_value FROM library.k12_reading_challenges WHERE id = $1
+      )
       INSERT INTO library.k12_challenge_progress (
         challenge_id,
         student_id,
@@ -223,23 +221,27 @@ export async function updateChallengeProgress(
         completed_at,
         updated_at
       )
-      VALUES ($1, $2, GREATEST(0, $3), CASE WHEN $3 >= $4 THEN NOW() ELSE NULL END, NOW())
+      SELECT $1, $2, GREATEST(0, $3),
+        CASE WHEN $3 >= (SELECT goal_value FROM challenge) THEN NOW() ELSE NULL END,
+        NOW()
+      FROM challenge
       ON CONFLICT (challenge_id, student_id)
       DO UPDATE SET
         progress_value = GREATEST(0, library.k12_challenge_progress.progress_value + $3),
         completed_at = CASE
-          WHEN library.k12_challenge_progress.progress_value + $3 >= $4
-            AND library.k12_challenge_progress.completed_at IS NULL
-          THEN NOW()
-          ELSE library.k12_challenge_progress.completed_at
+          WHEN library.k12_challenge_progress.completed_at IS NOT NULL
+            THEN library.k12_challenge_progress.completed_at
+          WHEN library.k12_challenge_progress.progress_value + $3 >= (SELECT goal_value FROM challenge)
+            THEN NOW()
+          ELSE NULL
         END,
         updated_at = NOW()
       RETURNING *
     `,
-    [challengeId, studentId, delta, challenge.goal_value]
+    [challengeId, studentId, delta]
   );
 
-  if (!row) throw new Error("Failed to update challenge progress");
+  if (!row) throw new Error("Challenge not found or failed to update progress");
   return toProgress(row);
 }
 

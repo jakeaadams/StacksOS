@@ -272,9 +272,17 @@
   }
 
   /* Clean typography for printed content */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     page-break-after: avoid;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family:
+      system-ui,
+      -apple-system,
+      sans-serif;
   }
 
   table {
@@ -295,7 +303,9 @@
   }
 
   /* Hide interactive elements */
-  input, select, textarea,
+  input,
+  select,
+  textarea,
   [contenteditable],
   .pagination,
   .tab-list,
@@ -324,4 +334,22 @@
     font-weight: bold;
   }
 
+  /* Barcode cards print layout */
+  .barcode-sheet,
+  .barcode-sheet * {
+    visibility: visible !important;
+  }
+
+  .barcode-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  .barcode-card {
+    page-break-inside: avoid;
+    width: 2.5in;
+    height: 1.5in;
+  }
 }

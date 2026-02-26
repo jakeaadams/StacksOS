@@ -109,14 +109,13 @@ export default function OverdueDashboardPage() {
     );
   }
 
+  // TODO: Placeholder – bulk overdue notice sending is not yet implemented.
+  // This will be replaced with a real notification dispatch in a future update.
   function onBulkNotice() {
     if (selectedStudentIds.length === 0) return;
-    const selectedNames = groups
-      .filter((g) => selectedStudentIds.includes(g.studentId))
-      .map((g) => g.studentName);
-    toast.success(
-      `Overdue notice queued for ${selectedNames.length} student(s): ${selectedNames.join(", ")}`
-    );
+    toast("Coming soon", {
+      description: "Bulk overdue notices will be available in a future update.",
+    });
     setSelectedStudentIds([]);
   }
 
@@ -210,6 +209,7 @@ export default function OverdueDashboardPage() {
                             type="checkbox"
                             checked={selectedStudentIds.includes(group.studentId)}
                             onChange={() => toggleStudentSelection(group.studentId)}
+                            aria-label={`Select ${group.studentName}`}
                           />
                           <CardTitle className="text-sm font-medium">{group.studentName}</CardTitle>
                         </label>

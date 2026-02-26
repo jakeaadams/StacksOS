@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
           offset, // offset
         ]
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Evergreen installs vary; many don't expose authority browse in OpenSRF.
       // Fall back to searching authority.record_entry via PCrud (no direct DB access required).
       if (
@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
         : "Authority browse is not available via OpenSRF on this Evergreen server; using authority record search.",
       message: null,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Authority GET", req);
   }
 }
@@ -215,7 +215,7 @@ export async function POST(req: NextRequest) {
     }
 
     return successResponse({ created, count: created.length });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Authority POST", req);
   }
 }

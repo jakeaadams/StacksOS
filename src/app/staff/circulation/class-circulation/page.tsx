@@ -817,6 +817,7 @@ export default function K12ClassCirculationPage() {
                       onChange={(event) =>
                         setCheckoutForm((prev) => ({ ...prev, dueTs: event.target.value }))
                       }
+                      aria-label="Due date"
                     />
                     <Input
                       value={checkoutForm.notes}

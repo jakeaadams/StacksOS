@@ -67,8 +67,8 @@ export async function GET(req: NextRequest) {
       }));
 
     return successResponse({ allocations: mappedAllocations });
-  } catch (err: any) {
-    if (err && typeof err === "object" && "name" in err && err.name === "AuthenticationError") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AuthenticationError") {
       return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(err, "Allocations GET", req);
@@ -147,8 +147,8 @@ export async function POST(req: NextRequest) {
       default:
         return errorResponse("Invalid action. Use allocate, transfer, or delete_allocation.", 400);
     }
-  } catch (err: any) {
-    if (err && typeof err === "object" && "name" in err && err.name === "AuthenticationError") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AuthenticationError") {
       return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(err, "Allocations POST", req);

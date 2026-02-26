@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
             provider: typeof acc.provider === "object" ? acc.provider?.id : acc.provider,
             path: acc.path || "",
           }));
-        } catch (error: any) {
+        } catch (error: unknown) {
           logger.warn(
             { route: "api.evergreen.acquisitions.edi", action, err: String(error) },
             "EDI accounts lookup failed"
@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
               path: acc.path || "",
             },
           });
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           return errorResponse("Failed to retrieve EDI account", 500);
         }
       }
@@ -155,7 +155,7 @@ export async function GET(req: NextRequest) {
             processTime: msg.process_time || msg.edit_time,
             vendorMessageId: msg.vendor_message_id || msg.remote_file,
           }));
-        } catch (error: any) {
+        } catch (error: unknown) {
           logger.warn(
             { route: "api.evergreen.acquisitions.edi", action, err: String(error) },
             "EDI messages lookup failed"
@@ -186,8 +186,9 @@ export async function GET(req: NextRequest) {
       default:
         return errorResponse("Invalid action", 400);
     }
-  } catch (err: any) {
-    if (err.name === "AuthenticationError") return errorResponse("Authentication required", 401);
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AuthenticationError")
+      return errorResponse("Authentication required", 401);
     return serverErrorResponse(err, "EDI GET", req);
   }
 }
@@ -241,7 +242,7 @@ export async function POST(req: NextRequest) {
             { account: result, accountId: result?.id || result },
             "EDI account created"
           );
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           return errorResponse("Failed to create EDI account", 500);
         }
       }
@@ -280,7 +281,7 @@ export async function POST(req: NextRequest) {
           if (result?.ilsevent)
             return errorResponse(result.textcode || "Failed to update EDI account", 400);
           return successResponse({ updated: true, accountId: id }, "EDI account updated");
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           return errorResponse("Failed to update EDI account", 500);
         }
       }
@@ -296,7 +297,7 @@ export async function POST(req: NextRequest) {
           if (result?.ilsevent)
             return errorResponse(result.textcode || "Failed to delete EDI account", 400);
           return successResponse({ deleted: true, accountId: id }, "EDI account deleted");
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           return errorResponse("Failed to delete EDI account", 500);
         }
       }
@@ -314,7 +315,7 @@ export async function POST(req: NextRequest) {
           if (result?.ilsevent)
             return errorResponse(result.textcode || "Failed to send EDI order", 400);
           return successResponse({ sent: true, purchaseOrderId, accountId }, "EDI order sent");
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           return errorResponse("Failed to send EDI order", 500);
         }
       }
@@ -334,7 +335,7 @@ export async function POST(req: NextRequest) {
             { processed: true, accountId, count: processedCount },
             "Processed " + processedCount + " inbound EDI message(s)"
           );
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           return errorResponse("Failed to process inbound EDI", 500);
         }
       }
@@ -350,7 +351,7 @@ export async function POST(req: NextRequest) {
           if (result?.ilsevent)
             return errorResponse(result.textcode || "Failed to retry EDI message", 400);
           return successResponse({ retried: true, messageId }, "EDI message queued for retry");
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           return errorResponse("Failed to retry EDI message", 500);
         }
       }
@@ -366,16 +367,18 @@ export async function POST(req: NextRequest) {
           if (result?.ilsevent || result === false)
             return errorResponse(result?.textcode || "Connection test failed", 400);
           return successResponse({ success: true, accountId }, "Connection test successful");
-        } catch (_error: any) {
+        } catch (_error: unknown) {
           return errorResponse("Connection test failed", 500);
         }
       }
       default:
         return errorResponse("Invalid action", 400);
     }
-  } catch (err: any) {
-    if (err.name === "AuthenticationError") return errorResponse("Authentication required", 401);
-    if (err.name === "PermissionError") return errorResponse("Permission denied", 403);
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AuthenticationError")
+      return errorResponse("Authentication required", 401);
+    if (err instanceof Error && err.name === "PermissionError")
+      return errorResponse("Permission denied", 403);
     return serverErrorResponse(err, "EDI POST", req);
   }
 }

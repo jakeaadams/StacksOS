@@ -135,7 +135,7 @@ export async function GET(req: NextRequest) {
           400
         );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Permissions GET", req);
   }
 }
@@ -495,7 +495,7 @@ export async function POST(req: NextRequest) {
       default:
         return errorResponse("Invalid type. Use: group or group_perm", 400);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return serverErrorResponse(error, "Permissions POST", req);
   }
 }

@@ -310,7 +310,7 @@ const PROFILE_TASKS: Record<
   },
 };
 
-function statusFromChecks(
+export function statusFromChecks(
   keys: OnboardingCheckKey[],
   checks: OnboardingChecksInput
 ): OnboardingTaskStatus {

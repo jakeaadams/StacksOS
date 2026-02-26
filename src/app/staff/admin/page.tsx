@@ -311,19 +311,7 @@ export default function AdminHubPage() {
           </Card>
         </div>
 
-        {featureFlags.ai && (
-          <AdminCopilotPanel
-            orgId={user?.activeOrgId || 1}
-            metrics={{
-              circulationToday: 0,
-              circulationWeek: 0,
-              overdueRate: 0,
-              holdFillRate: 0,
-              activePatrons: 0,
-              collectionSize: 0,
-            }}
-          />
-        )}
+        {featureFlags.ai && <AdminCopilotPanel orgId={user?.activeOrgId || 1} metrics={null} />}
       </PageContent>
     </PageContainer>
   );

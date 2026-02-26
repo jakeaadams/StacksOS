@@ -201,8 +201,8 @@ export async function GET(req: NextRequest) {
     );
 
     return successResponse({ fundingSources: mappedSources });
-  } catch (err: any) {
-    if (err && typeof err === "object" && "name" in err && err.name === "AuthenticationError") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AuthenticationError") {
       return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(err, "Funding Sources GET", req);
@@ -313,8 +313,8 @@ export async function POST(req: NextRequest) {
       default:
         return errorResponse("Invalid action. Use create, update, delete, or add_credit.", 400);
     }
-  } catch (err: any) {
-    if (err && typeof err === "object" && "name" in err && err.name === "AuthenticationError") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AuthenticationError") {
       return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(err, "Funding Sources POST", req);

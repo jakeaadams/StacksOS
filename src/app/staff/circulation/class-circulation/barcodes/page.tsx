@@ -186,30 +186,6 @@ export default function BarcodesPage() {
           </div>
         ) : null}
       </PageContent>
-
-      {/* Print-specific styles */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .barcode-sheet,
-          .barcode-sheet * {
-            visibility: visible;
-          }
-          .barcode-sheet {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          .barcode-card {
-            page-break-inside: avoid;
-            width: 2.5in;
-            height: 1.5in;
-          }
-        }
-      `}</style>
     </PageContainer>
   );
 }

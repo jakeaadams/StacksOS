@@ -4,7 +4,7 @@ test.describe("Events Lifecycle", () => {
   test("events list page loads and renders heading", async ({ page }) => {
     const response = await page.goto("/opac/events");
     expect(response, "events page did not respond").toBeTruthy();
-    expect(response?.status(), "events page returned error status").toBeLessThan(500);
+    expect(response?.status(), "events page returned error status").toBe(200);
 
     // The page should contain an events-related heading or content.
     // The heading text comes from translations so we match flexibly.
@@ -12,22 +12,24 @@ test.describe("Events Lifecycle", () => {
     await expect(body).toBeVisible();
 
     // Check for page content that indicates the events module loaded.
-    // Accept either a heading, the CalendarDays icon area, or events-related text.
-    const hasEventsContent = await page
+    // Accept either a heading or events-related text content.
+    const eventsHeading = page
       .locator("h1, h2, [data-testid]")
       .filter({ hasText: /event/i })
-      .first()
-      .isVisible({ timeout: 10000 })
-      .catch(() => false);
+      .first();
+    const hasEventsContent = await eventsHeading.isVisible({ timeout: 10000 }).catch(() => false);
 
-    const hasCalendarIcon = await page
-      .locator("svg")
+    // Use a specific selector for calendar-related UI instead of any svg
+    const hasCalendarUI = await page
+      .locator(
+        "[data-testid='events-calendar'], .events-content, [class*='calendar'], [class*='event']"
+      )
       .first()
       .isVisible({ timeout: 3000 })
       .catch(() => false);
 
     expect(
-      hasEventsContent || hasCalendarIcon,
+      hasEventsContent || hasCalendarUI,
       "events page should show events-related content or calendar UI"
     ).toBeTruthy();
   });
@@ -44,6 +46,8 @@ test.describe("Events Lifecycle", () => {
     expect(visibleText).not.toMatch(/Application error/i);
     // Check for HTTP 500 error patterns (not bare "500" which appears in framework code)
     expect(visibleText).not.toMatch(/\b500\s+(Internal\s+)?Server\s+Error/i);
+    // Positive assertion: page loaded with meaningful content
+    expect(visibleText?.length).toBeGreaterThan(0);
   });
 
   test("events page handles empty state gracefully", async ({ page }) => {
@@ -67,6 +71,8 @@ test.describe("Events Lifecycle", () => {
       .catch(() => "");
 
     expect(bodyText).not.toMatch(/Unhandled Runtime Error/i);
+    // Positive assertion: the page rendered something meaningful
+    expect(bodyText?.length).toBeGreaterThan(0);
   });
 
   test("event detail page renders when an event exists", async ({ page }) => {
@@ -85,7 +91,7 @@ test.describe("Events Lifecycle", () => {
     const hasEventLink = await eventLink.isVisible({ timeout: 5000 }).catch(() => false);
 
     if (!hasEventLink) {
-      // No events exist — skip the detail page check defensively
+      // No events exist -- skip the detail page check defensively
       test.skip(true, "No event links found on events page (likely no events configured)");
       return;
     }
@@ -96,13 +102,12 @@ test.describe("Events Lifecycle", () => {
     await eventLink.click();
     await page.waitForURL(/\/opac\/events\/.+/, { timeout: 10000 });
 
-    // The detail page should not error
-    const bodyText = await page
-      .locator("body")
-      .textContent({ timeout: 10000 })
-      .catch(() => "");
+    // The detail page should not error -- let assertions fail directly (no .catch)
+    const bodyText = await page.locator("body").textContent({ timeout: 10000 });
     expect(bodyText).not.toMatch(/Internal Server Error/i);
     expect(bodyText).not.toMatch(/Application error/i);
+    // Positive assertion: detail page shows event-related content
+    expect(bodyText?.length).toBeGreaterThan(0);
   });
 
   test("event detail page shows capacity info when applicable", async ({ page }) => {
@@ -199,15 +204,19 @@ test.describe("Events Lifecycle", () => {
     await eventLink.click();
     await page.waitForURL(/\/opac\/events\/.+/, { timeout: 10000 });
 
-    // Look for "Events" breadcrumb link that navigates back
+    // Look for "Events" breadcrumb link that navigates back.
+    // If the breadcrumb feature is not present, skip the test rather than silently passing.
     const eventsNavLink = page.locator("a[href='/opac/events']").first();
     const hasBreadcrumb = await eventsNavLink.isVisible({ timeout: 5000 }).catch(() => false);
 
-    if (hasBreadcrumb) {
-      await eventsNavLink.click();
-      await page.waitForURL(/\/opac\/events$/, { timeout: 10000 });
-      expect(page.url()).toMatch(/\/opac\/events$/);
+    if (!hasBreadcrumb) {
+      test.skip(true, "Breadcrumb navigation link not present on event detail page");
+      return;
     }
+
+    await eventsNavLink.click();
+    await page.waitForURL(/\/opac\/events$/, { timeout: 10000 });
+    expect(page.url()).toMatch(/\/opac\/events$/);
   });
 
   test("events page filter controls are present", async ({ page }) => {
@@ -234,14 +243,14 @@ test.describe("Events Lifecycle", () => {
 
   test("events API endpoint responds", async ({ request }) => {
     const res = await request.get("/api/opac/events");
-    expect(res.status()).toBeLessThan(500);
+    // Strict status check: expect 200 OK
+    expect(res.status()).toBe(200);
 
     const data = await res.json().catch(() => null);
-    if (res.ok() && data) {
-      // If the API responds with events data, validate shape
-      expect(data).toHaveProperty("events");
-      expect(Array.isArray(data.events)).toBe(true);
-    }
+    expect(data).not.toBeNull();
+    // Validate the response shape
+    expect(data).toHaveProperty("events");
+    expect(Array.isArray(data.events)).toBe(true);
   });
 
   test("event registrations API rejects unauthenticated POST", async ({ request }) => {

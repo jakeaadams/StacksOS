@@ -168,7 +168,7 @@ async function fetchLoginActivities(
     }
 
     return results;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.warn({ error: String(error) }, "Failed to fetch login activities");
     return [];
   }
@@ -263,7 +263,7 @@ async function fetchCirculationActivities(
     }
 
     return results;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.warn({ error: String(error) }, "Failed to fetch circulation activities");
     return [];
   }
@@ -342,7 +342,7 @@ async function fetchHoldActivities(
     }
 
     return results;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.warn({ error: String(error) }, "Failed to fetch hold activities");
     return [];
   }
@@ -419,7 +419,7 @@ async function fetchPaymentActivities(
     }
 
     return results;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.warn({ error: String(error) }, "Failed to fetch payment activities");
     return [];
   }
@@ -567,7 +567,7 @@ async function fetchPatronChangeActivities(
 
       patronChangeStacksosCapability = "supported";
       return { activities: results, available: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // DB fallback may be unavailable if the Evergreen DB user lacks CREATE privileges in `library`.
       // Fall back to parsing the StacksOS audit log file (best-effort).
       try {
@@ -576,7 +576,7 @@ async function fetchPatronChangeActivities(
           patronChangeStacksosCapability = "supported";
           return { activities: fromLog, available: true };
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         logger.warn({ error: String(e) }, "StacksOS audit-log patron-change fallback unavailable");
       }
 
@@ -609,7 +609,7 @@ async function fetchPatronChangeActivities(
             order_by: { auacth: "audit_time DESC" },
           },
         ]);
-      } catch (error: any) {
+      } catch (error: unknown) {
         const code =
           typeof (error as Record<string, any>)?.code === "string"
             ? String((error as Record<string, any>).code)
@@ -667,7 +667,7 @@ async function fetchPatronChangeActivities(
       }
 
       return [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       const code =
         typeof (error as Record<string, any>)?.code === "string"
           ? String((error as Record<string, any>).code)
@@ -692,7 +692,7 @@ async function fetchPatronChangeActivities(
 }
 
 // Extract meaningful changes from patron history record
-function extractPatronChanges(record: any): Record<string, any> {
+function extractPatronChanges(record: Record<string, unknown>): Record<string, any> {
   const changes: Record<string, any> = {};
   const fields = [
     "email",
@@ -867,8 +867,8 @@ export async function GET(req: NextRequest) {
         end_date: endDate || null,
       },
     });
-  } catch (err: any) {
-    if (err.name === "AuthenticationError") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AuthenticationError") {
       return errorResponse("Authentication required", 401);
     }
     return serverErrorResponse(err, "Activity GET", req);

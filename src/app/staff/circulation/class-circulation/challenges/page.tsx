@@ -449,7 +449,7 @@ export default function ReadingChallengesPage() {
                     </CardHeader>
                     <CardContent className="space-y-2">
                       <Select value={progressStudentId} onValueChange={setProgressStudentId}>
-                        <SelectTrigger className="h-9">
+                        <SelectTrigger className="h-9" aria-label="Select student">
                           <SelectValue placeholder="Select student" />
                         </SelectTrigger>
                         <SelectContent>
@@ -467,6 +467,7 @@ export default function ReadingChallengesPage() {
                           value={progressDelta}
                           onChange={(e) => setProgressDelta(e.target.value)}
                           className="w-20"
+                          aria-label="Progress amount"
                         />
                         <Button
                           size="sm"
