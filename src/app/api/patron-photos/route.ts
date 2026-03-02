@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { patronPhotosDelete, patronPhotosGet, patronPhotosPost } from "@/lib/patron-photos-api";
 import { getRequestMeta } from "@/lib/api";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { z as _z } from "zod";
 
 export const runtime = "nodejs";
 

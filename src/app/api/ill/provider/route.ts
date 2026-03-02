@@ -3,7 +3,6 @@ import { serverErrorResponse, successResponse } from "@/lib/api";
 import { getIllSyncCounts } from "@/lib/db/ill";
 import { getIllProviderStatus } from "@/lib/ill/provider";
 import { requirePermissions } from "@/lib/permissions";
-import { z as _z } from "zod";
 
 export async function GET(req: NextRequest) {
   try {

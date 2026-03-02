@@ -10,7 +10,6 @@ import {
 import { getRequestMeta, requireAuthToken } from "@/lib/api";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit";
-import { z as _z } from "zod";
 
 interface PreflightRecord {
   barcode: string;

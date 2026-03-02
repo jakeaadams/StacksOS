@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { callOpenSRF, serverErrorResponse, successResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
-import { z as _z } from "zod";
 
 export async function GET(req: NextRequest) {
   try {

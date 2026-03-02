@@ -7,7 +7,6 @@ import {
   getRequestMeta,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
-import { z as _z } from "zod";
 
 type OrgSettingDef = {
   key: string;

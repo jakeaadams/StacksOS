@@ -4,7 +4,6 @@ import { errorResponse, getRequestMeta, successResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getRedisClient, redisEnabled, redisKey } from "@/lib/redis";
-import { z as _z } from "zod";
 
 /**
  * Google Books API Integration

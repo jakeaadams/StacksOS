@@ -143,7 +143,7 @@ const cancelHoldSchema = z.object({
 const updateHoldSchema = z
   .object({
     holdId: z.coerce.number().int().positive(),
-    action: z.enum(["freeze", "thaw", "update_pickup"]).optional(),
+    action: z.enum(["suspend", "activate", "change_pickup"]).optional(),
     suspendUntil: z.string().max(30).optional().nullable(),
     pickupLocation: z.coerce.number().int().positive().optional(),
   })
@@ -485,19 +485,19 @@ export async function PATCH(req: NextRequest) {
 
     let result;
 
-    if ((action as string) === "suspend") {
+    if (action === "suspend") {
       // Suspend/freeze the hold
       result = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.update", [
         patronToken,
         { id: holdId, frozen: "t", thaw_date: suspendUntil || null },
       ]);
-    } else if ((action as string) === "activate") {
+    } else if (action === "activate") {
       // Activate/thaw the hold
       result = await callOpenSRF("open-ils.circ", "open-ils.circ.hold.update", [
         patronToken,
         { id: holdId, frozen: "f", thaw_date: null },
       ]);
-    } else if ((action as string) === "change_pickup") {
+    } else if (action === "change_pickup") {
       const pickupId =
         typeof pickupLocation === "number"
           ? pickupLocation
@@ -539,9 +539,9 @@ export async function PATCH(req: NextRequest) {
     return successResponse({
       success: true,
       message:
-        (action as string) === "suspend"
+        action === "suspend"
           ? "Hold suspended successfully"
-          : (action as string) === "activate"
+          : action === "activate"
             ? "Hold activated successfully"
             : "Hold updated successfully",
     });

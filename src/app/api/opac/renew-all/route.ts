@@ -10,7 +10,6 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
-import { z as _z } from "zod";
 
 // POST /api/opac/renew-all - Renew all eligible items
 export async function POST(req: NextRequest) {

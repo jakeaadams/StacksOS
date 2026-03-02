@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateCSRFToken, setCSRFCookie, getCSRFToken } from "@/lib/csrf";
-import { z as _z } from "zod";
 
 /**
  * GET /api/csrf-token

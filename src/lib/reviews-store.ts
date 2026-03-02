@@ -38,6 +38,19 @@ const STORE_PATH = process.env.REVIEWS_STORE_PATH || ".data/reviews.json";
 
 let cache: StoreData | null = null;
 
+// In-process write mutex to prevent concurrent flush races.
+let writeLock: Promise<void> = Promise.resolve();
+
+function withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
+  const next = writeLock.then(fn, fn);
+  // Update the lock chain. Errors are handled by the caller, so swallow here.
+  writeLock = next.then(
+    () => {},
+    () => {}
+  );
+  return next;
+}
+
 function emptyStore(): StoreData {
   return { reviews: {}, nextId: 1 };
 }
@@ -92,9 +105,11 @@ export async function getReviews(bibId: number): Promise<Review[]> {
 }
 
 export async function setReviews(bibId: number, reviews: Review[]): Promise<void> {
-  const store = ensureLoaded();
-  store.reviews[String(bibId)] = reviews;
-  await flush();
+  return withWriteLock(async () => {
+    const store = ensureLoaded();
+    store.reviews[String(bibId)] = reviews;
+    await flush();
+  });
 }
 
 export async function getAllReviews(): Promise<Record<string, Review[]>> {
@@ -103,29 +118,33 @@ export async function getAllReviews(): Promise<Record<string, Review[]>> {
 }
 
 export async function getNextId(): Promise<number> {
-  const store = ensureLoaded();
-  const id = store.nextId;
-  store.nextId += 1;
-  await flush();
-  return id;
+  return withWriteLock(async () => {
+    const store = ensureLoaded();
+    const id = store.nextId;
+    store.nextId += 1;
+    await flush();
+    return id;
+  });
 }
 
 export async function deleteReview(
   bibId: number,
   reviewId: number
 ): Promise<{ deleted: boolean; review?: Review }> {
-  const store = ensureLoaded();
-  const key = String(bibId);
-  const reviews = store.reviews[key];
-  if (!reviews) return { deleted: false };
+  return withWriteLock(async () => {
+    const store = ensureLoaded();
+    const key = String(bibId);
+    const reviews = store.reviews[key];
+    if (!reviews) return { deleted: false };
 
-  const idx = reviews.findIndex((r) => r.id === reviewId);
-  if (idx === -1) return { deleted: false };
+    const idx = reviews.findIndex((r) => r.id === reviewId);
+    if (idx === -1) return { deleted: false };
 
-  const [removed] = reviews.splice(idx, 1);
-  store.reviews[key] = reviews;
-  await flush();
-  return { deleted: true, review: removed };
+    const [removed] = reviews.splice(idx, 1);
+    store.reviews[key] = reviews;
+    await flush();
+    return { deleted: true, review: removed };
+  });
 }
 
 /**
@@ -151,5 +170,7 @@ export async function findReviewById(
  * before calling this to flush changes.
  */
 export async function persistChanges(): Promise<void> {
-  await flush();
+  return withWriteLock(async () => {
+    await flush();
+  });
 }

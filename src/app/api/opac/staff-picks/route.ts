@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import { callOpenSRF, successResponse } from "@/lib/api";
 import { payloadFirst } from "@/lib/api/extract-payload";
 import { logger } from "@/lib/logger";
-import { z as _z } from "zod";
 
 interface StaffPick {
   id: number;

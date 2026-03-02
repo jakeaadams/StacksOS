@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: cookieSecure,
         sameSite: "lax",
+        path: "/",
         // Library-safe session durations: patrons often use shared public terminals,
         // so we cap "remember me" at 24h and default sessions at 2h.
         maxAge: rememberMe ? 60 * 60 * 24 : 60 * 60 * 2,

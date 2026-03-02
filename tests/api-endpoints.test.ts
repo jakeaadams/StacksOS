@@ -92,7 +92,7 @@ describe("API Endpoints", () => {
 
       expect(data.status).toBe("unhealthy");
       expect(data.checks.database.status).toBe("down");
-      expect(data.checks.database.error).toBe("Connection refused");
+      expect(data.checks.database.error).toBe("Database connection failed");
       expect(response.status).toBe(503);
     });
 

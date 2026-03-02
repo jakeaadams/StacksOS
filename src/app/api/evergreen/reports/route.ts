@@ -8,7 +8,6 @@ import {
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { query } from "@/lib/db/evergreen";
-import { z as _z } from "zod";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;

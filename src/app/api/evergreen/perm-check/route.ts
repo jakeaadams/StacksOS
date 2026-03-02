@@ -9,7 +9,6 @@ import {
 } from "@/lib/api";
 import { getActorFromToken } from "@/lib/audit";
 import { logger } from "@/lib/logger";
-import { z as _z } from "zod";
 
 function normalizePermPayload(payload: unknown, perms: string[]): Record<string, boolean> | null {
   if (!payload) return null;

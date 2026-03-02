@@ -1,6 +1,5 @@
 import { getRequestMeta, successResponse, withErrorHandling } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
-import { z as _z } from "zod";
 import { getTenantConfig } from "@/lib/tenant/config";
 
 export const GET = withErrorHandling(async (req: Request) => {

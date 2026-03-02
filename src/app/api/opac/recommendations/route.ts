@@ -4,7 +4,6 @@ import { payloadFirst } from "@/lib/api/extract-payload";
 import { logger } from "@/lib/logger";
 import { getOpacPrivacyPrefs } from "@/lib/db/opac";
 import { requirePatronSession } from "@/lib/opac-auth";
-import { z as _z } from "zod";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;

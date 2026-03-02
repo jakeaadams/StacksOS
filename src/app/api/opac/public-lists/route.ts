@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { callOpenSRF, successResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { z as _z } from "zod";
 
 // GET /api/opac/public-lists - List public bookbags (shareable lists)
 export async function GET(req: NextRequest) {

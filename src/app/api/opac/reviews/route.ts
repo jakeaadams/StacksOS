@@ -60,24 +60,17 @@ function calculateStats(reviews: Review[]) {
   };
 }
 
-const _reviewPostSchema = z
-  .object({
-    bibId: z.coerce.number().int().positive(),
-    rating: z.coerce.number().int().min(1).max(5),
-    title: z.string().trim().max(256).optional(),
-    content: z.string().max(4096).optional(),
-  })
-  .passthrough();
+const reviewPostSchema = z.object({
+  bibId: z.coerce.number().int().positive(),
+  rating: z.coerce.number().int().min(1).max(5),
+  title: z.string().trim().max(256).optional(),
+  text: z.string().max(4096).optional(),
+});
 
-const _reviewPutSchema = z
-  .object({
-    id: z.coerce.number().int().positive().optional(),
-    reviewId: z.coerce.number().int().positive().optional(),
-    rating: z.coerce.number().int().min(1).max(5).optional(),
-    title: z.string().trim().max(256).optional(),
-    content: z.string().max(4096).optional(),
-  })
-  .passthrough();
+const reviewPutSchema = z.object({
+  reviewId: z.coerce.number().int().positive(),
+  action: z.enum(["helpful", "report"]),
+});
 
 export async function GET(req: NextRequest) {
   try {
@@ -154,18 +147,15 @@ export async function POST(req: NextRequest) {
       `${user.first_given_name || ""} ${user.family_name || ""}`.trim() || "Anonymous";
     const verified = true; // They are logged in with valid credentials
 
-    const body = await req.json();
-    const { bibId, rating, title, text } = body;
-
-    if (!bibId) {
-      return errorResponse("bibId is required", 400);
+    const parsed = reviewPostSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return errorResponse(
+        "Invalid review: " + parsed.error.issues.map((i) => i.message).join(", "),
+        400
+      );
     }
-
-    if (!rating || rating < 1 || rating > 5) {
-      return errorResponse("Rating must be between 1 and 5", 400);
-    }
-
-    const bibIdNum = parseInt(bibId, 10);
+    const { bibId, rating, title, text } = parsed.data;
+    const bibIdNum = bibId;
 
     // Check if patron already reviewed this item
     const existingReviews = await getReviews(bibIdNum);
@@ -213,10 +203,22 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    const { ip } = getRequestMeta(req);
+
+    // Rate limiting — 30 actions per hour per IP (prevents vote manipulation)
+    const rateLimit = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 60 * 60 * 1000,
+      endpoint: "opac-reviews-action",
+    });
+    if (!rateLimit.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429);
+    }
+
     // Require patron authentication
-    let _patronId: number;
+    let patronId: number;
     try {
-      ({ patronId: _patronId } = await requirePatronSession());
+      ({ patronId } = await requirePatronSession());
     } catch (error) {
       if (error instanceof PatronAuthError) {
         logger.warn({ error: String(error) }, "Route /api/opac/reviews auth failed");
@@ -225,16 +227,17 @@ export async function PUT(req: NextRequest) {
       throw error;
     }
 
-    const body = await req.json();
-    const { reviewId, action } = body;
-
-    if (!reviewId) {
-      return errorResponse("reviewId is required", 400);
+    const parsed = reviewPutSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return errorResponse(
+        "Invalid request: " + parsed.error.issues.map((i) => i.message).join(", "),
+        400
+      );
     }
+    const { reviewId, action } = parsed.data;
 
     // Find the review across all bibs
     const found = await findReviewById(reviewId);
-
     if (!found) {
       return errorResponse("Review not found", 404);
     }
@@ -242,6 +245,10 @@ export async function PUT(req: NextRequest) {
     const { review: foundReview } = found;
 
     if (action === "helpful") {
+      // Prevent patrons from voting helpful on their own review
+      if (foundReview.patronId === patronId) {
+        return errorResponse("You cannot vote on your own review", 400);
+      }
       foundReview.helpful += 1;
       await persistChanges();
       return successResponse({ helpful: foundReview.helpful });

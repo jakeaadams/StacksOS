@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchEvergreen } from "@/lib/api/evergreen-fetch";
 import { getEvergreenPool } from "@/lib/db/evergreen";
 import { cookies } from "next/headers";
-import { z as _z } from "zod";
 import { getTenantConfig } from "@/lib/tenant/config";
 
 const startTime = Date.now();
@@ -33,11 +32,11 @@ async function checkDatabase(): Promise<HealthCheck> {
       status: "up",
       latency: Date.now() - start,
     };
-  } catch (error) {
+  } catch (_error) {
     return {
       status: "down",
       latency: Date.now() - start,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: "Database connection failed",
     };
   }
 }
@@ -123,11 +122,11 @@ async function checkEvergreen(): Promise<HealthCheck> {
       latency: Date.now() - start,
       error: `OpenSRF gateway returned status ${status ?? "unknown"}`,
     };
-  } catch (error) {
+  } catch (_error) {
     return {
       status: "down",
       latency: Date.now() - start,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: "Evergreen connection failed",
     };
   }
 }

@@ -8,7 +8,6 @@ import { errorResponse, getRequestMeta, successResponse, serverErrorResponse } f
 import { requirePermissions } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { imageExtForMime, parsePositiveInt } from "@/lib/upload-utils";
-import { z as _z } from "zod";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "covers");
 const MAX_BYTES = 5 * 1024 * 1024;

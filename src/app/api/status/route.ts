@@ -1,9 +1,11 @@
-import { successResponse, withErrorHandling } from "@/lib/api";
+import { successResponse, withErrorHandling, requireAuthToken } from "@/lib/api";
 import { getTenantConfig } from "@/lib/tenant/config";
 import { getActiveIncident } from "@/lib/db/support";
-import { z as _z } from "zod";
 
 export const GET = withErrorHandling(async (_req: Request) => {
+  // Require staff authentication — this endpoint exposes tenant/infrastructure details.
+  await requireAuthToken();
+
   const tenant = getTenantConfig();
   const evergreenBase = tenant.evergreenBaseUrl;
 

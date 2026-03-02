@@ -9,7 +9,6 @@ import {
 import { checkRateLimit } from "@/lib/rate-limit";
 
 import { cookies } from "next/headers";
-import { z as _z } from "zod";
 
 /**
  * OPAC Patron Logout

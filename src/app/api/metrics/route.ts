@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { errorResponse, serverErrorResponse } from "@/lib/api";
 import { getMetricsRegistry } from "@/lib/metrics";
-import { z as _z } from "zod";
 
 export const runtime = "nodejs";
 

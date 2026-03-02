@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { callOpenSRF, successResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
-import { z as _z } from "zod";
 
 /**
  * GET /api/evergreen/copy-locations

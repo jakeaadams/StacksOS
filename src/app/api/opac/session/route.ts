@@ -4,7 +4,6 @@ import { callOpenSRF, successResponse, serverErrorResponse } from "@/lib/api";
 import { cookies } from "next/headers";
 import { getOpacPatronPrefs } from "@/lib/db/opac";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
-import { z as _z } from "zod";
 
 /**
  * OPAC Session Check

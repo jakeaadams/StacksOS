@@ -79,6 +79,14 @@ function parseStripeIntent(
   };
 }
 
+const STRIPE_ID_RE = /^[a-zA-Z]{2,4}_[a-zA-Z0-9_]+$/;
+
+function validateStripeId(id: string, label: string): void {
+  if (!STRIPE_ID_RE.test(id)) {
+    throw new Error(`Invalid Stripe ${label}: ${id}`);
+  }
+}
+
 export class StripeGateway implements PaymentGateway {
   private currency: string;
   private libraryName: string;
@@ -121,6 +129,7 @@ export class StripeGateway implements PaymentGateway {
   }
 
   async confirmPayment(intentId: string): Promise<PaymentResult> {
+    validateStripeId(intentId, "payment intent ID");
     const response = await fetch(`${STRIPE_API_BASE}/payment_intents/${intentId}/confirm`, {
       method: "POST",
       headers: authHeaders(),
@@ -188,6 +197,7 @@ export class StripeGateway implements PaymentGateway {
   }
 
   async getPaymentStatus(intentId: string): Promise<PaymentIntent> {
+    validateStripeId(intentId, "payment intent ID");
     const response = await fetch(`${STRIPE_API_BASE}/payment_intents/${intentId}`, {
       method: "GET",
       headers: {

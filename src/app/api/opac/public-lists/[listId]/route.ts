@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { callOpenSRF, errorResponse, serverErrorResponse, successResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { z as _z } from "zod";
 
 // GET /api/opac/public-lists/[listId] - Fetch a public bookbag and its items (no auth)
 export async function GET(req: NextRequest, { params }: { params: Promise<{ listId: string }> }) {

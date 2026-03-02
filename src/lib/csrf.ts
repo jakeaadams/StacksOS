@@ -73,13 +73,11 @@ function constantTimeEqual(a: string, b: string): boolean {
   const aBytes = encoder.encode(a);
   const bBytes = encoder.encode(b);
 
-  if (aBytes.length !== bBytes.length) {
-    return false;
-  }
-
-  let diff = 0;
-  for (let i = 0; i < aBytes.length; i++) {
-    diff |= aBytes[i]! ^ bBytes[i]!;
+  // Always iterate over the longer buffer so length is never leaked via timing.
+  const len = Math.max(aBytes.length, bBytes.length);
+  let diff = aBytes.length ^ bBytes.length; // non-zero if lengths differ
+  for (let i = 0; i < len; i++) {
+    diff |= (aBytes[i] ?? 0) ^ (bBytes[i] ?? 0);
   }
   return diff === 0;
 }
