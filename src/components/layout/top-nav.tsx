@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { useTheme } from "next-themes";
 import { DensityToggle, UniversalSearch } from "@/components/shared";
+import { ProfileSwitcher } from "@/components/layout/profile-switcher";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useApi } from "@/hooks";
@@ -320,6 +321,10 @@ export function TopNav({
                 </Badge>
               )}
             </div>
+
+            <div className="h-7 w-px bg-border/80 hidden lg:block" />
+
+            <ProfileSwitcher />
           </div>
 
           {/* Center: Always-visible quick search (Polaris-style) */}

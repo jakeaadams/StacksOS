@@ -216,15 +216,113 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    if (action === "patrons") {
-      return successResponse({ patrons: null }, "Patron reporting requires Reporter templates");
+    if (action === "circ_trends") {
+      const days = Math.min(parseInt(searchParams.get("days") || "30", 10), 365);
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      const startStr = startDate.toISOString().split("T")[0];
+
+      const [checkoutRows, checkinRows] = await Promise.all([
+        query<{ day: string; count: string }>(
+          `SELECT xact_start::date AS day, COUNT(*) AS count
+           FROM action.circulation
+           WHERE circ_lib = $1 AND xact_start::date >= $2::date
+           GROUP BY day ORDER BY day`,
+          [orgId, startStr]
+        ).catch(() => [] as { day: string; count: string }[]),
+        query<{ day: string; count: string }>(
+          `SELECT checkin_time::date AS day, COUNT(*) AS count
+           FROM action.circulation
+           WHERE circ_lib = $1 AND checkin_time::date >= $2::date AND checkin_time IS NOT NULL
+           GROUP BY day ORDER BY day`,
+          [orgId, startStr]
+        ).catch(() => [] as { day: string; count: string }[]),
+      ]);
+
+      const coMap = new Map(checkoutRows.map((r) => [r.day, parseInt(r.count, 10)]));
+      const ciMap = new Map(checkinRows.map((r) => [r.day, parseInt(r.count, 10)]));
+      const allDays = new Set([...coMap.keys(), ...ciMap.keys()]);
+      const trends = [...allDays].sort().map((day) => ({
+        date: day,
+        checkouts: coMap.get(day) || 0,
+        checkins: ciMap.get(day) || 0,
+      }));
+
+      return successResponse({ trends, days, org_id: orgId });
+    }
+
+    if (action === "collection_stats") {
+      const [statusRows, locationRows] = await Promise.all([
+        query<{ status: string; count: string }>(
+          `SELECT cs.name AS status, COUNT(*) AS count
+           FROM asset.copy ac
+           JOIN config.copy_status cs ON cs.id = ac.status
+           WHERE ac.circ_lib = $1 AND NOT ac.deleted
+           GROUP BY cs.name ORDER BY count DESC`,
+          [orgId]
+        ).catch(() => [] as { status: string; count: string }[]),
+        query<{ location: string; count: string }>(
+          `SELECT acl.name AS location, COUNT(*) AS count
+           FROM asset.copy ac
+           JOIN asset.copy_location acl ON acl.id = ac.location
+           WHERE ac.circ_lib = $1 AND NOT ac.deleted
+           GROUP BY acl.name ORDER BY count DESC
+           LIMIT 15`,
+          [orgId]
+        ).catch(() => [] as { location: string; count: string }[]),
+      ]);
+
+      const byStatus = statusRows.map((r) => ({ name: r.status, value: parseInt(r.count, 10) }));
+      const byLocation = locationRows.map((r) => ({
+        name: r.location,
+        value: parseInt(r.count, 10),
+      }));
+      const totalItems = byStatus.reduce((sum, r) => sum + r.value, 0);
+
+      return successResponse({ collection: { byStatus, byLocation, totalItems }, org_id: orgId });
+    }
+
+    if (action === "patron_demographics") {
+      const [profileRows, registrationRows] = await Promise.all([
+        query<{ profile: string; count: string }>(
+          `SELECT pgt.name AS profile, COUNT(*) AS count
+           FROM actor.usr au
+           JOIN permission.grp_tree pgt ON pgt.id = au.profile
+           WHERE au.home_ou = $1 AND NOT au.deleted AND au.active
+           GROUP BY pgt.name ORDER BY count DESC`,
+          [orgId]
+        ).catch(() => [] as { profile: string; count: string }[]),
+        query<{ month: string; count: string }>(
+          `SELECT to_char(create_date, 'YYYY-MM') AS month, COUNT(*) AS count
+           FROM actor.usr
+           WHERE home_ou = $1 AND NOT deleted
+           AND create_date >= NOW() - INTERVAL '12 months'
+           GROUP BY month ORDER BY month`,
+          [orgId]
+        ).catch(() => [] as { month: string; count: string }[]),
+      ]);
+
+      const byProfile = profileRows.map((r) => ({ name: r.profile, value: parseInt(r.count, 10) }));
+      const registrations = registrationRows.map((r) => ({
+        month: r.month,
+        count: parseInt(r.count, 10),
+      }));
+      const totalActive = byProfile.reduce((sum, r) => sum + r.value, 0);
+
+      return successResponse({
+        patrons: { byProfile, registrations, totalActive },
+        org_id: orgId,
+      });
     }
 
     if (action === "top_items") {
       return successResponse({ top_items: [] }, "Top items requires Reporter templates");
     }
 
-    return errorResponse("Invalid action. Use: dashboard, holds, patrons, top_items, overdue", 400);
+    return errorResponse(
+      "Invalid action. Use: dashboard, holds, overdue, circ_trends, collection_stats, patron_demographics",
+      400
+    );
   } catch (error) {
     return serverErrorResponse(error, "Reports GET", req);
   }

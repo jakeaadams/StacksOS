@@ -27,12 +27,18 @@ import {
   Loader2,
   ThumbsUp,
   ThumbsDown,
+  TrendingUp,
+  Library,
+  Users,
 } from "lucide-react";
 
 import { escapeHtml, printHtml } from "@/lib/print";
 import { featureFlags } from "@/lib/feature-flags";
 import { HoldsDonut } from "@/components/staff/charts/holds-donut";
 import { DailyStatsBar } from "@/components/staff/charts/daily-stats-bar";
+import { CircTrendLine } from "@/components/staff/charts/circ-trend-line";
+import { CollectionDonut } from "@/components/staff/charts/collection-donut";
+import { PatronDemographicsBar } from "@/components/staff/charts/patron-demographics-bar";
 
 interface DashboardStats {
   checkouts_today: number | null;
@@ -111,6 +117,22 @@ export default function ReportsPage() {
   const [aiSummary, setAiSummary] = useState<AiAnalyticsSummary | null>(null);
   const [aiFeedback, setAiFeedback] = useState<null | "accepted" | "rejected">(null);
 
+  // Analytics state
+  const [trendDays, setTrendDays] = useState(30);
+  const [circTrends, setCircTrends] = useState<
+    Array<{ date: string; checkouts: number; checkins: number }>
+  >([]);
+  const [collectionStats, setCollectionStats] = useState<{
+    byStatus: Array<{ name: string; value: number }>;
+    byLocation: Array<{ name: string; value: number }>;
+    totalItems: number;
+  } | null>(null);
+  const [patronStats, setPatronStats] = useState<{
+    byProfile: Array<{ name: string; value: number }>;
+    registrations: Array<{ month: string; count: number }>;
+    totalActive: number;
+  } | null>(null);
+
   // CSV export hook for managing loading states
   const { exportData, isExporting } = useCSVExport();
 
@@ -143,6 +165,22 @@ export default function ReportsPage() {
 
       setStats(statsJson.stats || null);
       setHolds(holdsJson.holds || null);
+
+      // Load analytics data in parallel (non-blocking)
+      Promise.all([
+        fetchWithAuth(`/api/evergreen/reports?action=circ_trends&org=${orgId}&days=${trendDays}`)
+          .then((r) => r.json())
+          .then((d) => setCircTrends(d?.trends || []))
+          .catch(() => setCircTrends([])),
+        fetchWithAuth(`/api/evergreen/reports?action=collection_stats&org=${orgId}`)
+          .then((r) => r.json())
+          .then((d) => setCollectionStats(d?.collection || null))
+          .catch(() => setCollectionStats(null)),
+        fetchWithAuth(`/api/evergreen/reports?action=patron_demographics&org=${orgId}`)
+          .then((r) => r.json())
+          .then((d) => setPatronStats(d?.patrons || null))
+          .catch(() => setPatronStats(null)),
+      ]).catch(() => {});
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
       setError(e);
@@ -150,7 +188,7 @@ export default function ReportsPage() {
       setLoading(false);
       setLastRefresh(new Date());
     }
-  }, [orgId]);
+  }, [orgId, trendDays]);
 
   useEffect(() => {
     void loadAll();
@@ -681,16 +719,130 @@ export default function ReportsPage() {
                   <div className="text-xs text-muted-foreground mt-1">100%</div>
                 </div>
               </div>
-
-              <Separator />
-
-              <div className="text-xs text-muted-foreground">
-                Note: additional time-series charts (week/month) will be enabled once Evergreen
-                reporting sources are configured.
-              </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Circulation Trends */}
+        {featureFlags.staffCharts && (
+          <Card className="rounded-2xl border-border/70 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" /> Circulation Trends
+                  </CardTitle>
+                  <CardDescription>Checkouts and checkins over time.</CardDescription>
+                </div>
+                <div className="flex items-center gap-1">
+                  {[7, 30, 90].map((d) => (
+                    <Button
+                      key={d}
+                      variant={trendDays === d ? "default" : "ghost"}
+                      size="sm"
+                      className="h-7 px-2.5 text-xs rounded-full"
+                      onClick={() => setTrendDays(d)}
+                    >
+                      {d}d
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <CircTrendLine data={circTrends} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Collection & Patron Analytics */}
+        {featureFlags.staffCharts && (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Collection Analysis */}
+            <Card className="rounded-2xl border-border/70 shadow-sm">
+              <CardHeader className="pb-3">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Library className="h-4 w-4" /> Collection Analysis
+                  </CardTitle>
+                  <CardDescription>
+                    Items by status across the collection.
+                    {collectionStats?.totalItems
+                      ? ` ${collectionStats.totalItems.toLocaleString()} total items.`
+                      : ""}
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <CollectionDonut data={collectionStats?.byStatus || []} />
+                {collectionStats?.byLocation && collectionStats.byLocation.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-2">
+                        Top Shelving Locations
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {collectionStats.byLocation.slice(0, 6).map((loc) => (
+                          <div
+                            key={loc.name}
+                            className="flex items-center justify-between rounded-xl bg-muted/30 px-3 py-2"
+                          >
+                            <span className="text-xs truncate">{loc.name}</span>
+                            <span className="text-xs font-semibold ml-2">
+                              {loc.value.toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Patron Demographics */}
+            <Card className="rounded-2xl border-border/70 shadow-sm">
+              <CardHeader className="pb-3">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Users className="h-4 w-4" /> Patron Demographics
+                  </CardTitle>
+                  <CardDescription>
+                    Active patrons by type.
+                    {patronStats?.totalActive
+                      ? ` ${patronStats.totalActive.toLocaleString()} active patrons.`
+                      : ""}
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <PatronDemographicsBar data={patronStats?.byProfile || []} />
+                {patronStats?.registrations && patronStats.registrations.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-2">
+                        Recent Registrations (12 months)
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {patronStats.registrations.slice(-6).map((reg) => (
+                          <div
+                            key={reg.month}
+                            className="rounded-xl bg-muted/30 px-3 py-2 text-center"
+                          >
+                            <div className="text-[10px] text-muted-foreground">{reg.month}</div>
+                            <div className="text-sm font-semibold">{reg.count}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Exports Card */}
         <Card className="rounded-2xl border-border/70 shadow-sm">

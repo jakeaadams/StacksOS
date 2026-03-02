@@ -39,6 +39,11 @@ import {
   Clock,
   ArrowRight,
   Medal,
+  Shuffle,
+  Snowflake,
+  Sun,
+  Leaf,
+  Flower2,
 } from "lucide-react";
 
 interface CategoryItem {
@@ -253,6 +258,84 @@ export default function KidsHomePage() {
     }
   };
 
+  const handleSurpriseMe = useCallback(async () => {
+    try {
+      const offset = Math.floor(Math.random() * 50);
+      const res = await fetchWithAuth(
+        `/api/evergreen/catalog?audience=juvenile&sort=popularity&limit=1&offset=${offset}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const records = data.records || [];
+        if (records.length > 0) {
+          const id = records[0].id || records[0].record_id;
+          if (id) {
+            router.push(`/opac/kids/record/${id}`);
+            return;
+          }
+        }
+      }
+      router.push("/opac/kids/search?sort=popularity");
+    } catch {
+      router.push("/opac/kids/search?sort=popularity");
+    }
+  }, [router]);
+
+  // Seasonal collections based on current month
+  const seasonalCollections = (() => {
+    const month = new Date().getMonth(); // 0-indexed
+    if (month >= 5 && month <= 7) {
+      return {
+        title: "Summer Reading Picks",
+        icon: Sun,
+        color: "from-yellow-400 via-orange-400 to-red-400",
+        items: [
+          { label: "Beach Adventures", query: "beach adventure" },
+          { label: "Road Trip Stories", query: "road trip" },
+          { label: "Camp Tales", query: "camp summer" },
+          { label: "Outdoor Fun", query: "nature outdoor" },
+        ],
+      };
+    }
+    if (month >= 8 && month <= 10) {
+      return {
+        title: "Fall Favorites",
+        icon: Leaf,
+        color: "from-orange-400 via-amber-500 to-yellow-500",
+        items: [
+          { label: "Spooky Stories", query: "spooky halloween" },
+          { label: "Harvest Time", query: "harvest autumn" },
+          { label: "Back to School", query: "school friends" },
+          { label: "Cozy Reads", query: "cozy warm" },
+        ],
+      };
+    }
+    if (month === 11 || month <= 1) {
+      return {
+        title: "Winter Wonderland",
+        icon: Snowflake,
+        color: "from-blue-400 via-cyan-400 to-teal-400",
+        items: [
+          { label: "Snow Day!", query: "snow winter" },
+          { label: "Holiday Magic", query: "holiday celebration" },
+          { label: "Polar Animals", query: "arctic penguin polar" },
+          { label: "Cozy by the Fire", query: "winter cozy" },
+        ],
+      };
+    }
+    return {
+      title: "Spring into Reading",
+      icon: Flower2,
+      color: "from-green-400 via-emerald-400 to-teal-400",
+      items: [
+        { label: "Garden Stories", query: "garden growing" },
+        { label: "Baby Animals", query: "baby animals spring" },
+        { label: "Rainy Day Fun", query: "rain adventure" },
+        { label: "Bugs & Butterflies", query: "bugs butterflies" },
+      ],
+    };
+  })();
+
   return (
     <div className="pb-8">
       {/* Hero Section */}
@@ -334,6 +417,48 @@ export default function KidsHomePage() {
               </div>
             </div>
           </form>
+
+          {/* Surprise Me Button */}
+          <div className="mt-6 flex justify-center">
+            <Button
+              onClick={handleSurpriseMe}
+              className="px-8 py-3 rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500
+                       text-white font-bold text-lg shadow-lg hover:shadow-xl hover:scale-105
+                       transition-all gap-2"
+            >
+              <Shuffle className="h-5 w-5" />
+              Surprise Me!
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Seasonal Collections */}
+      <section className="py-6 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div
+            className={`rounded-3xl bg-gradient-to-r ${seasonalCollections.color} p-6 shadow-lg`}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl">
+                <seasonalCollections.icon className="h-6 w-6 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-white">{seasonalCollections.title}</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {seasonalCollections.items.map((item) => (
+                <Link
+                  key={item.label}
+                  href={`/opac/kids/search?type=keyword&q=${encodeURIComponent(item.query)}`}
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-white/20 backdrop-blur-sm
+                           rounded-xl text-white font-medium text-sm hover:bg-white/30 transition-colors"
+                >
+                  {item.label}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

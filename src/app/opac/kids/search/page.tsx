@@ -137,6 +137,12 @@ function KidsSearchContent() {
       if (format) params.set("format", format);
       if (availableOnly) params.set("available", "true");
 
+      // Reading level filter — mapped to audience/item_type refinements
+      const level = searchParams.get("level");
+      if (level === "early") params.set("item_type", "easy_reader");
+      else if (level === "elementary") params.set("audience_grade", "K-3");
+      else if (level === "middle") params.set("audience_grade", "4-6");
+
       const response = await fetchWithAuth(`/api/evergreen/catalog?${params}`);
       if (response.ok) {
         const data = await response.json();
@@ -325,10 +331,35 @@ function KidsSearchContent() {
                 </Select>
               </div>
 
+              <div>
+                <label
+                  htmlFor="reading-level"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Reading Level
+                </label>
+                <Select
+                  value={searchParams.get("level") || "all"}
+                  onValueChange={(value) =>
+                    updateSearchParams({ level: value === "all" ? null : value })
+                  }
+                >
+                  <SelectTrigger id="reading-level" className="w-[170px] rounded-lg border">
+                    <SelectValue placeholder="All Levels" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Levels</SelectItem>
+                    <SelectItem value="early">Early Readers</SelectItem>
+                    <SelectItem value="elementary">Elementary (K-3)</SelectItem>
+                    <SelectItem value="middle">Middle Grade (4-6)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => updateSearchParams({ format: null, available: null })}
+                onClick={() => updateSearchParams({ format: null, available: null, level: null })}
                 className="self-end px-4 py-2 text-sm kids-text-primary kids-hover-text-primary-hover"
               >
                 Clear Filters

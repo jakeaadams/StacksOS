@@ -1266,6 +1266,9 @@
   },
   "charts": {
     "noHoldsData": "No holds data available",
-    "noCirculationData": "No circulation data available"
+    "noCirculationData": "No circulation data available",
+    "noTrendData": "No trend data available for this period",
+    "noCollectionData": "No collection data available",
+    "noPatronData": "No patron data available"
   }
 }

@@ -1266,6 +1266,9 @@
   },
   "charts": {
     "noHoldsData": "Aucune donnée de réservation disponible",
-    "noCirculationData": "Aucune donnée de circulation disponible"
+    "noCirculationData": "Aucune donnée de circulation disponible",
+    "noTrendData": "Aucune donnée de tendance disponible pour cette période",
+    "noCollectionData": "Aucune donnée de collection disponible",
+    "noPatronData": "Aucune donnée d'usagers disponible"
   }
 }
