@@ -474,7 +474,7 @@ call "offline_blocks" "$BASE_URL/api/evergreen/offline?type=blocks"
 # 14) Reports
 call "reports_dashboard" "$BASE_URL/api/evergreen/reports?action=dashboard"
 call "reports_holds" "$BASE_URL/api/evergreen/reports?action=holds"
-call "reports_patrons" "$BASE_URL/api/evergreen/reports?action=patrons"
+call "reports_patrons" "$BASE_URL/api/evergreen/reports?action=patron_demographics"
 
 # 15) Acquisitions
 call "acq_funds" "$BASE_URL/api/evergreen/acquisitions?action=funds"
