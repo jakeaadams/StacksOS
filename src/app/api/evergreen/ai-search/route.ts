@@ -215,13 +215,52 @@ export async function GET(req: NextRequest) {
       copy_depth: copyDepth,
     };
 
-    const searchResponse = await callOpenSRF(
-      "open-ils.search",
-      "open-ils.search.biblio.multiclass.query",
-      [searchArgs, searchQuery, scopeOrgId]
-    );
+    let searchResponse: { payload?: unknown[] } | null = null;
+    try {
+      searchResponse = await withTimeout(
+        callOpenSRF("open-ils.search", "open-ils.search.biblio.multiclass.query", [
+          searchArgs,
+          searchQuery,
+          scopeOrgId,
+        ]),
+        7000,
+        "Evergreen search timed out"
+      );
+    } catch (err) {
+      logger.warn(
+        {
+          route: "api.evergreen.ai-search",
+          query: rawQuery,
+          searchQuery,
+          err: String(err),
+        },
+        "Evergreen search timed out during AI search; returning empty result set"
+      );
+      return successResponse({
+        records: [],
+        count: 0,
+        decomposed: {
+          keywords: decomposed.keywords,
+          subjects: decomposed.subjects,
+          audience: decomposed.audience,
+          format: decomposed.format,
+          language: decomposed.language,
+          searchQuery: decomposed.searchQuery,
+        },
+        scope: {
+          searchScope,
+          scopeOrgId,
+          copyDepth,
+        },
+        aiPowered: false,
+        degraded: true,
+      });
+    }
 
-    const payload = searchResponse?.payload?.[0];
+    const payload = (searchResponse?.payload?.[0] ?? null) as {
+      ids?: unknown[];
+      count?: unknown;
+    } | null;
     const ids: number[] = [];
     if (payload?.ids && Array.isArray(payload.ids)) {
       for (const entry of payload.ids) {
@@ -253,12 +292,14 @@ export async function GET(req: NextRequest) {
     const records = await Promise.all(
       ids.slice(0, limit).map(async (bibId) => {
         try {
-          const modsResponse = await callOpenSRF(
-            "open-ils.search",
-            "open-ils.search.biblio.record.mods_slim.retrieve",
-            [bibId]
-          );
-          const mods = modsResponse?.payload?.[0];
+          const timedModsResponse = (await withTimeout(
+            callOpenSRF("open-ils.search", "open-ils.search.biblio.record.mods_slim.retrieve", [
+              bibId,
+            ]),
+            4000,
+            "Evergreen MODS retrieval timed out"
+          )) as { payload?: unknown[] } | null;
+          const mods = timedModsResponse?.payload?.[0] as Record<string, any> | undefined;
           if (!mods || mods.ilsevent) return null;
 
           return {
