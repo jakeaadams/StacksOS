@@ -53,6 +53,8 @@ const semanticRerankSchema = z.object({
     .min(1),
 });
 
+type AiSearchDecompose = z.infer<typeof aiSearchDecomposeSchema>;
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -77,6 +79,20 @@ function parseCopyDepth(value: string | null, fallback: number): number {
   const parsed = parseInt(String(value || ""), 10);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(99, Math.max(0, parsed));
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: string): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutHandle = setTimeout(() => reject(new Error(timeoutMessage)), ms);
+      }),
+    ]);
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -135,18 +151,43 @@ export async function GET(req: NextRequest) {
     // 1. Decompose the natural language query using AI
     const safeQuery = safeUserText(rawQuery);
     const prompt = buildNaturalLanguageSearchPrompt(safeQuery);
+    let aiPowered = true;
 
-    const { data: decomposed } = await generateAiJson({
-      requestId: meta.requestId || undefined,
-      system: prompt.system,
-      user: prompt.user,
-      schema: aiSearchDecomposeSchema,
-      callType: "ai_search_decompose",
-      ip: meta.ip,
-      userAgent: meta.userAgent,
-      promptTemplateId: prompt.id,
-      promptVersion: prompt.version,
-    });
+    let decomposed: AiSearchDecompose;
+    try {
+      const { data } = await withTimeout(
+        generateAiJson({
+          requestId: meta.requestId || undefined,
+          system: prompt.system,
+          user: prompt.user,
+          schema: aiSearchDecomposeSchema,
+          callType: "ai_search_decompose",
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+          promptTemplateId: prompt.id,
+          promptVersion: prompt.version,
+        }),
+        8000,
+        "AI query decomposition timed out"
+      );
+      decomposed = data;
+    } catch (err) {
+      // Degrade gracefully to deterministic keyword search instead of blocking the endpoint.
+      aiPowered = false;
+      logger.warn(
+        { route: "api.evergreen.ai-search", err: String(err) },
+        "AI query decomposition failed; using deterministic fallback query"
+      );
+      decomposed = {
+        keywords: [],
+        subjects: [],
+        author: null,
+        audience: null,
+        format: null,
+        language: null,
+        searchQuery: safeQuery,
+      };
+    }
 
     logger.info(
       {
@@ -204,7 +245,7 @@ export async function GET(req: NextRequest) {
           language: decomposed.language,
           searchQuery: decomposed.searchQuery,
         },
-        aiPowered: true,
+        aiPowered,
       });
     }
 
@@ -273,17 +314,21 @@ export async function GET(req: NextRequest) {
           })),
         });
 
-        const { data: reranked } = await generateAiJson({
-          requestId: meta.requestId || undefined,
-          system: rerankPrompt.system,
-          user: rerankPrompt.user,
-          schema: semanticRerankSchema,
-          callType: "ai_search_rerank",
-          ip: meta.ip,
-          userAgent: meta.userAgent,
-          promptTemplateId: rerankPrompt.id,
-          promptVersion: rerankPrompt.version,
-        });
+        const { data: reranked } = await withTimeout(
+          generateAiJson({
+            requestId: meta.requestId || undefined,
+            system: rerankPrompt.system,
+            user: rerankPrompt.user,
+            schema: semanticRerankSchema,
+            callType: "ai_search_rerank",
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+            promptTemplateId: rerankPrompt.id,
+            promptVersion: rerankPrompt.version,
+          }),
+          7000,
+          "AI rerank timed out"
+        );
 
         // Reorder records based on AI ranking
         const idToRecord = new Map(validRecords.map((r) => [r.id, r]));
@@ -309,6 +354,7 @@ export async function GET(req: NextRequest) {
         rankedRecords = reorderedRecords;
       }
     } catch (err) {
+      aiPowered = false;
       logger.warn({ err: String(err) }, "AI search rerank failed (non-fatal)");
     }
 
@@ -327,23 +373,28 @@ export async function GET(req: NextRequest) {
           })),
         });
 
-        const { data: explanations } = await generateAiJson({
-          requestId: meta.requestId || undefined,
-          system: explainPrompt.system,
-          user: explainPrompt.user,
-          schema: aiSearchExplanationSchema,
-          callType: "ai_search_explain",
-          ip: meta.ip,
-          userAgent: meta.userAgent,
-          promptTemplateId: explainPrompt.id,
-          promptVersion: explainPrompt.version,
-        });
+        const { data: explanations } = await withTimeout(
+          generateAiJson({
+            requestId: meta.requestId || undefined,
+            system: explainPrompt.system,
+            user: explainPrompt.user,
+            schema: aiSearchExplanationSchema,
+            callType: "ai_search_explain",
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+            promptTemplateId: explainPrompt.id,
+            promptVersion: explainPrompt.version,
+          }),
+          7000,
+          "AI explanation timed out"
+        );
 
         for (const e of explanations.explanations) {
           explanationMap.set(e.id, e.explanation);
         }
       }
     } catch (err) {
+      aiPowered = false;
       logger.warn({ err: String(err) }, "AI search explanation failed (non-fatal)");
     }
 
@@ -383,7 +434,7 @@ export async function GET(req: NextRequest) {
         scopeOrgId,
         copyDepth,
       },
-      aiPowered: true,
+      aiPowered,
     });
   } catch (err) {
     logger.error(
