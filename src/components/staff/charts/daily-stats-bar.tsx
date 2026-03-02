@@ -10,6 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useTranslations } from "next-intl";
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -27,6 +28,7 @@ export interface DailyStatsBarProps {
 /* ------------------------------------------------------------------ */
 
 export function DailyStatsBar({ checkouts, checkins, activeHolds, overdue }: DailyStatsBarProps) {
+  const t = useTranslations("charts");
   const data = [
     { name: "Checkouts", value: checkouts, fill: "hsl(142 71% 45%)" },
     { name: "Checkins", value: checkins, fill: "hsl(217 91% 60%)" },
@@ -39,7 +41,7 @@ export function DailyStatsBar({ checkouts, checkins, activeHolds, overdue }: Dai
   if (allZero) {
     return (
       <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
-        No circulation data available
+        {t("noCirculationData")}
       </div>
     );
   }

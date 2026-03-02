@@ -1,6 +1,7 @@
 "use client";
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { useTranslations } from "next-intl";
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -27,6 +28,7 @@ const COLORS = [
 /* ------------------------------------------------------------------ */
 
 export function HoldsDonut({ available, pending, inTransit }: HoldsDonutProps) {
+  const t = useTranslations("charts");
   const data = [
     { name: "Available", value: available },
     { name: "Pending", value: pending },
@@ -38,7 +40,7 @@ export function HoldsDonut({ available, pending, inTransit }: HoldsDonutProps) {
   if (total === 0) {
     return (
       <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
-        No holds data available
+        {t("noHoldsData")}
       </div>
     );
   }

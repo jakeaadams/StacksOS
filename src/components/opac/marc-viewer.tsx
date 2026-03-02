@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { BookOpen, ChevronDown, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   Accordion,
   AccordionContent,
@@ -165,6 +166,7 @@ export interface MarcViewerProps {
 /* ------------------------------------------------------------------ */
 
 export function MarcViewer({ marcXml }: MarcViewerProps) {
+  const t = useTranslations("marcViewer");
   const [record, setRecord] = useState<MarcRecord | null>(null);
 
   useEffect(() => {
@@ -177,8 +179,8 @@ export function MarcViewer({ marcXml }: MarcViewerProps) {
     if (!record) return;
     const text = formatMarcText(record);
     navigator.clipboard.writeText(text).then(
-      () => toast.success("MARC copied to clipboard"),
-      () => toast.error("Failed to copy MARC")
+      () => toast.success(t("copied")),
+      () => toast.error(t("copyFailed"))
     );
   }, [record]);
 
@@ -190,7 +192,7 @@ export function MarcViewer({ marcXml }: MarcViewerProps) {
         <AccordionTrigger className="px-6 py-4 hover:no-underline">
           <div className="flex items-center gap-2 text-base font-semibold">
             <BookOpen className="h-5 w-5" />
-            MARC Record
+            {t("title")}
           </div>
         </AccordionTrigger>
         <AccordionContent className="px-6 pb-6">
@@ -209,16 +211,16 @@ export function MarcViewer({ marcXml }: MarcViewerProps) {
                     scope="col"
                     className="text-left py-2 pr-3 font-medium text-muted-foreground w-16"
                   >
-                    Tag
+                    {t("tag")}
                   </th>
                   <th
                     scope="col"
                     className="text-left py-2 pr-3 font-medium text-muted-foreground w-16"
                   >
-                    Ind
+                    {t("indicators")}
                   </th>
                   <th scope="col" className="text-left py-2 font-medium text-muted-foreground">
-                    Content
+                    {t("content")}
                   </th>
                 </tr>
               </thead>
@@ -253,7 +255,7 @@ export function MarcViewer({ marcXml }: MarcViewerProps) {
           <div className="mt-4 flex justify-end">
             <Button variant="outline" size="sm" onClick={handleCopy}>
               <Copy className="mr-1.5 h-3.5 w-3.5" />
-              Copy MARC
+              {t("copyMarc")}
             </Button>
           </div>
         </AccordionContent>

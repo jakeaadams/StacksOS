@@ -1254,5 +1254,18 @@
     "print": "Imprimir",
     "qrCode": "Código QR",
     "scanToOpen": "Escanea para abrir esta página"
+  },
+  "marcViewer": {
+    "title": "Registro MARC",
+    "tag": "Etiq.",
+    "indicators": "Ind",
+    "content": "Contenido",
+    "copyMarc": "Copiar MARC",
+    "copied": "MARC copiado al portapapeles",
+    "copyFailed": "No se pudo copiar MARC"
+  },
+  "charts": {
+    "noHoldsData": "No hay datos de reservas disponibles",
+    "noCirculationData": "No hay datos de circulación disponibles"
   }
 }

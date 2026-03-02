@@ -1254,5 +1254,18 @@
     "print": "Print",
     "qrCode": "QR Code",
     "scanToOpen": "Scan to open this page"
+  },
+  "marcViewer": {
+    "title": "MARC Record",
+    "tag": "Tag",
+    "indicators": "Ind",
+    "content": "Content",
+    "copyMarc": "Copy MARC",
+    "copied": "MARC copied to clipboard",
+    "copyFailed": "Failed to copy MARC"
+  },
+  "charts": {
+    "noHoldsData": "No holds data available",
+    "noCirculationData": "No circulation data available"
   }
 }

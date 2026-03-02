@@ -1254,5 +1254,18 @@
     "print": "Imprimer",
     "qrCode": "Code QR",
     "scanToOpen": "Scannez pour ouvrir cette page"
+  },
+  "marcViewer": {
+    "title": "Notice MARC",
+    "tag": "Étiq.",
+    "indicators": "Ind",
+    "content": "Contenu",
+    "copyMarc": "Copier MARC",
+    "copied": "MARC copié dans le presse-papiers",
+    "copyFailed": "Impossible de copier le MARC"
+  },
+  "charts": {
+    "noHoldsData": "Aucune donnée de réservation disponible",
+    "noCirculationData": "Aucune donnée de circulation disponible"
   }
 }
