@@ -10,6 +10,7 @@ import {
   getRequestMeta,
   parseJsonBodyWithSchema,
 } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -1040,7 +1041,7 @@ export async function GET(req: NextRequest) {
  * Accepts either MARC XML or a simplified form
  */
 export async function POST(req: NextRequest) {
-  const { requestId } = getRequestMeta(req);
+  const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
     const bodyParsed = await parseJsonBodyWithSchema(
@@ -1118,12 +1119,35 @@ export async function POST(req: NextRequest) {
       if (isOpenSRFEvent(result) || result?.ilsevent) {
         const errMsg = getErrorMessage(result, "Failed to create record");
         logger.error({ requestId, result }, errMsg);
+        await logAuditEvent({
+          action: "catalog_record.create",
+          entity: "bre",
+          status: "failure",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          error: errMsg,
+          details: { simplified: !!simplified },
+        });
         return errorResponse(errMsg, 400, result);
       }
 
       const recordId = typeof result === "number" ? result : result?.id;
 
       logger.info({ requestId, recordId, actor: actor?.id }, "Created bibliographic record");
+
+      await logAuditEvent({
+        action: "catalog_record.create",
+        entity: "bre",
+        entityId: recordId,
+        status: "success",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        details: { recordId, simplified: !!simplified },
+      });
 
       return successResponse({
         id: recordId,
@@ -1133,6 +1157,15 @@ export async function POST(req: NextRequest) {
 
     return errorResponse("Invalid action. Use: create", 400);
   } catch (error) {
+    await logAuditEvent({
+      action: "catalog_record.create",
+      entity: "bre",
+      status: "failure",
+      ip,
+      userAgent,
+      requestId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return serverErrorResponse(error, "Catalog POST", req);
   }
 }

@@ -141,9 +141,9 @@ export default function BookingPage() {
         setReservationsMessage(reservationsData.message || null);
         const all: Reservation[] = reservationsData.reservations || [];
         // The current API call returns reservations for pickup_lib=1; filter by date client-side.
-        setReservations(all.filter((r: any) => formatDate(r.start_time) === selectedDate));
+        setReservations(all.filter((r) => formatDate(r.start_time) === selectedDate));
       }
-    } catch (_error: any) {
+    } catch (_error: unknown) {
       setError("Failed to load booking data");
     } finally {
       setLoading(false);
@@ -375,6 +375,7 @@ export default function BookingPage() {
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
+            aria-label="Filter by date"
             className="w-44"
           />
           <Button size="sm" variant="outline" onClick={loadData}>
@@ -590,6 +591,7 @@ export default function BookingPage() {
                   type="date"
                   value={bookingDate}
                   onChange={(e) => setBookingDate(e.target.value)}
+                  aria-label="Booking date"
                 />
               </div>
               <div className="space-y-2">

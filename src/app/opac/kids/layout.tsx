@@ -147,6 +147,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search for books..."
+                    aria-label="Search for books"
                     className="w-full pl-5 pr-12 py-3 rounded-full border-2 kids-border-primary-wash
                            text-foreground placeholder:text-muted-foreground/70 text-lg
                            focus:outline-none kids-focus-border focus:ring-4 kids-focus-ring
@@ -238,6 +239,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search for books..."
+                    aria-label="Search for books"
                     className="w-full pl-4 pr-12 py-2.5 rounded-full border-2 kids-border-primary-wash
                            text-foreground placeholder:text-muted-foreground/70
                            focus:outline-none kids-focus-border"

@@ -587,6 +587,7 @@ function AddReadingModal({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   placeholder="Search for a book..."
+                  aria-label="Search for a book"
                   className="h-12 rounded-xl border-2 pr-12"
                 />
                 <Button

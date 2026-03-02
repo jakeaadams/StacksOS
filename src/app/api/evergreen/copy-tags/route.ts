@@ -12,7 +12,7 @@ import {
   serverErrorResponse,
   successResponse,
 } from "@/lib/api";
-import { getActorFromToken } from "@/lib/audit";
+import { getActorFromToken, logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -173,7 +173,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: Request) {
   try {
-    const { ip } = getRequestMeta(req as any);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
     const { authtoken, actor, result } = await requirePermissions(["ADMIN_COPY_TAG"]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
@@ -224,6 +224,17 @@ export async function POST(req: Request) {
 
     const resultRow = createResponse?.payload?.[0];
     if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+      await logAuditEvent({
+        action: "copy_tag.create",
+        entity: "acpt",
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(resultRow, "Failed to create tag"),
+        details: { label: body.label, tagType: body.tagType },
+      });
       return errorResponse(getErrorMessage(resultRow, "Failed to create tag"), 400, resultRow);
     }
 
@@ -231,6 +242,18 @@ export async function POST(req: Request) {
       typeof resultRow === "number"
         ? resultRow
         : toNumber((resultRow as Record<string, any>)?.id ?? resultRow);
+
+    await logAuditEvent({
+      action: "copy_tag.create",
+      entity: "acpt",
+      entityId: id ?? undefined,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { label: body.label, tagType: body.tagType },
+    });
 
     return successResponse({ created: true, id });
   } catch (error) {
@@ -240,7 +263,7 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { ip } = getRequestMeta(req as any);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
     const { authtoken, actor, result } = await requirePermissions(["ADMIN_COPY_TAG"]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
@@ -308,8 +331,32 @@ export async function PUT(req: Request) {
     ]);
     const resultRow = updateResponse?.payload?.[0];
     if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+      await logAuditEvent({
+        action: "copy_tag.update",
+        entity: "acpt",
+        entityId: id,
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(resultRow, "Failed to update tag"),
+        details: { id },
+      });
       return errorResponse(getErrorMessage(resultRow, "Failed to update tag"), 400, resultRow);
     }
+
+    await logAuditEvent({
+      action: "copy_tag.update",
+      entity: "acpt",
+      entityId: id,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { id, label: body.label },
+    });
 
     return successResponse({ updated: true, id });
   } catch (error) {
@@ -319,8 +366,8 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const { ip } = getRequestMeta(req as any);
-    const { authtoken } = await requirePermissions(["ADMIN_COPY_TAG"]);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
+    const { authtoken, actor } = await requirePermissions(["ADMIN_COPY_TAG"]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
       maxAttempts: 20,
@@ -350,8 +397,32 @@ export async function DELETE(req: Request) {
     ]);
     const resultRow = delResponse?.payload?.[0];
     if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+      await logAuditEvent({
+        action: "copy_tag.delete",
+        entity: "acpt",
+        entityId: id,
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(resultRow, "Failed to delete tag"),
+        details: { id },
+      });
       return errorResponse(getErrorMessage(resultRow, "Failed to delete tag"), 400, resultRow);
     }
+
+    await logAuditEvent({
+      action: "copy_tag.delete",
+      entity: "acpt",
+      entityId: id,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { id },
+    });
 
     return successResponse({ deleted: true, id });
   } catch (error) {

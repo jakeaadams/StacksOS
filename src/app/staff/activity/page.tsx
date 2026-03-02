@@ -661,7 +661,7 @@ export default function ActivityLogPage() {
         ? data.activities.flatMap((a) => {
             try {
               return [toActivityItem(a)];
-            } catch (_error: any) {
+            } catch (_error: unknown) {
               return [];
             }
           })

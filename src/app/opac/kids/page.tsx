@@ -320,6 +320,7 @@ export default function KidsHomePage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="What do you want to read about?"
+                  aria-label="Search for books"
                   className="h-16 rounded-full border-2 kids-border-primary-wash bg-card pl-6 pr-16 text-xl text-foreground placeholder:text-muted-foreground/70 kids-focus-visible-border focus-visible:ring-0 md:text-xl"
                 />
                 <Button

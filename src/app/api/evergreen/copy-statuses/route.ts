@@ -14,7 +14,7 @@ import {
   serverErrorResponse,
   successResponse,
 } from "@/lib/api";
-import { getActorFromToken } from "@/lib/audit";
+import { getActorFromToken, logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -153,7 +153,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { ip } = getRequestMeta(req as any);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
     const {
       authtoken,
       actor,
@@ -213,15 +213,38 @@ export async function POST(req: Request) {
 
     const result = createResponse?.payload?.[0];
     if (!result || isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
+      await logAuditEvent({
+        action: "copy_status.create",
+        entity: "ccs",
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(result, "Failed to create copy status"),
+        details: { name },
+      });
       return errorResponse(getErrorMessage(result, "Failed to create copy status"), 400, result);
     }
 
+    const createdId =
+      typeof result === "number" ? result : toNumber((result as Record<string, any>)?.id ?? result);
+
+    await logAuditEvent({
+      action: "copy_status.create",
+      entity: "ccs",
+      entityId: createdId ?? undefined,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { name, orgId },
+    });
+
     return successResponse({
       created: true,
-      id:
-        typeof result === "number"
-          ? result
-          : toNumber((result as Record<string, any>)?.id ?? result),
+      id: createdId,
       orgId,
       actorId: (actor as Record<string, any>)?.id,
     });
@@ -232,8 +255,8 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { ip } = getRequestMeta(req as any);
-    const { authtoken } = await requirePermissions(["UPDATE_COPY_STATUS"]);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
+    const { authtoken, actor } = await requirePermissions(["UPDATE_COPY_STATUS"]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
       maxAttempts: 20,
@@ -322,8 +345,32 @@ export async function PUT(req: Request) {
 
     const result = updateResponse?.payload?.[0];
     if (!result || isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
+      await logAuditEvent({
+        action: "copy_status.update",
+        entity: "ccs",
+        entityId: id,
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(result, "Failed to update copy status"),
+        details: { id },
+      });
       return errorResponse(getErrorMessage(result, "Failed to update copy status"), 400, result);
     }
+
+    await logAuditEvent({
+      action: "copy_status.update",
+      entity: "ccs",
+      entityId: id,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { id, name: nameRaw },
+    });
 
     return successResponse({ updated: true, id });
   } catch (error) {
@@ -333,8 +380,8 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const { ip } = getRequestMeta(req as any);
-    const { authtoken } = await requirePermissions(["DELETE_COPY_STATUS"]);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
+    const { authtoken, actor } = await requirePermissions(["DELETE_COPY_STATUS"]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
       maxAttempts: 20,
@@ -370,8 +417,32 @@ export async function DELETE(req: Request) {
     ]);
     const result = delResponse?.payload?.[0];
     if (!result || isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
+      await logAuditEvent({
+        action: "copy_status.delete",
+        entity: "ccs",
+        entityId: id,
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(result, "Failed to delete copy status"),
+        details: { id },
+      });
       return errorResponse(getErrorMessage(result, "Failed to delete copy status"), 400, result);
     }
+
+    await logAuditEvent({
+      action: "copy_status.delete",
+      entity: "ccs",
+      entityId: id,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { id },
+    });
 
     return successResponse({ deleted: true, id });
   } catch (error) {

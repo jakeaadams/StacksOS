@@ -8,10 +8,20 @@ import {
   serverErrorResponse,
   getRequestMeta,
 } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { query } from "@/lib/db/evergreen";
+import { z } from "zod";
+
+const templatesBodySchema = z
+  .object({
+    action: z.string().max(100),
+    type: z.string().max(100),
+    data: z.record(z.string(), z.unknown()).optional(),
+  })
+  .passthrough();
 
 // ============================================================================
 // Interfaces
@@ -303,10 +313,18 @@ export async function GET(req: NextRequest) {
 // ============================================================================
 
 export async function POST(req: NextRequest) {
-  const { ip, requestId } = getRequestMeta(req);
+  const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
-    const body = (await req.json()) as Record<string, unknown>;
+    const rawBody = await req.json();
+    const parsed = templatesBodySchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return errorResponse(
+        "Invalid request body: " + parsed.error.issues.map((i) => i.message).join(", "),
+        400
+      );
+    }
+    const body = parsed.data;
     const { action, type } = body;
     const data = body.data as Record<string, unknown> | undefined;
 
@@ -377,8 +395,30 @@ export async function POST(req: NextRequest) {
                 ? ((created as Record<string, unknown>).id as number)
                 : parseInt(String((created as Record<string, unknown>)?.id ?? created ?? ""), 10);
           if (Number.isFinite(id) && id > 0) {
+            await logAuditEvent({
+              action: "copy_template.create",
+              entity: "act",
+              entityId: id,
+              status: "success",
+              actor,
+              ip,
+              userAgent,
+              requestId,
+              details: { name: data.name, owningLib: data.owningLib },
+            });
             return successResponse({ id, message: "Template created" });
           }
+          await logAuditEvent({
+            action: "copy_template.create",
+            entity: "act",
+            status: "failure",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            error: "Failed to create template",
+            details: { name: data.name },
+          });
           return errorResponse("Failed to create template", 500);
         }
 
@@ -427,8 +467,31 @@ export async function POST(req: NextRequest) {
           ]);
 
           if (result?.payload?.[0]) {
+            await logAuditEvent({
+              action: "copy_template.update",
+              entity: "act",
+              entityId: data.id as number,
+              status: "success",
+              actor,
+              ip,
+              userAgent,
+              requestId,
+              details: { id: data.id },
+            });
             return successResponse({ id: data.id, message: "Template updated" });
           }
+          await logAuditEvent({
+            action: "copy_template.update",
+            entity: "act",
+            entityId: data.id as number,
+            status: "failure",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            error: "Failed to update template",
+            details: { id: data.id },
+          });
           return errorResponse("Failed to update template", 500);
         }
 
@@ -444,8 +507,31 @@ export async function POST(req: NextRequest) {
           ]);
 
           if (result?.payload?.[0]) {
+            await logAuditEvent({
+              action: "copy_template.delete",
+              entity: "act",
+              entityId: data.id as number,
+              status: "success",
+              actor,
+              ip,
+              userAgent,
+              requestId,
+              details: { id: data.id },
+            });
             return successResponse({ message: "Template deleted" });
           }
+          await logAuditEvent({
+            action: "copy_template.delete",
+            entity: "act",
+            entityId: data.id as number,
+            status: "failure",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            error: "Failed to delete template",
+            details: { id: data.id },
+          });
           return errorResponse("Failed to delete template", 500);
         }
 
@@ -488,6 +574,17 @@ export async function POST(req: NextRequest) {
             "ui.staff.catalog.holdings_templates",
             JSON.stringify(templates),
           ]);
+          await logAuditEvent({
+            action: "holdings_template.create",
+            entity: "holdings_template",
+            entityId: newId,
+            status: "success",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            details: { name: data.name, orgId: targetOrgId },
+          });
           return successResponse({ id: newId, message: "Holdings template created" });
         } else {
           const idx = templates.findIndex((t: Record<string, unknown>) => t.id === data.id);
@@ -505,6 +602,17 @@ export async function POST(req: NextRequest) {
             "ui.staff.catalog.holdings_templates",
             JSON.stringify(templates),
           ]);
+          await logAuditEvent({
+            action: "holdings_template.update",
+            entity: "holdings_template",
+            entityId: data.id as number,
+            status: "success",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            details: { id: data.id, name: data.name, orgId: targetOrgId },
+          });
           return successResponse({ id: data.id, message: "Holdings template updated" });
         }
       } else if (action === "delete") {
@@ -529,6 +637,17 @@ export async function POST(req: NextRequest) {
           "ui.staff.catalog.holdings_templates",
           JSON.stringify(templates),
         ]);
+        await logAuditEvent({
+          action: "holdings_template.delete",
+          entity: "holdings_template",
+          entityId: data.id as number,
+          status: "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          details: { id: data.id, orgId: targetOrgId },
+        });
         return successResponse({ message: "Holdings template deleted" });
       } else {
         return errorResponse("Invalid action", 400);
@@ -537,6 +656,15 @@ export async function POST(req: NextRequest) {
       return errorResponse("Invalid type. Must be 'copy' or 'holdings'.", 400);
     }
   } catch (error: unknown) {
+    await logAuditEvent({
+      action: "template.mutation",
+      entity: "template",
+      status: "failure",
+      ip,
+      userAgent,
+      requestId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     logger.error({ requestId, error }, "Templates POST failed");
     return serverErrorResponse(error, "Templates POST", req);
   }

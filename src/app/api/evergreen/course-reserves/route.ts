@@ -12,7 +12,7 @@ import {
   getRequestMeta,
   isOpenSRFEvent,
 } from "@/lib/api";
-import { getActorFromToken } from "@/lib/audit";
+import { getActorFromToken, logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -207,7 +207,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: Request) {
   try {
-    const { ip } = getRequestMeta(req as any);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
     const rlResult = await checkRateLimit(ip || "unknown", {
       maxAttempts: 20,
       windowMs: 5 * 60 * 1000,
@@ -235,7 +235,7 @@ export async function POST(req: Request) {
     );
     if (body instanceof Response) return body;
 
-    const { authtoken } = await requirePermissions(["MANAGE_RESERVES"]);
+    const { authtoken, actor } = await requirePermissions(["MANAGE_RESERVES"]);
 
     const classId = body.entity === "course" ? "acmc" : "acmt";
     const payloadData: Record<string, any> =
@@ -262,6 +262,17 @@ export async function POST(req: Request) {
     ]);
     const resultRow = createResponse?.payload?.[0];
     if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+      await logAuditEvent({
+        action: `course_reserve.create`,
+        entity: classId,
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(resultRow, "Failed to create record"),
+        details: { entity: body.entity, name: body.name },
+      });
       return errorResponse(getErrorMessage(resultRow, "Failed to create record"), 400, resultRow);
     }
 
@@ -269,6 +280,18 @@ export async function POST(req: Request) {
       typeof resultRow === "number"
         ? resultRow
         : toNumber((resultRow as Record<string, any>)?.id ?? resultRow);
+
+    await logAuditEvent({
+      action: `course_reserve.create`,
+      entity: classId,
+      entityId: id ?? undefined,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { entity: body.entity, name: body.name },
+    });
 
     return successResponse({ created: true, entity: body.entity, id });
   } catch (error) {
@@ -278,7 +301,7 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { ip } = getRequestMeta(req as any);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
     const rlResult = await checkRateLimit(ip || "unknown", {
       maxAttempts: 20,
       windowMs: 5 * 60 * 1000,
@@ -307,7 +330,7 @@ export async function PUT(req: Request) {
     );
     if (body instanceof Response) return body;
 
-    const { authtoken } = await requirePermissions(["MANAGE_RESERVES"]);
+    const { authtoken, actor } = await requirePermissions(["MANAGE_RESERVES"]);
     const classId = body.entity === "course" ? "acmc" : "acmt";
 
     const existingResponse = await callOpenSRF(
@@ -343,8 +366,32 @@ export async function PUT(req: Request) {
     ]);
     const resultRow = updateResponse?.payload?.[0];
     if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+      await logAuditEvent({
+        action: `course_reserve.update`,
+        entity: classId,
+        entityId: body.id,
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(resultRow, "Failed to update record"),
+        details: { entity: body.entity, id: body.id },
+      });
       return errorResponse(getErrorMessage(resultRow, "Failed to update record"), 400, resultRow);
     }
+
+    await logAuditEvent({
+      action: `course_reserve.update`,
+      entity: classId,
+      entityId: body.id,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { entity: body.entity, id: body.id, name: body.name },
+    });
 
     return successResponse({ updated: true, entity: body.entity, id: body.id });
   } catch (error) {
@@ -354,7 +401,7 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const { ip } = getRequestMeta(req as any);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
     const rlResult = await checkRateLimit(ip || "unknown", {
       maxAttempts: 20,
       windowMs: 5 * 60 * 1000,
@@ -376,7 +423,7 @@ export async function DELETE(req: Request) {
     );
     if (body instanceof Response) return body;
 
-    const { authtoken } = await requirePermissions(["MANAGE_RESERVES"]);
+    const { authtoken, actor } = await requirePermissions(["MANAGE_RESERVES"]);
     const classId = body.entity === "course" ? "acmc" : "acmt";
 
     const delResponse = await callOpenSRF("open-ils.pcrud", `open-ils.pcrud.delete.${classId}`, [
@@ -385,8 +432,32 @@ export async function DELETE(req: Request) {
     ]);
     const resultRow = delResponse?.payload?.[0];
     if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+      await logAuditEvent({
+        action: `course_reserve.delete`,
+        entity: classId,
+        entityId: body.id,
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(resultRow, "Failed to delete record"),
+        details: { entity: body.entity, id: body.id },
+      });
       return errorResponse(getErrorMessage(resultRow, "Failed to delete record"), 400, resultRow);
     }
+
+    await logAuditEvent({
+      action: `course_reserve.delete`,
+      entity: classId,
+      entityId: body.id,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { entity: body.entity, id: body.id },
+    });
 
     return successResponse({ deleted: true, entity: body.entity, id: body.id });
   } catch (error) {

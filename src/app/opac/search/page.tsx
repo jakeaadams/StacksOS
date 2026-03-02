@@ -697,6 +697,7 @@ function SearchContent() {
                 name="q"
                 defaultValue={query}
                 placeholder={aiSmartSearchOn ? t("searchPlaceholderAI") : t("searchPlaceholder")}
+                aria-label={t("searchPlaceholder")}
                 className={`h-[50px] rounded-xl border py-3.5 pl-4 pr-10 text-sm shadow-xs transition-all focus:border-transparent focus:outline-none focus:ring-4 focus:ring-[hsl(var(--ring))/0.35] ${aiSmartSearchOn ? "border-[hsl(var(--brand-1))/0.42] bg-[hsl(var(--brand-1))/0.09]" : "border-border/85 bg-card/80 backdrop-blur-sm"}`}
               />
               <Button

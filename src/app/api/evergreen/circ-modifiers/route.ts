@@ -11,6 +11,7 @@ import {
   serverErrorResponse,
   successResponse,
 } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -50,7 +51,7 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(req: Request) {
   try {
-    const { ip } = getRequestMeta(req as any);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
     const rlResult = await checkRateLimit(ip || "unknown", {
       maxAttempts: 20,
       windowMs: 5 * 60 * 1000,
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
     );
     if (body instanceof Response) return body;
 
-    const { authtoken } = await requirePermissions(["ADMIN_CIRC_MOD"]);
+    const { authtoken, actor } = await requirePermissions(["ADMIN_CIRC_MOD"]);
 
     // If it already exists, treat as success (seed scripts should be idempotent).
     try {
@@ -107,12 +108,35 @@ export async function POST(req: Request) {
     ]);
     const resultRow = createResponse?.payload?.[0];
     if (!resultRow || isOpenSRFEvent(resultRow) || (resultRow as Record<string, any>)?.ilsevent) {
+      await logAuditEvent({
+        action: "circ_modifier.create",
+        entity: "ccm",
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(resultRow, "Failed to create circ modifier"),
+        details: { code: body.code, name: body.name },
+      });
       return errorResponse(
         getErrorMessage(resultRow, "Failed to create circ modifier"),
         400,
         resultRow
       );
     }
+
+    await logAuditEvent({
+      action: "circ_modifier.create",
+      entity: "ccm",
+      entityId: body.code,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { code: body.code, name: body.name },
+    });
 
     return successResponse({ created: true, code: body.code });
   } catch (error) {

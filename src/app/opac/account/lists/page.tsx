@@ -488,6 +488,7 @@ export default function MyListsPage() {
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           placeholder="Search in this list..."
+                          aria-label="Search in this list"
                           className="h-9 rounded-lg border-border bg-background pl-10 pr-4"
                         />
                       </div>

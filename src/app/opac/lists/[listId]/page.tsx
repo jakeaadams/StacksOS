@@ -74,7 +74,7 @@ export default function PublicListPage() {
 
       setData(json);
       setIsLoading(false);
-    })().catch((e: any) => {
+    })().catch((e: unknown) => {
       if (cancelled) return;
       setError(e instanceof Error ? e.message : "Failed to load list");
       setIsLoading(false);

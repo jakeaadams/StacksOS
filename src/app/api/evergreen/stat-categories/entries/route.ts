@@ -13,7 +13,7 @@ import {
   serverErrorResponse,
   successResponse,
 } from "@/lib/api";
-import { getActorFromToken } from "@/lib/audit";
+import { getActorFromToken, logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -124,7 +124,7 @@ export async function POST(req: Request) {
     const kind = resolveKind(body.kind);
     if (!kind) return errorResponse("Invalid kind", 400);
 
-    const { ip } = getRequestMeta(req as any);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
     const { authtoken, actor, result } = await requirePermissions([permFor(kind, "create")]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
@@ -160,6 +160,17 @@ export async function POST(req: Request) {
       isOpenSRFEvent(resultRow) ||
       (resultRow as Record<string, unknown>)?.ilsevent
     ) {
+      await logAuditEvent({
+        action: "stat_cat_entry.create",
+        entity: classId,
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(resultRow, "Failed to create stat cat entry"),
+        details: { kind, statCatId: body.statCatId, value: body.value },
+      });
       return errorResponse(
         getErrorMessage(resultRow, "Failed to create stat cat entry"),
         400,
@@ -171,6 +182,18 @@ export async function POST(req: Request) {
       typeof resultRow === "number"
         ? resultRow
         : toNumber((resultRow as Record<string, unknown>)?.id ?? resultRow);
+
+    await logAuditEvent({
+      action: "stat_cat_entry.create",
+      entity: classId,
+      entityId: id ?? undefined,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { kind, statCatId: body.statCatId, value: body.value },
+    });
 
     return successResponse({ created: true, kind, id });
   } catch (error: unknown) {
@@ -196,7 +219,7 @@ export async function PUT(req: Request) {
     const kind = resolveKind(body.kind);
     if (!kind) return errorResponse("Invalid kind", 400);
 
-    const { ip } = getRequestMeta(req as any);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
     const { authtoken, actor, result } = await requirePermissions([permFor(kind, "update")]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
@@ -247,8 +270,32 @@ export async function PUT(req: Request) {
       isOpenSRFEvent(resultRow) ||
       (resultRow as Record<string, unknown>)?.ilsevent
     ) {
+      await logAuditEvent({
+        action: "stat_cat_entry.update",
+        entity: classId,
+        entityId: body.id,
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(resultRow, "Failed to update entry"),
+        details: { kind, id: body.id },
+      });
       return errorResponse(getErrorMessage(resultRow, "Failed to update entry"), 400, resultRow);
     }
+
+    await logAuditEvent({
+      action: "stat_cat_entry.update",
+      entity: classId,
+      entityId: body.id,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { kind, id: body.id, value: body.value },
+    });
 
     return successResponse({ updated: true, kind, id: body.id });
   } catch (error: unknown) {
@@ -272,8 +319,8 @@ export async function DELETE(req: Request) {
     const kind = resolveKind(body.kind);
     if (!kind) return errorResponse("Invalid kind", 400);
 
-    const { ip } = getRequestMeta(req as any);
-    const { authtoken } = await requirePermissions([permFor(kind, "delete")]);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
+    const { authtoken, actor } = await requirePermissions([permFor(kind, "delete")]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
       maxAttempts: 20,
@@ -297,8 +344,32 @@ export async function DELETE(req: Request) {
       isOpenSRFEvent(resultRow) ||
       (resultRow as Record<string, unknown>)?.ilsevent
     ) {
+      await logAuditEvent({
+        action: "stat_cat_entry.delete",
+        entity: classId,
+        entityId: body.id,
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(resultRow, "Failed to delete entry"),
+        details: { kind, id: body.id },
+      });
       return errorResponse(getErrorMessage(resultRow, "Failed to delete entry"), 400, resultRow);
     }
+
+    await logAuditEvent({
+      action: "stat_cat_entry.delete",
+      entity: classId,
+      entityId: body.id,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { kind, id: body.id },
+    });
 
     return successResponse({ deleted: true, kind, id: body.id });
   } catch (error: unknown) {

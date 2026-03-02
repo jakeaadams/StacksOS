@@ -14,10 +14,21 @@ import {
   PGT_FIELDS,
   ACPL_FIELDS,
 } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { query } from "@/lib/db/evergreen";
+import { z } from "zod";
+
+const adminSettingsBodySchema = z
+  .object({
+    action: z.string().max(100),
+    type: z.string().max(100).optional(),
+    orgId: z.number().int().optional(),
+    data: z.record(z.string(), z.unknown()).optional(),
+  })
+  .passthrough();
 
 // ============================================================================
 // GET - Fetch admin settings data (org unit settings, circ policies, locations)
@@ -237,10 +248,18 @@ export async function GET(req: NextRequest) {
 // ============================================================================
 
 export async function POST(req: NextRequest) {
-  const { ip, requestId } = getRequestMeta(req);
+  const { ip, userAgent, requestId } = getRequestMeta(req);
 
   try {
-    const body = (await req.json()) as Record<string, unknown>;
+    const rawBody = await req.json();
+    const parsed = adminSettingsBodySchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return errorResponse(
+        "Invalid request body: " + parsed.error.issues.map((i) => i.message).join(", "),
+        400
+      );
+    }
+    const body = parsed.data;
     const { action, type, orgId: bodyOrgId } = body;
     const data = body.data as Record<string, unknown> | undefined;
 
@@ -282,8 +301,32 @@ export async function POST(req: NextRequest) {
         const result = payloadFirst(response);
 
         if (result?.ilsevent && result.ilsevent !== 0) {
+          await logAuditEvent({
+            action: "org_setting.update",
+            entity: "aous",
+            entityId: String(data.name),
+            status: "failure",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            error: result.textcode || "Failed to update setting",
+            details: { name: data.name, orgId },
+          });
           return errorResponse(result.textcode || "Failed to update setting", 400, result);
         }
+
+        await logAuditEvent({
+          action: "org_setting.update",
+          entity: "aous",
+          entityId: String(data.name),
+          status: "success",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          details: { name: data.name, value: data.value, orgId },
+        });
 
         return successResponse({
           updated: true,
@@ -326,12 +369,36 @@ export async function POST(req: NextRequest) {
           const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await logAuditEvent({
+              action: "copy_location.create",
+              entity: "acpl",
+              status: "failure",
+              actor,
+              ip,
+              userAgent,
+              requestId,
+              error: result.textcode || "Failed to create location",
+              details: { name: data.name, orgId },
+            });
             return errorResponse(result.textcode || "Failed to create location", 400, result);
           }
 
+          const createdId = result?.id || result?.__p?.[0];
+          await logAuditEvent({
+            action: "copy_location.create",
+            entity: "acpl",
+            entityId: createdId,
+            status: "success",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            details: { name: data.name, orgId },
+          });
+
           return successResponse({
             created: true,
-            id: result?.id || result?.__p?.[0],
+            id: createdId,
             name: data.name,
           });
         }
@@ -401,8 +468,32 @@ export async function POST(req: NextRequest) {
           const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await logAuditEvent({
+              action: "copy_location.update",
+              entity: "acpl",
+              entityId: data.id as number,
+              status: "failure",
+              actor,
+              ip,
+              userAgent,
+              requestId,
+              error: result.textcode || "Failed to update location",
+              details: { id: data.id },
+            });
             return errorResponse(result.textcode || "Failed to update location", 400, result);
           }
+
+          await logAuditEvent({
+            action: "copy_location.update",
+            entity: "acpl",
+            entityId: data.id as number,
+            status: "success",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            details: { id: data.id },
+          });
 
           return successResponse({
             updated: true,
@@ -454,8 +545,32 @@ export async function POST(req: NextRequest) {
           const result = payloadFirst(response);
 
           if (result?.ilsevent && result.ilsevent !== 0) {
+            await logAuditEvent({
+              action: "copy_location.delete",
+              entity: "acpl",
+              entityId: data.id as number,
+              status: "failure",
+              actor,
+              ip,
+              userAgent,
+              requestId,
+              error: result.textcode || "Failed to delete location",
+              details: { id: data.id },
+            });
             return errorResponse(result.textcode || "Failed to delete location", 400, result);
           }
+
+          await logAuditEvent({
+            action: "copy_location.delete",
+            entity: "acpl",
+            entityId: data.id as number,
+            status: "success",
+            actor,
+            ip,
+            userAgent,
+            requestId,
+            details: { id: data.id },
+          });
 
           return successResponse({
             deleted: true,
@@ -470,6 +585,15 @@ export async function POST(req: NextRequest) {
         return errorResponse("Invalid type. Use: org_setting or copy_location", 400);
     }
   } catch (error: unknown) {
+    await logAuditEvent({
+      action: "admin_settings.update",
+      entity: "admin_settings",
+      status: "failure",
+      ip,
+      userAgent,
+      requestId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return serverErrorResponse(error, "Admin Settings POST", req);
   }
 }

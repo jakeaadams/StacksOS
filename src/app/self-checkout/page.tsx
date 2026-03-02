@@ -314,6 +314,7 @@ export default function SelfCheckoutPage() {
                   <Input
                     ref={barcodeInputRef}
                     placeholder="Library Card Barcode"
+                    aria-label="Library card barcode"
                     value={barcodeInput}
                     onChange={(e) => setBarcodeInput(e.target.value)}
                     onKeyDown={(e) =>
@@ -392,6 +393,7 @@ export default function SelfCheckoutPage() {
                     <Input
                       ref={barcodeInputRef}
                       placeholder="Or type barcode..."
+                      aria-label="Item barcode"
                       value={barcodeInput}
                       onChange={(e) => setBarcodeInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleCheckout()}

@@ -9,6 +9,7 @@ import {
   isOpenSRFEvent,
   getRequestMeta,
 } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -108,7 +109,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { ip } = getRequestMeta(req);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
@@ -152,8 +153,31 @@ export async function POST(req: NextRequest) {
 
       const result = createRes?.payload?.[0];
       if (!result || isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
+        await logAuditEvent({
+          action: "bucket.create",
+          entity: "cbreb",
+          status: "failure",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          error: getErrorMessage(result, "Failed to create bucket"),
+          details: { name },
+        });
         return errorResponse(getErrorMessage(result, "Failed to create bucket"), 400, result);
       }
+
+      await logAuditEvent({
+        action: "bucket.create",
+        entity: "cbreb",
+        entityId: result,
+        status: "success",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        details: { name },
+      });
 
       return successResponse({
         bucket: {
@@ -187,12 +211,35 @@ export async function POST(req: NextRequest) {
 
       const result = addRes?.payload?.[0];
       if (!result || isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
+        await logAuditEvent({
+          action: "bucket.add_record",
+          entity: "cbrebi",
+          status: "failure",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          error: getErrorMessage(result, "Failed to add record to bucket"),
+          details: { bucketId, recordId },
+        });
         return errorResponse(
           getErrorMessage(result, "Failed to add record to bucket"),
           400,
           result
         );
       }
+
+      await logAuditEvent({
+        action: "bucket.add_record",
+        entity: "cbrebi",
+        entityId: result,
+        status: "success",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        details: { bucketId, recordId },
+      });
 
       return successResponse({ itemId: result });
     }
@@ -259,12 +306,36 @@ export async function POST(req: NextRequest) {
         isOpenSRFEvent(updateResult) ||
         (updateResult as Record<string, any>)?.ilsevent
       ) {
+        await logAuditEvent({
+          action: "bucket.update",
+          entity: "cbreb",
+          entityId: parsedBucketId,
+          status: "failure",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          error: getErrorMessage(updateResult, "Failed to update bucket"),
+          details: { bucketId: parsedBucketId },
+        });
         return errorResponse(
           getErrorMessage(updateResult, "Failed to update bucket"),
           400,
           updateResult
         );
       }
+
+      await logAuditEvent({
+        action: "bucket.update",
+        entity: "cbreb",
+        entityId: parsedBucketId,
+        status: "success",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        details: { bucketId: parsedBucketId, name: nextName },
+      });
 
       return successResponse({
         bucket: {
@@ -317,8 +388,30 @@ export async function POST(req: NextRequest) {
 
       const result = deleteRes?.payload?.[0];
       if (result?.ilsevent) {
+        await logAuditEvent({
+          action: "bucket.remove_record",
+          entity: "cbrebi",
+          status: "failure",
+          actor,
+          ip,
+          userAgent,
+          requestId,
+          error: result.desc || "Failed to remove record",
+          details: { bucketId, recordId },
+        });
         return errorResponse(result.desc || "Failed to remove record", 400);
       }
+
+      await logAuditEvent({
+        action: "bucket.remove_record",
+        entity: "cbrebi",
+        status: "success",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        details: { bucketId, recordId },
+      });
 
       return successResponse({ removed: true });
     }
@@ -331,8 +424,8 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const { ip } = getRequestMeta(req);
-    const { authtoken } = await requirePermissions(["STAFF_LOGIN"]);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
+    const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
       maxAttempts: 30,
@@ -359,8 +452,32 @@ export async function DELETE(req: NextRequest) {
 
     const result = deleteRes?.payload?.[0];
     if (result?.ilsevent) {
+      await logAuditEvent({
+        action: "bucket.delete",
+        entity: "cbreb",
+        entityId: parseInt(bucketId, 10),
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: result.desc || "Failed to delete bucket",
+        details: { bucketId },
+      });
       return errorResponse(result.desc || "Failed to delete bucket", 400);
     }
+
+    await logAuditEvent({
+      action: "bucket.delete",
+      entity: "cbreb",
+      entityId: parseInt(bucketId, 10),
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { bucketId },
+    });
 
     return successResponse({ deleted: true });
   } catch (error) {

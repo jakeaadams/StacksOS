@@ -12,7 +12,7 @@ import {
   serverErrorResponse,
   successResponse,
 } from "@/lib/api";
-import { getActorFromToken } from "@/lib/audit";
+import { getActorFromToken, logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: Request) {
   try {
-    const { ip } = getRequestMeta(req as any);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
     const { authtoken, actor, result } = await requirePermissions(["ADMIN_COPY_TAG_TYPES"]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
@@ -193,8 +193,31 @@ export async function POST(req: Request) {
       isOpenSRFEvent(resultRow) ||
       (resultRow as Record<string, unknown>)?.ilsevent
     ) {
+      await logAuditEvent({
+        action: "copy_tag_type.create",
+        entity: "cctt",
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(resultRow, "Failed to create tag type"),
+        details: { code: body.code, label: body.label },
+      });
       return errorResponse(getErrorMessage(resultRow, "Failed to create tag type"), 400, resultRow);
     }
+
+    await logAuditEvent({
+      action: "copy_tag_type.create",
+      entity: "cctt",
+      entityId: body.code,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { code: body.code, label: body.label },
+    });
 
     return successResponse({ created: true, code: body.code });
   } catch (error: unknown) {
@@ -204,7 +227,7 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { ip } = getRequestMeta(req as any);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
     const { authtoken, actor, result } = await requirePermissions(["ADMIN_COPY_TAG_TYPES"]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
@@ -266,8 +289,32 @@ export async function PUT(req: Request) {
       isOpenSRFEvent(resultRow) ||
       (resultRow as Record<string, unknown>)?.ilsevent
     ) {
+      await logAuditEvent({
+        action: "copy_tag_type.update",
+        entity: "cctt",
+        entityId: code,
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(resultRow, "Failed to update tag type"),
+        details: { code },
+      });
       return errorResponse(getErrorMessage(resultRow, "Failed to update tag type"), 400, resultRow);
     }
+
+    await logAuditEvent({
+      action: "copy_tag_type.update",
+      entity: "cctt",
+      entityId: code,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { code, label: body.label },
+    });
 
     return successResponse({ updated: true, code });
   } catch (error: unknown) {
@@ -277,8 +324,8 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const { ip } = getRequestMeta(req as any);
-    const { authtoken } = await requirePermissions(["ADMIN_COPY_TAG_TYPES"]);
+    const { ip, userAgent, requestId } = getRequestMeta(req);
+    const { authtoken, actor } = await requirePermissions(["ADMIN_COPY_TAG_TYPES"]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
       maxAttempts: 20,
@@ -310,8 +357,32 @@ export async function DELETE(req: Request) {
       isOpenSRFEvent(resultRow) ||
       (resultRow as Record<string, unknown>)?.ilsevent
     ) {
+      await logAuditEvent({
+        action: "copy_tag_type.delete",
+        entity: "cctt",
+        entityId: body.code,
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(resultRow, "Failed to delete tag type"),
+        details: { code: body.code },
+      });
       return errorResponse(getErrorMessage(resultRow, "Failed to delete tag type"), 400, resultRow);
     }
+
+    await logAuditEvent({
+      action: "copy_tag_type.delete",
+      entity: "cctt",
+      entityId: body.code,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { code: body.code },
+    });
 
     return successResponse({ deleted: true, code: body.code });
   } catch (error: unknown) {

@@ -135,7 +135,7 @@ export default function PatronRegisterPage() {
         email: p.email || "",
       }));
       setDuplicates(patrons);
-    } catch (_error: any) {
+    } catch (_error: unknown) {
       setDuplicates([]);
     }
   };

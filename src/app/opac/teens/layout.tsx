@@ -122,6 +122,7 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search YA books, graphic novels..."
+                  aria-label="Search teen books"
                   className="w-full pl-5 pr-12 py-3 rounded-full border-2 teens-border-secondary-wash
                            text-foreground placeholder:text-muted-foreground/70 text-lg
                            focus:outline-none teens-focus-border focus:ring-4 teens-focus-ring
@@ -213,6 +214,7 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search YA books..."
+                  aria-label="Search teen books"
                   className="w-full pl-4 pr-12 py-2.5 rounded-full border-2 teens-border-secondary-wash
                            text-foreground placeholder:text-muted-foreground/70
                            focus:outline-none teens-focus-border"

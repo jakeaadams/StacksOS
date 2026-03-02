@@ -227,6 +227,7 @@ export default function AdvancedSearchPage() {
                     onChange={(e) => updateSearchField(field.id, { value: e.target.value })}
                     placeholder={`Enter ${field.type}...`}
                     className="h-10 flex-1 rounded-lg px-4"
+                    aria-label={`Search by ${field.type}`}
                   />
 
                   {/* Remove button */}
@@ -377,6 +378,7 @@ export default function AdvancedSearchPage() {
                     min="1800"
                     max="2030"
                     className="h-10 flex-1 rounded-lg px-3"
+                    aria-label="Publication year to"
                   />
                 </div>
               </div>

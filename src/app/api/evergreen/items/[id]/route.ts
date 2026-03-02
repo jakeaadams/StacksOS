@@ -11,6 +11,7 @@ import {
   getRequestMeta,
   isOpenSRFEvent,
 } from "@/lib/api";
+import { logAuditEvent } from "@/lib/audit";
 import { query } from "@/lib/db/evergreen";
 import { requirePermissions } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -48,8 +49,8 @@ const itemPatchSchema = z
   .passthrough();
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
+  const { ip, userAgent, requestId } = getRequestMeta(req);
   try {
-    const { ip } = getRequestMeta(req);
     const { authtoken, actor } = await requirePermissions(["UPDATE_COPY"]);
 
     const rlResult = await checkRateLimit(ip || "unknown", {
@@ -234,6 +235,18 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     const result = updateResponse?.payload?.[0];
     if (isOpenSRFEvent(result) || (result as Record<string, any>)?.ilsevent) {
+      await logAuditEvent({
+        action: "item.update",
+        entity: "acp",
+        entityId: copyId,
+        status: "failure",
+        actor,
+        ip,
+        userAgent,
+        requestId,
+        error: getErrorMessage(result, "Failed to update item"),
+        details: { copyId },
+      });
       return errorResponse(getErrorMessage(result, "Failed to update item"), 400, result);
     }
 
@@ -341,8 +354,29 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       }
     }
 
+    await logAuditEvent({
+      action: "item.update",
+      entity: "acp",
+      entityId: copyId,
+      status: "success",
+      actor,
+      ip,
+      userAgent,
+      requestId,
+      details: { copyId, barcode },
+    });
+
     return successResponse({ updated: true, id: copyId });
   } catch (error) {
+    await logAuditEvent({
+      action: "item.update",
+      entity: "acp",
+      status: "failure",
+      ip,
+      userAgent,
+      requestId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return serverErrorResponse(error, "Items PATCH", req);
   }
 }

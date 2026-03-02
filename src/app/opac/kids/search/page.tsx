@@ -174,6 +174,7 @@ function KidsSearchContent() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search for books..."
+              aria-label="Search for books"
               className="w-full pl-5 pr-14 py-4 text-lg rounded-full border-2 kids-border-primary-wash
                        text-foreground placeholder:text-muted-foreground/70 bg-card
                        focus:outline-none kids-focus-border focus:ring-4 kids-focus-ring"

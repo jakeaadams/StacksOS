@@ -251,6 +251,7 @@ export default function ReadingHistoryPage() {
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder={t("searchHistory")}
+                  aria-label={t("searchHistory")}
                   className="pl-14"
                 />
               </div>
