@@ -79,7 +79,7 @@ def main() -> int:
         "ping",
         lambda d: (
             _require(_is_int_like(d.get("status")), "ping: status must be int-like"),
-            _require(isinstance(d.get("url"), str), "ping: url must be a string"),
+            _require(isinstance(d.get("reachable"), bool), "ping: reachable must be boolean"),
         ),
     )
 
