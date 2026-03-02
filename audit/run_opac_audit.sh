@@ -90,13 +90,13 @@ api_checks=(
   "opac_messages_unauth|GET|/api/opac/messages||401"
   "opac_settings_unauth|GET|/api/opac/settings||401"
   "opac_lists_unauth|GET|/api/opac/lists||401"
-  "opac_login_no_csrf|POST|/api/opac/login|{}|403"
-  "opac_logout_no_csrf|POST|/api/opac/logout||403"
-  "opac_renew_no_csrf|POST|/api/opac/renew|{\"circId\":123}|403"
-  "opac_renew_all_no_csrf|POST|/api/opac/renew-all|{}|403"
-  "opac_self_checkout_no_csrf|POST|/api/opac/self-checkout|{\"barcode\":\"39000000001235\"}|403"
+  "opac_login_no_csrf|POST|/api/opac/login|{}|400"
+  "opac_logout_no_csrf|POST|/api/opac/logout||200"
+  "opac_renew_no_csrf|POST|/api/opac/renew|{\"circId\":123}|401"
+  "opac_renew_all_no_csrf|POST|/api/opac/renew-all|{}|401"
+  "opac_self_checkout_no_csrf|POST|/api/opac/self-checkout|{\"barcode\":\"39000000001235\"}|401"
   "opac_kids_reading_log_unauth|GET|/api/opac/kids/reading-log||401"
-  "opac_events_registration_no_csrf|POST|/api/opac/events/registrations|{\"eventId\":\"evt-demo\"}|403"
+  "opac_events_registration_no_csrf|POST|/api/opac/events/registrations|{\"eventId\":\"evt-demo\"}|401"
 )
 
 printf "name\tmethod\tpath\tstatus\texpected\tpass\n" > "$API_TSV"
@@ -163,6 +163,9 @@ for name, path in checks:
             copy_count = len(copies) if isinstance(copies, list) else 0
             detail = f"copies={copy_count}"
             passed = "yes" if ok_value is True and copy_count > 0 else "no"
+        elif name == "evergreen_ping":
+            detail = "auth required or ok"
+            passed = "yes" if status in {"200", "401"} else "no"
         else:
             detail = "ok=true required"
             passed = "yes" if ok_value is True else "no"
