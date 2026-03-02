@@ -28,11 +28,16 @@ require_cmd grep
 require_cmd node
 
 # Server required for API/workflow audits.
-if ! curl -fsS "$BASE_URL/api/evergreen/ping" >/dev/null 2>&1; then
+if ! curl -fsS "$BASE_URL/api/health" >/dev/null 2>&1; then
   echo "ERROR: StacksOS server not reachable at $BASE_URL" >&2
   echo "Start it (dev): cd $ROOT_DIR && npm run dev -- -H 0.0.0.0 -p 3000" >&2
   echo "Or (prod): cd $ROOT_DIR && npm run build && npm run start -- -H 0.0.0.0 -p 3000" >&2
   exit 1
+fi
+
+# Evergreen ping is staff-authenticated on hardened installs.
+if ! curl -fsS "$BASE_URL/api/evergreen/ping" >/dev/null 2>&1; then
+  echo "NOTE: /api/evergreen/ping is auth-gated or unavailable without credentials; continuing." >&2
 fi
 
 # Guardrails: mutation mode must only run against disposable Evergreen datasets.

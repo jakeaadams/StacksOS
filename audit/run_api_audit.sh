@@ -148,8 +148,8 @@ call() {
   printf "%s\t%s\t%s\n" "$name" "$status" "$url" >> "$LOG"
 }
 
-# 1) Ping + orgs
-call "ping" "$BASE_URL/api/evergreen/ping"
+# 1) Public health + orgs
+call "health" "$BASE_URL/api/health"
 call "orgs" "$BASE_URL/api/evergreen/orgs"
 
 # 1b) CSRF token (required for all state-changing ops like auth login)
@@ -211,6 +211,7 @@ fi
 
 # 3) Session check
 call "auth_session" "$BASE_URL/api/evergreen/auth"
+call "ping" "$BASE_URL/api/evergreen/ping"
 
 # 3b) Coverage: exercise additional adapter modules (read-only)
 call "activity_all" "$BASE_URL/api/evergreen/activity?type=all&limit=5"
