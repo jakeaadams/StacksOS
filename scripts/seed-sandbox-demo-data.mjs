@@ -921,6 +921,278 @@ async function ensureAuthority({ baseUrl, jar, csrfToken }) {
   }
 }
 
+async function lookupPatronId({ baseUrl, jar, barcode }) {
+  try {
+    const res = await fetchJson(`${baseUrl}/api/evergreen/patrons?barcode=${encodeURIComponent(barcode)}`, { jar });
+    return res?.patron?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Circulation Activity Seeding                                               */
+/* -------------------------------------------------------------------------- */
+
+const CHECKOUT_PLAN = [
+  { patronIdx: 1,  items: [{ copyIdx: 0,  dueDays: 14 }, { copyIdx: 1,  dueDays: 7  }, { copyIdx: 2,  dueDays: -5  }] },
+  { patronIdx: 2,  items: [{ copyIdx: 3,  dueDays: 10 }, { copyIdx: 4,  dueDays: 3  }] },
+  { patronIdx: 3,  items: [{ copyIdx: 5,  dueDays: 14 }, { copyIdx: 6,  dueDays: -8 }, { copyIdx: 7,  dueDays: 21 }] },
+  { patronIdx: 4,  items: [{ copyIdx: 8,  dueDays: 7  }, { copyIdx: 9,  dueDays: -3 }] },
+  { patronIdx: 5,  items: [{ copyIdx: 10, dueDays: 14 }, { copyIdx: 11, dueDays: 10 }] },
+  { patronIdx: 6,  items: [{ copyIdx: 12, dueDays: 21 }, { copyIdx: 13, dueDays: -12}, { copyIdx: 14, dueDays: 5  }] },
+  { patronIdx: 7,  items: [{ copyIdx: 15, dueDays: 14 }, { copyIdx: 16, dueDays: 7  }] },
+  { patronIdx: 8,  items: [{ copyIdx: 17, dueDays: 10 }, { copyIdx: 18, dueDays: -2 }] },
+  { patronIdx: 9,  items: [{ copyIdx: 19, dueDays: 14 }, { copyIdx: 20, dueDays: 7  }, { copyIdx: 21, dueDays: 3  }] },
+  { patronIdx: 10, items: [{ copyIdx: 22, dueDays: 14 }, { copyIdx: 23, dueDays: -6 }] },
+  { patronIdx: 11, items: [{ copyIdx: 24, dueDays: 10 }, { copyIdx: 25, dueDays: 7  }] },
+  { patronIdx: 12, items: [{ copyIdx: 26, dueDays: 21 }, { copyIdx: 27, dueDays: -10}, { copyIdx: 28, dueDays: 14 }] },
+  { patronIdx: 13, items: [{ copyIdx: 29, dueDays: 7  }, { copyIdx: 30, dueDays: 3  }] },
+  { patronIdx: 14, items: [{ copyIdx: 31, dueDays: 14 }, { copyIdx: 32, dueDays: -4 }] },
+  { patronIdx: 15, items: [{ copyIdx: 33, dueDays: 10 }, { copyIdx: 34, dueDays: 7  }] },
+  { patronIdx: 16, items: [{ copyIdx: 35, dueDays: 14 }, { copyIdx: 36, dueDays: 7  }, { copyIdx: 37, dueDays: -7 }] },
+  { patronIdx: 17, items: [{ copyIdx: 38, dueDays: 14 }, { copyIdx: 39, dueDays: -1 }] },
+  { patronIdx: 18, items: [{ copyIdx: 40, dueDays: 21 }, { copyIdx: 41, dueDays: 10 }] },
+];
+
+const CHECKIN_PLAN = [
+  { patronIdx: 19, copyIndices: [80, 81] },
+  { patronIdx: 20, copyIndices: [82, 83] },
+  { patronIdx: 21, copyIndices: [84, 85] },
+  { patronIdx: 22, copyIndices: [86, 87] },
+  { patronIdx: 23, copyIndices: [88, 89] },
+  { patronIdx: 24, copyIndices: [90, 91] },
+];
+
+const HOLD_PLAN = [
+  { patronIdx: 0,  bibOffset: 0  },
+  { patronIdx: 3,  bibOffset: 1  },
+  { patronIdx: 5,  bibOffset: 2  },
+  { patronIdx: 7,  bibOffset: 3  },
+  { patronIdx: 9,  bibOffset: 5  },
+  { patronIdx: 11, bibOffset: 7  },
+  { patronIdx: 13, bibOffset: 10 },
+  { patronIdx: 15, bibOffset: 12 },
+  { patronIdx: 17, bibOffset: 15 },
+  { patronIdx: 2,  bibOffset: 17 },
+  { patronIdx: 4,  bibOffset: 19 },
+  { patronIdx: 6,  bibOffset: 20 },
+  { patronIdx: 8,  bibOffset: 50 },
+  { patronIdx: 10, bibOffset: 51 },
+  { patronIdx: 12, bibOffset: 52 },
+  { patronIdx: 14, bibOffset: 53 },
+  { patronIdx: 16, bibOffset: 54 },
+  { patronIdx: 18, bibOffset: 55 },
+];
+
+async function resolveBibIdsFromItems({ baseUrl, jar, bibCount, copiesPerBib }) {
+  console.log("[seed] resolving bib IDs from existing items...");
+  const bibIds = [];
+
+  // We only need offsets used by HOLD_PLAN: 0-20 and 50-55.
+  // Look up the first copy barcode for each bib to find its record ID.
+  const neededOffsets = new Set(HOLD_PLAN.map((h) => h.bibOffset));
+  const maxOffset = Math.max(...neededOffsets) + 1;
+  const limit = Math.min(bibCount, maxOffset);
+
+  for (let bibOffset = 0; bibOffset < limit; bibOffset++) {
+    if (!neededOffsets.has(bibOffset)) {
+      bibIds.push(null);
+      continue;
+    }
+    const copyIdx = bibOffset * copiesPerBib;
+    const barcode = String(39000001000000n + BigInt(copyIdx));
+    try {
+      const resp = await fetchJson(
+        `${baseUrl}/api/evergreen/items?barcode=${encodeURIComponent(barcode)}`,
+        { jar }
+      );
+      // The API returns { item: { recordId, ... } }
+      const bibId = resp?.item?.recordId ?? resp?.item?.record_id ?? resp?.item?.bibId ?? null;
+      bibIds.push(bibId);
+      if (bibId) {
+        console.log(`[seed] bib offset ${bibOffset}: barcode ${barcode} → record ${bibId}`);
+      }
+    } catch (e) {
+      console.warn(`[seed] bib lookup failed for offset ${bibOffset} (${barcode}): ${String(e).slice(0, 120)}`);
+      bibIds.push(null);
+    }
+  }
+
+  const resolved = bibIds.filter(Boolean).length;
+  console.log(`[seed] resolved ${resolved} bib IDs from ${limit} item lookups`);
+  return bibIds;
+}
+
+async function seedCirculationActivity({ baseUrl, jar, csrfToken, orgId, patronMap, bibIds }) {
+  const summary = {
+    checkoutsAttempted: 0,
+    checkoutsSucceeded: 0,
+    checkinsAttempted: 0,
+    checkinsSucceeded: 0,
+    holdsAttempted: 0,
+    holdsSucceeded: 0,
+    overdueCount: 0,
+    errors: [],
+  };
+
+  if (process.env.DEMO_SKIP_CIRC_ACTIVITY === "1") {
+    console.log("[seed] skipping circulation activity (DEMO_SKIP_CIRC_ACTIVITY=1)");
+    return summary;
+  }
+
+  if (patronMap.size === 0) {
+    console.warn("[seed] skipping circulation activity: no patron IDs available");
+    return summary;
+  }
+
+  function copyBarcode(index) {
+    return String(39000001000000n + BigInt(index));
+  }
+
+  function pBarcode(idx) {
+    if (idx === 0) return process.env.DEMO_PATRON_BARCODE || "29000000001234";
+    return String(29000000010000 + idx).padStart(14, "0");
+  }
+
+  function formatDateOffset(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split("T")[0];
+  }
+
+  // Phase 1: Active checkouts (some with past due dates = overdue)
+  console.log("[seed] circulation phase 1: creating checkouts...");
+  for (const entry of CHECKOUT_PLAN) {
+    const patronBc = pBarcode(entry.patronIdx);
+    if (!patronMap.has(patronBc)) continue;
+    for (const item of entry.items) {
+      try {
+        summary.checkoutsAttempted++;
+        await fetchJson(`${baseUrl}/api/evergreen/circulation`, {
+          method: "POST",
+          jar,
+          csrfToken,
+          json: {
+            action: "checkout",
+            patronBarcode: patronBc,
+            itemBarcode: copyBarcode(item.copyIdx),
+            dueDate: formatDateOffset(item.dueDays),
+          },
+        });
+        summary.checkoutsSucceeded++;
+        if (item.dueDays < 0) summary.overdueCount++;
+        await sleep(200);
+      } catch (e) {
+        const errStr = String(e);
+        if (errStr.includes("OPEN_CIRCULATION_EXISTS") || errStr.includes("409")) {
+          summary.checkoutsSucceeded++;
+          if (item.dueDays < 0) summary.overdueCount++;
+        } else {
+          summary.errors.push(`checkout ${patronBc}/${copyBarcode(item.copyIdx)}: ${errStr.slice(0, 160)}`);
+          console.warn(`[seed] checkout failed: ${errStr.slice(0, 160)}`);
+        }
+      }
+    }
+  }
+  console.log(`[seed] checkouts: ${summary.checkoutsSucceeded}/${summary.checkoutsAttempted} (${summary.overdueCount} overdue)`);
+
+  // Phase 2: Today's checkins (checkout then immediately return)
+  console.log("[seed] circulation phase 2: creating today's checkins...");
+  for (const entry of CHECKIN_PLAN) {
+    const patronBc = pBarcode(entry.patronIdx);
+    if (!patronMap.has(patronBc)) continue;
+    for (const idx of entry.copyIndices) {
+      try {
+        // Checkout first
+        summary.checkoutsAttempted++;
+        await fetchJson(`${baseUrl}/api/evergreen/circulation`, {
+          method: "POST",
+          jar,
+          csrfToken,
+          json: {
+            action: "checkout",
+            patronBarcode: patronBc,
+            itemBarcode: copyBarcode(idx),
+          },
+        });
+        summary.checkoutsSucceeded++;
+        await sleep(200);
+
+        // Then checkin
+        summary.checkinsAttempted++;
+        await fetchJson(`${baseUrl}/api/evergreen/circulation`, {
+          method: "POST",
+          jar,
+          csrfToken,
+          json: {
+            action: "checkin",
+            itemBarcode: copyBarcode(idx),
+          },
+        });
+        summary.checkinsSucceeded++;
+        await sleep(200);
+      } catch (e) {
+        const errStr = String(e);
+        summary.errors.push(`checkin-roundtrip ${patronBc}/${copyBarcode(idx)}: ${errStr.slice(0, 160)}`);
+        console.warn(`[seed] checkin roundtrip failed: ${errStr.slice(0, 160)}`);
+      }
+    }
+  }
+  console.log(`[seed] checkins: ${summary.checkinsSucceeded}/${summary.checkinsAttempted}`);
+
+  // Phase 3: Holds (title-level)
+  console.log("[seed] circulation phase 3: placing holds...");
+  for (const entry of HOLD_PLAN) {
+    const patronBc = pBarcode(entry.patronIdx);
+    const patronId = patronMap.get(patronBc);
+    if (!patronId) {
+      console.warn(`[seed] hold skipped: no ID for patron ${patronBc}`);
+      continue;
+    }
+    const bibId = bibIds[entry.bibOffset];
+    if (!bibId) {
+      console.warn(`[seed] hold skipped: no bib at offset ${entry.bibOffset}`);
+      continue;
+    }
+
+    try {
+      summary.holdsAttempted++;
+      await fetchJson(`${baseUrl}/api/evergreen/circulation`, {
+        method: "POST",
+        jar,
+        csrfToken,
+        json: {
+          action: "place_hold",
+          patron_id: patronId,
+          target_id: bibId,
+          pickup_lib: orgId,
+          hold_type: "T",
+        },
+      });
+      summary.holdsSucceeded++;
+      await sleep(200);
+    } catch (e) {
+      const errStr = String(e);
+      if (errStr.includes("HOLD_EXISTS") || errStr.includes("hold already")) {
+        summary.holdsSucceeded++;
+      } else {
+        summary.errors.push(`hold patron=${patronBc} bib=${bibId}: ${errStr.slice(0, 160)}`);
+        console.warn(`[seed] hold failed: ${errStr.slice(0, 160)}`);
+      }
+    }
+  }
+  console.log(`[seed] holds: ${summary.holdsSucceeded}/${summary.holdsAttempted}`);
+
+  console.log(
+    `[seed] circulation activity complete: ${summary.checkoutsSucceeded} checkouts, ` +
+    `${summary.checkinsSucceeded} checkins, ${summary.holdsSucceeded} holds, ` +
+    `${summary.overdueCount} overdue, ${summary.errors.length} errors`
+  );
+
+  return summary;
+}
+
 async function main() {
   loadEnv();
 
@@ -970,7 +1242,8 @@ async function main() {
 
   const demoPatronPin = process.env.DEMO_PATRON_PIN || "DEMO1234";
   const demoPatronBarcode = process.env.DEMO_PATRON_BARCODE || "29000000001234";
-  await ensurePatron({
+  const patronMap = new Map();
+  const primaryResult = await ensurePatron({
     baseUrl,
     jar,
     csrfToken,
@@ -981,13 +1254,19 @@ async function main() {
     lastName: "DemoPatron",
     pin: demoPatronPin,
   });
+  if (primaryResult.id) {
+    patronMap.set(demoPatronBarcode, primaryResult.id);
+  } else {
+    const fallbackId = await lookupPatronId({ baseUrl, jar, barcode: demoPatronBarcode });
+    if (fallbackId) patronMap.set(demoPatronBarcode, fallbackId);
+  }
 
   const patronCount = Number(process.env.DEMO_PATRON_COUNT || 10);
   for (let i = 1; i <= patronCount; i++) {
     const patron = DEMO_PATRONS[i - 1] || { first: "Demo", last: `Patron${i}` };
     const barcode = String(29000000010000 + i).padStart(14, "0");
     const username = `${patron.first.toLowerCase()}.${patron.last.toLowerCase().replace(/[^a-z]/g, "")}`;
-    await ensurePatron({
+    const result = await ensurePatron({
       baseUrl,
       jar,
       csrfToken,
@@ -998,7 +1277,14 @@ async function main() {
       lastName: patron.last,
       pin: demoPatronPin,
     });
+    if (result.id) {
+      patronMap.set(barcode, result.id);
+    } else {
+      const fallbackId = await lookupPatronId({ baseUrl, jar, barcode });
+      if (fallbackId) patronMap.set(barcode, fallbackId);
+    }
   }
+  console.log(`[seed] patron map: ${patronMap.size} patrons with IDs`);
 
   const catalog = await ensureCatalogSeed({ baseUrl, jar, csrfToken, orgId, forceRecreate });
 
@@ -1023,6 +1309,22 @@ async function main() {
   await ensureCopyTags({ baseUrl, jar, csrfToken, orgId });
   await ensureAuthority({ baseUrl, jar, csrfToken });
 
+  let bibIdsForCirc = catalog.createdBibIds;
+  if (bibIdsForCirc.length === 0) {
+    const bibCount = Number(process.env.DEMO_BIB_COUNT || 100);
+    const copiesPerBib = Number(process.env.DEMO_COPIES_PER_BIB || 2);
+    bibIdsForCirc = await resolveBibIdsFromItems({ baseUrl, jar, bibCount, copiesPerBib });
+  }
+
+  const circActivity = await seedCirculationActivity({
+    baseUrl,
+    jar,
+    csrfToken,
+    orgId,
+    patronMap,
+    bibIds: bibIdsForCirc,
+  });
+
   const out = {
     generatedAt: isoNow(),
     baseUrl,
@@ -1044,6 +1346,14 @@ async function main() {
     demoInvoiceId: invoice.demoInvoiceId,
     bookingResourceTypeId: booking.bookingResourceTypeId,
     bookingResourceId: booking.bookingResourceId,
+    circulationActivity: {
+      seededAt: isoNow(),
+      checkoutsCreated: circActivity.checkoutsSucceeded,
+      checkinsCreated: circActivity.checkinsSucceeded,
+      holdsCreated: circActivity.holdsSucceeded,
+      overdueItems: circActivity.overdueCount,
+      errors: circActivity.errors.length,
+    },
   };
 
   const outPath = path.join(__dirname, "..", "audit", "demo_data.json");
