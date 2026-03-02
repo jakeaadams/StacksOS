@@ -30,7 +30,9 @@ test.describe("Public Smoke", () => {
     const health = await request.get("/api/health");
     expect([200, 503]).toContain(health.status());
 
+    // Evergreen ping now requires staff auth — 401 is the expected
+    // unauthenticated response; 200/503 if somehow authed.
     const evergreenPing = await request.get("/api/evergreen/ping");
-    expect([200, 503]).toContain(evergreenPing.status());
+    expect([200, 401, 503]).toContain(evergreenPing.status());
   });
 });
