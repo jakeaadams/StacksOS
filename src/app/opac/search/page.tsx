@@ -745,8 +745,11 @@ function SearchContent() {
                 }
                 disabled={!allowScopeOverride}
               >
-                <SelectTrigger className="h-auto min-w-[170px] border-0 bg-transparent p-0 text-foreground shadow-none focus:ring-0">
-                  <SelectValue aria-label="Search scope" />
+                <SelectTrigger
+                  aria-label="Search scope"
+                  className="h-auto min-w-[170px] border-0 bg-transparent p-0 text-foreground shadow-none focus:ring-0"
+                >
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="local">Search this library</SelectItem>
@@ -768,8 +771,11 @@ function SearchContent() {
                     })
                   }
                 >
-                  <SelectTrigger className="h-auto min-w-[170px] border-0 bg-transparent p-0 text-foreground shadow-none focus:ring-0">
-                    <SelectValue aria-label="Search depth" />
+                  <SelectTrigger
+                    aria-label="Search depth"
+                    className="h-auto min-w-[170px] border-0 bg-transparent p-0 text-foreground shadow-none focus:ring-0"
+                  >
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="0">This location only</SelectItem>
@@ -908,7 +914,10 @@ function SearchContent() {
                     value={sort}
                     onValueChange={(value) => updateSearchParams({ sort: value })}
                   >
-                    <SelectTrigger className="h-auto min-w-[120px] border-0 bg-transparent p-0 text-sm font-medium text-foreground/85 shadow-none focus:ring-0">
+                    <SelectTrigger
+                      aria-label="Sort results"
+                      className="h-auto min-w-[120px] border-0 bg-transparent p-0 text-sm font-medium text-foreground/85 shadow-none focus:ring-0"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

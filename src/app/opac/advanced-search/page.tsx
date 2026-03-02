@@ -208,7 +208,10 @@ export default function AdvancedSearchPage() {
                     value={field.type}
                     onValueChange={(value) => updateSearchField(field.id, { type: value })}
                   >
-                    <SelectTrigger className="h-10 w-40 rounded-lg text-sm">
+                    <SelectTrigger
+                      aria-label="Search field type"
+                      className="h-10 w-40 rounded-lg text-sm"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
