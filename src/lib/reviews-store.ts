@@ -9,6 +9,7 @@
 import { promises as fs } from "fs";
 import { mkdirSync, readFileSync, existsSync } from "fs";
 import { dirname } from "path";
+import { logger } from "@/lib/logger";
 
 export interface Review {
   id: number;
@@ -77,7 +78,7 @@ async function flush(): Promise<void> {
     mkdirSync(dir, { recursive: true });
     await fs.writeFile(STORE_PATH, JSON.stringify(data, null, 2), "utf-8");
   } catch (err) {
-    console.error("[reviews-store] Failed to write store to disk:", err);
+    logger.error({ error: String(err) }, "Failed to write reviews store to disk");
   }
 }
 

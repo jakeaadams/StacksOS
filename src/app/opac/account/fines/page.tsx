@@ -11,7 +11,7 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 import { Button } from "@/components/ui/button";
 
 export default function FinesPage() {
-  const _t = useTranslations("finesPage");
+  const t = useTranslations("finesPage");
   const router = useRouter();
   const { isLoggedIn, isLoading: sessionLoading, fines, fetchFines } = usePatronSession();
 
@@ -72,11 +72,11 @@ export default function FinesPage() {
           description: "Fine payment",
         }),
       });
-      toast.success("Payment submitted successfully. Your fines are being processed.");
+      toast.success(t("paymentSuccessToast"));
       setSelectedFines([]);
       await fetchFines();
     } catch (_error) {
-      toast.error("Payment failed. Please try again or contact the library for assistance.");
+      toast.error(t("paymentErrorToast"));
     } finally {
       setIsProcessingPayment(false);
     }
@@ -90,11 +90,11 @@ export default function FinesPage() {
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Account
+          {t("backToAccount")}
         </Link>
 
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Fines & Fees</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
         </div>
 
         {/* Balance summary */}
@@ -107,7 +107,7 @@ export default function FinesPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Current Balance</p>
+              <p className="text-sm text-muted-foreground mb-1">{t("currentBalance")}</p>
               <p
                 className={`text-4xl font-bold ${totalBalance > 0 ? "text-amber-700" : "text-green-700"}`}
               >
@@ -118,8 +118,11 @@ export default function FinesPage() {
               <div className="text-right">
                 <p className="text-sm text-muted-foreground mb-2">
                   {selectedFines.length > 0
-                    ? `${selectedFines.length} selected: $${selectedTotal.toFixed(2)}`
-                    : "Select items to pay"}
+                    ? t("selectedCount", {
+                        count: selectedFines.length,
+                        amount: selectedTotal.toFixed(2),
+                      })
+                    : t("selectItemsToPay")}
                 </p>
                 <Button
                   type="button"
@@ -133,8 +136,10 @@ export default function FinesPage() {
                     <CreditCard className="h-5 w-5" />
                   )}
                   {isProcessingPayment
-                    ? "Processing..."
-                    : `Pay ${selectedFines.length > 0 ? `$${selectedTotal.toFixed(2)}` : "Now"}`}
+                    ? t("processing")
+                    : selectedFines.length > 0
+                      ? t("payAmount", { amount: selectedTotal.toFixed(2) })
+                      : t("payNow")}
                 </Button>
               </div>
             )}
@@ -148,8 +153,8 @@ export default function FinesPage() {
         ) : fines.length === 0 ? (
           <div className="stx-surface rounded-xl p-12 text-center">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">No fines</h2>
-            <p className="text-muted-foreground">Your account is in good standing.</p>
+            <h2 className="text-xl font-semibold text-foreground mb-2">{t("noFinesTitle")}</h2>
+            <p className="text-muted-foreground">{t("noFinesDescription")}</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -158,14 +163,16 @@ export default function FinesPage() {
               <div className="stx-surface rounded-xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                   <h2 className="font-semibold text-foreground">
-                    Outstanding ({unpaidFines.length})
+                    {t("outstandingCount", { count: unpaidFines.length })}
                   </h2>
                   <button
                     type="button"
                     onClick={selectAll}
                     className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                   >
-                    {selectedFines.length === unpaidFines.length ? "Deselect All" : "Select All"}
+                    {selectedFines.length === unpaidFines.length
+                      ? t("deselectAll")
+                      : t("selectAll")}
                   </button>
                 </div>
                 <div className="divide-y divide-border/50">
@@ -208,7 +215,7 @@ export default function FinesPage() {
                 <div className="px-6 py-4 border-b border-border">
                   <h2 className="font-semibold text-foreground flex items-center gap-2">
                     <Receipt className="h-5 w-5 text-muted-foreground/70" />
-                    Payment History ({paidFines.length})
+                    {t("paymentHistoryCount", { count: paidFines.length })}
                   </h2>
                 </div>
                 <div className="divide-y divide-border/50">
@@ -235,14 +242,14 @@ export default function FinesPage() {
 
         {/* Payment info */}
         <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-xl">
-          <h3 className="font-semibold text-blue-900 mb-2">Payment Options</h3>
+          <h3 className="font-semibold text-blue-900 mb-2">{t("paymentOptions")}</h3>
           <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Pay online with credit/debit card</li>
-            <li>• Pay in person at any library location</li>
-            <li>• Cash, check, or card accepted in person</li>
+            <li>{`• ${t("payOnlineCard")}`}</li>
+            <li>{`• ${t("payInPerson")}`}</li>
+            <li>{`• ${t("paymentMethodsAccepted")}`}</li>
           </ul>
           <p className="text-sm text-blue-700 mt-3">
-            Questions about your fines? Contact us at{" "}
+            {t("contactQuestion")}{" "}
             <a href="tel:555-123-4567" className="underline">
               555-123-4567
             </a>

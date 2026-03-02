@@ -83,7 +83,7 @@ export function SearchFiltersPanel({
           onClick={() => onToggleFacet("format")}
           className={facetToggleClass}
         >
-          Format
+          {t("format")}
           {expandedFacets.includes("format") ? (
             <ChevronUp className="h-4 w-4" />
           ) : (
@@ -131,7 +131,7 @@ export function SearchFiltersPanel({
           onClick={() => onToggleFacet("availability")}
           className={facetToggleClass}
         >
-          Availability
+          {t("availability")}
           {expandedFacets.includes("availability") ? (
             <ChevronUp className="h-4 w-4" />
           ) : (
@@ -165,7 +165,7 @@ export function SearchFiltersPanel({
             onClick={() => onToggleFacet("location")}
             className={facetToggleClass}
           >
-            Location
+            {t("location")}
             {expandedFacets.includes("location") ? (
               <ChevronUp className="h-4 w-4" />
             ) : (
@@ -181,10 +181,10 @@ export function SearchFiltersPanel({
                 }
               >
                 <SelectTrigger id="t-location" className="h-10 rounded-lg bg-background text-sm">
-                  <SelectValue placeholder="All Locations" />
+                  <SelectValue placeholder={t("allLocations")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">All Locations</SelectItem>
+                  <SelectItem value="__all__">{t("allLocations")}</SelectItem>
                   {locations.map((loc) => (
                     <SelectItem key={loc.id} value={loc.id.toString()}>
                       {loc.name}
@@ -207,7 +207,7 @@ export function SearchFiltersPanel({
               onClick={() => onToggleFacet("audience")}
               className={facetToggleClass}
             >
-              Audience
+              {t("audience")}
               {expandedFacets.includes("audience") ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (
@@ -247,7 +247,7 @@ export function SearchFiltersPanel({
               onClick={() => onToggleFacet("language")}
               className={facetToggleClass}
             >
-              Language
+              {t("language")}
               {expandedFacets.includes("language") ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (
@@ -297,7 +297,7 @@ export function SearchFiltersPanel({
               onClick={() => onToggleFacet("pubdate")}
               className={facetToggleClass}
             >
-              Publication year
+              {t("publicationYear")}
               {expandedFacets.includes("pubdate") ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (

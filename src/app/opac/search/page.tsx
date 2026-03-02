@@ -330,29 +330,29 @@ function SearchContent() {
       const labels = selectedFormats
         .map((v) => FORMAT_FILTERS.find((f) => f.value === v)?.label || v)
         .filter(Boolean);
-      if (labels.length > 0) filters.push({ label: "Format", value: labels.join(", ") });
+      if (labels.length > 0) filters.push({ label: t("format"), value: labels.join(", ") });
     }
     if (selectedAudiences.length > 0) {
       const labels = selectedAudiences
         .map((v) => AUDIENCE_FILTERS.find((a) => a.value === v)?.label || v)
         .filter(Boolean);
-      if (labels.length > 0) filters.push({ label: "Audience", value: labels.join(", ") });
+      if (labels.length > 0) filters.push({ label: t("audience"), value: labels.join(", ") });
     }
     if (selectedLanguages.length > 0) {
       const labels = selectedLanguages.map((code) => LANGUAGE_LABELS[code] || code);
-      filters.push({ label: "Language", value: labels.join(", ") });
+      filters.push({ label: t("language"), value: labels.join(", ") });
     }
     if (pubdateFrom || pubdateTo)
       filters.push({
-        label: "Publication year",
+        label: t("publicationYear"),
         value: `${pubdateFrom || "\u2026"}\u2013${pubdateTo || "\u2026"}`,
       });
-    if (available) filters.push({ label: "Availability", value: "Available now" });
+    if (available) filters.push({ label: t("availability"), value: t("availableNow") });
     if (location) {
       const locName =
         library?.locations?.find((loc) => String(loc.id) === String(location))?.name ||
-        `Location #${location}`;
-      filters.push({ label: "Location", value: locName });
+        `${t("location")} #${location}`;
+      filters.push({ label: t("location"), value: locName });
     }
     return filters;
   }, [
@@ -366,6 +366,7 @@ function SearchContent() {
     selectedAudiences,
     selectedFormats,
     selectedLanguages,
+    t,
   ]);
 
   const handleToggleAiSearch = useCallback(() => {
@@ -667,14 +668,14 @@ function SearchContent() {
               variant="outline"
               className="flex-1 text-foreground/80 hover:bg-muted/30"
             >
-              Clear all
+              {t("clearAll")}
             </Button>
             <Button
               type="button"
               onClick={() => setShowFilters(false)}
               className="stx-action-primary flex-1 font-medium hover:brightness-110"
             >
-              Show results
+              {t("showResults")}
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -752,16 +753,16 @@ function SearchContent() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="local">Search this library</SelectItem>
-                  <SelectItem value="system">Search all branches</SelectItem>
-                  <SelectItem value="consortium">Search all libraries</SelectItem>
+                  <SelectItem value="local">{t("searchThisLibrary")}</SelectItem>
+                  <SelectItem value="system">{t("searchAllBranches")}</SelectItem>
+                  <SelectItem value="consortium">{t("searchAllLibraries")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {allowScopeOverride && (
               <div className="inline-flex items-center gap-2 rounded-lg border border-border/75 bg-card/70 px-2.5 py-1.5">
-                <span className="font-medium text-foreground/80">Include</span>
+                <span className="font-medium text-foreground/80">{t("include")}</span>
                 <Select
                   value={String(copyDepth)}
                   onValueChange={(value) =>
@@ -778,9 +779,9 @@ function SearchContent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="0">This location only</SelectItem>
-                    <SelectItem value="1">Nearby branches</SelectItem>
-                    <SelectItem value="99">Everywhere</SelectItem>
+                    <SelectItem value="0">{t("thisLocationOnly")}</SelectItem>
+                    <SelectItem value="1">{t("nearbyBranches")}</SelectItem>
+                    <SelectItem value="99">{t("everywhere")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -790,10 +791,7 @@ function SearchContent() {
           {aiSmartSearchOn && (
             <div className="mt-3 flex items-start gap-2 rounded-xl border border-[hsl(var(--brand-1))/0.25] bg-[hsl(var(--brand-1))/0.08] px-3 py-2 text-xs text-[hsl(var(--brand-1))]">
               <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              <span>
-                AI-powered search results. Results are suggestions and may not be perfectly
-                accurate.
-              </span>
+              <span>{t("aiDisclaimer")}</span>
             </div>
           )}
 
@@ -802,22 +800,22 @@ function SearchContent() {
               <span className="font-semibold uppercase tracking-[0.08em]">{t("aiUnderstood")}</span>
               {aiDecomposedInfo.keywords && aiDecomposedInfo.keywords.length > 0 && (
                 <span className="rounded-full border border-[hsl(var(--brand-1))/0.25] bg-[hsl(var(--brand-1))/0.08] px-2.5 py-0.5">
-                  Keywords: {aiDecomposedInfo.keywords.join(", ")}
+                  {t("keywords")}: {aiDecomposedInfo.keywords.join(", ")}
                 </span>
               )}
               {aiDecomposedInfo.subjects && aiDecomposedInfo.subjects.length > 0 && (
                 <span className="rounded-full border border-[hsl(var(--brand-1))/0.25] bg-[hsl(var(--brand-1))/0.08] px-2.5 py-0.5">
-                  Subjects: {aiDecomposedInfo.subjects.join(", ")}
+                  {t("subjects")}: {aiDecomposedInfo.subjects.join(", ")}
                 </span>
               )}
               {aiDecomposedInfo.audience && (
                 <span className="rounded-full border border-[hsl(var(--brand-1))/0.25] bg-[hsl(var(--brand-1))/0.08] px-2.5 py-0.5">
-                  Audience: {aiDecomposedInfo.audience}
+                  {t("audience")}: {aiDecomposedInfo.audience}
                 </span>
               )}
               {aiDecomposedInfo.format && (
                 <span className="rounded-full border border-[hsl(var(--brand-1))/0.25] bg-[hsl(var(--brand-1))/0.08] px-2.5 py-0.5">
-                  Format: {aiDecomposedInfo.format}
+                  {t("format")}: {aiDecomposedInfo.format}
                 </span>
               )}
             </div>
@@ -895,7 +893,7 @@ function SearchContent() {
                         {aiSmartSearchOn && (
                           <span className="ml-2 inline-flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                             <Sparkles className="h-3 w-3" />
-                            AI-powered
+                            {t("aiPowered")}
                           </span>
                         )}
                       </>

@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { featureFlags } from "@/lib/feature-flags";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 interface FormatFilter {
   value: string;
@@ -51,6 +52,7 @@ export function ActiveFilterChips({
   onToggleCsvParam,
   onUpdateSearchParams,
 }: ActiveFilterChipsProps) {
+  const t = useTranslations("searchPage");
   const hasActiveFilters =
     selectedFormats.length > 0 ||
     selectedAudiences.length > 0 ||
@@ -79,7 +81,7 @@ export function ActiveFilterChips({
             variant="ghost"
             size="icon"
             className="h-4 w-4 rounded-full p-0 hover:bg-transparent hover:text-primary-900"
-            aria-label={`Remove format ${f}`}
+            aria-label={t("removeFormat", { name: f })}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -98,7 +100,7 @@ export function ActiveFilterChips({
             variant="ghost"
             size="icon"
             className="h-4 w-4 rounded-full p-0 hover:bg-transparent hover:text-primary-900"
-            aria-label={`Remove audience ${a}`}
+            aria-label={t("removeAudience", { name: a })}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -117,7 +119,7 @@ export function ActiveFilterChips({
             variant="ghost"
             size="icon"
             className="h-4 w-4 rounded-full p-0 hover:bg-transparent hover:text-foreground"
-            aria-label={`Remove language ${code}`}
+            aria-label={t("removeLanguage", { name: code })}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -126,14 +128,14 @@ export function ActiveFilterChips({
 
       {(pubdateFrom || pubdateTo) && (
         <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm">
-          Year {pubdateFrom || "\u2026"}\u2013{pubdateTo || "\u2026"}
+          {t("year")} {pubdateFrom || "\u2026"}\u2013{pubdateTo || "\u2026"}
           <Button
             type="button"
             onClick={() => onUpdateSearchParams({ pubdate_from: null, pubdate_to: null })}
             variant="ghost"
             size="icon"
             className="h-4 w-4 rounded-full p-0 hover:bg-transparent hover:text-primary-900"
-            aria-label="Remove publication year filter"
+            aria-label={t("removeYear")}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -142,14 +144,15 @@ export function ActiveFilterChips({
 
       {location ? (
         <span className="inline-flex items-center gap-1 px-3 py-1 bg-muted text-foreground/80 rounded-full text-sm">
-          {locations?.find((l) => String(l.id) === location)?.name || `Location ${location}`}
+          {locations?.find((l) => String(l.id) === location)?.name ||
+            `${t("location")} ${location}`}
           <Button
             type="button"
             onClick={() => onUpdateSearchParams({ location: null })}
             variant="ghost"
             size="icon"
             className="h-4 w-4 rounded-full p-0 hover:bg-transparent hover:text-foreground"
-            aria-label="Remove location filter"
+            aria-label={t("removeLocation")}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -158,14 +161,14 @@ export function ActiveFilterChips({
 
       {available && (
         <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm">
-          Available now
+          {t("availableNow")}
           <Button
             type="button"
             onClick={() => onUpdateSearchParams({ available: null })}
             variant="ghost"
             size="icon"
             className="h-4 w-4 rounded-full p-0 hover:bg-transparent hover:text-primary-900"
-            aria-label="Remove availability filter"
+            aria-label={t("removeAvailability")}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -189,7 +192,7 @@ export function ActiveFilterChips({
         size="sm"
         className="text-sm text-muted-foreground hover:text-foreground/80"
       >
-        Clear all
+        {t("clearAll")}
       </Button>
     </div>
   );

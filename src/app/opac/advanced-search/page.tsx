@@ -59,16 +59,16 @@ function getAUDIENCES(t: (key: string) => string) {
 function getLANGUAGES(t: (key: string) => string) {
   return [
     { value: "", label: t("allLanguages") },
-    { value: "eng", label: "English" },
-    { value: "spa", label: "Spanish" },
-    { value: "fre", label: "French" },
-    { value: "ger", label: "German" },
-    { value: "chi", label: "Chinese" },
-    { value: "jpn", label: "Japanese" },
-    { value: "kor", label: "Korean" },
-    { value: "vie", label: "Vietnamese" },
-    { value: "rus", label: "Russian" },
-    { value: "ara", label: "Arabic" },
+    { value: "eng", label: t("langEnglish") },
+    { value: "spa", label: t("langSpanish") },
+    { value: "fre", label: t("langFrench") },
+    { value: "ger", label: t("langGerman") },
+    { value: "chi", label: t("langChinese") },
+    { value: "jpn", label: t("langJapanese") },
+    { value: "kor", label: t("langKorean") },
+    { value: "vie", label: t("langVietnamese") },
+    { value: "rus", label: t("langRussian") },
+    { value: "ara", label: t("langArabic") },
   ];
 }
 
@@ -166,12 +166,10 @@ export default function AdvancedSearchPage() {
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to simple search
+            {t("backToSimpleSearch")}
           </Link>
-          <h1 className="text-3xl font-bold text-foreground">Advanced Search</h1>
-          <p className="mt-2 text-muted-foreground">
-            Build a precise search with multiple criteria and filters.
-          </p>
+          <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("pageDescription")}</p>
         </div>
       </div>
 
@@ -179,7 +177,7 @@ export default function AdvancedSearchPage() {
         <form onSubmit={handleSubmit}>
           {/* Search Fields */}
           <div className="bg-card rounded-xl border border-border p-6 mb-6">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Search Terms</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4">{t("searchTerms")}</h2>
 
             <div className="space-y-4">
               {searchFields.map((field, index) => (
@@ -209,7 +207,7 @@ export default function AdvancedSearchPage() {
                     onValueChange={(value) => updateSearchField(field.id, { type: value })}
                   >
                     <SelectTrigger
-                      aria-label="Search field type"
+                      aria-label={t("searchField")}
                       className="h-10 w-40 rounded-lg text-sm"
                     >
                       <SelectValue />
@@ -228,9 +226,9 @@ export default function AdvancedSearchPage() {
                     type="text"
                     value={field.value}
                     onChange={(e) => updateSearchField(field.id, { value: e.target.value })}
-                    placeholder={`Enter ${field.type}...`}
+                    placeholder={t("enterFieldType", { fieldType: field.type })}
                     className="h-10 flex-1 rounded-lg px-4"
-                    aria-label={`Search by ${field.type}`}
+                    aria-label={t("searchByFieldType", { fieldType: field.type })}
                   />
 
                   {/* Remove button */}
@@ -241,7 +239,7 @@ export default function AdvancedSearchPage() {
                       size="icon"
                       onClick={() => removeSearchField(field.id)}
                       className="h-10 w-10 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600"
-                      aria-label="Remove search field"
+                      aria-label={t("removeField")}
                     >
                       <X className="h-5 w-5" />
                     </Button>
@@ -257,7 +255,7 @@ export default function AdvancedSearchPage() {
               className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg px-4 text-sm text-primary-600 hover:bg-primary-50"
             >
               <Plus className="h-4 w-4" />
-              Add another search term
+              {t("addAnotherSearchTerm")}
             </Button>
           </div>
 
@@ -265,7 +263,7 @@ export default function AdvancedSearchPage() {
           <div className="bg-card rounded-xl border border-border p-6 mb-6">
             <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <Filter className="h-5 w-5" />
-              Filters
+              {t("filters")}
             </h2>
 
             <div className="grid md:grid-cols-2 gap-4">
@@ -275,7 +273,7 @@ export default function AdvancedSearchPage() {
                   htmlFor="format"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Format
+                  {t("format")}
                 </label>
                 <Select
                   value={filters.format || "__all__"}
@@ -284,10 +282,10 @@ export default function AdvancedSearchPage() {
                   }
                 >
                   <SelectTrigger id="format" className="h-10 rounded-lg">
-                    <SelectValue placeholder="All formats" />
+                    <SelectValue placeholder={t("allFormats")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__all__">All formats</SelectItem>
+                    <SelectItem value="__all__">{t("allFormats")}</SelectItem>
                     {FORMATS.filter((format) => format.value).map((format) => (
                       <SelectItem key={format.value} value={format.value}>
                         {format.label}
@@ -303,7 +301,7 @@ export default function AdvancedSearchPage() {
                   htmlFor="audience"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Audience
+                  {t("audience")}
                 </label>
                 <Select
                   value={filters.audience || "__all__"}
@@ -312,10 +310,10 @@ export default function AdvancedSearchPage() {
                   }
                 >
                   <SelectTrigger id="audience" className="h-10 rounded-lg">
-                    <SelectValue placeholder="All audiences" />
+                    <SelectValue placeholder={t("allAudiences")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__all__">All audiences</SelectItem>
+                    <SelectItem value="__all__">{t("allAudiences")}</SelectItem>
                     {AUDIENCES.filter((audience) => audience.value).map((audience) => (
                       <SelectItem key={audience.value} value={audience.value}>
                         {audience.label}
@@ -331,7 +329,7 @@ export default function AdvancedSearchPage() {
                   htmlFor="language"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Language
+                  {t("language")}
                 </label>
                 <Select
                   value={filters.language || "__all__"}
@@ -340,10 +338,10 @@ export default function AdvancedSearchPage() {
                   }
                 >
                   <SelectTrigger id="language" className="h-10 rounded-lg">
-                    <SelectValue placeholder="All languages" />
+                    <SelectValue placeholder={t("allLanguages")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__all__">All languages</SelectItem>
+                    <SelectItem value="__all__">{t("allLanguages")}</SelectItem>
                     {LANGUAGES.filter((lang) => lang.value).map((lang) => (
                       <SelectItem key={lang.value} value={lang.value}>
                         {lang.label}
@@ -359,7 +357,7 @@ export default function AdvancedSearchPage() {
                   htmlFor="publication-year"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Publication Year
+                  {t("publicationYear")}
                 </label>
                 <div className="flex items-center gap-2">
                   <Input
@@ -367,21 +365,21 @@ export default function AdvancedSearchPage() {
                     type="number"
                     value={filters.yearFrom}
                     onChange={(e) => setFilters({ ...filters, yearFrom: e.target.value })}
-                    placeholder="From"
+                    placeholder={t("yearFromPlaceholder")}
                     min="1800"
                     max="2030"
                     className="h-10 flex-1 rounded-lg px-3"
                   />
-                  <span className="text-muted-foreground">to</span>
+                  <span className="text-muted-foreground">{t("yearRangeSeparator")}</span>
                   <Input
                     type="number"
                     value={filters.yearTo}
                     onChange={(e) => setFilters({ ...filters, yearTo: e.target.value })}
-                    placeholder="To"
+                    placeholder={t("yearToPlaceholder")}
                     min="1800"
                     max="2030"
                     className="h-10 flex-1 rounded-lg px-3"
-                    aria-label="Publication year to"
+                    aria-label={t("yearTo")}
                   />
                 </div>
               </div>
@@ -398,9 +396,7 @@ export default function AdvancedSearchPage() {
                 onChange={(e) => setFilters({ ...filters, availableOnly: e.target.checked })}
                 className="rounded border-border text-primary-600 focus:ring-primary-500"
               />
-              <span className="text-sm text-foreground/80">
-                Show only items currently available
-              </span>
+              <span className="text-sm text-foreground/80">{t("showOnlyAvailable")}</span>
             </label>
           </div>
 
@@ -408,23 +404,23 @@ export default function AdvancedSearchPage() {
           <div className="flex gap-4">
             <Button type="submit" className="flex-1 items-center justify-center gap-2">
               <Search className="h-5 w-5" />
-              Search
+              {t("search")}
             </Button>
             <Button type="button" variant="outline" onClick={handleClear} className="px-6">
-              Clear
+              {t("clear")}
             </Button>
           </div>
         </form>
 
         {/* Search tips */}
         <div className="mt-8 bg-blue-50 rounded-xl p-6">
-          <h3 className="font-semibold text-blue-900 mb-2">Search Tips</h3>
+          <h3 className="font-semibold text-blue-900 mb-2">{t("searchTips")}</h3>
           <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Use AND to find items containing all terms</li>
-            <li>• Use OR to find items containing any of the terms</li>
-            <li>• Use NOT to exclude terms from your search</li>
-            <li>• Put phrases in quotes for exact matches: {`"harry potter"`}</li>
-            <li>• Use * as a wildcard: garden* finds garden, gardening, gardens</li>
+            <li>{`• ${t("tipAnd")}`}</li>
+            <li>{`• ${t("tipOr")}`}</li>
+            <li>{`• ${t("tipNot")}`}</li>
+            <li>{`• ${t("tipQuotes")}`}</li>
+            <li>{`• ${t("tipWildcard")}`}</li>
           </ul>
         </div>
       </div>

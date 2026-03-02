@@ -145,8 +145,10 @@ export default function OPACHomePage() {
   }, [fetchFeaturedContent]);
 
   useEffect(() => {
-    document.title = library?.name ? `${library.name} | Library Catalog` : "Library Catalog";
-  }, [library?.name]);
+    document.title = library?.name
+      ? `${library.name} | ${t("libraryCatalog")}`
+      : t("libraryCatalog");
+  }, [library?.name, t]);
 
   const QuickSearchChip = ({ label, href }: { label: string; href: string }) => (
     <Link
@@ -192,7 +194,7 @@ export default function OPACHomePage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,hsl(var(--primary-foreground)/0.15)_0%,transparent_45%),radial-gradient(circle_at_80%_80%,hsl(var(--primary-foreground)/0.12)_0%,transparent_44%)]" />
 
         <div className="relative max-w-4xl mx-auto px-4 text-center">
-          <h1 className="text-3xl md:text-5xl font-bold mb-4">Discover Your Next Great Read</h1>
+          <h1 className="text-3xl md:text-5xl font-bold mb-4">{t("discoverTitle")}</h1>
           <p className="text-lg md:text-xl text-primary-100 mb-8 max-w-2xl mx-auto">
             {t("discoverSubtitle")}
           </p>
@@ -226,7 +228,8 @@ export default function OPACHomePage() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <span className="text-muted-foreground">
-                  Welcome back, <strong>{patron.firstName}</strong>!
+                  {t("welcomeBack")}
+                  <strong>{patron.firstName}</strong>!
                 </span>
                 {patron.checkoutCount > 0 && (
                   <Link
@@ -247,7 +250,7 @@ export default function OPACHomePage() {
                 href="/opac/account"
                 className="text-sm text-primary-600 hover:underline font-medium"
               >
-                View My Account →
+                {t("viewMyAccount")} →
               </Link>
             </div>
           </div>
@@ -258,7 +261,7 @@ export default function OPACHomePage() {
       <section className="py-12 md:py-16 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8 text-center">
-            Browse by Format
+            {t("browseByFormat")}
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             <FormatCard
@@ -298,13 +301,15 @@ export default function OPACHomePage() {
                 <div className="p-2 bg-primary-100 rounded-lg">
                   <CalendarDays className="h-6 w-6 text-primary-600" />
                 </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground">Upcoming Events</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+                  {t("upcomingEvents")}
+                </h2>
               </div>
               <Link
                 href="/opac/events"
                 className="flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
               >
-                View All Events
+                {t("viewAllEvents")}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -351,11 +356,11 @@ export default function OPACHomePage() {
                           href={`/opac/events/${event.id}`}
                           className="text-xs font-medium text-primary-700 hover:underline"
                         >
-                          Register
+                          {t("register")}
                         </Link>
                       ) : (
                         <span className="text-xs font-medium text-primary-700 dark:text-primary-300">
-                          Drop-in
+                          {t("dropIn")}
                         </span>
                       )}
                     </div>
@@ -379,13 +384,15 @@ export default function OPACHomePage() {
                 <div className="rounded-lg bg-primary-100 p-2">
                   <Sparkles className="h-6 w-6 text-primary-600" />
                 </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground">New Arrivals</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+                  {t("newArrivals")}
+                </h2>
               </div>
               <Link
                 href="/opac/new-titles"
                 className="flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
               >
-                View All
+                {t("viewAll")}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -434,14 +441,14 @@ export default function OPACHomePage() {
                   <TrendingUp className="h-6 w-6 text-primary-600" />
                 </div>
                 <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                  Popular This Month
+                  {t("popularThisMonth")}
                 </h2>
               </div>
               <Link
                 href="/opac/search?sort=popularity"
                 className="flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
               >
-                View All
+                {t("viewAll")}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -488,13 +495,15 @@ export default function OPACHomePage() {
                 <div className="rounded-lg bg-primary-100 p-2">
                   <Star className="h-6 w-6 text-primary-600" />
                 </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground">Staff Picks</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+                  {t("staffPicks")}
+                </h2>
               </div>
               <Link
                 href="/opac/lists"
                 className="flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
               >
-                All Lists
+                {t("allLists")}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -552,7 +561,7 @@ export default function OPACHomePage() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Clock className="h-5 w-5 text-primary-400" />
-                <h3 className="font-semibold text-lg">Library Hours</h3>
+                <h3 className="font-semibold text-lg">{t("libraryHours")}</h3>
               </div>
               {library?.hoursDetailed ? (
                 <ul className="space-y-1 text-white/70 text-sm">
@@ -573,7 +582,7 @@ export default function OPACHomePage() {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <MapPin className="h-5 w-5 text-primary-400" />
-                  <h3 className="font-semibold text-lg">Your Library</h3>
+                  <h3 className="font-semibold text-lg">{t("yourLibrary")}</h3>
                 </div>
                 <p className="text-white/70 mb-2">{currentLocation.name}</p>
                 {currentLocation.address && (
@@ -591,13 +600,13 @@ export default function OPACHomePage() {
               <ul className="space-y-2 text-white/70">
                 <li>
                   <Link href="/opac/account" className="hover:text-white transition-colors">
-                    My Account
+                    {t("myAccount")}
                   </Link>
                 </li>
                 <li>
                   {featureFlags.opacKids ? (
                     <Link href="/opac/kids" className="hover:text-white transition-colors">
-                      Kids Catalog
+                      {t("kidsCatalog")}
                     </Link>
                   ) : null}
                 </li>
@@ -606,12 +615,12 @@ export default function OPACHomePage() {
                     href="/opac/search?format=ebook"
                     className="hover:text-white transition-colors"
                   >
-                    Digital Resources
+                    {t("digitalResources")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/opac/help" className="hover:text-white transition-colors">
-                    Help & FAQs
+                    {t("helpFAQs")}
                   </Link>
                 </li>
               </ul>
@@ -626,7 +635,7 @@ export default function OPACHomePage() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 
                          hover:brightness-110 rounded-lg font-medium transition-colors"
               >
-                Apply Online
+                {t("applyOnline")}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>

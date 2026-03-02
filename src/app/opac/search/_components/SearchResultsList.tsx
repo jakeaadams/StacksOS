@@ -170,7 +170,7 @@ export function SearchResultsList({
                   reviewCount={result.reviewCount}
                   rankingLabel={
                     (sort === "smart" || aiSmartSearchOn) && rankingMode === "hybrid"
-                      ? "AI-ranked"
+                      ? t("aiRanked")
                       : undefined
                   }
                   rankingReason={
@@ -218,10 +218,10 @@ export function SearchResultsList({
               disabled={page === 1}
               className="stx-pill disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/30"
             >
-              Previous
+              {t("previous")}
             </Button>
             <span className="px-4 py-2 text-sm text-foreground/80">
-              Page {page} of {totalPages}
+              {t("pageOf", { page: String(page), totalPages: String(totalPages) })}
             </span>
             <Button
               type="button"
@@ -231,7 +231,7 @@ export function SearchResultsList({
               disabled={page === totalPages}
               className="stx-pill disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/30"
             >
-              Next
+              {t("next")}
             </Button>
           </div>
         )}
@@ -294,9 +294,7 @@ function NoResultsWithSpellcheck({
     <div className="text-center py-12">
       <BookOpen className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
       <h2 className="text-xl font-semibold text-foreground mb-2">{t("noResultsFound")}</h2>
-      <p className="text-muted-foreground mb-6">
-        {`We couldn\u0027t find anything for "${query}". Try different keywords or browse our catalog.`}
-      </p>
+      <p className="text-muted-foreground mb-6">{t("noResultsMessage", { query })}</p>
 
       {suggestion && (
         <div className="mb-6">
@@ -306,7 +304,7 @@ function NoResultsWithSpellcheck({
             className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium text-lg hover:underline"
           >
             <Search className="h-5 w-5" />
-            Did you mean: <span className="italic">{suggestion}</span>?
+            {t("didYouMean")} <span className="italic">{suggestion}</span>?
           </button>
         </div>
       )}
@@ -320,7 +318,7 @@ function NoResultsWithSpellcheck({
             onClick={onToggleAiSearch}
             className={`rounded-lg px-4 py-2 ${opacDesign.aiToggleOutline}`}
           >
-            Try Standard Search
+            {t("tryStandardSearch")}
           </Button>
         )}
         {!aiSmartSearchOn && (
@@ -331,17 +329,17 @@ function NoResultsWithSpellcheck({
             className={`flex items-center gap-2 rounded-lg px-4 py-2 ${opacDesign.aiToggleSolid}`}
           >
             <Sparkles className="h-4 w-4" />
-            Try AI Smart Search
+            {t("tryAiSearch")}
           </Button>
         )}
         <Link
           href="/opac"
           className="rounded-lg bg-[linear-gradient(125deg,hsl(var(--brand-1))_0%,hsl(var(--brand-3))_88%)] px-4 py-2 text-white hover:brightness-110"
         >
-          Browse Catalog
+          {t("browseCatalog")}
         </Link>
         <Link href="/opac/help" className={`rounded-lg px-4 py-2 ${opacDesign.subtleAction}`}>
-          Search Tips
+          {t("searchTips")}
         </Link>
       </div>
     </div>
