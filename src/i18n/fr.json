@@ -1237,5 +1237,22 @@
       "title": "Erreur de catalogage",
       "message": "Une erreur est survenue dans le module de catalogage. Les modifications MARC non enregistrées devront peut-être être saisies à nouveau."
     }
+  },
+  "citationGenerator": {
+    "title": "Citer ceci",
+    "copy": "Copier",
+    "copied": "Citation copiée dans le presse-papiers",
+    "copyFailed": "Impossible de copier la citation"
+  },
+  "shareMenu": {
+    "share": "Partager",
+    "copyLink": "Copier le lien",
+    "linkCopied": "Lien copié dans le presse-papiers",
+    "copyFailed": "Impossible de copier le lien",
+    "shareFailed": "Échec du partage",
+    "email": "E-mail",
+    "print": "Imprimer",
+    "qrCode": "Code QR",
+    "scanToOpen": "Scannez pour ouvrir cette page"
   }
 }

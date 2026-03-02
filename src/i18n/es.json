@@ -1237,5 +1237,22 @@
       "title": "Error de Catalogación",
       "message": "Algo salió mal con la catalogación. Los cambios no guardados en registros MARC podrían necesitar ser reingresados."
     }
+  },
+  "citationGenerator": {
+    "title": "Citar esto",
+    "copy": "Copiar",
+    "copied": "Cita copiada al portapapeles",
+    "copyFailed": "No se pudo copiar la cita"
+  },
+  "shareMenu": {
+    "share": "Compartir",
+    "copyLink": "Copiar enlace",
+    "linkCopied": "Enlace copiado al portapapeles",
+    "copyFailed": "No se pudo copiar el enlace",
+    "shareFailed": "Error al compartir",
+    "email": "Correo electrónico",
+    "print": "Imprimir",
+    "qrCode": "Código QR",
+    "scanToOpen": "Escanea para abrir esta página"
   }
 }

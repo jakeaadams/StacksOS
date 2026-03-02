@@ -50,6 +50,8 @@ import {
   Heart,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { CitationGenerator } from "@/components/opac/citation-generator";
+import { ShareMenu } from "@/components/opac/share-menu";
 
 interface CopyInfo {
   id: number;
@@ -287,29 +289,6 @@ export default function RecordDetailPage() {
   useEffect(() => {
     void fetchRecordDetail();
   }, [fetchRecordDetail]);
-
-  const handleShare = useCallback(async () => {
-    if (!record?.id) return;
-    const url = `${window.location.origin}/opac/record/${record.id}`;
-    const text = record.title || "Library item";
-
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: text, text, url });
-        toast.success("Shared");
-        return;
-      }
-    } catch {
-      // Fall back to clipboard.
-    }
-
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied");
-    } catch {
-      toast.error("Could not copy link");
-    }
-  }, [record?.id, record?.title]);
 
   const handleSave = useCallback(() => {
     if (!record?.id) return;
@@ -575,15 +554,24 @@ export default function RecordDetailPage() {
                       Save
                     </Button>
                   ) : null}
-                  <Button
-                    type="button"
-                    onClick={() => void handleShare()}
-                    variant="outline"
-                    className="flex-1 text-foreground/80 hover:bg-muted/30 flex items-center justify-center gap-2"
+                  <ShareMenu
+                    url={
+                      typeof window !== "undefined"
+                        ? `${window.location.origin}/opac/record/${record.id}`
+                        : `/opac/record/${record.id}`
+                    }
+                    title={record.title}
+                    author={record.author}
                   >
-                    <Share2 className="h-4 w-4" />
-                    Share
-                  </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1 text-foreground/80 hover:bg-muted/30 flex items-center justify-center gap-2"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      Share
+                    </Button>
+                  </ShareMenu>
                 </div>
               </div>
             </div>
@@ -716,6 +704,21 @@ export default function RecordDetailPage() {
                   {record.summary}
                 </p>
               </div>
+            )}
+
+            {/* Citation generator */}
+            {featureFlags.opacCitationGenerator && (
+              <CitationGenerator
+                title={record.title}
+                author={record.author}
+                contributors={record.contributors}
+                publisher={record.publisher}
+                publicationDate={record.publicationDate}
+                isbn={record.isbn}
+                edition={record.edition}
+                format={record.format}
+                language={record.language}
+              />
             )}
 
             {/* Subjects */}

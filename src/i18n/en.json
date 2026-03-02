@@ -1237,5 +1237,22 @@
       "title": "Cataloging Error",
       "message": "Something went wrong with cataloging. Any unsaved MARC record changes may need to be re-entered."
     }
+  },
+  "citationGenerator": {
+    "title": "Cite This",
+    "copy": "Copy",
+    "copied": "Citation copied to clipboard",
+    "copyFailed": "Failed to copy citation"
+  },
+  "shareMenu": {
+    "share": "Share",
+    "copyLink": "Copy Link",
+    "linkCopied": "Link copied to clipboard",
+    "copyFailed": "Failed to copy link",
+    "shareFailed": "Share failed",
+    "email": "Email",
+    "print": "Print",
+    "qrCode": "QR Code",
+    "scanToOpen": "Scan to open this page"
   }
 }

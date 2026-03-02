@@ -56,6 +56,9 @@ export const featureFlags = {
   copyTags: true,
   statCategories: true,
 
+  // OPAC enhancements
+  opacCitationGenerator: true,
+
   // Advanced admin tooling
   policyEditors: true,
   permissionsExplorer: true,
