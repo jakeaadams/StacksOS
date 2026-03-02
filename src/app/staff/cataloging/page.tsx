@@ -130,8 +130,15 @@ export default function CatalogingPage() {
 
           <div className="bg-background border-b px-4 py-3">
             <div className="flex items-center gap-2">
+              <label htmlFor="cataloging-search-type" className="sr-only">
+                Catalog search type
+              </label>
               <Select value={searchType} onValueChange={setSearchType}>
-                <SelectTrigger className="w-40 h-9">
+                <SelectTrigger
+                  id="cataloging-search-type"
+                  aria-label="Catalog search type"
+                  className="w-40 h-9"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
