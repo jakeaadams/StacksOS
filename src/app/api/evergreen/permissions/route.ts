@@ -17,6 +17,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { featureFlags } from "@/lib/feature-flags";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 // ============================================================================
@@ -145,7 +146,7 @@ export async function GET(req: NextRequest) {
 // ============================================================================
 
 export async function POST(req: NextRequest) {
-  const { requestId } = getRequestMeta(req);
+  const { requestId, ip } = getRequestMeta(req);
 
   try {
     if (!featureFlags.permissionsExplorer) {
@@ -158,6 +159,16 @@ export async function POST(req: NextRequest) {
 
     // Require admin permissions for modifications
     const { authtoken, actor } = await requirePermissions(["GROUP_APPLICATION_PERM"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-permissions",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
 
     logger.info(
       { requestId, route: "api.evergreen.permissions", action, type },

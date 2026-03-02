@@ -9,6 +9,7 @@ import {
   successResponse,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { listRecordPresence, upsertRecordPresence } from "@/lib/db/collaboration";
 
 const recordTypeSchema = z.enum(["bib", "patron"]);
@@ -54,6 +55,17 @@ export async function POST(req: NextRequest) {
     if (body instanceof Response) return body;
 
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
+
+    const rate = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 60,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "collab-presence",
+    });
+    if (!rate.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rate.resetIn / 1000),
+      });
+    }
     const cookieStore = await cookies();
     const sessionId = cookieStore.get("stacksos_session_id")?.value || null;
     if (!sessionId) {

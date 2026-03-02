@@ -18,6 +18,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { withIdempotency } from "@/lib/idempotency";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const ACTION_PERMS: Record<string, string[]> = {
@@ -201,6 +202,16 @@ export async function POST(req: NextRequest) {
       const body = lostPostSchema.parse(await req.json());
       const { action, circId, copyBarcode, copyId } = body as Record<string, unknown>;
       const { authtoken, actor } = await requirePermissions(resolvePerms(action as string));
+
+      const rlResult = await checkRateLimit(ip || "unknown", {
+        maxAttempts: 20,
+        windowMs: 5 * 60 * 1000,
+        endpoint: "eg-lost",
+      });
+      if (!rlResult.allowed)
+        return errorResponse("Too many requests. Please try again later.", 429, {
+          retryAfter: Math.ceil(rlResult.resetIn / 1000),
+        });
 
       const audit = async (
         status: "success" | "failure",
@@ -417,6 +428,16 @@ export async function PUT(req: NextRequest) {
       const body = lostPutSchema.parse(await req.json());
       const { action, billId, circId, amount, note } = body as Record<string, unknown>;
       const { authtoken, actor } = await requirePermissions(resolvePerms(action as string));
+
+      const rlResult = await checkRateLimit(ip || "unknown", {
+        maxAttempts: 20,
+        windowMs: 5 * 60 * 1000,
+        endpoint: "eg-lost",
+      });
+      if (!rlResult.allowed)
+        return errorResponse("Too many requests. Please try again later.", 429, {
+          retryAfter: Math.ceil(rlResult.resetIn / 1000),
+        });
 
       const audit = async (
         status: "success" | "failure",

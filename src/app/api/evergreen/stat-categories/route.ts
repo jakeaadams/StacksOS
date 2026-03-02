@@ -5,6 +5,7 @@ import {
   errorResponse,
   fmBoolean,
   getErrorMessage,
+  getRequestMeta,
   isOpenSRFEvent,
   parseJsonBodyWithSchema,
   payloadFirst,
@@ -16,6 +17,7 @@ import {
 import { getActorFromToken } from "@/lib/audit";
 import { getEvergreenPool } from "@/lib/db/evergreen";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 type StatKind = "copy" | "patron";
@@ -358,7 +360,19 @@ export async function POST(req: Request) {
     const kind = resolveKind(body.kind);
     if (!kind) return errorResponse("Invalid kind", 400);
 
+    const { ip } = getRequestMeta(req as any);
     const { authtoken, actor, result } = await requirePermissions([permFor(kind, "create")]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-stat-categories",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const ownerId = body.ownerId ?? result.orgId ?? actor?.ws_ou ?? actor?.home_ou;
     if (!ownerId) return errorResponse("ownerId is required", 400);
 
@@ -431,7 +445,19 @@ export async function PUT(req: Request) {
     const kind = resolveKind(body.kind);
     if (!kind) return errorResponse("Invalid kind", 400);
 
+    const { ip } = getRequestMeta(req as any);
     const { authtoken, actor, result } = await requirePermissions([permFor(kind, "update")]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-stat-categories",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const classId = kind === "copy" ? "asc" : "actsc";
 
     const existingResponse = await callOpenSRF(
@@ -508,7 +534,19 @@ export async function DELETE(req: Request) {
     const kind = resolveKind(body.kind);
     if (!kind) return errorResponse("Invalid kind", 400);
 
+    const { ip } = getRequestMeta(req as any);
     const { authtoken } = await requirePermissions([permFor(kind, "delete")]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-stat-categories",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const classId = kind === "copy" ? "asc" : "actsc";
 
     const delResponse = await callOpenSRF("open-ils.pcrud", `open-ils.pcrud.delete.${classId}`, [

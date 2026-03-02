@@ -22,6 +22,7 @@ import { featureFlags } from "@/lib/feature-flags";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 // ============================================================================
@@ -310,7 +311,7 @@ export async function GET(req: NextRequest) {
 // ============================================================================
 
 export async function POST(req: NextRequest) {
-  const { requestId } = getRequestMeta(req);
+  const { requestId, ip } = getRequestMeta(req);
 
   try {
     if (!featureFlags.policyEditors) {
@@ -324,6 +325,16 @@ export async function POST(req: NextRequest) {
 
     // Require admin permissions for modifications
     const { authtoken, actor } = await requirePermissions(["ADMIN_CIRC_MATRIX_MATCHPOINT"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-policies",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
 
     logger.info({ requestId, route: "api.evergreen.policies", action, type }, "Policies update");
 

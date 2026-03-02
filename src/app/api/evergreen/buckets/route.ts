@@ -7,8 +7,10 @@ import {
   serverErrorResponse,
   getErrorMessage,
   isOpenSRFEvent,
+  getRequestMeta,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 /**
@@ -106,7 +108,19 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const { ip } = getRequestMeta(req);
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-buckets",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const staffIdRaw = actor?.id ?? actor?.usr ?? actor?.user_id;
     const staffId =
       typeof staffIdRaw === "number" ? staffIdRaw : parseInt(String(staffIdRaw ?? ""), 10);
@@ -317,7 +331,19 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    const { ip } = getRequestMeta(req);
     const { authtoken } = await requirePermissions(["STAFF_LOGIN"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-buckets",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const searchParams = req.nextUrl.searchParams;
     const bucketId = searchParams.get("id");
 

@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const MarcImportSchema = z
@@ -60,11 +61,7 @@ export async function GET(req: NextRequest) {
       );
       const payload = sourcesResponse?.payload?.[0];
       if (isOpenSRFEvent(payload) || payload?.ilsevent) {
-        return errorResponse(
-          getErrorMessage(payload, "Failed to load MARC sources"),
-          400,
-          payload
-        );
+        return errorResponse(getErrorMessage(payload, "Failed to load MARC sources"), 400, payload);
       }
       const sources = Array.isArray(payload)
         ? payload.map((source) => ({
@@ -92,6 +89,16 @@ export async function POST(req: NextRequest) {
     if (body instanceof NextResponse) return body;
 
     const { authtoken, actor } = await requirePermissions(["CREATE_MARC"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-marc",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
 
     const marcxml = body.marcxml || body.marcXml;
     if (!marcxml || typeof marcxml !== "string") return errorResponse("marcxml is required", 400);
@@ -160,6 +167,16 @@ export async function PUT(req: NextRequest) {
 
     const { authtoken, actor } = await requirePermissions(["UPDATE_MARC"]);
 
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-marc",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const recordId = body.recordId ?? body.record_id ?? body.id;
     const marcxml = body.marcxml || body.marcXml;
 
@@ -170,11 +187,11 @@ export async function PUT(req: NextRequest) {
       return errorResponse("marcxml is required", 400);
     }
 
-    const response = await callOpenSRF(
-      "open-ils.cat",
-      "open-ils.cat.biblio.record.xml.update",
-      [authtoken, Number(recordId), marcxml]
-    );
+    const response = await callOpenSRF("open-ils.cat", "open-ils.cat.biblio.record.xml.update", [
+      authtoken,
+      Number(recordId),
+      marcxml,
+    ]);
 
     const result = response?.payload?.[0];
     if (!result || isOpenSRFEvent(result) || result?.ilsevent) {

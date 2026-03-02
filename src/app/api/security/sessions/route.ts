@@ -1,7 +1,14 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, parseJsonBodyWithSchema, successResponse, serverErrorResponse, getRequestMeta } from "@/lib/api";
+import {
+  errorResponse,
+  parseJsonBodyWithSchema,
+  successResponse,
+  serverErrorResponse,
+  getRequestMeta,
+} from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { query } from "@/lib/db/evergreen";
 import { logAuditEvent } from "@/lib/audit";
 
@@ -10,7 +17,8 @@ const RevokeSchema = z.object({ sessionId: z.string().min(1) }).strict();
 export async function GET(req: NextRequest) {
   try {
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
-    const actorId = typeof actor?.id === "number" ? actor.id : parseInt(String(actor?.id ?? ""), 10);
+    const actorId =
+      typeof actor?.id === "number" ? actor.id : parseInt(String(actor?.id ?? ""), 10);
     if (!Number.isFinite(actorId)) return errorResponse("Invalid actor", 400);
 
     const sessions = await query<any>(
@@ -33,9 +41,21 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 20,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "security-sessions",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
-    const actorId = typeof actor?.id === "number" ? actor.id : parseInt(String(actor?.id ?? ""), 10);
+    const actorId =
+      typeof actor?.id === "number" ? actor.id : parseInt(String(actor?.id ?? ""), 10);
     if (!Number.isFinite(actorId)) return errorResponse("Invalid actor", 400);
 
     const body = await parseJsonBodyWithSchema(req, RevokeSchema);
@@ -74,4 +94,3 @@ export async function POST(req: NextRequest) {
     return serverErrorResponse(error, "Security sessions POST", req);
   }
 }
-

@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const holdsPostSchema = z
@@ -320,6 +321,16 @@ export async function POST(req: NextRequest) {
     }
 
     const { authtoken, actor } = await requirePermissions(["CREATE_HOLD"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-holds",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
 
     const audit = async (
       status: "success" | "failure",

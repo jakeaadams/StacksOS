@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 
@@ -164,6 +165,16 @@ export async function POST(req: NextRequest) {
 
     const orgId = org_id;
     const { authtoken, actor } = await requirePermissions(["REGISTER_WORKSTATION"], orgId);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-workstations",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
 
     logger.info(
       { requestId, route: "api.evergreen.workstations", name, orgId },

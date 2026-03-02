@@ -797,5 +797,443 @@ body {
     scroll-behavior: auto !important;
   }
 }
+/* ============================================================================
+   Kids & Teens OPAC Theme Tokens
+   Centralized color definitions so themed sections use CSS custom properties
+   instead of hardcoded Tailwind color classes.
+   ============================================================================ */
+
+:root {
+  /* ── Kids OPAC Theme ── */
+  --kids-primary: 271 81% 56%; /* purple-600 */
+  --kids-primary-hover: 271 81% 50%; /* purple-700 */
+  --kids-primary-light: 270 100% 95%; /* purple-100 */
+  --kids-primary-muted: 270 100% 80%; /* purple-300 */
+  --kids-primary-wash: 270 100% 98%; /* purple-50 */
+  --kids-secondary: 330 81% 60%; /* pink-500 */
+  --kids-secondary-hover: 330 81% 55%; /* pink-600 */
+  --kids-secondary-light: 326 78% 95%; /* pink-100 */
+  --kids-secondary-muted: 327 73% 77%; /* pink-400 */
+  --kids-accent-green: 160 84% 39%; /* emerald-500 */
+  --kids-accent-green-dark: 161 94% 30%; /* emerald-600 */
+  --kids-accent-green-light: 149 80% 90%; /* emerald-100 */
+  --kids-accent-green-wash: 152 81% 96%; /* emerald-50 */
+  --kids-hero-from: 330 81% 60%; /* pink-500 */
+  --kids-hero-via: 271 81% 56%; /* purple-500 */
+  --kids-hero-to: 217 91% 60%; /* blue-500 */
+  --kids-avatar-from: 158 64% 52%; /* green-400 */
+  --kids-avatar-to: 160 84% 39%; /* emerald-500 */
+
+  /* ── Teens OPAC Theme ── */
+  --teens-primary: 263 70% 50%; /* purple-600 */
+  --teens-primary-hover: 263 70% 44%; /* purple-700 */
+  --teens-primary-light: 270 100% 95%; /* purple-100 */
+  --teens-primary-wash: 270 100% 98%; /* purple-50 */
+  --teens-primary-muted: 270 95% 75%; /* purple-300 */
+  --teens-secondary: 239 84% 67%; /* indigo-600 */
+  --teens-secondary-hover: 234 89% 74%; /* indigo-700 */
+  --teens-secondary-light: 226 100% 94%; /* indigo-100 */
+  --teens-secondary-muted: 230 94% 82%; /* indigo-200 */
+  --teens-secondary-wash: 225 100% 97%; /* indigo-50 */
+  --teens-accent: 258 90% 66%; /* violet-500 */
+  --teens-accent-dark: 262 83% 58%; /* violet-600 */
+  --teens-accent-light: 251 91% 95%; /* violet-100 */
+}
+
+/* Kids theme utilities — text */
+.kids-text-primary {
+  color: hsl(var(--kids-primary));
+}
+.kids-text-primary-hover {
+  color: hsl(var(--kids-primary-hover));
+}
+.kids-text-primary-muted {
+  color: hsl(var(--kids-primary-muted));
+}
+.kids-text-secondary {
+  color: hsl(var(--kids-secondary));
+}
+.kids-text-secondary-hover {
+  color: hsl(var(--kids-secondary-hover));
+}
+.kids-text-secondary-muted {
+  color: hsl(var(--kids-secondary-muted));
+}
+.kids-text-accent-green {
+  color: hsl(var(--kids-accent-green));
+}
+.kids-text-accent-green-dark {
+  color: hsl(var(--kids-accent-green-dark));
+}
+
+/* Kids theme utilities — text (hover) */
+.kids-hover-text-primary:hover {
+  color: hsl(var(--kids-primary));
+}
+.kids-hover-text-primary-hover:hover {
+  color: hsl(var(--kids-primary-hover));
+}
+.kids-hover-text-secondary-hover:hover {
+  color: hsl(var(--kids-secondary-hover));
+}
+
+/* Kids theme utilities — text (group-hover) */
+.group:hover .kids-group-hover-text-primary {
+  color: hsl(var(--kids-primary));
+}
+.group:hover .kids-group-hover-text-primary-hover {
+  color: hsl(var(--kids-primary-hover));
+}
+
+/* Kids theme utilities — background */
+.kids-bg-primary {
+  background-color: hsl(var(--kids-primary));
+}
+.kids-bg-primary-light {
+  background-color: hsl(var(--kids-primary-light));
+}
+.kids-bg-primary-wash {
+  background-color: hsl(var(--kids-primary-wash));
+}
+.kids-bg-secondary-light {
+  background-color: hsl(var(--kids-secondary-light));
+}
+.kids-bg-secondary-wash {
+  background-color: hsl(var(--kids-secondary) / 0.08);
+}
+.kids-bg-accent-green-light {
+  background-color: hsl(var(--kids-accent-green-light));
+}
+
+/* Kids theme utilities — background (hover) */
+.kids-hover-bg-primary-light:hover {
+  background-color: hsl(var(--kids-primary-light));
+}
+.kids-hover-bg-primary-wash:hover {
+  background-color: hsl(var(--kids-primary-wash));
+}
+
+/* Kids theme utilities — border */
+.kids-border-primary-light {
+  border-color: hsl(var(--kids-primary-light));
+}
+.kids-border-primary-muted {
+  border-color: hsl(var(--kids-primary-muted));
+}
+.kids-border-secondary-light {
+  border-color: hsl(var(--kids-secondary-light));
+}
+.kids-border-primary-wash {
+  border-color: hsl(var(--kids-primary) / 0.2);
+}
+
+/* Kids theme utilities — border (hover) */
+.kids-hover-border-primary-wash:hover {
+  border-color: hsl(var(--kids-primary) / 0.2);
+}
+.kids-hover-border-primary-light:hover {
+  border-color: hsl(var(--kids-primary-light));
+}
+.kids-hover-border-primary-muted:hover {
+  border-color: hsl(var(--kids-primary-muted));
+}
+
+/* Kids theme utilities — focus */
+.kids-focus-border:focus {
+  border-color: hsl(var(--kids-primary-muted));
+}
+.kids-focus-ring:focus {
+  --tw-ring-color: hsl(var(--kids-primary-light));
+}
+.kids-focus-visible-border:focus-visible {
+  border-color: hsl(var(--kids-primary-muted));
+}
+
+/* Kids theme utilities — gradient helpers */
+.kids-gradient-hero {
+  background: linear-gradient(
+    to right,
+    hsl(var(--kids-hero-from)),
+    hsl(var(--kids-hero-via)),
+    hsl(var(--kids-hero-to))
+  );
+}
+.kids-gradient-hero-reverse {
+  background: linear-gradient(
+    to right,
+    hsl(var(--kids-hero-to)),
+    hsl(160 84% 39%),
+    hsl(48 96% 53%)
+  );
+}
+.kids-gradient-hero-glow {
+  background: linear-gradient(
+    to right,
+    hsl(var(--kids-hero-from)),
+    hsl(var(--kids-hero-via)),
+    hsl(var(--kids-hero-to))
+  );
+}
+.kids-gradient-button {
+  background: linear-gradient(to right, hsl(var(--kids-primary)), hsl(var(--kids-secondary)));
+}
+.kids-gradient-button:hover {
+  background: linear-gradient(
+    to right,
+    hsl(var(--kids-primary-hover)),
+    hsl(var(--kids-secondary-hover))
+  );
+}
+.kids-gradient-avatar {
+  background: linear-gradient(
+    to bottom right,
+    hsl(var(--kids-avatar-from)),
+    hsl(var(--kids-avatar-to))
+  );
+}
+.kids-gradient-login {
+  background: linear-gradient(
+    to right,
+    hsl(var(--kids-accent-green)),
+    hsl(var(--kids-accent-green-dark))
+  );
+}
+.kids-gradient-login:hover {
+  background: linear-gradient(to right, hsl(161 94% 30%), hsl(162 95% 25%));
+}
+.kids-gradient-cover-placeholder {
+  background: linear-gradient(
+    to bottom right,
+    hsl(var(--kids-primary-light)),
+    hsl(var(--kids-secondary-light))
+  );
+}
+.kids-gradient-funfacts {
+  background: linear-gradient(
+    to bottom right,
+    hsl(var(--kids-primary-light)),
+    hsl(326 78% 98%),
+    hsl(214 95% 93%)
+  );
+}
+.kids-gradient-logo {
+  background: linear-gradient(
+    to bottom right,
+    hsl(var(--kids-secondary-muted)),
+    hsl(var(--kids-primary-muted)),
+    hsl(217 91% 70%)
+  );
+}
+.kids-gradient-logo-text {
+  background: linear-gradient(
+    to right,
+    hsl(var(--kids-hero-from)),
+    hsl(var(--kids-hero-via)),
+    hsl(var(--kids-hero-to))
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.kids-gradient-nav-active {
+  background: linear-gradient(
+    to right,
+    hsl(var(--kids-primary-light)),
+    hsl(var(--kids-secondary-light))
+  );
+}
+.kids-gradient-detail-cover-bg {
+  background: linear-gradient(
+    to bottom right,
+    hsl(var(--kids-primary-light)),
+    hsl(326 78% 98%),
+    hsl(214 95% 93%)
+  );
+}
+.kids-gradient-detail-cover-fallback {
+  background: linear-gradient(
+    to bottom right,
+    hsl(var(--kids-primary) / 0.3),
+    hsl(var(--kids-secondary) / 0.3)
+  );
+}
+.kids-gradient-progress {
+  background: linear-gradient(to right, hsl(var(--kids-primary)), hsl(var(--kids-secondary)));
+}
+
+/* Teens theme utilities — text */
+.teens-text-primary {
+  color: hsl(var(--teens-primary));
+}
+.teens-text-primary-hover {
+  color: hsl(var(--teens-primary-hover));
+}
+.teens-text-primary-muted {
+  color: hsl(var(--teens-primary-muted));
+}
+.teens-text-secondary {
+  color: hsl(var(--teens-secondary));
+}
+.teens-text-secondary-hover {
+  color: hsl(var(--teens-secondary-hover));
+}
+.teens-text-secondary-muted {
+  color: hsl(var(--teens-secondary-muted));
+}
+.teens-text-accent {
+  color: hsl(var(--teens-accent));
+}
+.teens-text-accent-dark {
+  color: hsl(var(--teens-accent-dark));
+}
+
+/* Teens theme utilities — text (hover) */
+.teens-hover-text-secondary:hover {
+  color: hsl(var(--teens-secondary));
+}
+.teens-hover-text-secondary-hover:hover {
+  color: hsl(var(--teens-secondary-hover));
+}
+.teens-hover-text-primary:hover {
+  color: hsl(var(--teens-primary));
+}
+
+/* Teens theme utilities — text (group-hover) */
+.group:hover .teens-group-hover-text-secondary {
+  color: hsl(var(--teens-secondary));
+}
+.group:hover .teens-group-hover-text-secondary-hover {
+  color: hsl(var(--teens-secondary-hover));
+}
+
+/* Teens theme utilities — background */
+.teens-bg-primary-light {
+  background-color: hsl(var(--teens-primary-light));
+}
+.teens-bg-primary-wash {
+  background-color: hsl(var(--teens-primary-wash));
+}
+.teens-bg-secondary-light {
+  background-color: hsl(var(--teens-secondary-light));
+}
+.teens-bg-secondary-wash {
+  background-color: hsl(var(--teens-secondary-wash));
+}
+.teens-bg-accent-light {
+  background-color: hsl(var(--teens-accent-light));
+}
+
+/* Teens theme utilities — border */
+.teens-border-secondary-muted {
+  border-color: hsl(var(--teens-secondary-muted));
+}
+.teens-border-secondary-light {
+  border-color: hsl(var(--teens-secondary-light));
+}
+.teens-border-secondary-wash {
+  border-color: hsl(var(--teens-secondary) / 0.2);
+}
+
+/* Teens theme utilities — border (hover) */
+.teens-hover-border-secondary-wash:hover {
+  border-color: hsl(var(--teens-secondary) / 0.2);
+}
+.teens-hover-border-secondary-light:hover {
+  border-color: hsl(var(--teens-secondary-light));
+}
+.teens-hover-border-secondary-muted:hover {
+  border-color: hsl(var(--teens-secondary-muted));
+}
+
+/* Teens theme utilities — focus */
+.teens-focus-border:focus {
+  border-color: hsl(var(--teens-secondary-muted));
+}
+.teens-focus-ring:focus {
+  --tw-ring-color: hsl(var(--teens-secondary-light));
+}
+.teens-focus-visible-border:focus-visible {
+  border-color: hsl(var(--teens-secondary-muted));
+}
+
+/* Teens theme utilities — gradient helpers */
+.teens-gradient-hero {
+  background: linear-gradient(
+    to right,
+    hsl(var(--teens-primary)),
+    hsl(var(--teens-secondary)),
+    hsl(var(--teens-accent))
+  );
+}
+.teens-gradient-hero-glow {
+  background: linear-gradient(
+    to right,
+    hsl(var(--teens-primary)),
+    hsl(var(--teens-secondary)),
+    hsl(var(--teens-accent))
+  );
+}
+.teens-gradient-button {
+  background: linear-gradient(to right, hsl(var(--teens-primary)), hsl(var(--teens-secondary)));
+}
+.teens-gradient-button:hover {
+  background: linear-gradient(
+    to right,
+    hsl(var(--teens-primary-hover)),
+    hsl(var(--teens-secondary-hover))
+  );
+}
+.teens-gradient-avatar {
+  background: linear-gradient(
+    to bottom right,
+    hsl(var(--teens-primary)),
+    hsl(var(--teens-secondary))
+  );
+}
+.teens-gradient-cover-placeholder {
+  background: linear-gradient(
+    to bottom right,
+    hsl(var(--teens-primary-light)),
+    hsl(var(--teens-secondary-light))
+  );
+}
+.teens-gradient-promo {
+  background: linear-gradient(
+    to bottom right,
+    hsl(var(--teens-primary-light)),
+    hsl(var(--teens-secondary-wash)),
+    hsl(var(--teens-accent-light))
+  );
+}
+.teens-gradient-logo {
+  background: linear-gradient(
+    to right,
+    hsl(var(--teens-primary)),
+    hsl(var(--teens-secondary)),
+    hsl(var(--teens-accent))
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.teens-gradient-logo-icon {
+  background: linear-gradient(
+    to bottom right,
+    hsl(var(--teens-primary)),
+    hsl(var(--teens-secondary)),
+    hsl(var(--teens-accent))
+  );
+}
+.teens-gradient-nav-active {
+  background: linear-gradient(
+    to right,
+    hsl(var(--teens-primary-light)),
+    hsl(var(--teens-secondary-light))
+  );
+}
+.teens-gradient-progress {
+  background: linear-gradient(to right, hsl(var(--teens-primary)), hsl(var(--teens-secondary)));
+}
+
 /* Print styles */
 @import "./print.css";

@@ -175,13 +175,13 @@ function TeensSearchContent() {
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder={t("searchPlaceholder")}
               aria-label={t("searchTeenBooks")}
-              className="w-full pl-5 pr-14 py-4 text-lg rounded-full border-2 border-indigo-200 text-foreground placeholder:text-muted-foreground/70 bg-card focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+              className="w-full pl-5 pr-14 py-4 text-lg rounded-full border-2 teens-border-secondary-wash text-foreground placeholder:text-muted-foreground/70 bg-card focus:outline-none teens-focus-border focus:ring-4 teens-focus-ring"
             />
             <Button
               type="submit"
               size="icon"
               aria-label="Search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full hover:from-purple-700 hover:to-indigo-700 transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-3 teens-gradient-button text-white rounded-full transition-colors"
             >
               <Search className="h-5 w-5" />
             </Button>
@@ -234,7 +234,7 @@ function TeensSearchContent() {
               type="button"
               variant="outline"
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-colors ${showFilters ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-border text-muted-foreground hover:border-indigo-200"}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-colors ${showFilters ? "teens-border-secondary-muted teens-bg-secondary-wash teens-text-secondary-hover" : "border-border text-muted-foreground teens-hover-border-secondary-wash"}`}
             >
               <Filter className="h-4 w-4" />
               <span>{t("filters")}</span>
@@ -246,7 +246,7 @@ function TeensSearchContent() {
                 variant="ghost"
                 onClick={() => setViewMode("grid")}
                 aria-label={t("gridView")}
-                className={`rounded-none p-2 ${viewMode === "grid" ? "bg-indigo-100 text-indigo-700" : "text-muted-foreground"}`}
+                className={`rounded-none p-2 ${viewMode === "grid" ? "teens-bg-secondary-light teens-text-secondary-hover" : "text-muted-foreground"}`}
               >
                 <Grid className="h-5 w-5" />
               </Button>
@@ -255,7 +255,7 @@ function TeensSearchContent() {
                 variant="ghost"
                 onClick={() => setViewMode("list")}
                 aria-label={t("listView")}
-                className={`rounded-none p-2 ${viewMode === "list" ? "bg-indigo-100 text-indigo-700" : "text-muted-foreground"}`}
+                className={`rounded-none p-2 ${viewMode === "list" ? "teens-bg-secondary-light teens-text-secondary-hover" : "text-muted-foreground"}`}
               >
                 <LayoutList className="h-5 w-5" />
               </Button>
@@ -265,7 +265,7 @@ function TeensSearchContent() {
 
         {/* Filters panel */}
         {showFilters && (
-          <div className="mt-4 p-4 bg-card rounded-2xl border-2 border-indigo-100 shadow-sm">
+          <div className="mt-4 p-4 bg-card rounded-2xl border-2 teens-border-secondary-light shadow-sm">
             <div className="flex flex-wrap gap-4">
               <div>
                 <label
@@ -323,7 +323,7 @@ function TeensSearchContent() {
                 type="button"
                 variant="ghost"
                 onClick={() => updateSearchParams({ format: null, available: null })}
-                className="self-end px-4 py-2 text-sm text-indigo-600 hover:text-indigo-700"
+                className="self-end px-4 py-2 text-sm teens-text-secondary teens-hover-text-secondary-hover"
               >
                 Clear Filters
               </Button>
@@ -360,7 +360,7 @@ function TeensSearchContent() {
                 variant="outline"
                 onClick={() => updateSearchParams({ page: String(Math.max(1, page - 1)) })}
                 disabled={page === 1}
-                className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed hover:border-indigo-200 transition-colors"
+                className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed teens-hover-border-secondary-wash transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" /> Back
               </Button>
@@ -370,7 +370,7 @@ function TeensSearchContent() {
                 variant="outline"
                 onClick={() => updateSearchParams({ page: String(Math.min(totalPages, page + 1)) })}
                 disabled={page === totalPages}
-                className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed hover:border-indigo-200 transition-colors"
+                className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed teens-hover-border-secondary-wash transition-colors"
               >
                 Next <ChevronRight className="h-4 w-4" />
               </Button>
@@ -379,22 +379,22 @@ function TeensSearchContent() {
         </>
       ) : query || format || availableOnly || sort !== "relevance" ? (
         <div className="text-center py-20 bg-card rounded-3xl">
-          <div className="w-20 h-20 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center">
-            <Search className="h-10 w-10 text-indigo-300" />
+          <div className="w-20 h-20 mx-auto mb-4 teens-bg-secondary-light rounded-full flex items-center justify-center">
+            <Search className="h-10 w-10 teens-text-secondary-muted" />
           </div>
           <h3 className="text-xl font-bold text-foreground mb-2">{t("noBooksFound")}</h3>
           <p className="text-muted-foreground mb-6">{t("trySearching")}</p>
           <Link
             href="/opac/teens"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full font-medium hover:from-purple-700 hover:to-indigo-700"
+            className="inline-flex items-center gap-2 px-6 py-3 teens-gradient-button text-white rounded-full font-medium"
           >
             <Sparkles className="h-5 w-5" /> Browse Genres
           </Link>
         </div>
       ) : (
         <div className="text-center py-20 bg-card rounded-3xl">
-          <div className="w-20 h-20 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center">
-            <BookOpen className="h-10 w-10 text-indigo-300" />
+          <div className="w-20 h-20 mx-auto mb-4 teens-bg-secondary-light rounded-full flex items-center justify-center">
+            <BookOpen className="h-10 w-10 teens-text-secondary-muted" />
           </div>
           <h3 className="text-xl font-bold text-foreground mb-2">{t("readyToSearch")}</h3>
           <p className="text-muted-foreground">{t("typeToFind")}</p>
@@ -411,7 +411,7 @@ function TeensSearchResultCard({ book }: { book: SearchResult }) {
 
   return (
     <Link href={`/opac/record/${book.id}`} className="group block">
-      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-indigo-100 shadow-md group-hover:shadow-xl transition-all group-hover:-translate-y-1">
+      <div className="relative aspect-[2/3] rounded-xl overflow-hidden teens-gradient-cover-placeholder shadow-md group-hover:shadow-xl transition-all group-hover:-translate-y-1">
         {book.coverUrl && !imageError ? (
           <Image
             src={book.coverUrl}
@@ -423,7 +423,7 @@ function TeensSearchResultCard({ book }: { book: SearchResult }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <BookOpen className="h-12 w-12 text-indigo-300" />
+            <BookOpen className="h-12 w-12 teens-text-secondary-muted" />
           </div>
         )}
 
@@ -435,7 +435,7 @@ function TeensSearchResultCard({ book }: { book: SearchResult }) {
       </div>
 
       <div className="mt-2">
-        <h3 className="font-semibold text-foreground text-sm line-clamp-2 group-hover:text-indigo-600">
+        <h3 className="font-semibold text-foreground text-sm line-clamp-2 teens-group-hover-text-secondary">
           {book.title}
         </h3>
         {book.author && (
@@ -454,9 +454,9 @@ function TeensSearchResultListItem({ book }: { book: SearchResult }) {
   return (
     <Link
       href={`/opac/record/${book.id}`}
-      className="flex gap-4 p-4 bg-card rounded-2xl border-2 border-transparent hover:border-indigo-200 hover:shadow-md transition-all group"
+      className="flex gap-4 p-4 bg-card rounded-2xl border-2 border-transparent teens-hover-border-secondary-wash hover:shadow-md transition-all group"
     >
-      <div className="w-20 h-28 shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-purple-100 to-indigo-100">
+      <div className="w-20 h-28 shrink-0 rounded-lg overflow-hidden teens-gradient-cover-placeholder">
         {book.coverUrl && !imageError ? (
           <Image
             src={book.coverUrl}
@@ -468,13 +468,13 @@ function TeensSearchResultListItem({ book }: { book: SearchResult }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <BookOpen className="h-8 w-8 text-indigo-300" />
+            <BookOpen className="h-8 w-8 teens-text-secondary-muted" />
           </div>
         )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-foreground text-lg group-hover:text-indigo-600 line-clamp-1">
+        <h3 className="font-bold text-foreground text-lg teens-group-hover-text-secondary line-clamp-1">
           {book.title}
         </h3>
         {book.author && <p className="text-muted-foreground text-sm">{book.author}</p>}

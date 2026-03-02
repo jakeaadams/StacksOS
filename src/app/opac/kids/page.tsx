@@ -263,13 +263,13 @@ export default function KidsHomePage() {
             <Star className="h-8 w-8 text-yellow-400" />
           </div>
           <div className="absolute top-20 right-20 animate-bounce [animation-delay:0.5s] [animation-duration:2.5s]">
-            <Sparkles className="h-10 w-10 text-pink-400" />
+            <Sparkles className="h-10 w-10 kids-text-secondary-muted" />
           </div>
           <div className="absolute bottom-20 left-1/4 animate-bounce [animation-delay:1s] [animation-duration:3.5s]">
             <BookOpen className="h-8 w-8 text-blue-400" />
           </div>
           <div className="absolute top-1/3 right-10 animate-bounce [animation-delay:0.3s] [animation-duration:2.8s]">
-            <Rocket className="h-9 w-9 text-purple-400" />
+            <Rocket className="h-9 w-9 kids-text-primary-muted" />
           </div>
         </div>
 
@@ -278,7 +278,7 @@ export default function KidsHomePage() {
           {isLoggedIn && patron && (
             <div className="mb-6 inline-flex items-center gap-2 px-6 py-3 bg-card/90 rounded-full shadow-lg">
               <div
-                className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 
+                className="w-8 h-8 rounded-full kids-gradient-avatar
                             flex items-center justify-center text-white font-bold text-sm"
               >
                 {patron.firstName?.[0]}
@@ -296,11 +296,9 @@ export default function KidsHomePage() {
           )}
 
           <h1 className="text-4xl md:text-6xl font-bold mb-4">
-            <span className="bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
-              Find Your Next
-            </span>
+            <span className="kids-gradient-logo-text">Find Your Next</span>
             <br />
-            <span className="bg-gradient-to-r from-blue-500 via-green-500 to-yellow-500 bg-clip-text text-transparent">
+            <span className="kids-gradient-hero-reverse bg-clip-text text-transparent">
               Adventure!
             </span>
           </h1>
@@ -313,7 +311,7 @@ export default function KidsHomePage() {
           <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
             <div className="relative group">
               <div
-                className="absolute -inset-1 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 
+                className="absolute -inset-1 kids-gradient-hero-glow
                             rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity"
               />
               <div className="relative">
@@ -322,13 +320,13 @@ export default function KidsHomePage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="What do you want to read about?"
-                  className="h-16 rounded-full border-2 border-purple-200 bg-card pl-6 pr-16 text-xl text-foreground placeholder:text-muted-foreground/70 focus-visible:border-purple-400 focus-visible:ring-0 md:text-xl"
+                  className="h-16 rounded-full border-2 kids-border-primary-wash bg-card pl-6 pr-16 text-xl text-foreground placeholder:text-muted-foreground/70 kids-focus-visible-border focus-visible:ring-0 md:text-xl"
                 />
                 <Button
                   type="submit"
                   size="icon"
                   aria-label="Search"
-                  className="absolute right-2 top-1/2 h-12 w-12 -translate-y-1/2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:from-purple-600 hover:to-pink-600"
+                  className="absolute right-2 top-1/2 h-12 w-12 -translate-y-1/2 rounded-full kids-gradient-button text-white shadow-lg"
                 >
                   <Search className="h-6 w-6" />
                 </Button>
@@ -355,7 +353,7 @@ export default function KidsHomePage() {
                 href={`/opac/kids/search?type=subject&q=${encodeURIComponent(category.query)}`}
                 className="flex flex-col items-center gap-2 p-3 md:p-4 rounded-2xl bg-card 
                          shadow-sm hover:shadow-lg border-2 border-transparent
-                         hover:border-purple-200 transition-all group"
+                         kids-hover-border-primary-wash transition-all group"
               >
                 <div
                   className={`p-3 md:p-4 rounded-xl ${category.bgColor} 
@@ -416,7 +414,7 @@ export default function KidsHomePage() {
             </div>
             <Link
               href="/opac/kids/search?sort=popularity"
-              className="flex items-center gap-1 text-purple-600 hover:text-purple-700 font-medium"
+              className="flex items-center gap-1 kids-text-primary kids-hover-text-primary-hover font-medium"
             >
               See More
               <ArrowRight className="h-4 w-4" />
@@ -460,7 +458,7 @@ export default function KidsHomePage() {
             </div>
             <Link
               href="/opac/kids/search?sort=create_date&order=desc"
-              className="flex items-center gap-1 text-purple-600 hover:text-purple-700 font-medium"
+              className="flex items-center gap-1 kids-text-primary kids-hover-text-primary-hover font-medium"
             >
               See More
               <ArrowRight className="h-4 w-4" />
@@ -495,11 +493,11 @@ export default function KidsHomePage() {
       {/* Fun Facts / Reading Tips */}
       <section className="py-8 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 rounded-3xl p-6 md:p-8">
+          <div className="kids-gradient-funfacts rounded-3xl p-6 md:p-8">
             <h3 className="text-xl font-bold text-foreground mb-4 text-center">Did You Know?</h3>
             <div className="grid md:grid-cols-3 gap-4">
               <div className="bg-card/70 backdrop-blur-sm rounded-2xl p-4 text-center">
-                <BookOpen className="h-8 w-8 text-purple-500 mx-auto mb-2" />
+                <BookOpen className="h-8 w-8 kids-text-primary mx-auto mb-2" />
                 <p className="text-sm text-foreground/80">
                   Reading for just 20 minutes a day can help you learn 1.8 million words a year!
                 </p>
@@ -511,7 +509,7 @@ export default function KidsHomePage() {
                 </p>
               </div>
               <div className="bg-card/70 backdrop-blur-sm rounded-2xl p-4 text-center">
-                <Star className="h-8 w-8 text-pink-500 mx-auto mb-2" />
+                <Star className="h-8 w-8 kids-text-secondary mx-auto mb-2" />
                 <p className="text-sm text-foreground/80">
                   You can request any book in our catalog to be held for you!
                 </p>
@@ -531,7 +529,7 @@ function KidsBookCard({ book }: { book: FeaturedBook }) {
   return (
     <Link href={`/opac/kids/record/${book.id}`} className="group block">
       <div
-        className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
+        className="relative aspect-[2/3] rounded-xl overflow-hidden kids-gradient-cover-placeholder
                     shadow-md group-hover:shadow-xl transition-all group-hover:-translate-y-1"
       >
         {book.coverUrl && !imageError ? (
@@ -543,15 +541,15 @@ function KidsBookCard({ book }: { book: FeaturedBook }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <BookOpen className="h-12 w-12 text-purple-300" />
+            <BookOpen className="h-12 w-12 kids-text-primary-muted" />
           </div>
         )}
 
         {/* Reading level badge */}
         {book.readingLevel && (
           <div
-            className="absolute top-2 left-2 px-2 py-1 bg-card/90 backdrop-blur-sm 
-                        rounded-full text-xs font-medium text-purple-700 shadow-sm"
+            className="absolute top-2 left-2 px-2 py-1 bg-card/90 backdrop-blur-sm
+                        rounded-full text-xs font-medium kids-text-primary-hover shadow-sm"
           >
             {book.readingLevel}
           </div>
@@ -559,7 +557,7 @@ function KidsBookCard({ book }: { book: FeaturedBook }) {
       </div>
 
       <div className="mt-2">
-        <h3 className="font-medium text-foreground text-sm line-clamp-2 group-hover:text-purple-600 transition-colors">
+        <h3 className="font-medium text-foreground text-sm line-clamp-2 kids-group-hover-text-primary transition-colors">
           {book.title}
         </h3>
         {book.author && (

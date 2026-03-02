@@ -9,6 +9,7 @@ import {
   getRequestMeta,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { addReleaseNote, listReleaseNotes } from "@/lib/db/support";
 import { logAuditEvent } from "@/lib/audit";
 
@@ -27,6 +28,17 @@ export const GET = withErrorHandling(async (_req: Request) => {
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 10,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "release-notes",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
 
   try {
     const { actor } = await requirePermissions(["ADMIN_CONFIG"]);

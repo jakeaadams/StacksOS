@@ -8,6 +8,7 @@ import {
   getRequestMeta,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { withTransaction } from "@/lib/db/evergreen";
 import { logAuditEvent } from "@/lib/audit";
 import { assertLibrarySchemaExists } from "@/lib/db/library-schema";
@@ -347,6 +348,17 @@ export async function POST(req: NextRequest) {
         "UPDATE_ORG_UNIT_CLOSING",
       ]);
       void authtoken;
+
+      const rlResult = await checkRateLimit(ip || "unknown", {
+        maxAttempts: 20,
+        windowMs: 5 * 60 * 1000,
+        endpoint: "eg-calendars",
+      });
+      if (!rlResult.allowed)
+        return errorResponse("Too many requests. Please try again later.", 429, {
+          retryAfter: Math.ceil(rlResult.resetIn / 1000),
+        });
+
       await ensureCalendarTables();
 
       if (!body.hours && !body.closedDates) {

@@ -1,6 +1,14 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { callOpenSRF, successResponse, errorResponse, parseJsonBodyWithSchema } from "@/lib/api";
+import {
+  callOpenSRF,
+  successResponse,
+  errorResponse,
+  parseJsonBodyWithSchema,
+  getRequestMeta,
+} from "@/lib/api";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
 import { getOpacPrivacyPrefs, upsertOpacPrivacyPrefs } from "@/lib/db/opac";
@@ -95,6 +103,18 @@ export async function GET(_req: NextRequest) {
 
 // PUT /api/opac/settings - Update patron settings
 export async function PUT(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 20,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-settings",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const cookieStore = await cookies();
     const patronToken = cookieStore.get("patron_authtoken")?.value;
@@ -175,6 +195,16 @@ export async function PUT(req: NextRequest) {
         readingHistoryPersonalization: updates.readingHistoryPersonalization,
       });
     }
+
+    await logAuditEvent({
+      action: "opac.settings.update",
+      entity: "patron_settings",
+      entityId: user.id,
+      status: "success",
+      actor: { id: Number(user.id) },
+      ip,
+      details: { patronId: user.id, updatedFields: Object.keys(updates) },
+    }).catch(() => {});
 
     return successResponse({ success: true });
   } catch (error) {

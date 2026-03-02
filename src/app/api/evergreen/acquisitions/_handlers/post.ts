@@ -19,6 +19,7 @@ import { query } from "@/lib/db/evergreen";
 import { requirePermissions } from "@/lib/permissions";
 import { ACQUISITIONS_PERMS, CIRCULATION_PERMS } from "@/lib/permissions-map";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 function parsePositiveIntId(value: unknown): number | null {
   const numeric = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
@@ -50,6 +51,16 @@ export async function handleAcquisitionsPost(req: NextRequest, actionOverride?: 
     const action = String(actionRaw || "").trim();
     if (!action) return errorResponse("Missing action", 400);
     const { ip, userAgent, requestId } = getRequestMeta(req);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-acquisitions",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
 
     logger.debug({ route: "api.evergreen.acquisitions", action }, "Acquisitions POST");
 

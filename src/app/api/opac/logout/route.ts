@@ -1,5 +1,12 @@
 import { NextRequest } from "next/server";
-import { callOpenSRF, successResponse, serverErrorResponse } from "@/lib/api";
+import {
+  callOpenSRF,
+  successResponse,
+  serverErrorResponse,
+  errorResponse,
+  getRequestMeta,
+} from "@/lib/api";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 import { cookies } from "next/headers";
 import { z as _z } from "zod";
@@ -9,6 +16,19 @@ import { z as _z } from "zod";
  * POST /api/opac/logout
  */
 export async function POST(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 10,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-logout",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const cookieStore = await cookies();
     const patronToken = cookieStore.get("patron_authtoken")?.value;

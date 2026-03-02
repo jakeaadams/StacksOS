@@ -121,8 +121,8 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
               <Link href="/opac/kids" className="flex items-center gap-2 group">
                 <div className="relative">
                   <div
-                    className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-pink-400 via-purple-400 to-blue-400 
-                              rounded-2xl flex items-center justify-center shadow-lg 
+                    className="w-10 h-10 md:w-12 md:h-12 kids-gradient-logo
+                              rounded-2xl flex items-center justify-center shadow-lg
                               group-hover:scale-110 transition-transform"
                   >
                     <BookOpen className="h-5 w-5 md:h-6 md:w-6 text-white" />
@@ -130,10 +130,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
                   <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-yellow-400 animate-pulse" />
                 </div>
                 <div className="hidden sm:block">
-                  <span
-                    className="font-bold text-xl md:text-2xl bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 
-                               bg-clip-text text-transparent"
-                  >
+                  <span className="font-bold text-xl md:text-2xl kids-gradient-logo-text">
                     Kids Zone
                   </span>
                   {library?.name && (
@@ -150,18 +147,17 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search for books..."
-                    className="w-full pl-5 pr-12 py-3 rounded-full border-2 border-purple-200 
+                    className="w-full pl-5 pr-12 py-3 rounded-full border-2 kids-border-primary-wash
                            text-foreground placeholder:text-muted-foreground/70 text-lg
-                           focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-100
+                           focus:outline-none kids-focus-border focus:ring-4 kids-focus-ring
                            transition-all"
                   />
                   <Button
                     type="submit"
                     size="icon"
                     aria-label="Search"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r
-                           from-purple-500 to-pink-500 text-white rounded-full
-                           hover:from-purple-600 hover:to-pink-600 transition-colors shadow-md"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 kids-gradient-button text-white rounded-full
+                           transition-colors shadow-md"
                   >
                     <Search className="h-5 w-5" />
                   </Button>
@@ -177,7 +173,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all
                             ${
                               isActive(item.href)
-                                ? "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 shadow-sm"
+                                ? "kids-gradient-nav-active kids-text-primary-hover shadow-sm"
                                 : "text-muted-foreground hover:bg-muted/50"
                             }`}
                   >
@@ -190,7 +186,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
                 {isLoggedIn && patron ? (
                   <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
                     <div
-                      className="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 
+                      className="w-9 h-9 rounded-full kids-gradient-avatar
                                 flex items-center justify-center text-white font-bold shadow-md"
                     >
                       {patron.firstName?.[0] || "K"}
@@ -210,8 +206,8 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
                 ) : (
                   <Link
                     href="/opac/login?redirect=/opac/kids"
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 
-                           text-white rounded-xl font-medium hover:from-green-600 hover:to-emerald-600 
+                    className="flex items-center gap-2 px-4 py-2 kids-gradient-login
+                           text-white rounded-xl font-medium
                            transition-colors shadow-md ml-2"
                   >
                     <LogIn className="h-5 w-5" />
@@ -242,16 +238,15 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search for books..."
-                    className="w-full pl-4 pr-12 py-2.5 rounded-full border-2 border-purple-200 
+                    className="w-full pl-4 pr-12 py-2.5 rounded-full border-2 kids-border-primary-wash
                            text-foreground placeholder:text-muted-foreground/70
-                           focus:outline-none focus:border-purple-400"
+                           focus:outline-none kids-focus-border"
                   />
                   <Button
                     type="submit"
                     size="icon"
                     aria-label="Search"
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r
-                           from-purple-500 to-pink-500 text-white rounded-full"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 kids-gradient-button text-white rounded-full"
                   >
                     <Search className="h-4 w-4" />
                   </Button>
@@ -272,7 +267,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                             ${
                               isActive(item.href)
-                                ? "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700"
+                                ? "kids-gradient-nav-active kids-text-primary-hover"
                                 : "text-muted-foreground hover:bg-muted/50"
                             }`}
                   >
@@ -285,7 +280,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
                   <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
                     <div className="flex items-center gap-3">
                       <div
-                        className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 
+                        className="w-10 h-10 rounded-full kids-gradient-avatar
                                   flex items-center justify-center text-white font-bold"
                       >
                         {patron.firstName?.[0] || "K"}
@@ -308,8 +303,7 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
                   <Link
                     href="/opac/login?redirect=/opac/kids"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-center gap-2 px-4 py-3 mt-2 bg-gradient-to-r 
-                           from-green-500 to-emerald-500 text-white rounded-xl font-medium"
+                    className="flex items-center justify-center gap-2 px-4 py-3 mt-2 kids-gradient-login text-white rounded-xl font-medium"
                   >
                     <LogIn className="h-5 w-5" />
                     <span>Log In</span>
@@ -330,20 +324,23 @@ export default function KidsLayout({ children }: KidsLayoutProps) {
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-2">
-                <BookOpen className="h-6 w-6 text-purple-500" />
+                <BookOpen className="h-6 w-6 kids-text-primary" />
                 <span className="font-bold text-lg text-foreground">
                   {library?.name || "Library"} Kids Zone
                 </span>
               </div>
 
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                <Link href="/opac" className="hover:text-purple-600 transition-colors">
+                <Link href="/opac" className="kids-hover-text-primary transition-colors">
                   Adult Catalog
                 </Link>
-                <Link href="/opac/kids/help" className="hover:text-purple-600 transition-colors">
+                <Link href="/opac/kids/help" className="kids-hover-text-primary transition-colors">
                   Help
                 </Link>
-                <Link href="/opac/kids/parents" className="hover:text-purple-600 transition-colors">
+                <Link
+                  href="/opac/kids/parents"
+                  className="kids-hover-text-primary transition-colors"
+                >
                   For Parents
                 </Link>
               </div>

@@ -13,6 +13,7 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 interface RouteParams {
@@ -160,6 +161,16 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const patronId = parseInt(id, 10);
     const { ip, userAgent, requestId } = getRequestMeta(req);
 
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-patron-penalties",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     if (!Number.isFinite(patronId)) {
       return errorResponse("Invalid patron ID", 400);
     }
@@ -231,6 +242,16 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const patronId = parseInt(id, 10);
     const { ip, userAgent, requestId } = getRequestMeta(req);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-patron-penalties",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
 
     if (!Number.isFinite(patronId)) {
       return errorResponse("Invalid patron ID", 400);

@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   createIllRequest,
   updateIllRequestSync,
@@ -17,7 +18,11 @@ import {
   type IllRequestStatus,
   type IllSyncStatus,
 } from "@/lib/db/ill";
-import { getIllProviderStatus, syncIllRequestToProvider, type IllProviderSyncResult } from "@/lib/ill/provider";
+import {
+  getIllProviderStatus,
+  syncIllRequestToProvider,
+  type IllProviderSyncResult,
+} from "@/lib/ill/provider";
 
 const CreateIllRequestSchema = z
   .object({
@@ -30,7 +35,11 @@ const CreateIllRequestSchema = z
     author: z.string().trim().min(1).max(255).optional(),
     isbn: z.string().trim().min(1).max(64).optional(),
     source: z.string().trim().min(1).max(255).optional(),
-    neededBy: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    neededBy: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
     notes: z.string().trim().max(4000).optional(),
   })
   .strict();
@@ -44,13 +53,20 @@ const UpdateIllRequestSchema = z
     priority: z.enum(["low", "normal", "high"] as const).optional(),
     source: z.string().trim().max(255).optional(),
     notes: z.string().trim().max(4000).optional(),
-    neededBy: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    neededBy: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
   })
   .strict()
-  .refine((body) => Boolean(body.status || body.priority || body.source || body.notes || body.neededBy), {
-    message: "At least one update field is required",
-    path: ["status"],
-  });
+  .refine(
+    (body) => Boolean(body.status || body.priority || body.source || body.notes || body.neededBy),
+    {
+      message: "At least one update field is required",
+      path: ["status"],
+    }
+  );
 
 function actorIdFrom(actor: any): number | null {
   const raw = actor?.id ?? actor?.usr ?? actor?.user_id;
@@ -95,6 +111,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 20,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "ill-requests",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
 
   try {
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
@@ -207,6 +234,17 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 20,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "ill-requests",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
 
   try {
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);

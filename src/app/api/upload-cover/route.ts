@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 import { logAuditEvent } from "@/lib/audit";
 import { errorResponse, getRequestMeta, successResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { imageExtForMime, parsePositiveInt } from "@/lib/upload-utils";
 import { z as _z } from "zod";
 
@@ -18,6 +19,17 @@ export async function POST(request: NextRequest) {
 
   try {
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
+
+    const rate = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 10,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "upload-cover",
+    });
+    if (!rate.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rate.resetIn / 1000),
+      });
+    }
 
     const formData = await request.formData();
     const file = formData.get("file");

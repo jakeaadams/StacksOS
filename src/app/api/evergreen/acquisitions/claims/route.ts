@@ -11,6 +11,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { sendEmail } from "@/lib/email";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 export type ClaimType = "claim" | "cancel_claim" | "receive";
@@ -276,6 +277,17 @@ export async function POST(req: NextRequest) {
 
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN", "ADMIN_ACQ_CLAIM"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-acq-claims",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const body = acqClaimsPostSchema.parse(await req.json());
     const { action } = body;
     const extra = body as Record<string, unknown>;

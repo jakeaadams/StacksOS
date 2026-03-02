@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logAuditEvent } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -162,6 +163,16 @@ export async function POST(req: NextRequest) {
     if (body instanceof NextResponse) return body;
 
     const { authtoken, actor } = await requirePermissions(["CREATE_MARC", "IMPORT_MARC"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-z3950",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
 
     const marcxml = body.marcxml || body.marcXml;
     if (!marcxml || typeof marcxml !== "string") {

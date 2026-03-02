@@ -11,9 +11,11 @@ import {
   errorResponse,
   serverErrorResponse,
   getErrorMessage,
+  getRequestMeta,
   isSuccessResult,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { differenceInDays, parseISO } from "date-fns";
 import { z } from "zod";
 
@@ -55,9 +57,7 @@ interface MappedShelfHold {
 function mapShelfHold(item: ShelfHoldRaw): MappedShelfHold {
   const now = new Date();
   const captureTime = item.capture_time ? parseISO(item.capture_time) : null;
-  const expireTime = item.shelf_expire_time
-    ? parseISO(item.shelf_expire_time)
-    : null;
+  const expireTime = item.shelf_expire_time ? parseISO(item.shelf_expire_time) : null;
 
   const daysOnShelf = captureTime ? differenceInDays(now, captureTime) : 0;
   const daysUntilExpire = expireTime ? differenceInDays(expireTime, now) : 999;
@@ -88,10 +88,12 @@ function mapShelfHold(item: ShelfHoldRaw): MappedShelfHold {
   };
 }
 
-const shelfPostSchema = z.object({
-  action: z.enum(["clear_expired"]),
-  orgId: z.coerce.number().int().positive().optional(),
-}).passthrough();
+const shelfPostSchema = z
+  .object({
+    action: z.enum(["clear_expired"]),
+    orgId: z.coerce.number().int().positive().optional(),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   try {
@@ -101,9 +103,9 @@ export async function GET(req: NextRequest) {
     const orgIdRaw = searchParams.get("org_id") || searchParams.get("orgId");
     const orgId = orgIdRaw
       ? parseInt(orgIdRaw, 10)
-      : (actor as Record<string, number>)?.ws_ou ??
+      : ((actor as Record<string, number>)?.ws_ou ??
         (actor as Record<string, number>)?.home_ou ??
-        1;
+        1);
 
     // Fetch captured holds on shelf
     const shelfResponse = await callOpenSRF(
@@ -134,9 +136,7 @@ export async function GET(req: NextRequest) {
       });
 
     const expiredCount = shelfHolds.filter((h) => h.isExpired).length;
-    const expiringSoonCount = shelfHolds.filter(
-      (h) => h.isExpiringSoon && !h.isExpired
-    ).length;
+    const expiringSoonCount = shelfHolds.filter((h) => h.isExpiringSoon && !h.isExpired).length;
 
     return successResponse({
       shelfHolds,
@@ -152,7 +152,19 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const { ip } = getRequestMeta(req);
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-holds-shelf",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const body = shelfPostSchema.parse(await req.json());
     const { action, orgId: bodyOrgId } = body;
 

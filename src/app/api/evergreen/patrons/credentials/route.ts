@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { consumeCredential } from "@/lib/credential-store";
-import { errorResponse, successResponse, serverErrorResponse } from "@/lib/api";
+import { errorResponse, successResponse, serverErrorResponse, getRequestMeta } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 /**
@@ -19,6 +20,17 @@ export async function POST(req: NextRequest) {
   try {
     // Only staff with CREATE_USER (who just created the patron) should call this
     await requirePermissions(["CREATE_USER"]);
+
+    const { ip } = getRequestMeta(req);
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 10,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-patron-credentials",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
 
     const body = credentialsPostSchema.parse(await req.json());
     const token = body.token;

@@ -17,6 +17,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { withIdempotency } from "@/lib/idempotency";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 /**
@@ -77,6 +78,16 @@ export async function POST(req: NextRequest) {
       }
 
       const { authtoken, actor } = await requirePermissions(resolvePerms(action));
+
+      const rlResult = await checkRateLimit(ip || "unknown", {
+        maxAttempts: 30,
+        windowMs: 5 * 60 * 1000,
+        endpoint: "eg-circulation-advanced",
+      });
+      if (!rlResult.allowed)
+        return errorResponse("Too many requests. Please try again later.", 429, {
+          retryAfter: Math.ceil(rlResult.resetIn / 1000),
+        });
 
       const audit = async (
         status: "success" | "failure",

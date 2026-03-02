@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { query } from "@/lib/db/evergreen";
 
 // ============================================================================
@@ -302,7 +303,7 @@ export async function GET(req: NextRequest) {
 // ============================================================================
 
 export async function POST(req: NextRequest) {
-  const { requestId } = getRequestMeta(req);
+  const { ip, requestId } = getRequestMeta(req);
 
   try {
     const body = (await req.json()) as Record<string, unknown>;
@@ -314,6 +315,16 @@ export async function POST(req: NextRequest) {
     }
 
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-templates",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
     const actorId =
       typeof actor?.id === "number" ? actor.id : parseInt(String(actor?.id ?? ""), 10);
     if (!Number.isFinite(actorId)) {

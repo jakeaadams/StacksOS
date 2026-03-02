@@ -8,6 +8,7 @@ import {
   successResponse,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit";
 import { createRecordTask, listRecordTasks, updateRecordTask } from "@/lib/db/collaboration";
 
@@ -55,6 +56,18 @@ export async function POST(req: NextRequest) {
     if (parsed instanceof Response) return parsed;
 
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
+
+    const rate = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "collab-tasks",
+    });
+    if (!rate.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rate.resetIn / 1000),
+      });
+    }
+
     const task = await createRecordTask({
       recordType: parsed.recordType,
       recordId: parsed.recordId,
@@ -92,6 +105,18 @@ export async function PATCH(req: NextRequest) {
     if (parsed instanceof Response) return parsed;
 
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
+
+    const rate = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "collab-tasks",
+    });
+    if (!rate.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rate.resetIn / 1000),
+      });
+    }
+
     const task = await updateRecordTask({
       id: parsed.id,
       title: parsed.title,

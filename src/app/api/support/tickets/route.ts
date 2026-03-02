@@ -1,7 +1,14 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, parseJsonBodyWithSchema, successResponse, serverErrorResponse, getRequestMeta } from "@/lib/api";
+import {
+  errorResponse,
+  parseJsonBodyWithSchema,
+  successResponse,
+  serverErrorResponse,
+  getRequestMeta,
+} from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { createTicket, listTickets } from "@/lib/db/support";
 import { logAuditEvent } from "@/lib/audit";
 
@@ -9,7 +16,9 @@ const CreateSchema = z
   .object({
     subject: z.string().min(1).max(200),
     body: z.string().min(1).max(5000),
-    category: z.enum(["general", "bug", "data", "billing", "training", "security"]).default("general"),
+    category: z
+      .enum(["general", "bug", "data", "billing", "training", "security"])
+      .default("general"),
     priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
     requesterEmail: z.string().email().optional(),
     requesterName: z.string().max(200).optional(),
@@ -28,6 +37,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 10,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "support-tickets",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
 
   try {
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
@@ -63,4 +83,3 @@ export async function POST(req: NextRequest) {
     return serverErrorResponse(error, "Support tickets POST", req);
   }
 }
-

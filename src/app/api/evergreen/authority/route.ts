@@ -6,10 +6,12 @@ import {
   serverErrorResponse,
   getErrorMessage,
   isOpenSRFEvent,
+  getRequestMeta,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { callOpenSRF } from "@/lib/api/client";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { isDemoDataEnabled } from "@/lib/demo-data";
 import { z } from "zod";
 
@@ -134,6 +136,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const { ip } = getRequestMeta(req);
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-authority",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     if (!isDemoDataEnabled()) {
       return errorResponse(
         "Authority demo seeding is disabled. Set STACKSOS_ALLOW_DEMO_DATA=1 only for sandbox environments.",

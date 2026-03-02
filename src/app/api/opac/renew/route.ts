@@ -1,5 +1,13 @@
 import { NextRequest } from "next/server";
-import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
+import {
+  callOpenSRF,
+  successResponse,
+  errorResponse,
+  serverErrorResponse,
+  getRequestMeta,
+} from "@/lib/api";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { z } from "zod";
@@ -16,8 +24,20 @@ const renewPostSchema = z
   });
 
 export async function POST(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 30,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-renew",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
-    const { patronToken } = await requirePatronSession();
+    const { patronToken, patronId } = await requirePatronSession();
 
     const { copyBarcode, circId, checkoutId } = renewPostSchema.parse(await req.json());
     const resolvedCircId = circId ?? checkoutId;
@@ -62,6 +82,15 @@ export async function POST(req: NextRequest) {
 
     // Success - get new due date
     const newDueDate = result?.circ?.due_date || result?.due_date;
+
+    await logAuditEvent({
+      action: "opac.renew",
+      entity: "circulation",
+      status: "success",
+      actor: { id: patronId },
+      ip,
+      details: { patronId, copyBarcode, circId: resolvedCircId, newDueDate },
+    }).catch(() => {});
 
     return successResponse({
       success: true,

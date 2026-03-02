@@ -1,9 +1,16 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, parseJsonBodyWithSchema, successResponse, serverErrorResponse, getRequestMeta } from "@/lib/api";
+import {
+  errorResponse,
+  parseJsonBodyWithSchema,
+  successResponse,
+  serverErrorResponse,
+  getRequestMeta,
+} from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { activateTemplate, createTemplateVersion, listTemplates } from "@/lib/db/notifications";
 import { logAuditEvent } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const ChannelSchema = z.enum(["email", "sms"]);
 
@@ -51,6 +58,17 @@ export async function POST(req: NextRequest) {
   try {
     const { actor } = await requirePermissions(["ADMIN_CONFIG"]);
 
+    const rate = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "notification-templates",
+    });
+    if (!rate.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rate.resetIn / 1000),
+      });
+    }
+
     const body = await parseJsonBodyWithSchema(req, BodySchema);
     if (body instanceof Response) return body;
 
@@ -74,7 +92,11 @@ export async function POST(req: NextRequest) {
         ip,
         userAgent,
         requestId,
-        details: { channel: body.channel, noticeType: body.noticeType, activate: body.activate === true },
+        details: {
+          channel: body.channel,
+          noticeType: body.noticeType,
+          activate: body.activate === true,
+        },
       });
 
       return successResponse({ created: true, templateId: id });
@@ -96,7 +118,11 @@ export async function POST(req: NextRequest) {
         details: { channel: body.channel, noticeType: activated.noticeType },
       });
 
-      return successResponse({ activated: true, templateId: body.templateId, noticeType: activated.noticeType });
+      return successResponse({
+        activated: true,
+        templateId: body.templateId,
+        noticeType: activated.noticeType,
+      });
     }
 
     return errorResponse("Invalid action", 400);

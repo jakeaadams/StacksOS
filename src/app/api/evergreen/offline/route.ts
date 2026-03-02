@@ -17,6 +17,7 @@ import {
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // ---------------------------------------------------------------------------
 // Zod schemas for offline transaction POST body
@@ -244,6 +245,16 @@ export async function POST(req: NextRequest) {
     };
 
     const { authtoken, actor } = await requirePermissions(TYPE_PERMS[type] || ["STAFF_LOGIN"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-offline",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
 
     const audit = async (
       status: "success" | "failure",

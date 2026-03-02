@@ -1,7 +1,14 @@
 import { NextRequest } from "next/server";
-import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
+import {
+  callOpenSRF,
+  successResponse,
+  errorResponse,
+  serverErrorResponse,
+  getRequestMeta,
+} from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 interface AllocationRecord {
@@ -77,7 +84,19 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const { ip } = getRequestMeta(req);
     const { authtoken } = await requirePermissions(["ADMIN_FUND_ALLOCATION"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-acq-allocations",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const body = allocationsPostSchema.parse(await req.json());
     const { action } = body;
     logger.debug({ route: "api.evergreen.acquisitions.allocations", action }, "Allocations POST");

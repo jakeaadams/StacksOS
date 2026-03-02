@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { errorResponse, getRequestMeta, successResponse, serverErrorResponse } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logAuditEvent } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { getScheduledReportSchedule } from "@/lib/db/scheduled-reports";
 import { runScheduledReportOnce } from "@/lib/reports/scheduled-runner";
 import { z as _z } from "zod";
@@ -16,6 +17,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   try {
     const { actor } = await requirePermissions(["RUN_REPORTS"]);
+
+    const rate = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 10,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "reports-scheduled-run",
+    });
+    if (!rate.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rate.resetIn / 1000),
+      });
+    }
+
     const { id: idRaw } = await ctx.params;
     const scheduleId = parseId(idRaw);
     if (!scheduleId) return errorResponse("Invalid schedule id", 400);

@@ -16,6 +16,7 @@ import {
 import { query } from "@/lib/db/evergreen";
 import { requirePermissions } from "@/lib/permissions";
 import { logAuditEvent } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 function getId(value: unknown): number | undefined {
@@ -424,6 +425,17 @@ export async function POST(req: NextRequest) {
   let actorIdForAudit: number | null = null;
   try {
     const { authtoken, actor } = await requirePermissions(["CREATE_COPY", "CREATE_VOLUME"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-items",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const bodyParsed = await parseJsonBodyWithSchema(
       req,
       z

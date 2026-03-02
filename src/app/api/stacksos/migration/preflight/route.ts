@@ -8,6 +8,7 @@ import {
   serverErrorResponse,
 } from "@/lib/api/responses";
 import { getRequestMeta, requireAuthToken } from "@/lib/api";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit";
 import { z as _z } from "zod";
 
@@ -20,6 +21,17 @@ interface PreflightRecord {
 
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
+
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 5,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "migration-preflight",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
 
   try {
     await requireAuthToken();

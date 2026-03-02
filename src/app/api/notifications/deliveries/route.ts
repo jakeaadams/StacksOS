@@ -1,16 +1,24 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, parseJsonBodyWithSchema, successResponse, serverErrorResponse, getRequestMeta } from "@/lib/api";
+import {
+  errorResponse,
+  parseJsonBodyWithSchema,
+  successResponse,
+  serverErrorResponse,
+  getRequestMeta,
+} from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { listDeliveries } from "@/lib/db/notifications";
 import { enqueueRetry, processPendingDeliveries } from "@/lib/notifications/delivery-worker";
 import { logAuditEvent } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 
-const PostSchema = z
-  .discriminatedUnion("action", [
-    z.object({ action: z.literal("enqueue_retry"), eventId: z.string().min(1) }).strict(),
-    z.object({ action: z.literal("process"), limit: z.number().int().min(1).max(200).optional() }).strict(),
-  ]);
+const PostSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("enqueue_retry"), eventId: z.string().min(1) }).strict(),
+  z
+    .object({ action: z.literal("process"), limit: z.number().int().min(1).max(200).optional() })
+    .strict(),
+]);
 
 export async function GET(req: NextRequest) {
   try {
@@ -30,6 +38,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const { actor } = await requirePermissions(["ADMIN_CONFIG"]);
+
+    const rate = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "notification-deliveries",
+    });
+    if (!rate.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rate.resetIn / 1000),
+      });
+    }
+
     const body = await parseJsonBodyWithSchema(req, PostSchema);
     if (body instanceof Response) return body;
 
@@ -75,4 +95,3 @@ export async function POST(req: NextRequest) {
     return serverErrorResponse(error, "Notifications deliveries POST", req);
   }
 }
-

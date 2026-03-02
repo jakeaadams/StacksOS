@@ -97,18 +97,15 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
             <Link href="/opac/teens" className="flex items-center gap-2 group">
               <div className="relative">
                 <div
-                  className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-purple-600 via-indigo-600 to-violet-600 
-                              rounded-2xl flex items-center justify-center shadow-lg 
+                  className="w-10 h-10 md:w-12 md:h-12 teens-gradient-logo-icon
+                              rounded-2xl flex items-center justify-center shadow-lg
                               group-hover:scale-110 transition-transform"
                 >
                   <Flame className="h-5 w-5 md:h-6 md:w-6 text-white" />
                 </div>
               </div>
               <div className="hidden sm:block">
-                <span
-                  className="font-extrabold text-xl md:text-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 
-                               bg-clip-text text-transparent tracking-tight"
-                >
+                <span className="font-extrabold text-xl md:text-2xl teens-gradient-logo tracking-tight">
                   Teen Zone
                 </span>
                 {library?.name && (
@@ -125,18 +122,17 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search YA books, graphic novels..."
-                  className="w-full pl-5 pr-12 py-3 rounded-full border-2 border-indigo-200 
+                  className="w-full pl-5 pr-12 py-3 rounded-full border-2 teens-border-secondary-wash
                            text-foreground placeholder:text-muted-foreground/70 text-lg
-                           focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100
+                           focus:outline-none teens-focus-border focus:ring-4 teens-focus-ring
                            transition-all"
                 />
                 <Button
                   type="submit"
                   size="icon"
                   aria-label="Search"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r
-                           from-purple-600 to-indigo-600 text-white rounded-full
-                           hover:from-purple-700 hover:to-indigo-700 transition-colors shadow-md"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 teens-gradient-button text-white rounded-full
+                           transition-colors shadow-md"
                 >
                   <Search className="h-5 w-5" />
                 </Button>
@@ -152,7 +148,7 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                   className={cn(
                     "flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all",
                     isActive(item.href)
-                      ? "bg-gradient-to-r from-purple-100 to-indigo-100 text-indigo-700 shadow-sm"
+                      ? "teens-gradient-nav-active teens-text-secondary-hover shadow-sm"
                       : "text-muted-foreground hover:bg-muted/50"
                   )}
                 >
@@ -165,7 +161,7 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
               {isLoggedIn && patron ? (
                 <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
                   <div
-                    className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 
+                    className="w-9 h-9 rounded-full teens-gradient-avatar
                                 flex items-center justify-center text-white font-bold shadow-md"
                   >
                     {patron.firstName?.[0] || "T"}
@@ -185,8 +181,8 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
               ) : (
                 <Link
                   href="/opac/login?redirect=/opac/teens"
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 
-                           text-white rounded-xl font-medium hover:from-purple-700 hover:to-indigo-700 
+                  className="flex items-center gap-2 px-4 py-2 teens-gradient-button
+                           text-white rounded-xl font-medium
                            transition-colors shadow-md ml-2"
                 >
                   <LogIn className="h-5 w-5" />
@@ -217,16 +213,15 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search YA books..."
-                  className="w-full pl-4 pr-12 py-2.5 rounded-full border-2 border-indigo-200 
+                  className="w-full pl-4 pr-12 py-2.5 rounded-full border-2 teens-border-secondary-wash
                            text-foreground placeholder:text-muted-foreground/70
-                           focus:outline-none focus:border-indigo-400"
+                           focus:outline-none teens-focus-border"
                 />
                 <Button
                   type="submit"
                   size="icon"
                   aria-label="Search"
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r
-                           from-purple-600 to-indigo-600 text-white rounded-full"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 teens-gradient-button text-white rounded-full"
                 >
                   <Search className="h-4 w-4" />
                 </Button>
@@ -247,7 +242,7 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all",
                     isActive(item.href)
-                      ? "bg-gradient-to-r from-purple-100 to-indigo-100 text-indigo-700"
+                      ? "teens-gradient-nav-active teens-text-secondary-hover"
                       : "text-muted-foreground hover:bg-muted/50"
                   )}
                 >
@@ -260,7 +255,7 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 
+                      className="w-10 h-10 rounded-full teens-gradient-avatar
                                   flex items-center justify-center text-white font-bold"
                     >
                       {patron.firstName?.[0] || "T"}
@@ -283,8 +278,7 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
                 <Link
                   href="/opac/login?redirect=/opac/teens"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 px-4 py-3 mt-2 bg-gradient-to-r 
-                           from-purple-600 to-indigo-600 text-white rounded-xl font-medium"
+                  className="flex items-center justify-center gap-2 px-4 py-3 mt-2 teens-gradient-button text-white rounded-xl font-medium"
                 >
                   <LogIn className="h-5 w-5" />
                   <span>Log In</span>
@@ -305,20 +299,20 @@ export default function TeensLayout({ children }: TeensLayoutProps) {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Flame className="h-6 w-6 text-indigo-500" />
+              <Flame className="h-6 w-6 teens-text-secondary" />
               <span className="font-bold text-lg text-foreground">
                 {library?.name || "Library"} Teen Zone
               </span>
             </div>
 
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <Link href="/opac" className="hover:text-indigo-600 transition-colors">
+              <Link href="/opac" className="teens-hover-text-secondary transition-colors">
                 Main Catalog
               </Link>
-              <Link href="/opac/kids" className="hover:text-indigo-600 transition-colors">
+              <Link href="/opac/kids" className="teens-hover-text-secondary transition-colors">
                 Kids Catalog
               </Link>
-              <Link href="/opac/help" className="hover:text-indigo-600 transition-colors">
+              <Link href="/opac/help" className="teens-hover-text-secondary transition-colors">
                 Help
               </Link>
             </div>

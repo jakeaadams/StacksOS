@@ -291,7 +291,7 @@ export default function ReadingLogPage() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-purple-500 animate-spin" />
+            <Loader2 className="h-8 w-8 kids-text-primary animate-spin" />
           </div>
         ) : entries.length > 0 ? (
           <div className="space-y-3">
@@ -604,7 +604,7 @@ function AddReadingModal({
               {/* Book list */}
               {isSearching ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 text-purple-500 animate-spin" />
+                  <Loader2 className="h-8 w-8 kids-text-primary animate-spin" />
                 </div>
               ) : (
                 <>

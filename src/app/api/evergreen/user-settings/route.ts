@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logAuditEvent } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 
 const ALLOWED_SETTINGS = [
@@ -116,6 +117,17 @@ export async function POST(req: NextRequest) {
 
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
+
+    const rlResult = await checkRateLimit(meta.ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-user-settings",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const userId = actor?.id;
 
     if (!userId) {

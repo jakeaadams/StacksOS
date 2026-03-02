@@ -1,8 +1,15 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { getRequestMeta, parseJsonBodyWithSchema, successResponse, serverErrorResponse } from "@/lib/api";
+import {
+  errorResponse,
+  getRequestMeta,
+  parseJsonBodyWithSchema,
+  successResponse,
+  serverErrorResponse,
+} from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logAuditEvent } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   createScheduledReportSchedule,
   listScheduledReportSchedules,
@@ -27,7 +34,9 @@ function normalizeRecipients(list: string[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   for (const raw of list) {
-    const v = String(raw || "").trim().toLowerCase();
+    const v = String(raw || "")
+      .trim()
+      .toLowerCase();
     if (!v) continue;
     if (seen.has(v)) continue;
     seen.add(v);
@@ -51,6 +60,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const { actor } = await requirePermissions(["RUN_REPORTS"]);
+
+    const rate = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "reports-scheduled",
+    });
+    if (!rate.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rate.resetIn / 1000),
+      });
+    }
+
     const body = await parseJsonBodyWithSchema(req, CreateSchema);
     if (body instanceof Response) return body;
 

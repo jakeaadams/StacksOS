@@ -23,6 +23,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { storeCredential } from "@/lib/credential-store";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 export async function GET(req: NextRequest) {
@@ -447,6 +448,17 @@ export async function POST(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
     const { ip, userAgent, requestId } = getRequestMeta(req);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-patrons",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const patronSchema = z
       .object({
         family_name: z.string().max(200).optional(),
@@ -673,6 +685,17 @@ export async function PUT(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
     const { ip, userAgent, requestId } = getRequestMeta(req);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-patrons",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const patronSchema = z
       .object({
         family_name: z.string().max(200).optional(),
@@ -903,6 +926,17 @@ export async function PATCH(req: NextRequest) {
   try {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
     const { ip, userAgent, requestId } = getRequestMeta(req);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-patrons",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const patronSchema = z
       .object({
         family_name: z.string().max(200).optional(),

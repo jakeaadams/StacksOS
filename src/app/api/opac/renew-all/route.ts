@@ -1,11 +1,31 @@
 import { NextRequest } from "next/server";
-import { callOpenSRF, successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
+import {
+  callOpenSRF,
+  successResponse,
+  errorResponse,
+  serverErrorResponse,
+  getRequestMeta,
+} from "@/lib/api";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { z as _z } from "zod";
 
 // POST /api/opac/renew-all - Renew all eligible items
 export async function POST(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 10,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-renew-all",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const { patronToken, patronId } = await requirePatronSession();
 
@@ -118,6 +138,15 @@ export async function POST(req: NextRequest) {
     } else if (totalRenewed === 0 && totalFailed > 0) {
       message = `Could not renew any items`;
     }
+
+    await logAuditEvent({
+      action: "opac.renew_all",
+      entity: "circulation",
+      status: totalRenewed > 0 ? "success" : "failure",
+      actor: { id: patronId },
+      ip,
+      details: { patronId, totalRenewed, totalFailed },
+    }).catch(() => {});
 
     return successResponse({
       success: totalRenewed > 0,

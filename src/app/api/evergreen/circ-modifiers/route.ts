@@ -4,6 +4,7 @@ import {
   encodeFieldmapper,
   errorResponse,
   getErrorMessage,
+  getRequestMeta,
   isOpenSRFEvent,
   parseJsonBodyWithSchema,
   requireAuthToken,
@@ -11,6 +12,7 @@ import {
   successResponse,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 function toString(value: unknown): string {
@@ -48,6 +50,17 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(req: Request) {
   try {
+    const { ip } = getRequestMeta(req as any);
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-circ-modifiers",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const body = await parseJsonBodyWithSchema(
       req,
       z

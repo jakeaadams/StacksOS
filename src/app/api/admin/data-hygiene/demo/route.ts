@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import {
   callOpenSRF,
   encodeFieldmapper,
+  errorResponse,
   getErrorMessage,
   getRequestMeta,
   isOpenSRFEvent,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const purgeSchema = z
@@ -446,6 +448,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const { authtoken, actor } = await requirePermissions(["ADMIN_CONFIG"]);
+
+    const rate = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 5,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "admin-data-hygiene",
+    });
+    if (!rate.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rate.resetIn / 1000),
+      });
+    }
+
     const body = await parseJsonBodyWithSchema(req, purgeSchema);
     if (body instanceof Response) return body;
 

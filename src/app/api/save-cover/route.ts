@@ -3,6 +3,7 @@ import { requirePermissions } from "@/lib/permissions";
 import { query, ensureCustomTables } from "@/lib/db/evergreen";
 import { logAuditEvent } from "@/lib/audit";
 import { errorResponse, getRequestMeta, successResponse, serverErrorResponse } from "@/lib/api";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { parsePositiveInt } from "@/lib/upload-utils";
 import { z } from "zod";
 
@@ -33,6 +34,17 @@ export async function POST(request: NextRequest) {
   try {
     // Require staff authentication
     const { actor } = await requirePermissions(["STAFF_LOGIN"]);
+
+    const rate = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 10,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "save-cover",
+    });
+    if (!rate.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rate.resetIn / 1000),
+      });
+    }
 
     const body = saveCoverSchema.safeParse(await request.json().catch(() => null)).data;
     const recordId = parsePositiveInt(body?.recordId);

@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logAuditEvent } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   deleteScheduledReportSchedule,
   getScheduledReportSchedule,
@@ -21,7 +22,10 @@ const UpdateSchema = z
     reportKey: z.enum(["dashboard_kpis", "holds_summary", "overdue_items"] as const).optional(),
     orgId: z.number().int().positive().nullable().optional(),
     cadence: z.enum(["daily", "weekly", "monthly"] as const).optional(),
-    timeOfDay: z.string().regex(/^\d{1,2}:\d{2}$/).optional(),
+    timeOfDay: z
+      .string()
+      .regex(/^\d{1,2}:\d{2}$/)
+      .optional(),
     dayOfWeek: z.number().int().min(0).max(6).nullable().optional(),
     dayOfMonth: z.number().int().min(1).max(31).nullable().optional(),
     format: z.enum(["csv", "json"] as const).optional(),
@@ -39,7 +43,9 @@ function normalizeRecipients(list: string[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   for (const raw of list) {
-    const v = String(raw || "").trim().toLowerCase();
+    const v = String(raw || "")
+      .trim()
+      .toLowerCase();
     if (!v) continue;
     if (seen.has(v)) continue;
     seen.add(v);
@@ -69,6 +75,18 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   try {
     const { actor } = await requirePermissions(["RUN_REPORTS"]);
+
+    const rate = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "reports-scheduled-modify",
+    });
+    if (!rate.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rate.resetIn / 1000),
+      });
+    }
+
     const { id: idRaw } = await ctx.params;
     const id = parseId(idRaw);
     if (!id) return errorResponse("Invalid schedule id", 400);
@@ -102,7 +120,10 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
       ip,
       userAgent,
       requestId,
-      details: { before: { name: existing.name, enabled: existing.enabled }, after: { name: body.name, enabled: body.enabled } },
+      details: {
+        before: { name: existing.name, enabled: existing.enabled },
+        after: { name: body.name, enabled: body.enabled },
+      },
     });
 
     return successResponse({ updated: true });
@@ -116,6 +137,18 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
 
   try {
     const { actor } = await requirePermissions(["RUN_REPORTS"]);
+
+    const rate = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "reports-scheduled-modify",
+    });
+    if (!rate.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rate.resetIn / 1000),
+      });
+    }
+
     const { id: idRaw } = await ctx.params;
     const id = parseId(idRaw);
     if (!id) return errorResponse("Invalid schedule id", 400);
@@ -142,4 +175,3 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
     return serverErrorResponse(error, "Scheduled reports schedule DELETE", req);
   }
 }
-

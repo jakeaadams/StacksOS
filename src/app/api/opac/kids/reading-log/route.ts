@@ -1,7 +1,9 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 
-import { successResponse, errorResponse, serverErrorResponse } from "@/lib/api";
+import { successResponse, errorResponse, serverErrorResponse, getRequestMeta } from "@/lib/api";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { logger } from "@/lib/logger";
 import {
@@ -46,6 +48,18 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 30,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-reading-log",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const { patronId } = await requirePatronSession();
 
@@ -71,6 +85,16 @@ export async function POST(req: NextRequest) {
       readAt,
     });
 
+    await logAuditEvent({
+      action: "opac.kids.reading_log.add",
+      entity: "reading_log_entry",
+      entityId: entry?.id,
+      status: "success",
+      actor: { id: patronId },
+      ip,
+      details: { patronId, title: body.title, minutesRead: body.minutesRead },
+    }).catch(() => {});
+
     return successResponse({ entry });
   } catch (error) {
     if (error instanceof PatronAuthError) {
@@ -82,6 +106,18 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 30,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-reading-log",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     const { patronId } = await requirePatronSession();
     const body = await req.json();
@@ -94,6 +130,16 @@ export async function DELETE(req: NextRequest) {
     if (!deleted) {
       return errorResponse("Entry not found", 404);
     }
+
+    await logAuditEvent({
+      action: "opac.kids.reading_log.delete",
+      entity: "reading_log_entry",
+      entityId: id,
+      status: "success",
+      actor: { id: patronId },
+      ip,
+      details: { patronId, entryId: id },
+    }).catch(() => {});
 
     return successResponse({ deleted: true, id });
   } catch (error) {

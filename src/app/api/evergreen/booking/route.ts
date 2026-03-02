@@ -12,6 +12,7 @@ import {
 
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { isDemoDataEnabled } from "@/lib/demo-data";
 import { z } from "zod";
 
@@ -248,6 +249,16 @@ export async function POST(req: NextRequest) {
         : ["ADMIN_BOOKING_RESERVATION"];
 
     const { authtoken, actor } = await requirePermissions(actionPerms);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-booking",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
 
     const audit = async (
       status: "success" | "failure",

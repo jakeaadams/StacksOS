@@ -11,9 +11,11 @@ import {
   errorResponse,
   serverErrorResponse,
   getErrorMessage,
+  getRequestMeta,
   isSuccessResult,
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 interface PullListRawItem {
@@ -68,11 +70,13 @@ function mapPullListItem(item: PullListRawItem): MappedPullListItem {
   };
 }
 
-const pullListPostSchema = z.object({
-  action: z.enum(["capture"]),
-  barcode: z.string().trim().min(1).optional(),
-  holdId: z.coerce.number().int().positive().optional(),
-}).passthrough();
+const pullListPostSchema = z
+  .object({
+    action: z.enum(["capture"]),
+    barcode: z.string().trim().min(1).optional(),
+    holdId: z.coerce.number().int().positive().optional(),
+  })
+  .passthrough();
 
 export async function GET(req: NextRequest) {
   try {
@@ -86,9 +90,7 @@ export async function GET(req: NextRequest) {
     const offset = offsetRaw ? parseInt(offsetRaw, 10) : 0;
 
     const defaultOrgId =
-      (actor as Record<string, number>)?.ws_ou ??
-      (actor as Record<string, number>)?.home_ou ??
-      1;
+      (actor as Record<string, number>)?.ws_ou ?? (actor as Record<string, number>)?.home_ou ?? 1;
 
     // Use the fleshed stream method for enriched pull list data
     const pullResponse = await callOpenSRF(
@@ -124,7 +126,19 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const { ip } = getRequestMeta(req);
     const { authtoken } = await requirePermissions(["STAFF_LOGIN"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-holds-pull-list",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const body = pullListPostSchema.parse(await req.json());
     const { action, barcode, holdId } = body;
 
@@ -138,18 +152,14 @@ export async function POST(req: NextRequest) {
       }
 
       // Use checkin to capture the hold
-      const checkinResponse = await callOpenSRF(
-        "open-ils.circ",
-        "open-ils.circ.checkin",
-        [
-          authtoken,
-          {
-            barcode,
-            hold_as_transit: false,
-            noop: false,
-          },
-        ]
-      );
+      const checkinResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.checkin", [
+        authtoken,
+        {
+          barcode,
+          hold_as_transit: false,
+          noop: false,
+        },
+      ]);
 
       const result = checkinResponse?.payload?.[0];
 

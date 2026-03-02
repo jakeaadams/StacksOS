@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { query } from "@/lib/db/evergreen";
 
 // ============================================================================
@@ -236,7 +237,7 @@ export async function GET(req: NextRequest) {
 // ============================================================================
 
 export async function POST(req: NextRequest) {
-  const { requestId } = getRequestMeta(req);
+  const { ip, requestId } = getRequestMeta(req);
 
   try {
     const body = (await req.json()) as Record<string, unknown>;
@@ -245,6 +246,16 @@ export async function POST(req: NextRequest) {
 
     // Require admin permissions for modifications
     const { authtoken, actor } = await requirePermissions(["ADMIN_ORG_UNIT_SETTING_TYPE"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-admin-settings",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
 
     const orgId = (bodyOrgId as number | undefined) ?? actor?.ws_ou ?? actor?.home_ou ?? 1;
 

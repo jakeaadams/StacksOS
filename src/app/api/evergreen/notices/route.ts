@@ -11,6 +11,7 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { sendNotice } from "@/lib/email";
 import type { NoticeType, NoticeContext } from "@/lib/email";
 import {
@@ -231,6 +232,17 @@ export async function POST(req: NextRequest) {
 
   try {
     const { authtoken, actor } = await requirePermissions(["STAFF_LOGIN"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-notices",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const body = noticesPostSchema.parse(await req.json());
     const { patron_id, notice_type, items, holds, bills, expiration_date, channel } = body;
     const noticeChannel = channel === "sms" ? "sms" : "email";
@@ -383,6 +395,17 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-notices",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const body = noticesPatchSchema.parse(await req.json());
     const { patron_id, preferences } = body;
 

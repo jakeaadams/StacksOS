@@ -174,17 +174,16 @@ function KidsSearchContent() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search for books..."
-              className="w-full pl-5 pr-14 py-4 text-lg rounded-full border-2 border-purple-200 
+              className="w-full pl-5 pr-14 py-4 text-lg rounded-full border-2 kids-border-primary-wash
                        text-foreground placeholder:text-muted-foreground/70 bg-card
-                       focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
+                       focus:outline-none kids-focus-border focus:ring-4 kids-focus-ring"
             />
             <Button
               type="submit"
               size="icon"
               aria-label="Search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-gradient-to-r
-                       from-purple-500 to-pink-500 text-white rounded-full
-                       hover:from-purple-600 hover:to-pink-600 transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-3 kids-gradient-button text-white rounded-full
+                       transition-colors"
             >
               <Search className="h-5 w-5" />
             </Button>
@@ -196,7 +195,7 @@ function KidsSearchContent() {
           <div>
             {totalResults > 0 && (
               <p className="text-muted-foreground">
-                Found <span className="font-bold text-purple-600">{totalResults}</span> books
+                Found <span className="font-bold kids-text-primary">{totalResults}</span> books
                 {query && (
                   <>
                     {` for "`}
@@ -242,8 +241,8 @@ function KidsSearchContent() {
               className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-colors
                        ${
                          showFilters
-                           ? "border-purple-400 bg-purple-50 text-purple-700"
-                           : "border-border text-muted-foreground hover:border-purple-200"
+                           ? "kids-border-primary-muted kids-bg-primary-wash kids-text-primary-hover"
+                           : "border-border text-muted-foreground kids-hover-border-primary-wash"
                        }`}
             >
               <Filter className="h-4 w-4" />
@@ -256,7 +255,7 @@ function KidsSearchContent() {
                 type="button"
                 variant="ghost"
                 onClick={() => setViewMode("grid")}
-                className={`rounded-none p-2 ${viewMode === "grid" ? "bg-purple-100 text-purple-700" : "text-muted-foreground"}`}
+                className={`rounded-none p-2 ${viewMode === "grid" ? "kids-bg-primary-light kids-text-primary-hover" : "text-muted-foreground"}`}
               >
                 <Grid className="h-5 w-5" />
               </Button>
@@ -264,7 +263,7 @@ function KidsSearchContent() {
                 type="button"
                 variant="ghost"
                 onClick={() => setViewMode("list")}
-                className={`rounded-none p-2 ${viewMode === "list" ? "bg-purple-100 text-purple-700" : "text-muted-foreground"}`}
+                className={`rounded-none p-2 ${viewMode === "list" ? "kids-bg-primary-light kids-text-primary-hover" : "text-muted-foreground"}`}
               >
                 <LayoutList className="h-5 w-5" />
               </Button>
@@ -274,7 +273,7 @@ function KidsSearchContent() {
 
         {/* Filters panel */}
         {showFilters && (
-          <div className="mt-4 p-4 bg-card rounded-2xl border-2 border-purple-100 shadow-sm">
+          <div className="mt-4 p-4 bg-card rounded-2xl border-2 kids-border-primary-light shadow-sm">
             <div className="flex flex-wrap gap-4">
               <div>
                 <label
@@ -329,7 +328,7 @@ function KidsSearchContent() {
                 type="button"
                 variant="ghost"
                 onClick={() => updateSearchParams({ format: null, available: null })}
-                className="self-end px-4 py-2 text-sm text-purple-600 hover:text-purple-700"
+                className="self-end px-4 py-2 text-sm kids-text-primary kids-hover-text-primary-hover"
               >
                 Clear Filters
               </Button>
@@ -369,14 +368,14 @@ function KidsSearchContent() {
                 disabled={page === 1}
                 className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border
                          text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed
-                         hover:border-purple-200 transition-colors"
+                         kids-hover-border-primary-wash transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
                 Back
               </Button>
 
               <span className="text-muted-foreground">
-                Page <span className="font-bold text-purple-600">{page}</span> of {totalPages}
+                Page <span className="font-bold kids-text-primary">{page}</span> of {totalPages}
               </span>
 
               <Button
@@ -386,7 +385,7 @@ function KidsSearchContent() {
                 disabled={page === totalPages}
                 className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card border-2 border-border
                          text-foreground/80 disabled:opacity-50 disabled:cursor-not-allowed
-                         hover:border-purple-200 transition-colors"
+                         kids-hover-border-primary-wash transition-colors"
               >
                 Next
                 <ChevronRight className="h-4 w-4" />
@@ -396,15 +395,15 @@ function KidsSearchContent() {
         </>
       ) : query || format || availableOnly || sort !== "relevance" ? (
         <div className="text-center py-20 bg-card rounded-3xl">
-          <div className="w-20 h-20 mx-auto mb-4 bg-purple-100 rounded-full flex items-center justify-center">
-            <Search className="h-10 w-10 text-purple-300" />
+          <div className="w-20 h-20 mx-auto mb-4 kids-bg-primary-light rounded-full flex items-center justify-center">
+            <Search className="h-10 w-10 kids-text-primary-muted" />
           </div>
           <h3 className="text-xl font-bold text-foreground mb-2">No Books Found</h3>
           <p className="text-muted-foreground mb-6">Try searching for something else!</p>
           <Link
             href="/opac/kids"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 
-                     text-white rounded-full font-medium hover:from-purple-600 hover:to-pink-600"
+            className="inline-flex items-center gap-2 px-6 py-3 kids-gradient-button
+                     text-white rounded-full font-medium"
           >
             <Sparkles className="h-5 w-5" />
             Browse Categories
@@ -412,8 +411,8 @@ function KidsSearchContent() {
         </div>
       ) : (
         <div className="text-center py-20 bg-card rounded-3xl">
-          <div className="w-20 h-20 mx-auto mb-4 bg-purple-100 rounded-full flex items-center justify-center">
-            <BookOpen className="h-10 w-10 text-purple-300" />
+          <div className="w-20 h-20 mx-auto mb-4 kids-bg-primary-light rounded-full flex items-center justify-center">
+            <BookOpen className="h-10 w-10 kids-text-primary-muted" />
           </div>
           <h3 className="text-xl font-bold text-foreground mb-2">Ready to Search?</h3>
           <p className="text-muted-foreground">Type what you want to find above!</p>
@@ -430,7 +429,7 @@ function KidsSearchResultCard({ book }: { book: SearchResult }) {
   return (
     <Link href={`/opac/kids/record/${book.id}`} className="group block">
       <div
-        className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
+        className="relative aspect-[2/3] rounded-xl overflow-hidden kids-gradient-cover-placeholder
                     shadow-md group-hover:shadow-xl transition-all group-hover:-translate-y-1"
       >
         {book.coverUrl && !imageError ? (
@@ -444,7 +443,7 @@ function KidsSearchResultCard({ book }: { book: SearchResult }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <BookOpen className="h-12 w-12 text-purple-300" />
+            <BookOpen className="h-12 w-12 kids-text-primary-muted" />
           </div>
         )}
 
@@ -463,8 +462,8 @@ function KidsSearchResultCard({ book }: { book: SearchResult }) {
         {/* Reading level */}
         {book.readingLevel && (
           <div
-            className="absolute top-2 left-2 px-2 py-1 bg-card/90 backdrop-blur-sm 
-                        rounded-full text-xs font-medium text-purple-700"
+            className="absolute top-2 left-2 px-2 py-1 bg-card/90 backdrop-blur-sm
+                        rounded-full text-xs font-medium kids-text-primary-hover"
           >
             {book.readingLevel}
           </div>
@@ -472,7 +471,7 @@ function KidsSearchResultCard({ book }: { book: SearchResult }) {
       </div>
 
       <div className="mt-2">
-        <h3 className="font-medium text-foreground text-sm line-clamp-2 group-hover:text-purple-600">
+        <h3 className="font-medium text-foreground text-sm line-clamp-2 kids-group-hover-text-primary">
           {book.title}
         </h3>
         {book.author && (
@@ -490,10 +489,10 @@ function KidsSearchResultListItem({ book }: { book: SearchResult }) {
   return (
     <Link
       href={`/opac/kids/record/${book.id}`}
-      className="flex gap-4 p-4 bg-card rounded-2xl border-2 border-transparent 
-               hover:border-purple-200 hover:shadow-md transition-all group"
+      className="flex gap-4 p-4 bg-card rounded-2xl border-2 border-transparent
+               kids-hover-border-primary-wash hover:shadow-md transition-all group"
     >
-      <div className="w-20 h-28 shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100">
+      <div className="w-20 h-28 shrink-0 rounded-lg overflow-hidden kids-gradient-cover-placeholder">
         {book.coverUrl && !imageError ? (
           <Image
             src={book.coverUrl}
@@ -505,13 +504,13 @@ function KidsSearchResultListItem({ book }: { book: SearchResult }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <BookOpen className="h-8 w-8 text-purple-300" />
+            <BookOpen className="h-8 w-8 kids-text-primary-muted" />
           </div>
         )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-foreground text-lg group-hover:text-purple-600 line-clamp-1">
+        <h3 className="font-bold text-foreground text-lg kids-group-hover-text-primary line-clamp-1">
           {book.title}
         </h3>
         {book.author && <p className="text-muted-foreground text-sm">{book.author}</p>}
@@ -529,7 +528,7 @@ function KidsSearchResultListItem({ book }: { book: SearchResult }) {
           </span>
 
           {book.readingLevel && (
-            <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+            <span className="px-2 py-1 kids-bg-primary-light kids-text-primary-hover rounded-full text-xs font-medium">
               {book.readingLevel}
             </span>
           )}

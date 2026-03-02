@@ -8,10 +8,12 @@ import {
   parseJsonBody,
   encodeFieldmapper,
   getErrorMessage,
+  getRequestMeta,
   isOpenSRFEvent,
 } from "@/lib/api";
 import { query } from "@/lib/db/evergreen";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 interface RouteParams {
@@ -47,7 +49,19 @@ const itemPatchSchema = z
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
+    const { ip } = getRequestMeta(req);
     const { authtoken, actor } = await requirePermissions(["UPDATE_COPY"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-items-id",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const { id } = await params;
     const copyId = parseInt(id, 10);
 

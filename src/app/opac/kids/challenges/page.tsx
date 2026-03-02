@@ -152,7 +152,7 @@ export default function KidsChallengesPage() {
           type="button"
           variant="ghost"
           onClick={() => router.push("/opac/kids")}
-          className="h-12 w-auto px-6 text-purple-700 bg-purple-100 hover:bg-purple-200"
+          className="h-12 w-auto px-6 kids-text-primary-hover kids-bg-primary-light kids-hover-bg-primary-light"
         >
           Back to Kids Home
         </Button>
@@ -171,8 +171,8 @@ export default function KidsChallengesPage() {
       title: "Books this month",
       description: "Read 10 books this month to earn a prize.",
       icon: Trophy,
-      color: "text-purple-600",
-      bgColor: "bg-purple-100",
+      color: "kids-text-primary",
+      bgColor: "kids-bg-primary-light",
       target: 10,
       current: stats.booksThisMonth,
       unit: "books",
@@ -288,7 +288,7 @@ export default function KidsChallengesPage() {
         <div className="ml-auto">
           <Link
             href="/opac/kids/account/reading-log"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-pink-600 transition-colors shadow-md"
+            className="inline-flex items-center gap-2 px-4 py-2 kids-gradient-button text-white rounded-xl font-medium transition-colors shadow-md"
           >
             <Gift className="h-4 w-4" />
             Log reading
@@ -314,10 +314,10 @@ export default function KidsChallengesPage() {
         </div>
         <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-4 text-center">
           <div className="flex items-center justify-center gap-1 mb-1">
-            <Trophy className="h-5 w-5 text-purple-500" />
-            <span className="text-2xl font-bold text-purple-700">{earnedCount}</span>
+            <Trophy className="h-5 w-5 kids-text-primary" />
+            <span className="text-2xl font-bold kids-text-primary-hover">{earnedCount}</span>
           </div>
-          <p className="text-sm text-purple-600">Badges</p>
+          <p className="text-sm kids-text-primary">Badges</p>
         </div>
       </div>
 
@@ -329,7 +329,9 @@ export default function KidsChallengesPage() {
           size="sm"
           onClick={() => setActiveTab("challenges")}
           className={
-            activeTab === "challenges" ? "bg-purple-100 text-purple-700 hover:bg-purple-200" : ""
+            activeTab === "challenges"
+              ? "kids-bg-primary-light kids-text-primary-hover kids-hover-bg-primary-light"
+              : ""
           }
         >
           Challenges
@@ -340,7 +342,9 @@ export default function KidsChallengesPage() {
           size="sm"
           onClick={() => setActiveTab("badges")}
           className={
-            activeTab === "badges" ? "bg-purple-100 text-purple-700 hover:bg-purple-200" : ""
+            activeTab === "badges"
+              ? "kids-bg-primary-light kids-text-primary-hover kids-hover-bg-primary-light"
+              : ""
           }
         >
           Badges
@@ -352,7 +356,7 @@ export default function KidsChallengesPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 text-purple-500 animate-spin" />
+          <Loader2 className="h-8 w-8 kids-text-primary animate-spin" />
         </div>
       ) : activeTab === "challenges" ? (
         <div className="grid gap-4 md:grid-cols-2">
@@ -388,7 +392,7 @@ export default function KidsChallengesPage() {
                     </div>
                     <div className="h-3 bg-muted/50 rounded-full overflow-hidden">
                       <div
-                        className={`h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all ${progressWidthClass(c.current, c.target)}`}
+                        className={`h-full kids-gradient-progress rounded-full transition-all ${progressWidthClass(c.current, c.target)}`}
                       />
                     </div>
                   </div>

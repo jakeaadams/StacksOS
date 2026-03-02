@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { getEvergreenPool } from "@/lib/db/evergreen";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { requireSaaSAccess } from "@/lib/saas-rbac";
 import { getTenantConfig } from "@/lib/tenant/config";
 import { logger } from "@/lib/logger";
@@ -58,6 +59,17 @@ export async function POST(req: NextRequest) {
       evergreenPerms: ["ADMIN_CONFIG"],
       autoBootstrapPlatformOwner: false,
     });
+
+    const rate = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 30,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "admin-onboarding-tasks",
+    });
+    if (!rate.allowed) {
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rate.resetIn / 1000),
+      });
+    }
 
     const body = await parseJsonBodyWithSchema(req, MarkCompleteSchema);
     if (body instanceof Response) return body;

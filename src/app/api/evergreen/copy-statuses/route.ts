@@ -7,6 +7,7 @@ import {
   fmString,
   getErrorMessage,
   getCopyStatuses,
+  getRequestMeta,
   isOpenSRFEvent,
   parseJsonBodyWithSchema,
   requireAuthToken,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/api";
 import { getActorFromToken } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 function toNumber(value: unknown): number {
@@ -151,11 +153,23 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const { ip } = getRequestMeta(req as any);
     const {
       authtoken,
       actor,
       result: permResult,
     } = await requirePermissions(["CREATE_COPY_STATUS"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-copy-statuses",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const orgId = permResult.orgId;
     const body = await parseJsonBodyWithSchema(
       req,
@@ -218,7 +232,19 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
+    const { ip } = getRequestMeta(req as any);
     const { authtoken } = await requirePermissions(["UPDATE_COPY_STATUS"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-copy-statuses",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const body = await parseJsonBodyWithSchema(
       req,
       z
@@ -307,7 +333,19 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    const { ip } = getRequestMeta(req as any);
     const { authtoken } = await requirePermissions(["DELETE_COPY_STATUS"]);
+
+    const rlResult = await checkRateLimit(ip || "unknown", {
+      maxAttempts: 20,
+      windowMs: 5 * 60 * 1000,
+      endpoint: "eg-copy-statuses",
+    });
+    if (!rlResult.allowed)
+      return errorResponse("Too many requests. Please try again later.", 429, {
+        retryAfter: Math.ceil(rlResult.resetIn / 1000),
+      });
+
     const body = await parseJsonBodyWithSchema(
       req,
       z

@@ -5,7 +5,10 @@ import {
   errorResponse,
   serverErrorResponse,
   unauthorizedResponse,
+  getRequestMeta,
 } from "@/lib/api";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { z } from "zod";
@@ -79,8 +82,20 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 20,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "opac-messages",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
-    const { patronToken } = await requirePatronSession();
+    const { patronToken, patronId } = await requirePatronSession();
 
     const { action, messageIds } = messagesPostSchema.parse(await req.json());
 
@@ -146,6 +161,15 @@ export async function POST(req: NextRequest) {
 
     const successCount = results.filter((r) => r.success).length;
     const failureCount = results.filter((r) => !r.success).length;
+
+    await logAuditEvent({
+      action: `opac.messages.${action}`,
+      entity: "message",
+      status: failureCount === 0 ? "success" : "failure",
+      actor: { id: patronId },
+      ip,
+      details: { patronId, action, messageIds, successCount, failureCount },
+    }).catch(() => {});
 
     return successResponse({
       success: failureCount === 0,

@@ -19,6 +19,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { withIdempotency } from "@/lib/idempotency";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const ACTION_PERMS: Record<string, string[]> = {
@@ -345,6 +346,16 @@ export async function POST(req: NextRequest) {
       const body = claimsPostSchema.parse(await req.json());
       const { action, circId, copyBarcode, claimDate, patronId, note } = body;
       const { authtoken, actor } = await requirePermissions(resolvePerms(action));
+
+      const rlResult = await checkRateLimit(ip || "unknown", {
+        maxAttempts: 20,
+        windowMs: 5 * 60 * 1000,
+        endpoint: "eg-claims",
+      });
+      if (!rlResult.allowed)
+        return errorResponse("Too many requests. Please try again later.", 429, {
+          retryAfter: Math.ceil(rlResult.resetIn / 1000),
+        });
 
       const audit = async (
         status: "success" | "failure",
@@ -827,6 +838,16 @@ export async function PUT(req: NextRequest) {
       }
 
       const { authtoken, actor } = await requirePermissions(["UPDATE_USER"]);
+
+      const rlResult = await checkRateLimit(ip || "unknown", {
+        maxAttempts: 20,
+        windowMs: 5 * 60 * 1000,
+        endpoint: "eg-claims",
+      });
+      if (!rlResult.allowed)
+        return errorResponse("Too many requests. Please try again later.", 429, {
+          retryAfter: Math.ceil(rlResult.resetIn / 1000),
+        });
 
       const patch: { claimsReturnedCount?: number; claimsNeverCheckedOutCount?: number } = {};
       if (typeof claimsReturnedCount === "number") patch.claimsReturnedCount = claimsReturnedCount;

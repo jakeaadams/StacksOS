@@ -255,7 +255,7 @@ export default function KidsRecordDetailPage() {
         <p className="text-muted-foreground mb-6">{t("bookNotFoundDesc")}</p>
         <Link
           href="/opac/kids"
-          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 font-medium text-white"
+          className="inline-flex items-center gap-2 rounded-full kids-gradient-button px-6 py-3 font-medium text-white"
         >
           <ChevronLeft className="h-5 w-5" />
           Back to Kids Zone
@@ -273,7 +273,7 @@ export default function KidsRecordDetailPage() {
         type="button"
         variant="ghost"
         onClick={() => router.back()}
-        className="mb-6 px-0 text-purple-600 hover:text-purple-700 hover:bg-transparent"
+        className="mb-6 px-0 kids-text-primary kids-hover-text-primary-hover hover:bg-transparent"
       >
         <ChevronLeft className="h-5 w-5" />
         <span className="font-medium">{t("back")}</span>
@@ -283,7 +283,7 @@ export default function KidsRecordDetailPage() {
       <div className="bg-card rounded-3xl shadow-lg overflow-hidden">
         <div className="md:flex">
           {/* Cover image */}
-          <div className="md:w-1/3 p-6 md:p-8 bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100">
+          <div className="md:w-1/3 p-6 md:p-8 kids-gradient-detail-cover-bg">
             <div className="aspect-[2/3] relative rounded-2xl overflow-hidden shadow-xl mx-auto max-w-[250px]">
               {book.coverUrl && !coverError ? (
                 <Image
@@ -295,8 +295,8 @@ export default function KidsRecordDetailPage() {
                   onError={() => setCoverError(true)}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-200 to-pink-200">
-                  <FormatIcon className="h-20 w-20 text-purple-400" />
+                <div className="w-full h-full flex items-center justify-center kids-gradient-detail-cover-fallback">
+                  <FormatIcon className="h-20 w-20 kids-text-primary-muted" />
                 </div>
               )}
             </div>
@@ -305,7 +305,7 @@ export default function KidsRecordDetailPage() {
             {(book.lexile || book.arLevel) && (
               <div className="flex flex-wrap justify-center gap-2 mt-4">
                 {book.lexile && (
-                  <span className="px-3 py-1 bg-card/80 rounded-full text-sm font-medium text-purple-700">
+                  <span className="px-3 py-1 bg-card/80 rounded-full text-sm font-medium kids-text-primary-hover">
                     Lexile {book.lexile}
                   </span>
                 )}
@@ -330,7 +330,7 @@ export default function KidsRecordDetailPage() {
                 </p>
               )}
               {book.series && (
-                <p className="text-sm text-purple-600 mt-1">
+                <p className="text-sm kids-text-primary mt-1">
                   {t("partOfSeries")} <span className="font-medium">{book.series}</span>{" "}
                   {t("series")}
                 </p>
@@ -369,7 +369,7 @@ export default function KidsRecordDetailPage() {
                 <Button
                   type="button"
                   onClick={() => setShowHoldModal(true)}
-                  className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 font-bold text-white shadow-lg hover:from-purple-600 hover:to-pink-600"
+                  className="rounded-full kids-gradient-button px-6 py-3 font-bold text-white shadow-lg"
                 >
                   {totalAvailable > 0 ? "Get This Book" : "Place Hold"}
                 </Button>
@@ -385,8 +385,8 @@ export default function KidsRecordDetailPage() {
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-colors
                          ${
                            isFavorite
-                             ? "border-pink-400 bg-pink-50 text-pink-600"
-                             : "border-border text-muted-foreground hover:border-pink-200"
+                             ? "kids-border-secondary-light kids-bg-secondary-light kids-text-secondary"
+                             : "border-border text-muted-foreground kids-hover-border-primary-wash"
                          }`}
               >
                 <Heart className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`} />
@@ -397,7 +397,7 @@ export default function KidsRecordDetailPage() {
                 type="button"
                 variant="outline"
                 className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-border 
-                         text-muted-foreground hover:border-purple-200"
+                         text-muted-foreground kids-hover-border-primary-wash"
               >
                 <BookmarkPlus className="h-5 w-5" />
                 <span>{t("addToList")}</span>
@@ -407,7 +407,7 @@ export default function KidsRecordDetailPage() {
                 type="button"
                 variant="outline"
                 className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-border 
-                         text-muted-foreground hover:border-purple-200"
+                         text-muted-foreground kids-hover-border-primary-wash"
               >
                 <Share2 className="h-5 w-5" />
                 <span>{t("share")}</span>
@@ -434,8 +434,8 @@ export default function KidsRecordDetailPage() {
                     <Link
                       key={i}
                       href={`/opac/kids/search?subject=${encodeURIComponent(subject)}`}
-                      className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm 
-                               hover:bg-purple-200 transition-colors"
+                      className="px-3 py-1 kids-bg-primary-light kids-text-primary-hover rounded-full text-sm
+                               kids-hover-bg-primary-light transition-colors"
                     >
                       {subject}
                     </Link>
@@ -478,7 +478,7 @@ export default function KidsRecordDetailPage() {
         {book.holdings.length > 0 && (
           <div className="border-t border-border/50 p-6 md:p-8">
             <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-purple-500" />
+              <MapPin className="h-5 w-5 kids-text-primary" />
               Where to Find It
             </h3>
             <div className="space-y-3">
@@ -558,7 +558,7 @@ export default function KidsRecordDetailPage() {
                     <p className="text-muted-foreground mb-4">{t("loginToPlaceHold")}</p>
                     <Link
                       href={`/opac/login?redirect=/opac/kids/record/${recordId}`}
-                      className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 font-bold text-white"
+                      className="inline-flex items-center gap-2 rounded-full kids-gradient-button px-6 py-3 font-bold text-white"
                     >
                       Log In
                     </Link>
@@ -600,8 +600,8 @@ export default function KidsRecordDetailPage() {
                           key={holding.locationId}
                           onClick={() => handlePlaceHold(holding.locationId)}
                           disabled={holdLoading}
-                          className="w-full p-4 text-left rounded-xl border-2 border-border 
-                                   hover:border-purple-400 hover:bg-purple-50 transition-colors
+                          className="w-full p-4 text-left rounded-xl border-2 border-border
+                                   kids-hover-border-primary-muted kids-hover-bg-primary-wash transition-colors
                                    disabled:opacity-50"
                         >
                           <p className="font-medium text-foreground">{holding.locationName}</p>
@@ -610,7 +610,7 @@ export default function KidsRecordDetailPage() {
                     </div>
 
                     {holdLoading && (
-                      <div className="flex items-center justify-center gap-2 text-purple-600">
+                      <div className="flex items-center justify-center gap-2 kids-text-primary">
                         <Loader2 className="h-5 w-5 animate-spin" />
                         <span>{t("placingHold")}</span>
                       </div>
@@ -632,7 +632,7 @@ function RelatedBookCard({ book }: { book: RelatedBook }) {
   return (
     <Link href={`/opac/kids/record/${book.id}`} className="group block">
       <div
-        className="aspect-[2/3] relative rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
+        className="aspect-[2/3] relative rounded-xl overflow-hidden kids-gradient-cover-placeholder
                     shadow-md group-hover:shadow-lg transition-all group-hover:-translate-y-1"
       >
         {book.coverUrl && !imageError ? (
@@ -646,12 +646,12 @@ function RelatedBookCard({ book }: { book: RelatedBook }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <BookOpen className="h-10 w-10 text-purple-300" />
+            <BookOpen className="h-10 w-10 kids-text-primary-muted" />
           </div>
         )}
       </div>
       <div className="mt-2">
-        <h4 className="font-medium text-foreground text-sm line-clamp-2 group-hover:text-purple-600">
+        <h4 className="font-medium text-foreground text-sm line-clamp-2 kids-group-hover-text-primary">
           {book.title}
         </h4>
         {book.author && (

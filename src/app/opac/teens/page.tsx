@@ -193,7 +193,7 @@ export default function TeensHomePage() {
         <div className="relative max-w-4xl mx-auto px-4 text-center">
           {isLoggedIn && patron && (
             <div className="mb-6 inline-flex items-center gap-2 px-6 py-3 bg-card/90 rounded-full shadow-lg">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+              <div className="w-8 h-8 rounded-full teens-gradient-avatar flex items-center justify-center text-white font-bold text-sm">
                 {patron.firstName?.[0]}
               </div>
               <span className="font-medium text-foreground">
@@ -203,9 +203,13 @@ export default function TeensHomePage() {
           )}
 
           <h1 className="text-4xl md:text-6xl font-extrabold mb-4 tracking-tight">
-            <span className="text-purple-700 dark:text-purple-300">{t("yourNext")}</span>
+            <span className="teens-text-primary-hover dark:teens-text-primary-muted">
+              {t("yourNext")}
+            </span>
             <br />
-            <span className="text-purple-700 dark:text-purple-300">{t("greatRead")}</span>
+            <span className="teens-text-primary-hover dark:teens-text-primary-muted">
+              {t("greatRead")}
+            </span>
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
@@ -214,7 +218,7 @@ export default function TeensHomePage() {
 
           <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
             <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 rounded-full blur-lg opacity-40 group-hover:opacity-60 transition-opacity" />
+              <div className="absolute -inset-1 teens-gradient-hero-glow rounded-full blur-lg opacity-40 group-hover:opacity-60 transition-opacity" />
               <div className="relative">
                 <input
                   type="text"
@@ -222,11 +226,11 @@ export default function TeensHomePage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t("searchPlaceholder")}
                   aria-label={t("searchTeenBooks")}
-                  className="w-full pl-6 pr-16 py-5 text-xl rounded-full border-2 border-indigo-200 text-foreground placeholder:text-muted-foreground/70 bg-card focus:outline-none focus:border-indigo-400"
+                  className="w-full pl-6 pr-16 py-5 text-xl rounded-full border-2 teens-border-secondary-wash text-foreground placeholder:text-muted-foreground/70 bg-card focus:outline-none teens-focus-border"
                 />
                 <button
                   type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full hover:from-purple-700 hover:to-indigo-700 transition-colors shadow-lg"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-4 teens-gradient-button text-white rounded-full transition-colors shadow-lg"
                 >
                   <Search className="h-6 w-6" />
                 </button>
@@ -251,7 +255,7 @@ export default function TeensHomePage() {
               <Link
                 key={category.label}
                 href={`/opac/teens/search?type=subject&q=${encodeURIComponent(category.query)}`}
-                className="flex flex-col items-center gap-2 p-3 md:p-4 rounded-2xl bg-card shadow-sm hover:shadow-lg border-2 border-transparent hover:border-indigo-200 transition-all group"
+                className="flex flex-col items-center gap-2 p-3 md:p-4 rounded-2xl bg-card shadow-sm hover:shadow-lg border-2 border-transparent teens-hover-border-secondary-wash transition-all group"
               >
                 <div
                   className={`p-3 md:p-4 rounded-xl ${category.bgColor} group-hover:scale-110 transition-transform`}
@@ -272,8 +276,8 @@ export default function TeensHomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 rounded-xl">
-                <TrendingUp className="h-6 w-6 text-indigo-600" />
+              <div className="p-2 teens-bg-secondary-light rounded-xl">
+                <TrendingUp className="h-6 w-6 teens-text-secondary" />
               </div>
               <h2 className="text-xl md:text-2xl font-extrabold text-foreground tracking-tight">
                 Trending for Teens
@@ -281,7 +285,7 @@ export default function TeensHomePage() {
             </div>
             <Link
               href="/opac/teens/search?sort=popularity"
-              className="flex items-center gap-1 text-indigo-600 hover:text-indigo-700 font-semibold"
+              className="flex items-center gap-1 teens-text-secondary teens-hover-text-secondary-hover font-semibold"
             >
               See More <ArrowRight className="h-4 w-4" />
             </Link>
@@ -317,8 +321,8 @@ export default function TeensHomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-xl">
-                <Sparkles className="h-6 w-6 text-purple-600" />
+              <div className="p-2 teens-bg-primary-light rounded-xl">
+                <Sparkles className="h-6 w-6 teens-text-primary" />
               </div>
               <h2 className="text-xl md:text-2xl font-extrabold text-foreground tracking-tight">
                 New YA Releases
@@ -326,7 +330,7 @@ export default function TeensHomePage() {
             </div>
             <Link
               href="/opac/teens/search?sort=create_date&order=desc"
-              className="flex items-center gap-1 text-indigo-600 hover:text-indigo-700 font-semibold"
+              className="flex items-center gap-1 teens-text-secondary teens-hover-text-secondary-hover font-semibold"
             >
               See More <ArrowRight className="h-4 w-4" />
             </Link>
@@ -360,25 +364,25 @@ export default function TeensHomePage() {
       {/* Why Read YA promo */}
       <section className="py-8 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-gradient-to-br from-purple-100 via-indigo-50 to-violet-100 rounded-3xl p-6 md:p-8">
+          <div className="teens-gradient-promo rounded-3xl p-6 md:p-8">
             <h3 className="text-xl font-extrabold text-foreground mb-4 text-center tracking-tight">
               Why Read YA?
             </h3>
             <div className="grid md:grid-cols-3 gap-4">
               <div className="bg-card/70 backdrop-blur-sm rounded-2xl p-4 text-center">
-                <Flame className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+                <Flame className="h-8 w-8 teens-text-primary mx-auto mb-2" />
                 <p className="text-sm font-medium text-foreground/80">
                   YA novels tackle real-world issues with stories that resonate.
                 </p>
               </div>
               <div className="bg-card/70 backdrop-blur-sm rounded-2xl p-4 text-center">
-                <Library className="h-8 w-8 text-indigo-600 mx-auto mb-2" />
+                <Library className="h-8 w-8 teens-text-secondary mx-auto mb-2" />
                 <p className="text-sm font-medium text-foreground/80">
                   Your library card gives you free access to thousands of titles.
                 </p>
               </div>
               <div className="bg-card/70 backdrop-blur-sm rounded-2xl p-4 text-center">
-                <Globe className="h-8 w-8 text-violet-600 mx-auto mb-2" />
+                <Globe className="h-8 w-8 teens-text-accent-dark mx-auto mb-2" />
                 <p className="text-sm font-medium text-foreground/80">
                   Discover diverse voices and perspectives from around the world.
                 </p>
@@ -396,7 +400,7 @@ function TeenBookCard({ book }: { book: FeaturedBook }) {
 
   return (
     <Link href={`/opac/record/${book.id}`} className="group block">
-      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-indigo-100 shadow-md group-hover:shadow-xl transition-all group-hover:-translate-y-1">
+      <div className="relative aspect-[2/3] rounded-xl overflow-hidden teens-gradient-cover-placeholder shadow-md group-hover:shadow-xl transition-all group-hover:-translate-y-1">
         {book.coverUrl && !imageError ? (
           <UnoptimizedImage
             src={book.coverUrl}
@@ -406,12 +410,12 @@ function TeenBookCard({ book }: { book: FeaturedBook }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <BookOpen className="h-12 w-12 text-indigo-300" />
+            <BookOpen className="h-12 w-12 teens-text-secondary-muted" />
           </div>
         )}
       </div>
       <div className="mt-2">
-        <h3 className="font-semibold text-foreground text-sm line-clamp-2 group-hover:text-indigo-600 transition-colors">
+        <h3 className="font-semibold text-foreground text-sm line-clamp-2 teens-group-hover-text-secondary transition-colors">
           {book.title}
         </h3>
         {book.author && (
