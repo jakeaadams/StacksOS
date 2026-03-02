@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Offline - StacksOS</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+        background-color: #0f172a;
+        color: #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 1.5rem;
+      }
+
+      .container {
+        text-align: center;
+        max-width: 28rem;
+      }
+
+      .icon {
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+        line-height: 1;
+      }
+
+      .brand {
+        font-size: 1.25rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #38bdf8;
+        margin-bottom: 1rem;
+      }
+
+      h1 {
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: #f1f5f9;
+        margin-bottom: 0.75rem;
+      }
+
+      p {
+        font-size: 1rem;
+        line-height: 1.625;
+        color: #94a3b8;
+        margin-bottom: 2rem;
+      }
+
+      .btn {
+        display: inline-block;
+        padding: 0.75rem 2rem;
+        background-color: #38bdf8;
+        color: #0f172a;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        border: none;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background-color 0.15s ease;
+      }
+
+      .btn:hover {
+        background-color: #7dd3fc;
+      }
+
+      .btn:focus-visible {
+        outline: 2px solid #7dd3fc;
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="icon" aria-hidden="true">&#128268;</div>
+      <div class="brand">StacksOS</div>
+      <h1>You're offline</h1>
+      <p>
+        It looks like your device has lost its internet connection. Please check
+        your Wi-Fi or mobile data and try again.
+      </p>
+      <button class="btn" onclick="window.location.reload()">Try Again</button>
+    </div>
+  </body>
+</html>

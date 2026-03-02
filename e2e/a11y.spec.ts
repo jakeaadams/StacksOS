@@ -8,7 +8,9 @@ async function expectNoSeriousA11yViolations(page: Page) {
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
 
-  const serious = results.violations.filter((v) => v.impact === "critical" || v.impact === "serious");
+  const serious = results.violations.filter(
+    (v) => v.impact === "critical" || v.impact === "serious"
+  );
   expect(serious).toEqual([]);
 }
 
@@ -33,5 +35,73 @@ test.describe("Accessibility (axe)", () => {
       await expect(page.getByRole("heading", { name: /check out/i })).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
+
+    test("checkin page has no serious violations", async ({ page }) => {
+      await page.goto("/staff/circulation/checkin");
+      await expect(page.locator("body")).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+
+    test("patron search has no serious violations", async ({ page }) => {
+      await page.goto("/staff/patrons");
+      await expect(page.locator("body")).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+
+    test("catalog page has no serious violations", async ({ page }) => {
+      await page.goto("/staff/catalog");
+      await expect(page.locator("body")).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+
+    test("cataloging page has no serious violations", async ({ page }) => {
+      await page.goto("/staff/cataloging");
+      await expect(page.locator("body")).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+
+    test("admin page has no serious violations", async ({ page }) => {
+      await page.goto("/staff/admin");
+      await expect(page.locator("body")).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+
+    test("acquisitions orders has no serious violations", async ({ page }) => {
+      await page.goto("/staff/acquisitions/orders");
+      await expect(page.locator("body")).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+
+    test("reports page has no serious violations", async ({ page }) => {
+      await page.goto("/staff/reports");
+      await expect(page.locator("body")).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+
+    test("circulation bills page has no serious violations", async ({ page }) => {
+      await page.goto("/staff/circulation/bills");
+      await expect(page.locator("body")).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+  });
+});
+
+test.describe("OPAC public pages", () => {
+  test("OPAC search has no serious violations", async ({ page }) => {
+    await page.goto("/opac/search");
+    await expect(page.locator("body")).toBeVisible();
+    await expectNoSeriousA11yViolations(page);
+  });
+
+  test("OPAC home has no serious violations", async ({ page }) => {
+    await page.goto("/opac");
+    await expect(page.locator("body")).toBeVisible();
+    await expectNoSeriousA11yViolations(page);
+  });
+
+  test("OPAC advanced search has no serious violations", async ({ page }) => {
+    await page.goto("/opac/advanced-search");
+    await expect(page.locator("body")).toBeVisible();
+    await expectNoSeriousA11yViolations(page);
   });
 });

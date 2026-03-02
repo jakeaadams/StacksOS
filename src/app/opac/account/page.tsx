@@ -26,6 +26,7 @@ import {
   Mail,
   Phone,
   CreditCard,
+  QrCode,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -396,14 +397,24 @@ export default function AccountDashboard() {
                 )}
               </div>
 
-              <Link
-                href="/opac/account/settings"
-                className="mt-6 block w-full py-2 border border-border rounded-lg text-center
-                         text-foreground/80 hover:bg-muted/30 transition-colors text-sm font-medium"
-              >
-                <Settings className="h-4 w-4 inline-block mr-2" />
-                Account Settings
-              </Link>
+              <div className="mt-6 flex flex-col gap-2">
+                <Link
+                  href="/opac/account/settings"
+                  className="block w-full py-2 border border-border rounded-lg text-center
+                           text-foreground/80 hover:bg-muted/30 transition-colors text-sm font-medium"
+                >
+                  <Settings className="h-4 w-4 inline-block mr-2" />
+                  Account Settings
+                </Link>
+                <Link
+                  href="/opac/account/library-card"
+                  className="block w-full py-2 border border-border rounded-lg text-center
+                           text-foreground/80 hover:bg-muted/30 transition-colors text-sm font-medium"
+                >
+                  <QrCode className="h-4 w-4 inline-block mr-2" />
+                  Digital Library Card
+                </Link>
+              </div>
             </div>
 
             {/* Quick links */}
@@ -462,11 +473,19 @@ export default function AccountDashboard() {
                 </Link>
                 <Link
                   href="/opac/account/history"
-                  className="flex items-center gap-3 px-3 py-2 text-foreground/80 hover:bg-muted/30 
+                  className="flex items-center gap-3 px-3 py-2 text-foreground/80 hover:bg-muted/30
                            rounded-lg transition-colors"
                 >
                   <Clock className="h-5 w-5 text-muted-foreground/70" />
                   Reading History
+                </Link>
+                <Link
+                  href="/opac/account/library-card"
+                  className="flex items-center gap-3 px-3 py-2 text-foreground/80 hover:bg-muted/30
+                           rounded-lg transition-colors"
+                >
+                  <QrCode className="h-5 w-5 text-muted-foreground/70" />
+                  Digital Library Card
                 </Link>
               </nav>
             </div>

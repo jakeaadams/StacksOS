@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 const LOCALES = [
   { code: "en", label: "English", flag: "EN" },
   { code: "es", label: "Espa\u00f1ol", flag: "ES" },
+  { code: "fr", label: "Fran\u00e7ais", flag: "FR" },
 ] as const;
 
 /**

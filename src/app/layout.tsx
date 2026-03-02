@@ -6,6 +6,7 @@ import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/contexts/auth-context";
+import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -65,6 +66,7 @@ export default async function RootLayout({
         >
           Skip to main content
         </a>
+        <ServiceWorkerRegister />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider
             nonce={cspNonce}

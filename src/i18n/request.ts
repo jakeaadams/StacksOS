@@ -9,10 +9,10 @@ import { cookies, headers } from "next/headers";
  * 2. The browser Accept-Language header
  * 3. Falls back to "en"
  *
- * Supported locales: en, es
+ * Supported locales: en, es, fr
  */
 
-const SUPPORTED_LOCALES = ["en", "es"] as const;
+const SUPPORTED_LOCALES = ["en", "es", "fr"] as const;
 type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 const DEFAULT_LOCALE: SupportedLocale = "en";
 
