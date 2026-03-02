@@ -59,6 +59,9 @@ export const featureFlags = {
   // OPAC enhancements
   opacCitationGenerator: true,
 
+  // Staff charts
+  staffCharts: true,
+
   // Advanced admin tooling
   policyEditors: true,
   permissionsExplorer: true,

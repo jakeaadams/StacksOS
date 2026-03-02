@@ -31,6 +31,8 @@ import {
 
 import { escapeHtml, printHtml } from "@/lib/print";
 import { featureFlags } from "@/lib/feature-flags";
+import { HoldsDonut } from "@/components/staff/charts/holds-donut";
+import { DailyStatsBar } from "@/components/staff/charts/daily-stats-bar";
 
 interface DashboardStats {
   checkouts_today: number | null;
@@ -243,74 +245,70 @@ export default function ReportsPage() {
   const handleDownloadFullReport = useCallback(async () => {
     if (!stats || !holds) return;
 
-    const data = [{
-      date: new Date().toISOString().split("T")[0],
-      org_id: orgId,
-      checkouts_today: stats.checkouts_today ?? "",
-      checkins_today: stats.checkins_today ?? "",
-      active_holds: stats.active_holds ?? "",
-      overdue_items: stats.overdue_items ?? "",
-      fines_collected_today: stats.fines_collected_today ?? "",
-      new_patrons_today: stats.new_patrons_today ?? "",
-      holds_available: holds.available,
-      holds_pending: holds.pending,
-      holds_in_transit: holds.in_transit,
-      holds_total: holds.total,
-    }];
-
-    await exportData(
-      generateExportFilename(`stacksos-full-report-org${orgId}`),
-      data,
+    const data = [
       {
-        headers: {
-          date: "Date",
-          org_id: "Organization ID",
-          checkouts_today: "Checkouts Today",
-          checkins_today: "Checkins Today",
-          active_holds: "Active Holds",
-          overdue_items: "Overdue Items",
-          fines_collected_today: "Fines Collected Today",
-          new_patrons_today: "New Patrons Today",
-          holds_available: "Holds Available",
-          holds_pending: "Holds Pending",
-          holds_in_transit: "Holds In Transit",
-          holds_total: "Holds Total",
-        },
-      }
-    );
+        date: new Date().toISOString().split("T")[0],
+        org_id: orgId,
+        checkouts_today: stats.checkouts_today ?? "",
+        checkins_today: stats.checkins_today ?? "",
+        active_holds: stats.active_holds ?? "",
+        overdue_items: stats.overdue_items ?? "",
+        fines_collected_today: stats.fines_collected_today ?? "",
+        new_patrons_today: stats.new_patrons_today ?? "",
+        holds_available: holds.available,
+        holds_pending: holds.pending,
+        holds_in_transit: holds.in_transit,
+        holds_total: holds.total,
+      },
+    ];
+
+    await exportData(generateExportFilename(`stacksos-full-report-org${orgId}`), data, {
+      headers: {
+        date: "Date",
+        org_id: "Organization ID",
+        checkouts_today: "Checkouts Today",
+        checkins_today: "Checkins Today",
+        active_holds: "Active Holds",
+        overdue_items: "Overdue Items",
+        fines_collected_today: "Fines Collected Today",
+        new_patrons_today: "New Patrons Today",
+        holds_available: "Holds Available",
+        holds_pending: "Holds Pending",
+        holds_in_transit: "Holds In Transit",
+        holds_total: "Holds Total",
+      },
+    });
   }, [stats, holds, orgId, exportData]);
 
   // Export circulation statistics only
   const handleDownloadCirculationStats = useCallback(async () => {
     if (!stats) return;
 
-    const data = [{
-      date: new Date().toISOString().split("T")[0],
-      org_id: orgId,
-      checkouts_today: stats.checkouts_today ?? 0,
-      checkins_today: stats.checkins_today ?? 0,
-      active_holds: stats.active_holds ?? 0,
-      overdue_items: stats.overdue_items ?? 0,
-      fines_collected_today: stats.fines_collected_today ?? 0,
-      new_patrons_today: stats.new_patrons_today ?? 0,
-    }];
-
-    await exportData(
-      generateExportFilename(`stacksos-circulation-org${orgId}`),
-      data,
+    const data = [
       {
-        headers: {
-          date: "Date",
-          org_id: "Organization ID",
-          checkouts_today: "Checkouts Today",
-          checkins_today: "Checkins Today",
-          active_holds: "Active Holds",
-          overdue_items: "Overdue Items",
-          fines_collected_today: "Fines Collected Today",
-          new_patrons_today: "New Patrons Today",
-        },
-      }
-    );
+        date: new Date().toISOString().split("T")[0],
+        org_id: orgId,
+        checkouts_today: stats.checkouts_today ?? 0,
+        checkins_today: stats.checkins_today ?? 0,
+        active_holds: stats.active_holds ?? 0,
+        overdue_items: stats.overdue_items ?? 0,
+        fines_collected_today: stats.fines_collected_today ?? 0,
+        new_patrons_today: stats.new_patrons_today ?? 0,
+      },
+    ];
+
+    await exportData(generateExportFilename(`stacksos-circulation-org${orgId}`), data, {
+      headers: {
+        date: "Date",
+        org_id: "Organization ID",
+        checkouts_today: "Checkouts Today",
+        checkins_today: "Checkins Today",
+        active_holds: "Active Holds",
+        overdue_items: "Overdue Items",
+        fines_collected_today: "Fines Collected Today",
+        new_patrons_today: "New Patrons Today",
+      },
+    });
   }, [stats, orgId, exportData]);
 
   // Export holds statistics only
@@ -340,17 +338,13 @@ export default function ReportsPage() {
       },
     ];
 
-    await exportData(
-      generateExportFilename(`stacksos-holds-org${orgId}`),
-      data,
-      {
-        headers: {
-          status: "Hold Status",
-          count: "Count",
-          percentage: "Percentage (%)",
-        },
-      }
-    );
+    await exportData(generateExportFilename(`stacksos-holds-org${orgId}`), data, {
+      headers: {
+        status: "Hold Status",
+        count: "Count",
+        percentage: "Percentage (%)",
+      },
+    });
   }, [holds, orgId, exportData]);
 
   const handlePrintSummary = useCallback(() => {
@@ -365,7 +359,11 @@ export default function ReportsPage() {
   if (loading) {
     return (
       <PageContainer>
-        <PageHeader title="Reports" subtitle="Operational dashboards and exports." breadcrumbs={[{ label: "Reports" }]} />
+        <PageHeader
+          title="Reports"
+          subtitle="Operational dashboards and exports."
+          breadcrumbs={[{ label: "Reports" }]}
+        />
         <PageContent>
           <LoadingSpinner message="Loading reports…" />
         </PageContent>
@@ -376,7 +374,11 @@ export default function ReportsPage() {
   if (error) {
     return (
       <PageContainer>
-        <PageHeader title="Reports" subtitle="Operational dashboards and exports." breadcrumbs={[{ label: "Reports" }]} />
+        <PageHeader
+          title="Reports"
+          subtitle="Operational dashboards and exports."
+          breadcrumbs={[{ label: "Reports" }]}
+        />
         <PageContent>
           <ErrorState error={error} onRetry={loadAll} showHome={false} />
         </PageContent>
@@ -387,7 +389,11 @@ export default function ReportsPage() {
   if (!stats || !holds) {
     return (
       <PageContainer>
-        <PageHeader title="Reports" subtitle="Operational dashboards and exports." breadcrumbs={[{ label: "Reports" }]} />
+        <PageHeader
+          title="Reports"
+          subtitle="Operational dashboards and exports."
+          breadcrumbs={[{ label: "Reports" }]}
+        />
         <PageContent>
           <EmptyState title="No data" description="No report data is available yet." />
         </PageContent>
@@ -413,9 +419,17 @@ export default function ReportsPage() {
         ]}
       >
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary" className="rounded-full">Org {orgId}</Badge>
-          <Badge variant="outline" className="rounded-full">Updated {lastRefresh.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</Badge>
-          {isExporting && <Badge variant="default" className="rounded-full">Exporting...</Badge>}
+          <Badge variant="secondary" className="rounded-full">
+            Org {orgId}
+          </Badge>
+          <Badge variant="outline" className="rounded-full">
+            Updated {lastRefresh.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </Badge>
+          {isExporting && (
+            <Badge variant="default" className="rounded-full">
+              Exporting...
+            </Badge>
+          )}
         </div>
       </PageHeader>
 
@@ -426,10 +440,14 @@ export default function ReportsPage() {
               <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{card.label}</p>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      {card.label}
+                    </p>
                     <div className="text-2xl font-semibold mt-1">{card.value ?? "—"}</div>
                   </div>
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center ${card.tone}`}>
+                  <div
+                    className={`h-10 w-10 rounded-full flex items-center justify-center ${card.tone}`}
+                  >
                     <card.icon className="h-5 w-5" />
                   </div>
                 </div>
@@ -444,10 +462,17 @@ export default function ReportsPage() {
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <CardTitle className="text-base">AI Narrative (draft-only)</CardTitle>
-                  <CardDescription>Uses aggregate metrics only (no patron-level data).</CardDescription>
+                  <CardDescription>
+                    Uses aggregate metrics only (no patron-level data).
+                  </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={generateAiSummary} disabled={aiLoading}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={generateAiSummary}
+                    disabled={aiLoading}
+                  >
                     {aiLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                     Generate
                   </Button>
@@ -473,7 +498,9 @@ export default function ReportsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {aiError && <div className="text-sm text-muted-foreground">AI unavailable: {aiError}</div>}
+              {aiError && (
+                <div className="text-sm text-muted-foreground">AI unavailable: {aiError}</div>
+              )}
               {!aiError && !aiSummary && !aiLoading && (
                 <div className="text-sm text-muted-foreground">
                   Generate a short narrative summary for today’s metrics.
@@ -540,6 +567,15 @@ export default function ReportsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {featureFlags.staffCharts && (
+                <DailyStatsBar
+                  checkouts={stats.checkouts_today ?? 0}
+                  checkins={stats.checkins_today ?? 0}
+                  activeHolds={stats.active_holds ?? 0}
+                  overdue={stats.overdue_items ?? 0}
+                />
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-muted/30 p-3">
                   <div className="text-xs text-muted-foreground">Checkouts Today</div>
@@ -565,7 +601,9 @@ export default function ReportsPage() {
                 {stats.fines_collected_today !== null && (
                   <div className="rounded-xl bg-muted/30 p-3">
                     <div className="text-xs text-muted-foreground">Fines Collected</div>
-                    <div className="text-xl font-semibold">${(stats.fines_collected_today || 0).toFixed(2)}</div>
+                    <div className="text-xl font-semibold">
+                      ${(stats.fines_collected_today || 0).toFixed(2)}
+                    </div>
                   </div>
                 )}
                 {stats.new_patrons_today !== null && (
@@ -586,7 +624,9 @@ export default function ReportsPage() {
                   <CardTitle className="text-base flex items-center gap-2">
                     <Bookmark className="h-4 w-4" /> Holds
                   </CardTitle>
-                  <CardDescription>Real-time hold status counts for the current org.</CardDescription>
+                  <CardDescription>
+                    Real-time hold status counts for the current org.
+                  </CardDescription>
                 </div>
                 <Button
                   variant="ghost"
@@ -605,6 +645,14 @@ export default function ReportsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {featureFlags.staffCharts && (
+                <HoldsDonut
+                  available={holds.available}
+                  pending={holds.pending}
+                  inTransit={holds.in_transit}
+                />
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-muted/30 p-3">
                   <div className="text-xs text-muted-foreground">Ready / Available</div>
@@ -637,7 +685,8 @@ export default function ReportsPage() {
               <Separator />
 
               <div className="text-xs text-muted-foreground">
-                Note: additional time-series charts (week/month) will be enabled once Evergreen reporting sources are configured.
+                Note: additional time-series charts (week/month) will be enabled once Evergreen
+                reporting sources are configured.
               </div>
             </CardContent>
           </Card>
@@ -647,7 +696,9 @@ export default function ReportsPage() {
         <Card className="rounded-2xl border-border/70 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Exports & Reports</CardTitle>
-            <CardDescription>Download or print operational snapshots in various formats.</CardDescription>
+            <CardDescription>
+              Download or print operational snapshots in various formats.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -692,7 +743,11 @@ export default function ReportsPage() {
               </Button>
             </div>
             <Separator />
-            <Button variant="outline" className="w-full justify-between" onClick={handlePrintSummary}>
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              onClick={handlePrintSummary}
+            >
               Print daily summary
               <Printer className="h-4 w-4 text-muted-foreground" />
             </Button>
