@@ -119,6 +119,7 @@ python3 - <<'PY' "$BASE_URL" "$BRIDGE_TSV" || fail=1
 import json
 import sys
 from urllib.request import urlopen
+from urllib.error import HTTPError
 
 base = sys.argv[1]
 out_path = sys.argv[2]
@@ -142,6 +143,19 @@ for name, path in checks:
         with urlopen(base + path, timeout=20) as resp:
             status = str(resp.status)
             payload = json.loads(resp.read().decode("utf-8"))
+    except HTTPError as exc:
+        status = str(exc.code)
+        payload = {}
+        try:
+            payload = json.loads(exc.read().decode("utf-8"))
+        except Exception:
+            payload = {}
+        if name == "evergreen_ping" and exc.code == 401:
+            ok = "false"
+            detail = "auth required"
+            passed = "yes"
+        else:
+            detail = f"request_error:{exc}"
     except Exception as exc:
         payload = {}
         detail = f"request_error:{exc}"
