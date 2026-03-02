@@ -113,7 +113,7 @@ export function buildAnalyticsSummaryPrompt(inputRedacted: unknown): PromptTempl
 
 export function buildOpsPlaybooksPrompt(inputRedacted: unknown): PromptTemplate {
   const system = [
-    "You are StacksOS Ops Assistant (Kimi) for library staff.",
+    "You are StacksOS Ops Assistant (Grok) for library staff.",
     "Goal: produce concrete, high-signal operational playbooks from aggregate metrics.",
     "Rules:",
     "- Output JSON only, matching the schema.",
@@ -147,7 +147,7 @@ export function buildOpsPlaybooksPrompt(inputRedacted: unknown): PromptTemplate 
 
 export function buildStaffCopilotPrompt(inputRedacted: unknown): PromptTemplate {
   const system = [
-    "You are StacksOS Staff Copilot (Kimi 2.5 Pro).",
+    "You are StacksOS Staff Copilot (Grok).",
     "Goal: produce one cross-module shift brief for library staff from aggregate live metrics.",
     "Rules:",
     "- Output JSON only, matching the schema.",
@@ -294,7 +294,7 @@ export function buildAiSearchExplanationPrompt(args: {
 
 export function buildHoldsCopilotPrompt(inputRedacted: unknown): PromptTemplate {
   const system = [
-    "You are StacksOS Holds Copilot (Kimi 2.5 Pro).",
+    "You are StacksOS Holds Copilot (Grok).",
     "Goal: analyze a hold queue snapshot and produce prioritized actions for library staff.",
     "Rules:",
     "- Output JSON only, matching the schema.",
@@ -330,7 +330,7 @@ export function buildHoldsCopilotPrompt(inputRedacted: unknown): PromptTemplate 
 
 export function buildPatronCopilotPrompt(inputRedacted: unknown): PromptTemplate {
   const system = [
-    "You are StacksOS Patron Copilot (Kimi 2.5 Pro).",
+    "You are StacksOS Patron Copilot (Grok).",
     "Goal: provide contextual guidance to library staff for a specific patron interaction.",
     "Rules:",
     "- Output JSON only, matching the schema.",
@@ -366,7 +366,7 @@ export function buildPatronCopilotPrompt(inputRedacted: unknown): PromptTemplate
 
 export function buildAcquisitionsCopilotPrompt(inputRedacted: unknown): PromptTemplate {
   const system = [
-    "You are StacksOS Acquisitions Copilot (Kimi 2.5 Pro).",
+    "You are StacksOS Acquisitions Copilot (Grok).",
     "Goal: analyze fund balances and purchase order data to produce budget management actions.",
     "Rules:",
     "- Output JSON only, matching the schema.",
@@ -401,7 +401,7 @@ export function buildAcquisitionsCopilotPrompt(inputRedacted: unknown): PromptTe
 
 export function buildCatalogingCopilotPrompt(inputRedacted: unknown): PromptTemplate {
   const system = [
-    "You are StacksOS Cataloging Copilot (Kimi 2.5 Pro).",
+    "You are StacksOS Cataloging Copilot (Grok).",
     "Goal: analyze bibliographic MARC data and suggest subject headings, classification, and metadata improvements.",
     "Rules:",
     "- Output JSON only, matching the schema.",
@@ -438,7 +438,7 @@ export function buildCatalogingCopilotPrompt(inputRedacted: unknown): PromptTemp
 
 export function buildAdminCopilotPrompt(inputRedacted: unknown): PromptTemplate {
   const system = [
-    "You are StacksOS Admin Copilot (Kimi 2.5 Pro).",
+    "You are StacksOS Admin Copilot (Grok).",
     "Goal: analyze library operational metrics and produce prioritized administrative actions.",
     "Rules:",
     "- Output JSON only, matching the schema.",

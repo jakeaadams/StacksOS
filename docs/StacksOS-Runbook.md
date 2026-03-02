@@ -273,10 +273,10 @@ AI is considered enabled only when **both** conditions are true:
 
 Recommended provider/model for operations assistant:
 
-- `STACKSOS_AI_PROVIDER=moonshot`
-- `STACKSOS_AI_MODEL=moonshotai/kimi-k2.5`
-- optional: `STACKSOS_AI_MODEL_FALLBACKS=moonshotai/kimi-k2-instruct`
-- `MOONSHOT_API_KEY=<secret>`
+- `STACKSOS_AI_PROVIDER=grok`
+- `STACKSOS_AI_MODEL=grok-4-1-fast-reasoning`
+- optional: `STACKSOS_AI_MODEL_FALLBACKS=grok-3-mini`
+- `GROK_API_KEY=<secret>`
 
 Fast-disable procedure for an incident:
 
@@ -307,7 +307,7 @@ If the model provider is down or credentials are compromised:
 - Disable AI immediately as above
 - Re-enable only after verifying budgets, rate limits, and redaction behavior
 
-### Fallback / Latency Monitoring (Kimi hardening)
+### Fallback / Latency Monitoring (Grok hardening)
 
 Use:
 

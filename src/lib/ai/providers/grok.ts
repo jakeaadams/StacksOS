@@ -3,37 +3,34 @@ import type { AiProvider, AiJsonRequest } from "./provider";
 import { validateProviderJson } from "./provider";
 
 /**
- * Moonshot AI (Kimi) provider — hosted via NVIDIA NIM (OpenAI-compatible).
+ * xAI Grok provider — OpenAI-compatible Chat Completions API.
  *
  * Env vars:
- *   MOONSHOT_API_KEY          — NVIDIA / Moonshot Bearer token
- *   MOONSHOT_API_BASE_URL     — defaults to https://integrate.api.nvidia.com/v1
+ *   GROK_API_KEY          — xAI Bearer token
+ *   GROK_API_BASE_URL     — defaults to https://api.x.ai/v1
  */
 
-function resolveMoonshotKey(): string | null {
-  const key = process.env.MOONSHOT_API_KEY;
+function resolveGrokKey(): string | null {
+  const key = process.env.GROK_API_KEY;
   return key && key.trim() ? key.trim() : null;
 }
 
 function resolveBaseUrl(): string {
-  return (process.env.MOONSHOT_API_BASE_URL || "https://integrate.api.nvidia.com/v1").replace(
-    /\/+$/,
-    ""
-  );
+  return (process.env.GROK_API_BASE_URL || "https://api.x.ai/v1").replace(/\/+$/, "");
 }
 
-async function moonshotChatCompletion(args: {
+async function grokChatCompletion(args: {
   requestId?: string;
   config: AiConfig;
   system: string;
   user: string;
 }): Promise<AiCompletion> {
-  const key = resolveMoonshotKey();
+  const key = resolveGrokKey();
   if (!key) {
-    throw new Error("Moonshot/Kimi is not configured (missing MOONSHOT_API_KEY)");
+    throw new Error("Grok is not configured (missing GROK_API_KEY)");
   }
 
-  const model = args.config.model || "moonshotai/kimi-k2.5";
+  const model = args.config.model || "grok-4-1-fast-reasoning";
   const url = `${resolveBaseUrl()}/chat/completions`;
 
   const controller = new AbortController();
@@ -44,13 +41,13 @@ async function moonshotChatCompletion(args: {
       headers: {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
-        Accept: "application/json",
       },
       body: JSON.stringify({
         model,
         temperature: args.config.temperature,
         max_tokens: args.config.maxTokens,
-        top_p: 1.0,
+        // Ask for JSON; providers may still return non-JSON, so we validate defensively.
+        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: args.system },
           { role: "user", content: args.user },
@@ -61,17 +58,17 @@ async function moonshotChatCompletion(args: {
 
     const json: any = await res.json().catch(() => null);
     if (!res.ok) {
-      const msg = json?.error?.message || json?.detail || `Moonshot/NVIDIA HTTP ${res.status}`;
+      const msg = json?.error?.message || `Grok HTTP ${res.status}`;
       throw new Error(msg);
     }
 
     const text = json?.choices?.[0]?.message?.content;
     if (typeof text !== "string" || !text.trim()) {
-      throw new Error("Moonshot/Kimi returned an empty completion");
+      throw new Error("Grok returned an empty completion");
     }
 
     return {
-      provider: "moonshot",
+      provider: "grok",
       model,
       requestId: json?.id,
       text,
@@ -86,7 +83,7 @@ async function moonshotChatCompletion(args: {
     };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      throw new Error(`AI provider timeout after ${args.config.timeoutMs}ms (moonshot)`);
+      throw new Error(`AI provider timeout after ${args.config.timeoutMs}ms (grok)`);
     }
     throw error;
   } finally {
@@ -94,10 +91,10 @@ async function moonshotChatCompletion(args: {
   }
 }
 
-export const moonshotProvider: AiProvider = {
-  id: "moonshot",
+export const grokProvider: AiProvider = {
+  id: "grok",
   async completeJson<T>(req: AiJsonRequest<T>) {
-    const completion = await moonshotChatCompletion({
+    const completion = await grokChatCompletion({
       requestId: req.requestId,
       config: req.config,
       system: req.system,

@@ -5,10 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import {
-  policyExplainResponseSchema,
-  catalogingSuggestResponseSchema,
-} from "@/lib/ai/index";
+import { policyExplainResponseSchema, catalogingSuggestResponseSchema } from "@/lib/ai/index";
 import { aiProviderSchema, aiSafetyModeSchema } from "@/lib/ai/types";
 
 describe("Zod Schemas", () => {
@@ -21,8 +18,8 @@ describe("Zod Schemas", () => {
       expect(aiProviderSchema.parse("anthropic")).toBe("anthropic");
     });
 
-    it("should accept 'moonshot'", () => {
-      expect(aiProviderSchema.parse("moonshot")).toBe("moonshot");
+    it("should accept 'grok'", () => {
+      expect(aiProviderSchema.parse("grok")).toBe("grok");
     });
 
     it("should accept 'mock'", () => {
@@ -68,15 +65,11 @@ describe("Zod Schemas", () => {
     });
 
     it("should reject missing explanation", () => {
-      expect(() =>
-        policyExplainResponseSchema.parse({ nextSteps: ["step"] })
-      ).toThrow();
+      expect(() => policyExplainResponseSchema.parse({ nextSteps: ["step"] })).toThrow();
     });
 
     it("should reject missing nextSteps", () => {
-      expect(() =>
-        policyExplainResponseSchema.parse({ explanation: "test" })
-      ).toThrow();
+      expect(() => policyExplainResponseSchema.parse({ explanation: "test" })).toThrow();
     });
 
     it("should reject empty nextSteps array", () => {

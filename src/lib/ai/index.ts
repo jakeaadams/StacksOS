@@ -37,9 +37,6 @@ type RetryProfile = {
   retryTimeoutMs: number;
 };
 
-const MOONSHOT_PRIMARY_MODEL = "moonshotai/kimi-k2.5";
-const MOONSHOT_FALLBACK_MODEL = "moonshotai/kimi-k2-instruct";
-
 function isCopilotCallType(callType: string): boolean {
   return (
     callType === "ops_playbooks" ||
@@ -148,18 +145,11 @@ function normalizeModelName(model: string | undefined): string | undefined {
 
 function resolveModelPlan(config: AiConfig): Array<string | undefined> {
   const plan: Array<string | undefined> = [];
-  const primaryModel =
-    normalizeModelName(config.model) ||
-    (config.provider === "moonshot" ? MOONSHOT_PRIMARY_MODEL : undefined);
+  const primaryModel = normalizeModelName(config.model);
   plan.push(primaryModel);
 
   for (const model of config.fallbackModels || []) {
     plan.push(normalizeModelName(model));
-  }
-
-  const primaryLower = (primaryModel || "").toLowerCase();
-  if (config.provider === "moonshot" && primaryLower.includes(MOONSHOT_PRIMARY_MODEL)) {
-    plan.push(MOONSHOT_FALLBACK_MODEL);
   }
 
   const seen = new Set<string>();

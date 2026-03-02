@@ -300,7 +300,7 @@ The response includes:
 - p95 latency,
 - runtime health classification.
 
-Use this to tune `STACKSOS_AI_TIMEOUT_MS`, `STACKSOS_AI_MODEL_FALLBACKS`, and `STACKSOS_AI_RETRY_*` / `STACKSOS_AI_COPILOT_*` values for Kimi latency conditions.
+Use this to tune `STACKSOS_AI_TIMEOUT_MS`, `STACKSOS_AI_MODEL_FALLBACKS`, and `STACKSOS_AI_RETRY_*` / `STACKSOS_AI_COPILOT_*` values for Grok latency conditions.
 
 ## UI/UX Drift Governance
 

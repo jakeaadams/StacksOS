@@ -103,13 +103,13 @@ Secrets stay in env vars (examples):
 - EVERGREEN_DB_PASSWORD
 - OPENAI_API_KEY
 - ANTHROPIC_API_KEY
-- MOONSHOT_API_KEY
+- GROK_API_KEY
 - STACKSOS_MFA_MASTER_KEY
 
-Recommended AI defaults for Kimi operations assistant:
+Recommended AI defaults for Grok operations assistant:
 
-- STACKSOS_AI_PROVIDER=moonshot
-- STACKSOS_AI_MODEL=moonshotai/kimi-k2.5
+- STACKSOS_AI_PROVIDER=grok
+- STACKSOS_AI_MODEL=grok-4-1-fast-reasoning
 
 ## Evergreen deployment model choices (important)
 

@@ -181,7 +181,7 @@ function AcquisitionsCopilotWidget({
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
-              Acquisitions Copilot (Kimi 2.5 Pro)
+              Acquisitions Copilot (Grok)
             </CardTitle>
             <CardDescription>AI-powered budget and ordering guidance.</CardDescription>
           </div>

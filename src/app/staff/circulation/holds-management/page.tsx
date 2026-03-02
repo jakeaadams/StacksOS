@@ -138,7 +138,7 @@ function HoldsCopilotWidget({ orgId }: { orgId: number }) {
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
-              Holds Copilot (Kimi 2.5 Pro)
+              Holds Copilot (Grok)
             </CardTitle>
             <CardDescription>AI-powered hold queue prioritization guidance.</CardDescription>
           </div>

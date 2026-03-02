@@ -62,7 +62,7 @@ Lint policy note:
 - Keep `audit/task-benchmark/REPORT.md` current for measurable UX outcomes.
 - Latest measured baseline (2026-02-26): aggregate drift score `0` (no drift files).
 
-## AI Reliability Rules (Kimi/Moonshot)
+## AI Reliability Rules (Grok/xAI)
 
 - AI output must degrade safely when provider latency spikes.
 - Measure and tune fallback behavior via `/api/admin/ops-status`:

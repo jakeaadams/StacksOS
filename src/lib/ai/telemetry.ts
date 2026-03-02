@@ -95,10 +95,10 @@ export async function enforceAiBudgets(args: {
  * Format: { "model-name": { "input": <$/1M tokens>, "output": <$/1M tokens> } }
  */
 const DEFAULT_PRICING: Record<string, { input: number; output: number }> = {
-  "kimi-k2.5": { input: 0.6, output: 2.4 },
-  "moonshotai/kimi-k2.5": { input: 0.6, output: 2.4 },
-  "kimi-k2-instruct": { input: 0.4, output: 1.6 },
-  "moonshotai/kimi-k2-instruct": { input: 0.4, output: 1.6 },
+  "grok-4-1-fast-reasoning": { input: 0.2, output: 0.5 },
+  "grok-4-1-fast-non-reasoning": { input: 0.2, output: 0.5 },
+  "grok-3-mini": { input: 0.3, output: 0.5 },
+  "grok-3": { input: 3.0, output: 15.0 },
   "gpt-4o-mini": { input: 0.15, output: 0.6 },
   "claude-sonnet-4-6": { input: 3.0, output: 15.0 },
   "claude-haiku-4-5-20251001": { input: 0.8, output: 4.0 },

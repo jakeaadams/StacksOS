@@ -66,7 +66,7 @@ export const AVAILABLE_WIDGETS: WidgetConfig[] = [
   {
     id: "ops-assistant",
     label: "Ops Assistant",
-    description: "Kimi-powered shift guidance across circulation and reports",
+    description: "AI-powered shift guidance across circulation and reports",
     icon: "Sparkles",
     defaultEnabled: true,
     defaultOrder: 5,

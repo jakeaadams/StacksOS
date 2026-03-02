@@ -38,7 +38,7 @@ const envSchema = z.object({
 
   // AI configuration
   STACKSOS_AI_ENABLED: z.string().optional(),
-  STACKSOS_AI_PROVIDER: z.enum(["openai", "anthropic", "moonshot", "mock"]).optional(),
+  STACKSOS_AI_PROVIDER: z.enum(["openai", "anthropic", "grok", "mock"]).optional(),
   STACKSOS_AI_MODEL_FALLBACKS: z.string().optional(),
   STACKSOS_AI_RETRY_ATTEMPTS: z.string().optional(),
   STACKSOS_AI_RETRY_BACKOFF_MS: z.string().optional(),
