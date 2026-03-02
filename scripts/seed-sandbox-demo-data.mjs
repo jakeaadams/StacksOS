@@ -73,6 +73,160 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Realistic Demo Library Data                                                */
+/* -------------------------------------------------------------------------- */
+
+const DEMO_PATRONS = [
+  { first: "Maria", last: "Gonzalez" },
+  { first: "James", last: "Chen" },
+  { first: "Aisha", last: "Patel" },
+  { first: "Robert", last: "Williams" },
+  { first: "Yuki", last: "Tanaka" },
+  { first: "Sarah", last: "O'Brien" },
+  { first: "Kwame", last: "Asante" },
+  { first: "Emily", last: "Thompson" },
+  { first: "Carlos", last: "Rivera" },
+  { first: "Priya", last: "Sharma" },
+  { first: "David", last: "Kim" },
+  { first: "Fatima", last: "Al-Rashid" },
+  { first: "Marcus", last: "Johnson" },
+  { first: "Olga", last: "Petrov" },
+  { first: "Liam", last: "McCarthy" },
+  { first: "Mei", last: "Wong" },
+  { first: "Andre", last: "Baptiste" },
+  { first: "Sofia", last: "Rossi" },
+  { first: "Jamal", last: "Washington" },
+  { first: "Hannah", last: "Goldstein" },
+  { first: "Raj", last: "Kapoor" },
+  { first: "Elena", last: "Vasquez" },
+  { first: "Thomas", last: "Anderson" },
+  { first: "Amara", last: "Okafor" },
+];
+
+const DEMO_CATALOG = [
+  // --- Fiction (40) ---
+  { title: "The Night Gardener", author: "Ainsley, Jonathan", publisher: "Harper Perennial", year: "2023", subjects: ["Fiction", "Literary Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "A Thousand Shores", author: "Delgado, Elena", publisher: "Knopf", year: "2024", subjects: ["Fiction", "Historical Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "The Cartographer's Daughter", author: "Okonkwo, Nnedi", publisher: "Penguin", year: "2022", subjects: ["Fiction", "Fantasy"], callPrefix: "FIC", format: "book" },
+  { title: "Midnight in the Garden District", author: "Beaumont, Claire", publisher: "Little, Brown", year: "2023", subjects: ["Fiction", "Mystery"], callPrefix: "FIC", format: "book" },
+  { title: "Rivers of Starlight", author: "Chang, David", publisher: "Tor Books", year: "2024", subjects: ["Fiction", "Science Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "Where the Lemon Trees Grow", author: "Ferrante, Marco", publisher: "Scribner", year: "2021", subjects: ["Fiction", "Literary Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "The Lost Summer", author: "Morrison, Kate", publisher: "Vintage", year: "2023", subjects: ["Fiction", "Coming of Age"], callPrefix: "FIC", format: "book" },
+  { title: "Beneath Still Waters", author: "Lindqvist, Erik", publisher: "Doubleday", year: "2022", subjects: ["Fiction", "Thriller"], callPrefix: "FIC", format: "book" },
+  { title: "The Beekeeper's Promise", author: "Novak, Anna", publisher: "Ballantine", year: "2024", subjects: ["Fiction", "Historical Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "Paper Lanterns", author: "Tanaka, Haruki", publisher: "Grove Press", year: "2023", subjects: ["Fiction", "Literary Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "The Architect of Ruins", author: "Castellano, Rosa", publisher: "FSG", year: "2022", subjects: ["Fiction", "Literary Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "Salt and Shadow", author: "Adeyemi, Tunde", publisher: "Orbit", year: "2024", subjects: ["Fiction", "Fantasy"], callPrefix: "FIC", format: "book" },
+  { title: "The Glass Forest", author: "Bergman, Ingrid", publisher: "Ecco", year: "2023", subjects: ["Fiction", "Suspense"], callPrefix: "FIC", format: "book" },
+  { title: "Echoes of the River", author: "Redhawk, Elaine", publisher: "Algonquin", year: "2021", subjects: ["Fiction", "Indigenous Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "City of Jasmine", author: "Al-Masri, Leila", publisher: "Viking", year: "2024", subjects: ["Fiction", "Contemporary"], callPrefix: "FIC", format: "book" },
+  { title: "The Winter Sailor", author: "Gallagher, Sean", publisher: "Norton", year: "2022", subjects: ["Fiction", "Adventure"], callPrefix: "FIC", format: "book" },
+  { title: "Dancing in the Margins", author: "Reyes, Carmen", publisher: "Random House", year: "2023", subjects: ["Fiction", "Literary Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "The Ninth Station", author: "Volkov, Dimitri", publisher: "Putnam", year: "2024", subjects: ["Fiction", "Espionage"], callPrefix: "FIC", format: "book" },
+  { title: "Wildflower Season", author: "Park, Jisoo", publisher: "Atria", year: "2023", subjects: ["Fiction", "Romance"], callPrefix: "FIC", format: "book" },
+  { title: "The Lighthouse Keeper", author: "Sutherland, Fiona", publisher: "Houghton Mifflin", year: "2022", subjects: ["Fiction", "Historical Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "Amber and Iron", author: "Nwosu, Chidera", publisher: "Del Rey", year: "2024", subjects: ["Fiction", "Fantasy"], callPrefix: "FIC", format: "book" },
+  { title: "The Philosopher's Garden", author: "Werner, Friedrich", publisher: "Riverhead", year: "2023", subjects: ["Fiction", "Literary Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "Last Train from Lisbon", author: "Coelho, Beatriz", publisher: "Harper", year: "2021", subjects: ["Fiction", "WWII Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "The Memory Thief", author: "Andersen, Nils", publisher: "Ace", year: "2024", subjects: ["Fiction", "Science Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "Still Life with Oranges", author: "Moreau, Isabelle", publisher: "Pantheon", year: "2023", subjects: ["Fiction", "Literary Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "The Storm Weaver", author: "McKenna, Ciara", publisher: "DAW", year: "2022", subjects: ["Fiction", "Fantasy"], callPrefix: "FIC", format: "book" },
+  { title: "Copper Sky", author: "Begay, Daniel", publisher: "Milkweed", year: "2024", subjects: ["Fiction", "Western"], callPrefix: "FIC", format: "book" },
+  { title: "The Violin Maker's Apprentice", author: "Bianchi, Luca", publisher: "Knopf", year: "2023", subjects: ["Fiction", "Historical Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "Threads of Indigo", author: "Khatri, Deepa", publisher: "Bloomsbury", year: "2022", subjects: ["Fiction", "Literary Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "The Apothecary's Widow", author: "Laurent, Marie", publisher: "Crown", year: "2024", subjects: ["Fiction", "Mystery"], callPrefix: "FIC", format: "book" },
+  { title: "Sunken City", author: "Morales, Gabriel", publisher: "Tor", year: "2023", subjects: ["Fiction", "Science Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "The Painter's Muse", author: "Fournier, Sophie", publisher: "Scribner", year: "2021", subjects: ["Fiction", "Art Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "Ice and Embers", author: "Johansson, Lars", publisher: "Saga Press", year: "2024", subjects: ["Fiction", "Fantasy"], callPrefix: "FIC", format: "book" },
+  { title: "The Tea Garden", author: "Liang, Mei-Ying", publisher: "Penguin", year: "2023", subjects: ["Fiction", "Literary Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "Harbor Lights", author: "Sullivan, Patrick", publisher: "William Morrow", year: "2022", subjects: ["Fiction", "Family Saga"], callPrefix: "FIC", format: "book" },
+  { title: "The Mapmaker's Secret", author: "Torres, Miguel", publisher: "Simon & Schuster", year: "2024", subjects: ["Fiction", "Adventure"], callPrefix: "FIC", format: "book" },
+  { title: "Persephone's Garden", author: "Papadopoulos, Elena", publisher: "Ecco", year: "2023", subjects: ["Fiction", "Mythology"], callPrefix: "FIC", format: "book" },
+  { title: "The Sandpiper's Song", author: "Whitfield, Grace", publisher: "Anchor", year: "2021", subjects: ["Fiction", "Southern Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "Kingdom of Dust", author: "Farsi, Reza", publisher: "Vintage", year: "2024", subjects: ["Fiction", "Literary Fiction"], callPrefix: "FIC", format: "book" },
+  { title: "The Bookshop at the End of the World", author: "Murphy, Ronan", publisher: "Ballantine", year: "2023", subjects: ["Fiction", "Magical Realism"], callPrefix: "FIC", format: "book" },
+  // --- Non-Fiction (35) ---
+  { title: "The Hidden Life of Trees", author: "Wohlleben, Peter", publisher: "Greystone Books", year: "2016", subjects: ["Science", "Nature", "Ecology"], callPrefix: "577.3", format: "book" },
+  { title: "Atomic Habits", author: "Clear, James", publisher: "Avery", year: "2018", subjects: ["Self-Help", "Psychology", "Productivity"], callPrefix: "158.1", format: "book" },
+  { title: "Sapiens: A Brief History of Humankind", author: "Harari, Yuval Noah", publisher: "Harper", year: "2015", subjects: ["History", "Anthropology"], callPrefix: "909", format: "book" },
+  { title: "The Body: A Guide for Occupants", author: "Bryson, Bill", publisher: "Doubleday", year: "2019", subjects: ["Science", "Medicine", "Human Body"], callPrefix: "612", format: "book" },
+  { title: "Braiding Sweetgrass", author: "Kimmerer, Robin Wall", publisher: "Milkweed", year: "2013", subjects: ["Nature", "Indigenous Knowledge", "Botany"], callPrefix: "581.6", format: "book" },
+  { title: "The Art of Gathering", author: "Parker, Priya", publisher: "Riverhead", year: "2018", subjects: ["Social Science", "Community"], callPrefix: "302.3", format: "book" },
+  { title: "Entangled Life", author: "Sheldrake, Merlin", publisher: "Random House", year: "2020", subjects: ["Science", "Mycology", "Biology"], callPrefix: "579.5", format: "book" },
+  { title: "Four Thousand Weeks", author: "Burkeman, Oliver", publisher: "FSG", year: "2021", subjects: ["Philosophy", "Time Management"], callPrefix: "304.2", format: "book" },
+  { title: "The Invention of Nature", author: "Wulf, Andrea", publisher: "Knopf", year: "2015", subjects: ["Biography", "Science", "History"], callPrefix: "508.092", format: "book" },
+  { title: "Breath: The New Science of a Lost Art", author: "Nestor, James", publisher: "Riverhead", year: "2020", subjects: ["Health", "Science", "Breathing"], callPrefix: "613.192", format: "book" },
+  { title: "How to Change Your Mind", author: "Pollan, Michael", publisher: "Penguin", year: "2018", subjects: ["Psychology", "Neuroscience"], callPrefix: "615.7", format: "book" },
+  { title: "The Library Book", author: "Orlean, Susan", publisher: "Simon & Schuster", year: "2018", subjects: ["Libraries", "History", "True Crime"], callPrefix: "027.479", format: "book" },
+  { title: "An Immense World", author: "Yong, Ed", publisher: "Random House", year: "2022", subjects: ["Science", "Biology", "Animal Senses"], callPrefix: "591.5", format: "book" },
+  { title: "Empire of Pain", author: "Keefe, Patrick Radden", publisher: "Doubleday", year: "2021", subjects: ["Biography", "Medicine", "Business"], callPrefix: "338.7", format: "book" },
+  { title: "The Dawn of Everything", author: "Graeber, David", publisher: "FSG", year: "2021", subjects: ["Anthropology", "History", "Social Science"], callPrefix: "930.1", format: "book" },
+  { title: "Noise: A Flaw in Human Judgment", author: "Kahneman, Daniel", publisher: "Little, Brown", year: "2021", subjects: ["Psychology", "Decision Making"], callPrefix: "153.4", format: "book" },
+  { title: "All About Love", author: "hooks, bell", publisher: "William Morrow", year: "2000", subjects: ["Philosophy", "Relationships", "Self-Help"], callPrefix: "306.7", format: "book" },
+  { title: "The Code Breaker", author: "Isaacson, Walter", publisher: "Simon & Schuster", year: "2021", subjects: ["Biography", "Science", "Genetics"], callPrefix: "572.8", format: "book" },
+  { title: "Under a White Sky", author: "Kolbert, Elizabeth", publisher: "Crown", year: "2021", subjects: ["Science", "Environment", "Climate"], callPrefix: "304.2", format: "book" },
+  { title: "Crying in H Mart", author: "Zauner, Michelle", publisher: "Knopf", year: "2021", subjects: ["Memoir", "Food", "Identity"], callPrefix: "B ZAU", format: "book" },
+  { title: "The Premonition", author: "Lewis, Michael", publisher: "Norton", year: "2021", subjects: ["Science", "Public Health", "COVID-19"], callPrefix: "362.1", format: "book" },
+  { title: "Atlas of the Heart", author: "Brown, Brene", publisher: "Random House", year: "2021", subjects: ["Psychology", "Emotions", "Self-Help"], callPrefix: "152.4", format: "book" },
+  { title: "The Extended Mind", author: "Paul, Annie Murphy", publisher: "Houghton Mifflin", year: "2021", subjects: ["Psychology", "Cognition", "Neuroscience"], callPrefix: "153", format: "book" },
+  { title: "Saving Us: A Climate Scientist's Case for Hope", author: "Hayhoe, Katharine", publisher: "Atria", year: "2021", subjects: ["Science", "Climate Change"], callPrefix: "363.738", format: "book" },
+  { title: "Caste: The Origins of Our Discontents", author: "Wilkerson, Isabel", publisher: "Random House", year: "2020", subjects: ["Social Science", "History", "Race"], callPrefix: "305.5", format: "book" },
+  { title: "Quiet: The Power of Introverts", author: "Cain, Susan", publisher: "Crown", year: "2012", subjects: ["Psychology", "Personality"], callPrefix: "155.2", format: "book" },
+  { title: "Thinking, Fast and Slow", author: "Kahneman, Daniel", publisher: "FSG", year: "2011", subjects: ["Psychology", "Economics"], callPrefix: "153.4", format: "book" },
+  { title: "The Warmth of Other Suns", author: "Wilkerson, Isabel", publisher: "Vintage", year: "2010", subjects: ["History", "Migration", "African American"], callPrefix: "307.2", format: "book" },
+  { title: "Born a Crime", author: "Noah, Trevor", publisher: "Spiegel & Grau", year: "2016", subjects: ["Memoir", "Humor", "South Africa"], callPrefix: "B NOA", format: "book" },
+  { title: "Educated", author: "Westover, Tara", publisher: "Random House", year: "2018", subjects: ["Memoir", "Education"], callPrefix: "B WES", format: "book" },
+  { title: "Becoming", author: "Obama, Michelle", publisher: "Crown", year: "2018", subjects: ["Memoir", "Biography"], callPrefix: "B OBA", format: "book" },
+  { title: "The Immortal Life of Henrietta Lacks", author: "Skloot, Rebecca", publisher: "Crown", year: "2010", subjects: ["Science", "Biography", "Ethics"], callPrefix: "616.027", format: "book" },
+  { title: "When Breath Becomes Air", author: "Kalanithi, Paul", publisher: "Random House", year: "2016", subjects: ["Memoir", "Medicine"], callPrefix: "B KAL", format: "book" },
+  { title: "The Sixth Extinction", author: "Kolbert, Elizabeth", publisher: "Henry Holt", year: "2014", subjects: ["Science", "Environment", "Extinction"], callPrefix: "576.8", format: "book" },
+  { title: "Between the World and Me", author: "Coates, Ta-Nehisi", publisher: "Spiegel & Grau", year: "2015", subjects: ["Social Science", "Race", "Memoir"], callPrefix: "305.896", format: "book" },
+  // --- Children & YA (20) ---
+  { title: "The Wild Robot", author: "Brown, Peter", publisher: "Little, Brown Young Readers", year: "2016", subjects: ["Juvenile Fiction", "Robots", "Nature"], callPrefix: "J FIC", format: "book" },
+  { title: "New Kid", author: "Craft, Jerry", publisher: "Quill Tree Books", year: "2019", subjects: ["Juvenile Fiction", "Graphic Novel", "Diversity"], callPrefix: "J GN", format: "book" },
+  { title: "The One and Only Ivan", author: "Applegate, Katherine", publisher: "Harper", year: "2012", subjects: ["Juvenile Fiction", "Animals"], callPrefix: "J FIC", format: "book" },
+  { title: "Amari and the Night Brothers", author: "Alston, B. B.", publisher: "Balzer + Bray", year: "2021", subjects: ["Juvenile Fiction", "Fantasy", "Adventure"], callPrefix: "J FIC", format: "book" },
+  { title: "Wings of Fire: The Dragonet Prophecy", author: "Sutherland, Tui T.", publisher: "Scholastic", year: "2012", subjects: ["Juvenile Fiction", "Fantasy", "Dragons"], callPrefix: "J FIC", format: "book" },
+  { title: "Front Desk", author: "Yang, Kelly", publisher: "Scholastic", year: "2018", subjects: ["Juvenile Fiction", "Immigration", "Family"], callPrefix: "J FIC", format: "book" },
+  { title: "A Wrinkle in Time", author: "L'Engle, Madeleine", publisher: "FSG", year: "1962", subjects: ["Juvenile Fiction", "Science Fiction", "Classics"], callPrefix: "J FIC", format: "book" },
+  { title: "Diary of a Wimpy Kid", author: "Kinney, Jeff", publisher: "Amulet Books", year: "2007", subjects: ["Juvenile Fiction", "Humor"], callPrefix: "J FIC", format: "book" },
+  { title: "Dog Man: The Epic Collection", author: "Pilkey, Dav", publisher: "Graphix", year: "2018", subjects: ["Juvenile Fiction", "Graphic Novel", "Humor"], callPrefix: "J GN", format: "book" },
+  { title: "The Last Cuentista", author: "Higuera, Donna Barba", publisher: "Levine Querido", year: "2021", subjects: ["Juvenile Fiction", "Science Fiction", "Folklore"], callPrefix: "J FIC", format: "book" },
+  { title: "Children of Blood and Bone", author: "Adeyemi, Tomi", publisher: "Henry Holt", year: "2018", subjects: ["Young Adult", "Fantasy", "African Mythology"], callPrefix: "YA FIC", format: "book" },
+  { title: "The Hunger Games", author: "Collins, Suzanne", publisher: "Scholastic", year: "2008", subjects: ["Young Adult", "Dystopian", "Science Fiction"], callPrefix: "YA FIC", format: "book" },
+  { title: "Six of Crows", author: "Bardugo, Leigh", publisher: "Henry Holt", year: "2015", subjects: ["Young Adult", "Fantasy", "Heist"], callPrefix: "YA FIC", format: "book" },
+  { title: "The Hate U Give", author: "Thomas, Angie", publisher: "Balzer + Bray", year: "2017", subjects: ["Young Adult", "Contemporary", "Social Justice"], callPrefix: "YA FIC", format: "book" },
+  { title: "Legendborn", author: "Deonn, Tracy", publisher: "Simon & Schuster", year: "2020", subjects: ["Young Adult", "Fantasy", "Arthurian Legend"], callPrefix: "YA FIC", format: "book" },
+  { title: "Percy Jackson and the Lightning Thief", author: "Riordan, Rick", publisher: "Disney Hyperion", year: "2005", subjects: ["Juvenile Fiction", "Mythology", "Adventure"], callPrefix: "J FIC", format: "book" },
+  { title: "Stamped: Racism, Antiracism, and You", author: "Reynolds, Jason", publisher: "Little, Brown", year: "2020", subjects: ["Young Adult", "Nonfiction", "History", "Race"], callPrefix: "YA 305.8", format: "book" },
+  { title: "Fry Bread: A Native American Family Story", author: "Maillard, Kevin Noble", publisher: "Roaring Brook", year: "2019", subjects: ["Juvenile Picture Book", "Indigenous Culture", "Food"], callPrefix: "JP", format: "book" },
+  { title: "The Crossover", author: "Alexander, Kwame", publisher: "Houghton Mifflin", year: "2014", subjects: ["Juvenile Fiction", "Sports", "Poetry"], callPrefix: "J FIC", format: "book" },
+  { title: "Restart", author: "Korman, Gordon", publisher: "Scholastic", year: "2017", subjects: ["Juvenile Fiction", "Bullying", "Memory Loss"], callPrefix: "J FIC", format: "book" },
+  // --- Media (15) ---
+  { title: "National Parks of the American West", author: "Nature Films Collection", publisher: "PBS", year: "2022", subjects: ["Documentary", "Nature", "Travel"], callPrefix: "DVD 917", format: "dvd" },
+  { title: "The Story of Jazz", author: "Burns, Ken", publisher: "PBS", year: "2021", subjects: ["Documentary", "Music", "History"], callPrefix: "DVD 781.65", format: "dvd" },
+  { title: "Ocean Wonders: Deep Sea Exploration", author: "Blue Planet Productions", publisher: "BBC", year: "2023", subjects: ["Documentary", "Science", "Ocean"], callPrefix: "DVD 551.46", format: "dvd" },
+  { title: "Ancient Civilizations: Egypt to Rome", author: "History Channel Classics", publisher: "A&E Home Video", year: "2020", subjects: ["Documentary", "History", "Archaeology"], callPrefix: "DVD 930", format: "dvd" },
+  { title: "Cooking with Julia", author: "Child, Julia", publisher: "WGBH Boston", year: "2019", subjects: ["Cooking", "Television"], callPrefix: "DVD 641.5", format: "dvd" },
+  { title: "The Midnight Library", author: "Haig, Matt", publisher: "Penguin Audio", year: "2020", subjects: ["Fiction", "Audiobook"], callPrefix: "AB FIC", format: "audiobook" },
+  { title: "Project Hail Mary", author: "Weir, Andy", publisher: "Audible", year: "2021", subjects: ["Fiction", "Science Fiction", "Audiobook"], callPrefix: "AB FIC", format: "audiobook" },
+  { title: "The Lincoln Highway", author: "Towles, Amor", publisher: "Penguin Audio", year: "2021", subjects: ["Fiction", "Historical Fiction", "Audiobook"], callPrefix: "AB FIC", format: "audiobook" },
+  { title: "Think Again", author: "Grant, Adam", publisher: "Penguin Audio", year: "2021", subjects: ["Psychology", "Audiobook"], callPrefix: "AB 153.4", format: "audiobook" },
+  { title: "Greenlights", author: "McConaughey, Matthew", publisher: "Random House Audio", year: "2020", subjects: ["Memoir", "Audiobook"], callPrefix: "AB B MCC", format: "audiobook" },
+  // --- Large Print & Spanish (10) ---
+  { title: "The Thursday Murder Club", author: "Osman, Richard", publisher: "Large Print Press", year: "2022", subjects: ["Fiction", "Mystery", "Large Print"], callPrefix: "LP FIC", format: "large_print" },
+  { title: "The Maid", author: "Prose, Nita", publisher: "Large Print Press", year: "2022", subjects: ["Fiction", "Mystery", "Large Print"], callPrefix: "LP FIC", format: "large_print" },
+  { title: "Lessons in Chemistry", author: "Garmus, Bonnie", publisher: "Large Print Press", year: "2022", subjects: ["Fiction", "Historical Fiction", "Large Print"], callPrefix: "LP FIC", format: "large_print" },
+  { title: "La casa de los espiritus", author: "Allende, Isabel", publisher: "Plaza & Janes", year: "1982", subjects: ["Fiction", "Spanish Language", "Magical Realism"], callPrefix: "SP FIC", format: "book" },
+  { title: "Cien anos de soledad", author: "Garcia Marquez, Gabriel", publisher: "Editorial Sudamericana", year: "1967", subjects: ["Fiction", "Spanish Language", "Classics"], callPrefix: "SP FIC", format: "book" },
+  { title: "Como agua para chocolate", author: "Esquivel, Laura", publisher: "Doubleday", year: "1989", subjects: ["Fiction", "Spanish Language", "Romance"], callPrefix: "SP FIC", format: "book" },
+  { title: "El alquimista", author: "Coelho, Paulo", publisher: "HarperCollins Espanol", year: "1988", subjects: ["Fiction", "Spanish Language", "Adventure"], callPrefix: "SP FIC", format: "book" },
+  { title: "La sombra del viento", author: "Ruiz Zafon, Carlos", publisher: "Planeta", year: "2001", subjects: ["Fiction", "Spanish Language", "Mystery"], callPrefix: "SP FIC", format: "book" },
+  { title: "The Personal Librarian", author: "Benedict, Marie", publisher: "Large Print Press", year: "2021", subjects: ["Fiction", "Historical Fiction", "Large Print"], callPrefix: "LP FIC", format: "large_print" },
+  { title: "Tomorrow, and Tomorrow, and Tomorrow", author: "Zevin, Gabrielle", publisher: "Large Print Press", year: "2022", subjects: ["Fiction", "Technology", "Large Print"], callPrefix: "LP FIC", format: "large_print" },
+];
+
 async function fetchJson(url, { method = "GET", headers = {}, json, jar, csrfToken, retries = 5 } = {}) {
   const finalHeaders = { ...headers };
   if (jar) {
@@ -241,8 +395,16 @@ async function ensureCatalogSeed({ baseUrl, jar, csrfToken, orgId, forceRecreate
   let firstCopyBarcode = null;
 
   for (let i = 1; i <= bibCount; i++) {
-    const title = `StacksOS Demo Book ${padDigits(i, 3)}`;
+    const entry = DEMO_CATALOG[i - 1] || {
+      title: `Library Collection Item ${padDigits(i, 3)}`,
+      author: "Various Authors",
+      publisher: "General Press",
+      subjects: ["General"],
+      format: "book",
+    };
     const isbn = `978${padDigits(i, 10)}`.slice(0, 13);
+    const pubYear = entry.year || String(2000 + (i % 25));
+    const callPrefix = entry.callPrefix || "FIC";
 
     const created = await fetchJson(`${baseUrl}/api/evergreen/catalog`, {
       method: "POST",
@@ -251,24 +413,25 @@ async function ensureCatalogSeed({ baseUrl, jar, csrfToken, orgId, forceRecreate
       json: {
         action: "create",
         simplified: {
-          title,
-          author: "StacksOS, Demo",
+          title: entry.title,
+          author: entry.author,
           isbn,
-          publisher: "StacksOS Press",
-          pubYear: String(2000 + (i % 25)),
-          subjects: ["StacksOS Demo"],
-          format: "book",
+          publisher: entry.publisher,
+          pubYear,
+          subjects: entry.subjects,
+          format: entry.format || "book",
         },
       },
     });
 
     const bibId = created?.id;
-    if (!bibId) throw new Error(`Failed to create demo bib for ${title}`);
+    if (!bibId) throw new Error(`Failed to create demo bib for ${entry.title}`);
     createdBibIds.push(bibId);
 
     for (let c = 0; c < copiesPerBib; c++) {
       const barcode = String(baseBarcode + copyCounter);
       copyCounter += 1n;
+      const price = entry.format === "dvd" ? 19.99 : entry.format === "audiobook" ? 29.99 : 24.95;
       try {
         const res = await fetchJson(`${baseUrl}/api/evergreen/items`, {
           method: "POST",
@@ -277,7 +440,7 @@ async function ensureCatalogSeed({ baseUrl, jar, csrfToken, orgId, forceRecreate
           json: {
             bibId,
             barcode,
-            callNumber: `DEMO-${padDigits(i, 3)}`,
+            callNumber: `${callPrefix} ${entry.author.split(",")[0].toUpperCase().slice(0, 3)}`,
             circLib: orgId,
             owningLib: orgId,
             locationId: 1,
@@ -285,7 +448,7 @@ async function ensureCatalogSeed({ baseUrl, jar, csrfToken, orgId, forceRecreate
             circulate: true,
             holdable: true,
             opacVisible: true,
-            price: 0,
+            price,
           },
         });
         void res;
@@ -821,16 +984,18 @@ async function main() {
 
   const patronCount = Number(process.env.DEMO_PATRON_COUNT || 10);
   for (let i = 1; i <= patronCount; i++) {
+    const patron = DEMO_PATRONS[i - 1] || { first: "Demo", last: `Patron${i}` };
     const barcode = String(29000000010000 + i).padStart(14, "0");
+    const username = `${patron.first.toLowerCase()}.${patron.last.toLowerCase().replace(/[^a-z]/g, "")}`;
     await ensurePatron({
       baseUrl,
       jar,
       csrfToken,
       orgId,
       barcode,
-      username: `stacksos.demo.patron${i}`,
-      firstName: "Demo",
-      lastName: `Patron${i}`,
+      username,
+      firstName: patron.first,
+      lastName: patron.last,
       pin: demoPatronPin,
     });
   }
