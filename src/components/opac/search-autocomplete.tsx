@@ -24,7 +24,9 @@ import {
   Smartphone,
   Headphones,
   MonitorPlay,
+  X,
 } from "lucide-react";
+import { getRecentSearches, addRecentSearch, clearRecentSearches } from "@/lib/search-history";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -121,12 +123,27 @@ export function SearchAutocomplete({
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [showPopular, setShowPopular] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   const debouncedQuery = useDebounce(query, DEBOUNCE_DELAY_MS);
+
+  // Load recent searches on mount and refresh on focus
+  const refreshRecentSearches = useCallback(() => {
+    setRecentSearches(getRecentSearches());
+  }, []);
+
+  useEffect(() => {
+    refreshRecentSearches();
+  }, [refreshRecentSearches]);
+
+  const handleClearRecent = useCallback(() => {
+    clearRecentSearches();
+    setRecentSearches([]);
+  }, []);
 
   const handleScopeChange = useCallback(
     (newScope: SearchScope) => {
@@ -221,17 +238,33 @@ export function SearchAutocomplete({
   // Group suggestions by match type
   const grouped: SuggestionGroup[] = (() => {
     if (showPopular && suggestions.length === 0 && !query.trim()) {
-      return [
-        {
-          label: "Popular Searches",
-          icon: TrendingUp,
-          items: POPULAR_SEARCHES.map((s, i) => ({
-            id: -(i + 1),
+      const groups: SuggestionGroup[] = [];
+
+      // Recent searches (above popular)
+      if (recentSearches.length > 0) {
+        groups.push({
+          label: "Recent",
+          icon: Clock,
+          items: recentSearches.map((s, i) => ({
+            id: -(1000 + i),
             title: s,
             matchType: "general" as const,
           })),
-        },
-      ];
+        });
+      }
+
+      // Popular searches
+      groups.push({
+        label: "Popular Searches",
+        icon: TrendingUp,
+        items: POPULAR_SEARCHES.map((s, i) => ({
+          id: -(i + 1),
+          title: s,
+          matchType: "general" as const,
+        })),
+      });
+
+      return groups;
     }
 
     const groups: SuggestionGroup[] = [];
@@ -289,6 +322,8 @@ export function SearchAutocomplete({
 
     setIsOpen(false);
     setShowPopular(false);
+    addRecentSearch(trimmed);
+    refreshRecentSearches();
 
     if (onSearch) {
       onSearch(trimmed, scope);
@@ -307,6 +342,8 @@ export function SearchAutocomplete({
 
     if (item.id < 0) {
       setQuery(item.title);
+      addRecentSearch(item.title);
+      refreshRecentSearches();
       const params = new URLSearchParams({ q: item.title });
       if (scope !== "keyword") {
         params.set("type", scope);
@@ -346,6 +383,7 @@ export function SearchAutocomplete({
   };
 
   const handleFocus = () => {
+    refreshRecentSearches();
     if (suggestions.length > 0) {
       setIsOpen(true);
     } else if (!query.trim()) {
@@ -446,6 +484,7 @@ export function SearchAutocomplete({
         <div ref={listRef} id="search-suggestions" role="listbox" className={dropdownClass}>
           {grouped.map((group) => {
             const GroupIcon = group.icon;
+            const isRecentGroup = group.label === "Recent";
             return (
               <div key={group.label}>
                 <div className="flex items-center gap-2 px-4 py-2 bg-muted/40 border-b border-border/50">
@@ -453,6 +492,18 @@ export function SearchAutocomplete({
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     {group.label}
                   </span>
+                  {isRecentGroup && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClearRecent();
+                      }}
+                      className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
                 </div>
 
                 {group.items.map((item) => {
