@@ -564,7 +564,7 @@ export default function OPACHomePage() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-muted-foreground/70 text-sm">{t("contactForHours")}</p>
+                <p className="text-white/60 text-sm">{t("contactForHours")}</p>
               )}
             </div>
 
@@ -577,10 +577,10 @@ export default function OPACHomePage() {
                 </div>
                 <p className="text-white/70 mb-2">{currentLocation.name}</p>
                 {currentLocation.address && (
-                  <p className="text-muted-foreground/70 text-sm">{currentLocation.address}</p>
+                  <p className="text-white/60 text-sm">{currentLocation.address}</p>
                 )}
                 {currentLocation.phone && (
-                  <p className="text-muted-foreground/70 text-sm mt-2">{currentLocation.phone}</p>
+                  <p className="text-white/60 text-sm mt-2">{currentLocation.phone}</p>
                 )}
               </div>
             )}
@@ -620,7 +620,7 @@ export default function OPACHomePage() {
             {/* Get a Card */}
             <div>
               <h3 className="font-semibold text-lg mb-4">{t("getLibraryCard")}</h3>
-              <p className="text-muted-foreground/70 text-sm mb-4">{t("getCardDescription")}</p>
+              <p className="text-white/60 text-sm mb-4">{t("getCardDescription")}</p>
               <Link
                 href="/opac/register"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 
