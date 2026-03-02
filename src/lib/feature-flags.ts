@@ -58,6 +58,7 @@ export const featureFlags = {
 
   // OPAC enhancements
   opacCitationGenerator: true,
+  opacMarcViewer: true,
 
   // Staff charts
   staffCharts: true,

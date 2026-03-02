@@ -52,6 +52,7 @@ import {
 import { useTranslations } from "next-intl";
 import { CitationGenerator } from "@/components/opac/citation-generator";
 import { ShareMenu } from "@/components/opac/share-menu";
+import { MarcViewer } from "@/components/opac/marc-viewer";
 
 interface CopyInfo {
   id: number;
@@ -129,6 +130,7 @@ interface RecordDetail {
   lexileLevel?: string;
   arLevel?: string;
   awards?: string[];
+  marcXml?: string;
 }
 
 const formatIcons: Record<string, React.ElementType> = {
@@ -260,6 +262,7 @@ export default function RecordDetailPage() {
         lexileLevel: rec.lexile,
         arLevel: rec.ar_level,
         awards: rec.awards || [],
+        marcXml: rec.marcXml || rec.marc_xml || data.marc_xml,
       };
 
       try {
@@ -811,6 +814,11 @@ export default function RecordDetailPage() {
                 </Button>
               )}
             </div>
+
+            {/* MARC record viewer */}
+            {featureFlags.opacMarcViewer && record.marcXml && (
+              <MarcViewer marcXml={record.marcXml} />
+            )}
 
             {/* Related titles */}
             {record.relatedTitles && record.relatedTitles.length > 0 && (
