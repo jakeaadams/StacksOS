@@ -23,6 +23,7 @@ import {
   Printer,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { printHtml, escapeHtml } from "@/lib/print";
 
 interface CheckedOutItem {
   id: number;
@@ -232,7 +233,39 @@ export default function SelfCheckoutPage() {
 
   // Print receipt
   const handlePrintReceipt = () => {
-    window.print();
+    const patronName = escapeHtml(patron?.name ?? "Patron");
+    const patronBarcode = escapeHtml(patron?.barcode ?? "");
+    const now = new Date().toLocaleString();
+
+    const rows = checkedOutItems
+      .map(
+        (item) =>
+          `<tr>
+            <td>${escapeHtml(item.title)}</td>
+            <td>${escapeHtml(item.author ?? "")}</td>
+            <td class="mono">${escapeHtml(item.barcode)}</td>
+            <td class="right">${escapeHtml(item.dueDate)}</td>
+          </tr>`
+      )
+      .join("\n");
+
+    const html = `
+      <h1 class="brand">Self-Checkout Receipt</h1>
+      <p class="muted">${escapeHtml(now)}</p>
+      <div class="meta" style="margin-bottom:12px;">
+        <span><span class="k">Patron:</span> <span class="v">${patronName}</span></span>
+        <span><span class="k">Barcode:</span> <span class="v mono">${patronBarcode}</span></span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Title</th><th>Author</th><th>Barcode</th><th class="right">Due Date</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p class="muted" style="margin-top:16px;">Items checked out: ${checkedOutItems.length}</p>
+    `;
+
+    printHtml(html, { title: "Self-Checkout Receipt", tone: "receipt" });
     toast.success("Receipt sent to printer");
   };
 

@@ -9,6 +9,7 @@ import { useCallback, useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
 import { fetchWithAuth } from "@/lib/client-fetch";
+import { printHtml, escapeHtml } from "@/lib/print";
 
 import {
   PatronCard,
@@ -39,6 +40,28 @@ import {
   UserPlus,
 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
+
+/** Shape of a single circulation item returned by the Evergreen API. */
+interface CirculationItem {
+  id?: number;
+  barcode?: string;
+  title?: string;
+  author?: string;
+  callNumber?: string;
+  dueDate?: string;
+  renewals?: number;
+  maxRenewals?: number;
+  isOverdue?: boolean;
+}
+
+/** Response shape from GET /api/evergreen/circulation. */
+interface CheckoutsResponse {
+  ok: boolean;
+  checkouts?: {
+    out?: CirculationItem[];
+    overdue?: CirculationItem[];
+  };
+}
 
 interface CheckoutItem {
   id: number;
@@ -82,11 +105,14 @@ export default function RenewPage() {
     if (patron) {
       fetchWithAuth("/api/evergreen/circulation?patron_id=" + patron.id)
         .then((res) => res.json())
-        .then((data) => {
+        .then((data: CheckoutsResponse) => {
           if (data.ok && data.checkouts) {
-            const items = [...(data.checkouts.out || []), ...(data.checkouts.overdue || [])];
+            const items: CirculationItem[] = [
+              ...(data.checkouts.out || []),
+              ...(data.checkouts.overdue || []),
+            ];
             setCheckouts(
-              items.map((item: any, idx: number) => ({
+              items.map((item: CirculationItem, idx: number) => ({
                 id: item.id || idx,
                 barcode: item.barcode || "",
                 title: item.title || "Unknown",
@@ -111,9 +137,7 @@ export default function RenewPage() {
 
   const toggleSelection = useCallback((id: number) => {
     setCheckouts((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, selected: !item.selected } : item
-      )
+      prev.map((item) => (item.id === id ? { ...item, selected: !item.selected } : item))
     );
   }, []);
 
@@ -124,16 +148,15 @@ export default function RenewPage() {
     });
   }, []);
 
-  const renewSelected = async () => {
-    const selected = checkouts.filter((i) => i.selected);
+  const renewSelected = async (overrideItems?: CheckoutItem[]) => {
+    const items = overrideItems || checkouts;
+    const selected = items.filter((i) => i.selected);
     if (selected.length === 0 || !patron) return;
 
     setIsRenewing(true);
 
     setCheckouts((prev) =>
-      prev.map((item) =>
-        item.selected ? { ...item, renewStatus: "pending" as const } : item
-      )
+      prev.map((item) => (item.selected ? { ...item, renewStatus: "pending" as const } : item))
     );
 
     for (const item of selected) {
@@ -193,8 +216,9 @@ export default function RenewPage() {
   };
 
   const renewAll = async () => {
-    setCheckouts((prev) => prev.map((item) => ({ ...item, selected: true })));
-    setTimeout(renewSelected, 100);
+    const allSelected = checkouts.map((item) => ({ ...item, selected: true }));
+    setCheckouts(allSelected);
+    await renewSelected(allSelected);
   };
 
   const handleNewSession = useCallback(() => {
@@ -203,10 +227,57 @@ export default function RenewPage() {
     patronInputRef.current?.focus();
   }, [clearPatron]);
 
+  const handlePrint = useCallback(() => {
+    if (!patron) {
+      toast.message("Select a patron first");
+      return;
+    }
+
+    const renewed = checkouts.filter((i) => i.renewStatus === "success");
+    const items = renewed.length > 0 ? renewed : checkouts;
+    const heading = renewed.length > 0 ? "Renewed Items" : "Current Checkouts";
+
+    const rows = items
+      .map(
+        (i) =>
+          `<tr>
+            <td>${escapeHtml(i.title)}</td>
+            <td class="mono">${escapeHtml(i.barcode)}</td>
+            <td>${escapeHtml(i.newDueDate || i.dueDate)}</td>
+            <td>${
+              i.renewStatus === "success"
+                ? "Renewed"
+                : i.renewStatus === "error"
+                  ? "Failed"
+                  : i.isOverdue
+                    ? "Overdue"
+                    : "Active"
+            }</td>
+          </tr>`
+      )
+      .join("");
+
+    const html = `
+      <h1 class="brand">Renewal Summary</h1>
+      <div class="meta">
+        <span><span class="k">Patron:</span> <span class="v">${escapeHtml(patron.displayName)}</span></span>
+        <span><span class="k">Barcode:</span> <span class="v mono">${escapeHtml(patron.barcode)}</span></span>
+        <span><span class="k">Date:</span> <span class="v">${new Date().toLocaleDateString()}</span></span>
+      </div>
+      <h2>${escapeHtml(heading)}</h2>
+      <table>
+        <thead><tr><th>Title</th><th>Barcode</th><th>Due Date</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+
+    printHtml(html, { title: "Renewal Summary", tone: "receipt" });
+  }, [patron, checkouts]);
+
   useKeyboardShortcuts([
     { key: "Escape", handler: handleNewSession },
     { key: "a", ctrl: true, handler: selectAll, preventDefault: true },
-    { key: "r", ctrl: true, handler: renewSelected, preventDefault: true },
+    { key: "r", ctrl: true, handler: () => renewSelected(), preventDefault: true },
   ]);
 
   const selectedCount = checkouts.filter((i) => i.selected).length;
@@ -303,16 +374,36 @@ export default function RenewPage() {
         subtitle="Review a patron’s checkouts and renew what’s eligible."
         breadcrumbs={[{ label: "Circulation" }, { label: "Renew" }]}
         actions={[
-          { label: "New Patron", onClick: handleNewSession, icon: UserPlus, shortcut: { key: "Escape" } },
-          { label: `Renew Selected (${selectedCount})`, onClick: renewSelected, icon: RotateCcw, shortcut: { key: "r", ctrl: true }, disabled: selectedCount === 0 || isRenewing },
-          { label: "Renew All", onClick: renewAll, icon: RotateCcw, disabled: checkouts.length === 0 || isRenewing },
-          { label: "Print", onClick: () => window.print(), icon: Printer },
+          {
+            label: "New Patron",
+            onClick: handleNewSession,
+            icon: UserPlus,
+            shortcut: { key: "Escape" },
+          },
+          {
+            label: `Renew Selected (${selectedCount})`,
+            onClick: renewSelected,
+            icon: RotateCcw,
+            shortcut: { key: "r", ctrl: true },
+            disabled: selectedCount === 0 || isRenewing,
+          },
+          {
+            label: "Renew All",
+            onClick: renewAll,
+            icon: RotateCcw,
+            disabled: checkouts.length === 0 || isRenewing,
+          },
+          { label: "Print", onClick: handlePrint, icon: Printer },
         ]}
       >
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary" className="rounded-full">{checkouts.length} checkouts</Badge>
+          <Badge variant="secondary" className="rounded-full">
+            {checkouts.length} checkouts
+          </Badge>
           {overdueCount > 0 && (
-            <Badge variant="destructive" className="rounded-full">{overdueCount} overdue</Badge>
+            <Badge variant="destructive" className="rounded-full">
+              {overdueCount} overdue
+            </Badge>
           )}
         </div>
       </PageHeader>
@@ -351,7 +442,9 @@ export default function RenewPage() {
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Renewal Summary</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Renewal Summary
+                  </p>
                   <h3 className="text-2xl font-semibold mt-1">{selectedCount}</h3>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-[hsl(var(--brand-1))]/10 flex items-center justify-center text-[hsl(var(--brand-1))]">
@@ -390,7 +483,9 @@ export default function RenewPage() {
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               Current Checkouts
             </h3>
-            <Badge variant="secondary" className="rounded-full">{checkouts.length} items</Badge>
+            <Badge variant="secondary" className="rounded-full">
+              {checkouts.length} items
+            </Badge>
           </div>
 
           <DataTable

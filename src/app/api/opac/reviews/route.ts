@@ -11,6 +11,15 @@ import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
+import {
+  getReviews,
+  setReviews,
+  getNextId,
+  deleteReview,
+  findReviewById,
+  persistChanges,
+} from "@/lib/reviews-store";
+import type { Review } from "@/lib/reviews-store";
 
 /**
  * OPAC Reviews API
@@ -18,32 +27,9 @@ import { z } from "zod";
  *
  * NOTE: Evergreen does not have a native reviews system, so this implementation
  * uses a custom approach with patron notes or a separate database table.
- * For now, we use a simplified in-memory/localStorage approach that can
- * be replaced with a proper database later.
+ * Reviews are persisted to a JSON file on disk (configurable via
+ * REVIEWS_STORE_PATH env var, default .data/reviews.json).
  */
-
-interface Review {
-  id: number;
-  bibId: number;
-  patronId: number;
-  patronName: string;
-  rating: number;
-  title?: string;
-  text?: string;
-  createdAt: string;
-  helpful: number;
-  verified: boolean;
-  reported: boolean;
-}
-
-// In production, this would be stored in a database
-// For now, we use a Map that persists during server runtime
-const reviewsStore = new Map<number, Review[]>();
-let nextReviewId = 1;
-
-function getReviewsForBib(bibId: number): Review[] {
-  return reviewsStore.get(bibId) || [];
-}
 
 function calculateStats(reviews: Review[]) {
   if (reviews.length === 0) {
@@ -104,7 +90,8 @@ export async function GET(req: NextRequest) {
     }
 
     const bibIdNum = parseInt(bibId, 10);
-    const reviews = getReviewsForBib(bibIdNum).filter((r) => !r.reported);
+    const allBibReviews = await getReviews(bibIdNum);
+    const reviews = allBibReviews.filter((r) => !r.reported);
 
     // Sort reviews
     const sortedReviews = [...reviews];
@@ -152,7 +139,7 @@ export async function POST(req: NextRequest) {
     // Require patron authentication
     let patronToken: string;
     let patronId: number;
-    let user: any;
+    let user: { first_given_name?: string; family_name?: string };
     try {
       ({ patronToken, patronId, user } = await requirePatronSession());
     } catch (error) {
@@ -181,7 +168,7 @@ export async function POST(req: NextRequest) {
     const bibIdNum = parseInt(bibId, 10);
 
     // Check if patron already reviewed this item
-    const existingReviews = getReviewsForBib(bibIdNum);
+    const existingReviews = await getReviews(bibIdNum);
     if (existingReviews.some((r) => r.patronId === patronId)) {
       return errorResponse("You have already reviewed this item", 400);
     }
@@ -198,8 +185,9 @@ export async function POST(req: NextRequest) {
       // Continue without verification
     }
 
+    const reviewId = await getNextId();
     const review: Review = {
-      id: nextReviewId++,
+      id: reviewId,
       bibId: bibIdNum,
       patronId,
       patronName,
@@ -213,9 +201,9 @@ export async function POST(req: NextRequest) {
     };
 
     // Store review
-    const bibReviews = reviewsStore.get(bibIdNum) || [];
+    const bibReviews = await getReviews(bibIdNum);
     bibReviews.push(review);
-    reviewsStore.set(bibIdNum, bibReviews);
+    await setReviews(bibIdNum, bibReviews);
 
     return successResponse({ review });
   } catch (error) {
@@ -245,29 +233,23 @@ export async function PUT(req: NextRequest) {
     }
 
     // Find the review across all bibs
-    let foundReview: Review | null = null;
-    let foundBibId: number | null = null;
+    const found = await findReviewById(reviewId);
 
-    for (const [bibId, reviews] of reviewsStore.entries()) {
-      const review = reviews.find((r) => r.id === reviewId);
-      if (review) {
-        foundReview = review;
-        foundBibId = bibId;
-        break;
-      }
-    }
-
-    if (!foundReview || foundBibId === null) {
+    if (!found) {
       return errorResponse("Review not found", 404);
     }
 
+    const { review: foundReview } = found;
+
     if (action === "helpful") {
       foundReview.helpful += 1;
+      await persistChanges();
       return successResponse({ helpful: foundReview.helpful });
     }
 
     if (action === "report") {
       foundReview.reported = true;
+      await persistChanges();
       return successResponse({ reported: true });
     }
 
@@ -300,25 +282,19 @@ export async function DELETE(req: NextRequest) {
 
     const reviewIdNum = parseInt(reviewId, 10);
 
-    // Find and delete the review
-    for (const [bibId, reviews] of reviewsStore.entries()) {
-      const reviewIndex = reviews.findIndex((r) => r.id === reviewIdNum);
-      if (reviewIndex !== -1) {
-        const review = reviews[reviewIndex]!;
-
-        // Only allow deletion by the review owner
-        if (review.patronId !== patronId) {
-          return errorResponse("You can only delete your own reviews", 403);
-        }
-
-        reviews.splice(reviewIndex, 1);
-        reviewsStore.set(bibId, reviews);
-
-        return successResponse({ deleted: true });
-      }
+    // Find the review first to check ownership
+    const found = await findReviewById(reviewIdNum);
+    if (!found) {
+      return errorResponse("Review not found", 404);
     }
 
-    return errorResponse("Review not found", 404);
+    // Only allow deletion by the review owner
+    if (found.review.patronId !== patronId) {
+      return errorResponse("You can only delete your own reviews", 403);
+    }
+
+    await deleteReview(found.bibId, reviewIdNum);
+    return successResponse({ deleted: true });
   } catch (error) {
     return serverErrorResponse(error, "Reviews DELETE", req);
   }

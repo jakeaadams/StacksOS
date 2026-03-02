@@ -6,6 +6,9 @@ import Link from "next/link";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { CreditCard, CheckCircle, Loader2, ArrowLeft, Calendar, Receipt } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+import { fetchWithAuth } from "@/lib/client-fetch";
+import { Button } from "@/components/ui/button";
 
 export default function FinesPage() {
   const _t = useTranslations("finesPage");
@@ -14,6 +17,7 @@ export default function FinesPage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFines, setSelectedFines] = useState<number[]>([]);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   useEffect(() => {
     if (!sessionLoading && !isLoggedIn) {
@@ -52,6 +56,29 @@ export default function FinesPage() {
       setSelectedFines([]);
     } else {
       setSelectedFines(unpaidFines.map((f) => f.id));
+    }
+  };
+
+  const handlePayment = async () => {
+    if (isProcessingPayment || selectedFines.length === 0) return;
+    setIsProcessingPayment(true);
+    try {
+      await fetchWithAuth("/api/opac/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: selectedTotal,
+          fineIds: selectedFines,
+          description: "Fine payment",
+        }),
+      });
+      toast.success("Payment submitted successfully. Your fines are being processed.");
+      setSelectedFines([]);
+      await fetchFines();
+    } catch (_error) {
+      toast.error("Payment failed. Please try again or contact the library for assistance.");
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -94,16 +121,21 @@ export default function FinesPage() {
                     ? `${selectedFines.length} selected: $${selectedTotal.toFixed(2)}`
                     : "Select items to pay"}
                 </p>
-                <button
+                <Button
                   type="button"
-                  disabled={selectedFines.length === 0}
-                  className="px-6 py-3 stx-action-primary rounded-lg font-medium
-                           hover:brightness-110 transition-colors disabled:opacity-50 
-                           disabled:cursor-not-allowed flex items-center gap-2"
+                  disabled={selectedFines.length === 0 || isProcessingPayment}
+                  onClick={handlePayment}
+                  className="px-6 py-3 font-medium flex items-center gap-2"
                 >
-                  <CreditCard className="h-5 w-5" />
-                  Pay {selectedFines.length > 0 ? `$${selectedTotal.toFixed(2)}` : "Now"}
-                </button>
+                  {isProcessingPayment ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <CreditCard className="h-5 w-5" />
+                  )}
+                  {isProcessingPayment
+                    ? "Processing..."
+                    : `Pay ${selectedFines.length > 0 ? `$${selectedTotal.toFixed(2)}` : "Now"}`}
+                </Button>
               </div>
             )}
           </div>

@@ -20,12 +20,19 @@ export const clientLogger = {
     if (isProd()) return;
     console.info(...args);
   },
+  // Future: send errors to ingestion endpoint
   warn: (...args: unknown[]) => {
-    if (isProd()) return;
+    if (isProd()) {
+      console.warn(...args);
+      return;
+    }
     console.warn(...args);
   },
   error: (...args: unknown[]) => {
-    if (isProd()) return;
+    if (isProd()) {
+      console.error(...args);
+      return;
+    }
     console.error(...args);
   },
 };

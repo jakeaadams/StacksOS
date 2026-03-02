@@ -4,19 +4,8 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import {
-  PageContainer,
-  PageHeader,
-  PageContent,
-  ConfirmDialog,
-} from "@/components/shared";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { PageContainer, PageHeader, PageContent, ConfirmDialog } from "@/components/shared";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -54,6 +43,37 @@ import {
 // ============================================================================
 // Types
 // ============================================================================
+
+/** Raw workstation entry from Evergreen: either an object or a tuple [id, name]. */
+type RawWorkstation = { id: number | string; name: string } | unknown[];
+
+interface Workstation {
+  id: number | string;
+  name: string;
+}
+
+function normalizeWorkstation(ws: RawWorkstation): Workstation {
+  if (Array.isArray(ws)) {
+    return { id: ws[0] as number | string, name: ws[1] as string };
+  }
+  return { id: ws.id, name: ws.name };
+}
+
+interface WorkstationResponse {
+  workstations?: RawWorkstation[];
+}
+
+interface StaffSession {
+  id: string;
+  revoked_at: string | null;
+  last_seen_at: string | null;
+  ip: string | null;
+  user_agent: string | null;
+}
+
+interface SessionResponse {
+  sessions?: StaffSession[];
+}
 
 interface UserSettings {
   // Display settings
@@ -130,10 +150,8 @@ function SettingRow({ label, description, children }: SettingRowProps) {
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="space-y-0.5">
-        <Label htmlFor="label" className="text-sm font-medium">{label}</Label>
-        {description && (
-          <p className="text-xs text-muted-foreground">{description}</p>
-        )}
+        <Label className="text-sm font-medium">{label}</Label>
+        {description && <p className="text-xs text-muted-foreground">{description}</p>}
       </div>
       <div className="shrink-0">{children}</div>
     </div>
@@ -150,17 +168,25 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [revokeConfirm, setRevokeConfirm] = useState<{ open: boolean; sessionId: string }>({ open: false, sessionId: "" });
+  const [revokeConfirm, setRevokeConfirm] = useState<{ open: boolean; sessionId: string }>({
+    open: false,
+    sessionId: "",
+  });
 
   // Fetch workstations for the dropdown
-  const { data: workstationData } = useApi<any>(
+  const { data: workstationData } = useApi<WorkstationResponse>(
     user?.homeLibraryId ? `/api/evergreen/workstations?org_id=${user.homeLibraryId}` : null,
     { immediate: !!user?.homeLibraryId }
   );
-  const { data: sessionData, refetch: refetchSessions } = useApi<any>("/api/security/sessions", { immediate: true });
+  const { data: sessionData, refetch: refetchSessions } = useApi<SessionResponse>(
+    "/api/security/sessions",
+    { immediate: true }
+  );
 
-  const workstations = workstationData?.workstations || [];
-  const sessions = Array.isArray(sessionData?.sessions) ? sessionData.sessions : [];
+  const workstations: Workstation[] = (workstationData?.workstations || []).map(
+    normalizeWorkstation
+  );
+  const sessions: StaffSession[] = Array.isArray(sessionData?.sessions) ? sessionData.sessions : [];
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -203,13 +229,13 @@ export default function SettingsPage() {
   }, [settings.theme]);
 
   // Update a setting
-  const updateSetting = useCallback(<K extends keyof UserSettings>(
-    key: K,
-    value: UserSettings[K]
-  ) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
-    setHasChanges(true);
-  }, []);
+  const updateSetting = useCallback(
+    <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
+      setSettings((prev) => ({ ...prev, [key]: value }));
+      setHasChanges(true);
+    },
+    []
+  );
 
   // Save settings to localStorage
   const saveSettings = useCallback(async () => {
@@ -217,14 +243,14 @@ export default function SettingsPage() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 
-	      // Also try to save to Evergreen API if available
-	      try {
-	        const response = await fetchWithAuth("/api/evergreen/user-settings", {
-	          method: "POST",
-	          headers: { "Content-Type": "application/json" },
-	          body: JSON.stringify({
-	            settings: {
-	              "stacksos.preferences.theme": settings.theme,
+      // Also try to save to Evergreen API if available
+      try {
+        const response = await fetchWithAuth("/api/evergreen/user-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            settings: {
+              "stacksos.preferences.theme": settings.theme,
               "stacksos.preferences.density": settings.density,
               "stacksos.preferences.search": {
                 scope: settings.defaultSearchScope,
@@ -239,8 +265,8 @@ export default function SettingsPage() {
           }),
         });
 
-        if (response.ok) {
-          toast.success("Settings saved to Evergreen");
+        if (!response.ok) {
+          clientLogger.warn("Evergreen settings sync returned non-OK");
         }
       } catch {
         // Silently fail Evergreen sync - localStorage is the primary store
@@ -284,10 +310,7 @@ export default function SettingsPage() {
       <PageHeader
         title="User Settings"
         subtitle="Customize your StacksOS experience"
-        breadcrumbs={[
-          { label: "Dashboard", href: "/staff" },
-          { label: "Settings" },
-        ]}
+        breadcrumbs={[{ label: "Dashboard", href: "/staff" }, { label: "Settings" }]}
         actions={[
           {
             label: "Reset to Defaults",
@@ -312,10 +335,7 @@ export default function SettingsPage() {
             title="Display"
             description="Appearance and layout preferences"
           >
-            <SettingRow
-              label="Theme"
-              description="Choose your preferred color scheme"
-            >
+            <SettingRow label="Theme" description="Choose your preferred color scheme">
               <Select
                 value={settings.theme}
                 onValueChange={(value) => updateSetting("theme", value as UserSettings["theme"])}
@@ -354,7 +374,9 @@ export default function SettingsPage() {
             >
               <Select
                 value={settings.density}
-                onValueChange={(value) => updateSetting("density", value as UserSettings["density"])}
+                onValueChange={(value) =>
+                  updateSetting("density", value as UserSettings["density"])
+                }
               >
                 <SelectTrigger className="w-[140px]">
                   <SelectValue />
@@ -389,13 +411,12 @@ export default function SettingsPage() {
             title="Search"
             description="Customize search behavior and defaults"
           >
-            <SettingRow
-              label="Default Search Scope"
-              description="Where to search by default"
-            >
+            <SettingRow label="Default Search Scope" description="Where to search by default">
               <Select
                 value={settings.defaultSearchScope}
-                onValueChange={(value) => updateSetting("defaultSearchScope", value as UserSettings["defaultSearchScope"])}
+                onValueChange={(value) =>
+                  updateSetting("defaultSearchScope", value as UserSettings["defaultSearchScope"])
+                }
               >
                 <SelectTrigger className="w-[140px]">
                   <SelectValue />
@@ -411,10 +432,7 @@ export default function SettingsPage() {
 
             <Separator />
 
-            <SettingRow
-              label="Results Per Page"
-              description="Number of results to display"
-            >
+            <SettingRow label="Results Per Page" description="Number of results to display">
               <Select
                 value={String(settings.resultsPerPage)}
                 onValueChange={(value) => updateSetting("resultsPerPage", Number(value))}
@@ -433,10 +451,7 @@ export default function SettingsPage() {
 
             <Separator />
 
-            <SettingRow
-              label="Auto-Suggest"
-              description="Show suggestions while typing"
-            >
+            <SettingRow label="Auto-Suggest" description="Show suggestions while typing">
               <Switch
                 checked={settings.autoSuggest}
                 onCheckedChange={(checked) => updateSetting("autoSuggest", checked)}
@@ -477,11 +492,7 @@ export default function SettingsPage() {
                     onCheckedChange={(checked) => updateSetting("desktopNotifications", checked)}
                   />
                 ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={requestNotificationPermission}
-                  >
+                  <Button variant="outline" size="sm" onClick={requestNotificationPermission}>
                     Enable
                   </Button>
                 )}
@@ -509,28 +520,17 @@ export default function SettingsPage() {
 
             <Separator />
 
-            <SettingRow
-              label="Home Library"
-              description="Your assigned library location"
-            >
-              <span className="text-sm font-medium">
-                {user?.homeLibrary || "Not set"}
-              </span>
+            <SettingRow label="Home Library" description="Your assigned library location">
+              <span className="text-sm font-medium">{user?.homeLibrary || "Not set"}</span>
             </SettingRow>
 
             <Separator />
 
             <SettingRow
               label="Active Organization"
-              description="Currently selected organization unit"
+              description="Organization switching is managed by your system administrator"
             >
-              <Select
-                value={String(user?.activeOrgId || "")}
-                onValueChange={(_value) => {
-                  // In a full implementation, this would update the active org
-                  toast.info("Organization switching will be available in a future update");
-                }}
-              >
+              <Select value={String(user?.activeOrgId || "")} disabled>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Select organization" />
                 </SelectTrigger>
@@ -554,10 +554,10 @@ export default function SettingsPage() {
                   <Select
                     value={settings.workstationId}
                     onValueChange={(value) => {
-                      const ws = workstations.find((w: any) => String(w.id || w[0]) === value);
+                      const ws = workstations.find((w) => String(w.id) === value);
                       if (ws) {
                         updateSetting("workstationId", value);
-                        updateSetting("workstationName", ws.name || ws[1]);
+                        updateSetting("workstationName", ws.name);
                         toast.info("Workstation change requires re-login to take effect");
                       }
                     }}
@@ -566,15 +566,11 @@ export default function SettingsPage() {
                       <SelectValue placeholder="Select workstation" />
                     </SelectTrigger>
                     <SelectContent>
-                      {workstations.map((ws: any) => {
-                        const id = ws.id || ws[0];
-                        const name = ws.name || ws[1];
-                        return (
-                          <SelectItem key={id} value={String(id)}>
-                            {name}
-                          </SelectItem>
-                        );
-                      })}
+                      {workstations.map((ws) => (
+                        <SelectItem key={String(ws.id)} value={String(ws.id)}>
+                          {ws.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </SettingRow>
@@ -589,7 +585,9 @@ export default function SettingsPage() {
             description="Session activity, device list, and revocation controls"
           >
             <div className="text-sm text-muted-foreground">
-              Idle timeout is enforced by the server (configured by `STACKSOS_IDLE_TIMEOUT_MINUTES`). If your session is revoked or expires, you will be prompted to log in again.
+              Idle timeout is enforced by the server (configured by
+              `STACKSOS_IDLE_TIMEOUT_MINUTES`). If your session is revoked or expires, you will be
+              prompted to log in again.
             </div>
 
             <Separator />
@@ -597,8 +595,12 @@ export default function SettingsPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="active-sessions" className="text-sm font-medium">Active sessions</Label>
-                  <p className="text-xs text-muted-foreground">Devices and browsers that have used this account recently.</p>
+                  <Label htmlFor="active-sessions" className="text-sm font-medium">
+                    Active sessions
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Devices and browsers that have used this account recently.
+                  </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => void refetchSessions()}>
                   Refresh
@@ -609,7 +611,7 @@ export default function SettingsPage() {
                 <div className="text-sm text-muted-foreground">No session records yet.</div>
               ) : (
                 <div className="space-y-2">
-                  {sessions.map((s: any) => (
+                  {sessions.map((s) => (
                     <div key={s.id} className="rounded-lg border p-3 flex items-start gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -621,11 +623,14 @@ export default function SettingsPage() {
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          Last seen: {s.last_seen_at ? new Date(s.last_seen_at).toLocaleString() : "—"}
+                          Last seen:{" "}
+                          {s.last_seen_at ? new Date(s.last_seen_at).toLocaleString() : "—"}
                           {s.ip ? ` • IP: ${s.ip}` : ""}
                         </div>
                         {s.user_agent ? (
-                          <div className="text-xs text-muted-foreground mt-1 truncate">{s.user_agent}</div>
+                          <div className="text-xs text-muted-foreground mt-1 truncate">
+                            {s.user_agent}
+                          </div>
                         ) : null}
                       </div>
 
@@ -651,9 +656,7 @@ export default function SettingsPage() {
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
             <Card className="shadow-lg border-primary/20">
               <CardContent className="flex items-center gap-4 p-4">
-                <p className="text-sm text-muted-foreground">
-                  You have unsaved changes
-                </p>
+                <p className="text-sm text-muted-foreground">You have unsaved changes</p>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -671,11 +674,7 @@ export default function SettingsPage() {
                   >
                     Discard
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={saveSettings}
-                    disabled={isSaving}
-                  >
+                  <Button size="sm" onClick={saveSettings} disabled={isSaving}>
                     {isSaving ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>

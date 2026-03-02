@@ -16,7 +16,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { fetchWithAuth } from "@/lib/client-fetch";
 
-
 export class ApiError extends Error {
   status: number;
   details?: unknown;
@@ -32,7 +31,7 @@ export class ApiError extends Error {
 function toApiError(response: Response, json: any): ApiError {
   const message =
     (json && typeof json === "object" && typeof json.error === "string" && json.error) ||
-    ("HTTP " + response.status + ": " + response.statusText);
+    "HTTP " + response.status + ": " + response.statusText;
 
   const details = json && typeof json === "object" ? json.details : undefined;
   return new ApiError(message, response.status, details);
@@ -82,9 +81,7 @@ export interface UseApiReturn<T> extends ApiState<T> {
 }
 
 // Request cache for deduplication
-type CachedResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: Error };
+type CachedResult<T> = { ok: true; data: T } | { ok: false; error: Error };
 
 const requestCache = new Map<string, Promise<CachedResult<any>>>();
 
@@ -157,7 +154,7 @@ export function useApi<T = unknown>(
     if (!inflight) {
       const createRequest = async (): Promise<CachedResult<T>> => {
         try {
-          const response = await fetch(url, {
+          const response = await fetchWithAuth(url, {
             credentials: "include",
             headers: {
               "Content-Type": "application/json",
@@ -355,94 +352,91 @@ export function useMutation<T = any, TVariables = any>(
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
-  const mutateAsync = useCallback(
-    async (url: string, variables: TVariables): Promise<T> => {
-      // Call onMutate - can cancel by returning false
-      if (optionsRef.current.onMutate?.(variables) === false) {
-        throw new Error("Mutation cancelled");
-      }
+  const mutateAsync = useCallback(async (url: string, variables: TVariables): Promise<T> => {
+    // Call onMutate - can cancel by returning false
+    if (optionsRef.current.onMutate?.(variables) === false) {
+      throw new Error("Mutation cancelled");
+    }
 
-      setState({ data: null, error: null, isLoading: true });
+    setState({ data: null, error: null, isLoading: true });
 
-      try {
-        const requestId = createRequestId();
-        const idempotencyKey = requestId;
-        const baseTimeoutMs = 15000;
-        const safeRetry = url.includes("/api/evergreen/circulation");
+    try {
+      const requestId = createRequestId();
+      const idempotencyKey = requestId;
+      const baseTimeoutMs = 15000;
+      const safeRetry = url.includes("/api/evergreen/circulation");
 
-        let attempt = 0;
-        let timeoutMs = baseTimeoutMs;
+      let attempt = 0;
+      let timeoutMs = baseTimeoutMs;
 
-        while (true) {
-          attempt += 1;
-          const controller = new AbortController();
-          let timedOut = false;
-          const timer = setTimeout(() => {
-            timedOut = true;
-            controller.abort();
-	          }, timeoutMs);
+      while (true) {
+        attempt += 1;
+        const controller = new AbortController();
+        let timedOut = false;
+        const timer = setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, timeoutMs);
 
-	          try {
-	            const response = await fetchWithAuth(url, {
-	              method: "POST",
-	              headers: {
-	                "Content-Type": "application/json",
-	                "x-request-id": requestId,
-	                "x-idempotency-key": idempotencyKey,
-              },
-              body: JSON.stringify(variables),
-              signal: controller.signal,
-            });
+        try {
+          const response = await fetchWithAuth(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-request-id": requestId,
+              "x-idempotency-key": idempotencyKey,
+            },
+            body: JSON.stringify(variables),
+            signal: controller.signal,
+          });
 
-            const json = await safeParseJson(response);
+          const json = await safeParseJson(response);
 
-            if (response.status === 401) {
-              notifyAuthExpired();
-            }
-
-            if (!response.ok || (json && json.ok === false)) {
-              throw toApiError(response, json);
-            }
-
-            if (json === null) {
-              throw new ApiError("Invalid JSON response", response.status);
-            }
-
-            setState({ data: json, error: null, isLoading: false });
-            optionsRef.current.onSuccess?.(json, variables);
-            optionsRef.current.onSettled?.(json, null, variables);
-            return json;
-          } catch (err) {
-            if (timedOut) {
-              // Retry once (circulation endpoints are protected by server idempotency).
-              if (safeRetry && attempt === 1) {
-                timeoutMs = Math.min(timeoutMs * 2, 60000);
-                continue;
-              }
-
-              throw new ApiError("Request timed out. Safe to retry.", 408, {
-                requestId,
-                idempotencyKey,
-                timeoutMs,
-                attempt,
-              });
-            }
-
-            throw err;
-          } finally {
-            clearTimeout(timer);
+          if (response.status === 401) {
+            notifyAuthExpired();
           }
+
+          if (!response.ok || (json && json.ok === false)) {
+            throw toApiError(response, json);
+          }
+
+          if (json === null) {
+            throw new ApiError("Invalid JSON response", response.status);
+          }
+
+          setState({ data: json, error: null, isLoading: false });
+          optionsRef.current.onSuccess?.(json, variables);
+          optionsRef.current.onSettled?.(json, null, variables);
+          return json;
+        } catch (err) {
+          if (timedOut) {
+            // Retry once (circulation endpoints are protected by server idempotency).
+            if (safeRetry && attempt === 1) {
+              timeoutMs = Math.min(timeoutMs * 2, 60000);
+              continue;
+            }
+
+            throw new ApiError("Request timed out. Safe to retry.", 408, {
+              requestId,
+              idempotencyKey,
+              timeoutMs,
+              attempt,
+            });
+          }
+
+          throw err;
+        } finally {
+          clearTimeout(timer);
         }
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error(String(err));
-        setState({ data: null, error, isLoading: false });
-        optionsRef.current.onError?.(error, variables);
-        optionsRef.current.onSettled?.(null, error, variables);
-        throw error;
       }
-    },
-    []
-  );
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setState({ data: null, error, isLoading: false });
+      optionsRef.current.onError?.(error, variables);
+      optionsRef.current.onSettled?.(null, error, variables);
+      throw error;
+    }
+  }, []);
 
   const mutate = useCallback(
     async (url: string, variables: TVariables): Promise<T | null> => {

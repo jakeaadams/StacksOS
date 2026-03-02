@@ -483,12 +483,8 @@ export default function AllocationsPage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="funding-source">Funding Source *</Label>
-              <Select
-                id="funding-source"
-                value={allocFundingSourceId}
-                onValueChange={setAllocFundingSourceId}
-              >
-                <SelectTrigger>
+              <Select value={allocFundingSourceId} onValueChange={setAllocFundingSourceId}>
+                <SelectTrigger id="funding-source">
                   <SelectValue placeholder="Select funding source" />
                 </SelectTrigger>
                 <SelectContent>
@@ -508,8 +504,8 @@ export default function AllocationsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="fund">Fund *</Label>
-              <Select id="fund" value={allocFundId} onValueChange={setAllocFundId}>
-                <SelectTrigger>
+              <Select value={allocFundId} onValueChange={setAllocFundId}>
+                <SelectTrigger id="fund">
                   <SelectValue placeholder="Select fund" />
                 </SelectTrigger>
                 <SelectContent>
@@ -567,12 +563,8 @@ export default function AllocationsPage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="source-fund">Source Fund *</Label>
-              <Select
-                id="source-fund"
-                value={transferSourceFundId}
-                onValueChange={setTransferSourceFundId}
-              >
-                <SelectTrigger>
+              <Select value={transferSourceFundId} onValueChange={setTransferSourceFundId}>
+                <SelectTrigger id="source-fund">
                   <SelectValue placeholder="Select source fund" />
                 </SelectTrigger>
                 <SelectContent>
@@ -592,12 +584,8 @@ export default function AllocationsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="destination-fund">Destination Fund *</Label>
-              <Select
-                id="destination-fund"
-                value={transferDestFundId}
-                onValueChange={setTransferDestFundId}
-              >
-                <SelectTrigger>
+              <Select value={transferDestFundId} onValueChange={setTransferDestFundId}>
+                <SelectTrigger id="destination-fund">
                   <SelectValue placeholder="Select destination fund" />
                 </SelectTrigger>
                 <SelectContent>

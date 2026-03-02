@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Safelist: classes used dynamically by FormatCard in opac/page.tsx */
+@source inline("bg-primary-500 bg-primary-600 bg-primary-700 bg-primary-800");
+
 @theme {
   /* Tailwind v4 theme tokens for shadcn-style utilities (bg-popover, text-muted-foreground, etc.) */
   --color-background: hsl(var(--background));

@@ -15,6 +15,7 @@ import {
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Printer } from "lucide-react";
+import { printHtml, escapeHtml } from "@/lib/print";
 
 type ClassOverview = {
   id: number;
@@ -91,7 +92,29 @@ export default function BarcodesPage() {
   }, [selectedClassId, loadBarcodes]);
 
   function onPrint() {
-    window.print();
+    const cardHtml = cards
+      .map(
+        (card) =>
+          `<div style="border:1px solid #ccc;border-radius:6px;padding:10px;text-align:center;break-inside:avoid;">
+            <p class="muted">${escapeHtml(card.className)}</p>
+            <p style="font-weight:600;margin:4px 0;">${escapeHtml(card.firstName)} ${escapeHtml(card.lastName)}</p>
+            <p class="mono" style="font-size:16px;letter-spacing:0.1em;border-top:1px solid #e2e8f0;padding-top:8px;margin-top:8px;">
+              ${escapeHtml(card.studentIdentifier || `S${String(card.studentId).padStart(6, "0")}`)}
+            </p>
+            <p class="muted">${escapeHtml(card.teacherName)}</p>
+          </div>`
+      )
+      .join("\n");
+
+    const html = `
+      <h1>Barcode Cards${className ? ` &mdash; ${escapeHtml(className)}` : ""}</h1>
+      <p class="muted">${cards.length} student(s)</p>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px;">
+        ${cardHtml}
+      </div>
+    `;
+
+    printHtml(html, { title: `Barcode Cards – ${className || "Class"}`, tone: "report" });
   }
 
   return (

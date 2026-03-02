@@ -3,13 +3,26 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { fetchWithAuth } from "@/lib/client-fetch";
-import { PageContainer, PageHeader, PageContent, ErrorMessage, EmptyState, LoadingSpinner } from "@/components/shared";
+import {
+  PageContainer,
+  PageHeader,
+  PageContent,
+  ErrorMessage,
+  EmptyState,
+  LoadingSpinner,
+} from "@/components/shared";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { LifeBuoy, Send, RefreshCw } from "lucide-react";
 
 export default function SupportPage() {
@@ -74,27 +87,32 @@ export default function SupportPage() {
         title="Support"
         subtitle="Capture issues with an auditable ticket trail (no email chains)"
         breadcrumbs={[{ label: "Support" }]}
-        actions={[{ label: "Refresh", onClick: load, icon: RefreshCw, variant: "outline" as const }]}
+        actions={[
+          { label: "Refresh", onClick: load, icon: RefreshCw, variant: "outline" as const },
+        ]}
       />
       <PageContent className="space-y-6">
         {error ? <ErrorMessage message={error} onRetry={load} /> : null}
 
         <Card className="rounded-2xl">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
               <LifeBuoy className="h-4 w-4" />
               Create a ticket
             </CardTitle>
             <CardDescription>
-              Escalation policy: urgent issues → create an “urgent” ticket and notify your on-call channel. Security issues → “security” category.
+              Escalation policy: urgent issues → create an “urgent” ticket and notify your on-call
+              channel. Security issues → “security” category.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <Label htmlFor="category">Category</Label>
-                <Select id="category" value={category} onValueChange={setCategory}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger id="category">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="general">General</SelectItem>
                     <SelectItem value="bug">Bug</SelectItem>
@@ -107,8 +125,10 @@ export default function SupportPage() {
               </div>
               <div>
                 <Label htmlFor="priority">Priority</Label>
-                <Select id="priority" value={priority} onValueChange={setPriority}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={priority} onValueChange={setPriority}>
+                  <SelectTrigger id="priority">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low</SelectItem>
                     <SelectItem value="normal">Normal</SelectItem>
@@ -121,12 +141,23 @@ export default function SupportPage() {
 
             <div>
               <Label htmlFor="subject">Subject</Label>
-              <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Short summary" />
+              <Input
+                id="subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Short summary"
+              />
             </div>
 
             <div>
               <Label htmlFor="description">Description</Label>
-              <Textarea id="description" value={body} onChange={(e) => setBody(e.target.value)} className="min-h-[140px]" placeholder="What happened? What did you expect? Include steps to reproduce and any requestId from error screens." />
+              <Textarea
+                id="description"
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                className="min-h-[140px]"
+                placeholder="What happened? What did you expect? Include steps to reproduce and any requestId from error screens."
+              />
             </div>
 
             <div className="flex justify-end">
@@ -147,17 +178,23 @@ export default function SupportPage() {
             {loading ? (
               <LoadingSpinner message="Loading tickets..." />
             ) : tickets.length === 0 ? (
-              <EmptyState title="No tickets" description="Create a ticket above to start tracking issues." />
+              <EmptyState
+                title="No tickets"
+                description="Create a ticket above to start tracking issues."
+              />
             ) : (
               <div className="space-y-2">
                 {tickets.map((t) => (
                   <div key={t.id} className="rounded-lg border p-3">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="font-medium truncate">#{t.id} — {t.subject}</div>
+                      <div className="font-medium truncate">
+                        #{t.id} — {t.subject}
+                      </div>
                       <div className="text-xs text-muted-foreground">{t.status}</div>
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {t.created_at ? new Date(t.created_at).toLocaleString() : "—"} • {t.category} • {t.priority}
+                      {t.created_at ? new Date(t.created_at).toLocaleString() : "—"} • {t.category}{" "}
+                      • {t.priority}
                     </div>
                   </div>
                 ))}

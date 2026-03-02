@@ -315,8 +315,8 @@ export default function NotificationsAdminPage() {
           <CardContent className="grid gap-3 md:grid-cols-2">
             <div>
               <Label htmlFor="channel">Channel</Label>
-              <Select id="channel" value={channel} onValueChange={(v) => setChannel(v as Channel)}>
-                <SelectTrigger>
+              <Select value={channel} onValueChange={(v) => setChannel(v as Channel)}>
+                <SelectTrigger id="channel">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -327,8 +327,8 @@ export default function NotificationsAdminPage() {
             </div>
             <div>
               <Label htmlFor="notice-type">Notice type</Label>
-              <Select id="notice-type" value={noticeType} onValueChange={setNoticeType}>
-                <SelectTrigger>
+              <Select value={noticeType} onValueChange={setNoticeType}>
+                <SelectTrigger id="notice-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

@@ -8,6 +8,7 @@ import { DigitalLibraryCard } from "@/components/opac/digital-library-card";
 import { ArrowLeft, Loader2, Download, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
+import { printHtml, escapeHtml } from "@/lib/print";
 
 export default function LibraryCardPage() {
   const _t = useTranslations("accountDashboard");
@@ -21,7 +22,25 @@ export default function LibraryCardPage() {
   }, [isLoading, isLoggedIn, router]);
 
   const handleDownload = () => {
-    window.print();
+    if (!patron) return;
+    const name = escapeHtml(patronFullName);
+    const card = escapeHtml(patron.cardNumber);
+    const library = escapeHtml(patron.homeLibrary);
+    const expires = escapeHtml(patron.expirationDate);
+
+    const html = `
+      <div class="box" style="max-width:360px;margin:0 auto;text-align:center;">
+        <h1>Library Card</h1>
+        <p style="font-size:16px;font-weight:600;margin:12px 0 4px;">${name}</p>
+        <p class="mono" style="font-size:18px;letter-spacing:0.08em;margin:8px 0;">${card}</p>
+        <div class="meta" style="justify-content:center;">
+          <span><span class="k">Library:</span> <span class="v">${library}</span></span>
+          <span><span class="k">Expires:</span> <span class="v">${expires}</span></span>
+        </div>
+      </div>
+    `;
+
+    printHtml(html, { title: "Library Card", tone: "slip" });
   };
 
   if (isLoading || !isLoggedIn || !patron) {

@@ -715,8 +715,8 @@ export default function ClaimsPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="resolution">Resolution</Label>
-              <Select id="resolution" value={resolution} onValueChange={setResolution}>
-                <SelectTrigger>
+              <Select value={resolution} onValueChange={setResolution}>
+                <SelectTrigger id="resolution">
                   <SelectValue placeholder="Select resolution" />
                 </SelectTrigger>
                 <SelectContent>

@@ -284,8 +284,8 @@ export default function ClaimsPage() {
                 <div className="grid gap-3 md:grid-cols-3">
                   <div>
                     <Label htmlFor="claim-type">Claim type</Label>
-                    <Select id="claim-type" value={claimTypeId} onValueChange={setClaimTypeId}>
-                      <SelectTrigger>
+                    <Select value={claimTypeId} onValueChange={setClaimTypeId}>
+                      <SelectTrigger id="claim-type">
                         <SelectValue placeholder="Select claim type" />
                       </SelectTrigger>
                       <SelectContent>

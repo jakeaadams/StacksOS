@@ -186,7 +186,7 @@ function LoginForm() {
                 <span className="text-sm text-foreground/80">{t("rememberMe")}</span>
               </label>
               <Link
-                href="/opac/help/forgot-pin"
+                href="/opac/forgot-pin"
                 className="text-sm text-primary-600 hover:text-primary-700"
               >
                 Forgot your PIN?

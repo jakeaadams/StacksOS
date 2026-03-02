@@ -378,8 +378,8 @@ export default function InvoicesPage() {
             <div className="grid gap-3">
               <div>
                 <Label htmlFor="provider">Provider</Label>
-                <Select id="provider" value={providerId} onValueChange={setProviderId}>
-                  <SelectTrigger>
+                <Select value={providerId} onValueChange={setProviderId}>
+                  <SelectTrigger id="provider">
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
                   <SelectContent>
@@ -394,8 +394,8 @@ export default function InvoicesPage() {
 
               <div>
                 <Label htmlFor="receive-method">Receive method</Label>
-                <Select id="receive-method" value={recvMethod} onValueChange={setRecvMethod}>
-                  <SelectTrigger>
+                <Select value={recvMethod} onValueChange={setRecvMethod}>
+                  <SelectTrigger id="receive-method">
                     <SelectValue placeholder="Select method" />
                   </SelectTrigger>
                   <SelectContent>
@@ -537,7 +537,6 @@ export default function InvoicesPage() {
                                   Fund
                                 </Label>
                                 <Select
-                                  id="fund"
                                   value={s.fundId}
                                   onValueChange={(v) =>
                                     setEntrySplits((prev) =>
@@ -547,7 +546,7 @@ export default function InvoicesPage() {
                                     )
                                   }
                                 >
-                                  <SelectTrigger>
+                                  <SelectTrigger id="fund">
                                     <SelectValue placeholder="Select fund" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -732,7 +731,6 @@ export default function InvoicesPage() {
                       Fund
                     </Label>
                     <Select
-                      id="fund-2"
                       value={s.fundId}
                       onValueChange={(v) =>
                         setSplitEditorSplits((prev) =>
@@ -740,7 +738,7 @@ export default function InvoicesPage() {
                         )
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="fund-2">
                         <SelectValue placeholder="Select fund" />
                       </SelectTrigger>
                       <SelectContent>

@@ -83,6 +83,9 @@ audit/FEATURE_MATRIX.md
 audit/REPO_INVENTORY.md
 audit/demo_data.json
 
+# File-based data stores (reviews, etc.)
+.data/
+
 # IDE
 .vscode-server/
 tmp/

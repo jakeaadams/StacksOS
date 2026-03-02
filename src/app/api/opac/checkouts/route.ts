@@ -2,7 +2,24 @@ import { NextRequest } from "next/server";
 import { callOpenSRF, successResponse, serverErrorResponse, unauthorizedResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
-import { z as _z } from "zod";
+
+/**
+ * Process items in batches to limit concurrency against OpenSRF.
+ * Each batch runs in parallel; batches run sequentially.
+ */
+async function processInBatches<T, R>(
+  items: T[],
+  processor: (item: T) => Promise<R>,
+  batchSize = 5
+): Promise<R[]> {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(processor));
+    results.push(...batchResults);
+  }
+  return results;
+}
 
 /**
  * OPAC Patron Checkouts
@@ -34,9 +51,10 @@ export async function GET(req: NextRequest) {
       return successResponse({ checkouts: [], total: 0 });
     }
 
-    // Get detailed circulation info for each checkout
-    const checkouts = await Promise.all(
-      allCircIds.map(async (circId: number) => {
+    // Get detailed circulation info for each checkout (batched to limit concurrency)
+    const checkouts = await processInBatches(
+      allCircIds,
+      async (circId: number) => {
         try {
           const circResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.retrieve", [
             patronToken,
@@ -114,7 +132,8 @@ export async function GET(req: NextRequest) {
           logger.error({ error: String(error) }, "Error fetching checkout details");
           return null;
         }
-      })
+      },
+      5
     );
 
     const validCheckouts = checkouts.filter(Boolean);
