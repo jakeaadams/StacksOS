@@ -346,3 +346,5 @@ export function promptMetadata(system: string, user: string) {
   const userHash = promptHash(user);
   return { systemHash, userHash, promptHash: promptHash(`${systemHash}:${userHash}`) };
 }
+
+export { classifyAiError, type AiErrorClass } from "./error-classification";

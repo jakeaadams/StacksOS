@@ -60,7 +60,13 @@ function hexToHsl(hex: string): string {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
+function isHexColor(value: string | undefined): value is string {
+  if (!value) return false;
+  return /^#[0-9a-fA-F]{6}$/.test(value);
+}
+
 function applyBrandColor(hex: string) {
+  if (!isHexColor(hex)) return;
   const hsl = hexToHsl(hex);
   const root = document.documentElement;
   root.style.setProperty("--brand-1", hsl);
@@ -83,6 +89,9 @@ export function ProfileSwitcher() {
         if (data?.currentProfile) setCurrentProfile(data.currentProfile);
         if (data?.primaryColor) setCurrentColor(data.primaryColor);
         if (data?.profiles) setProfiles(data.profiles);
+        if (isHexColor(data?.primaryColor)) {
+          applyBrandColor(data.primaryColor);
+        }
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
@@ -126,7 +135,7 @@ export function ProfileSwitcher() {
     [currentProfile, switching, router]
   );
 
-  if (!loaded) return null;
+  if (!loaded || profiles.length === 0) return null;
 
   const meta = (PROFILE_META[currentProfile] || PROFILE_META.public)!;
   const Icon = meta.icon;

@@ -166,7 +166,7 @@ export default function PatronImportPage() {
       for (let j = 0; j < csvHeaders.length; j++) {
         const header = csvHeaders[j]!;
         const field = columnMap[header];
-        if (field && row[j]) {
+        if (field && field !== "skip" && row[j]) {
           mapped[field] = row[j]!;
         }
       }
@@ -294,7 +294,9 @@ export default function PatronImportPage() {
 
   const validCount = validatedRows.filter((r) => r.errors.length === 0).length;
   const errorCount = validatedRows.length - validCount;
-  const mappedFieldCount = Object.values(columnMap).filter(Boolean).length;
+  const mappedFieldCount = Object.values(columnMap).filter(
+    (value) => value && value !== "skip"
+  ).length;
 
   return (
     <PageContainer>
@@ -412,8 +414,10 @@ export default function PatronImportPage() {
                     </div>
                     <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <Select
-                      value={columnMap[header] || ""}
-                      onValueChange={(v) => setColumnMap((prev) => ({ ...prev, [header]: v }))}
+                      value={columnMap[header] || "skip"}
+                      onValueChange={(v) =>
+                        setColumnMap((prev) => ({ ...prev, [header]: v === "skip" ? "" : v }))
+                      }
                     >
                       <SelectTrigger className="w-56">
                         <SelectValue placeholder="Select field..." />

@@ -5,6 +5,7 @@ import { requirePermissions } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit";
 import { generateAiJson, promptMetadata, redactAiInput } from "@/lib/ai";
+import { classifyAiError as classifySharedAiError } from "@/lib/ai/error-classification";
 import { buildOpsPlaybooksPrompt } from "@/lib/ai/prompts";
 import { createAiDraft } from "@/lib/db/ai";
 import { publishDeveloperEvent } from "@/lib/developer/webhooks";
@@ -46,28 +47,8 @@ function toNonNegativeInt(value: unknown): number {
   return Math.max(0, Math.round(value));
 }
 
-function classifyAiError(message: string): AiErrorClass {
-  const m = message.toLowerCase();
-  if (m.includes("ai is disabled")) return "disabled";
-  if (
-    m.includes("not configured") ||
-    m.includes("misconfigured") ||
-    (m.includes("missing") && m.includes("api_key"))
-  ) {
-    return "misconfigured";
-  }
-  if (
-    m.includes("timeout") ||
-    m.includes("timed out") ||
-    m.includes("aborted") ||
-    m.includes("fetch failed") ||
-    m.includes("econnreset") ||
-    m.includes("socket hang up") ||
-    m.includes("network")
-  ) {
-    return "transient";
-  }
-  return "unknown";
+function classifyAiError(error: unknown): AiErrorClass {
+  return classifySharedAiError(error);
 }
 
 function fallbackActions(input: OpsPlaybookRequest): OpsPlaybookResponse {
@@ -216,8 +197,7 @@ export async function POST(req: NextRequest) {
       completion = out.completion;
       config = out.config;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const errorClass = classifyAiError(message);
+      const errorClass = classifyAiError(error);
       if (errorClass === "disabled") return errorResponse("AI is disabled for this tenant", 503);
       if (errorClass === "misconfigured") return errorResponse("AI is not configured", 501);
       if (errorClass !== "transient") throw error;

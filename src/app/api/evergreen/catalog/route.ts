@@ -254,6 +254,65 @@ function extractAudienceFromMARC(marcXml: string | null): string {
   return "general";
 }
 
+function extractReadingLevelFromMARC(
+  marcXml: string | null
+): "early" | "elementary" | "middle" | null {
+  if (!marcXml) return null;
+
+  const audienceMatch = marcXml.match(
+    /<datafield tag="521"[^>]*>[\s\S]*?<subfield code="a">([^<]+)<\/subfield>/
+  );
+  if (!audienceMatch) return null;
+
+  const text = audienceMatch[1]!.toLowerCase();
+
+  if (
+    text.includes("easy reader") ||
+    text.includes("beginning reader") ||
+    text.includes("early reader") ||
+    text.includes("pre-k") ||
+    text.includes("preschool") ||
+    text.includes("kindergarten")
+  ) {
+    return "early";
+  }
+
+  if (
+    text.includes("elementary") ||
+    text.includes("grades k-3") ||
+    text.includes("grade k") ||
+    text.includes("grade 1") ||
+    text.includes("grade 2") ||
+    text.includes("grade 3")
+  ) {
+    return "elementary";
+  }
+
+  if (
+    text.includes("middle grade") ||
+    text.includes("grades 4-6") ||
+    text.includes("grade 4") ||
+    text.includes("grade 5") ||
+    text.includes("grade 6") ||
+    text.includes("preteen")
+  ) {
+    return "middle";
+  }
+
+  const agesMatch = text.match(/ages?\s*(\d{1,2})\s*[-–]\s*(\d{1,2})/);
+  if (agesMatch) {
+    const minAge = parseInt(agesMatch[1] || "", 10);
+    const maxAge = parseInt(agesMatch[2] || "", 10);
+    if (Number.isFinite(minAge) && Number.isFinite(maxAge)) {
+      if (maxAge <= 7) return "early";
+      if (maxAge <= 10) return "elementary";
+      if (minAge >= 9 && maxAge <= 13) return "middle";
+    }
+  }
+
+  return null;
+}
+
 const languageAliases: Record<string, string> = {
   en: "eng",
   eng: "eng",
@@ -516,6 +575,13 @@ export async function GET(req: NextRequest) {
   const formatFilters = parseMultiParam(searchParams.get("format")).map((v) => v.toLowerCase());
   const audienceFilters = parseMultiParam(searchParams.get("audience")).map((v) => v.toLowerCase());
   const availableOnly = searchParams.get("available") === "true";
+  const readingLevelRaw = String(searchParams.get("level") || "")
+    .trim()
+    .toLowerCase();
+  const readingLevelFilter =
+    readingLevelRaw === "early" || readingLevelRaw === "elementary" || readingLevelRaw === "middle"
+      ? readingLevelRaw
+      : null;
   const languageFilters = parseMultiParam(searchParams.get("language"))
     .map((v) => normalizeLanguageFilter(v))
     .filter((v): v is string => Boolean(v))
@@ -762,6 +828,7 @@ export async function GET(req: NextRequest) {
         filters: {
           format: formatFilters,
           audience: audienceFilters,
+          level: readingLevelFilter,
           language: languageFilters,
           available: availableOnly,
           location: locationFilter,
@@ -778,6 +845,7 @@ export async function GET(req: NextRequest) {
     const hasLocalFilters =
       formatFilters.length > 0 ||
       audienceFilters.length > 0 ||
+      readingLevelFilter !== null ||
       languageFilters.length > 0 ||
       availableOnly ||
       locationFilter !== null ||
@@ -844,6 +912,7 @@ export async function GET(req: NextRequest) {
 
           const format = extractFormatFromMARC(marcString);
           const audience = extractAudienceFromMARC(marcString);
+          const readingLevel = extractReadingLevelFromMARC(marcString);
           const language = extractLanguageFromMARC(marcString);
 
           // Apply filters
@@ -853,6 +922,7 @@ export async function GET(req: NextRequest) {
 
           if (formatFilters.length > 0 && !formatFilters.includes(formatKey)) return null;
           if (audienceFilters.length > 0 && !audienceFilters.includes(audienceKey)) return null;
+          if (readingLevelFilter !== null && readingLevel !== readingLevelFilter) return null;
           if (
             languageFilters.length > 0 &&
             (!languageKey || !languageFilters.includes(languageKey))
@@ -892,6 +962,7 @@ export async function GET(req: NextRequest) {
             physical_description: mods.physical_description || "",
             format,
             audience,
+            reading_level: readingLevel,
             language,
             coverUrl,
             availability,
@@ -1018,6 +1089,7 @@ export async function GET(req: NextRequest) {
           available: availableOnly,
           format: formatFilters,
           audience: audienceFilters,
+          level: readingLevelFilter,
           language: languageFilters,
           location: locationFilter,
           pubdateFrom,

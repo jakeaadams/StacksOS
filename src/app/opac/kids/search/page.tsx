@@ -62,11 +62,18 @@ function transformResults(records: any[]): SearchResult[] {
     author: record.author || record.simple_record?.author || "",
     coverUrl: getCoverUrl(record),
     format: record.format || record.icon_format,
-    readingLevel: record.lexile
-      ? `Lexile ${record.lexile}`
-      : record.ar_level
-        ? `AR ${record.ar_level}`
-        : undefined,
+    readingLevel:
+      record.reading_level === "early"
+        ? "Early Reader"
+        : record.reading_level === "elementary"
+          ? "Elementary (K-3)"
+          : record.reading_level === "middle"
+            ? "Middle Grade (4-6)"
+            : record.lexile
+              ? `Lexile ${record.lexile}`
+              : record.ar_level
+                ? `AR ${record.ar_level}`
+                : undefined,
     availableCopies: record.available_copies || record.availability?.available || 0,
     totalCopies: record.total_copies || record.availability?.total || 0,
   }));
@@ -81,6 +88,7 @@ function KidsSearchContent() {
   const sort = searchParams.get("sort") || "relevance";
   const order = searchParams.get("order") || "";
   const format = searchParams.get("format") || "";
+  const level = searchParams.get("level") || "";
   const availableOnly = searchParams.get("available") === "true";
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
 
@@ -120,7 +128,7 @@ function KidsSearchContent() {
 
   const searchCatalog = useCallback(async () => {
     const hasBrowseIntent =
-      Boolean(query) || Boolean(format) || availableOnly || sort !== "relevance";
+      Boolean(query) || Boolean(format) || Boolean(level) || availableOnly || sort !== "relevance";
     if (!hasBrowseIntent) return;
 
     setIsLoading(true);
@@ -135,13 +143,8 @@ function KidsSearchContent() {
       if (sort) params.set("sort", sort);
       if (order) params.set("order", order);
       if (format) params.set("format", format);
+      if (level) params.set("level", level);
       if (availableOnly) params.set("available", "true");
-
-      // Reading level filter — mapped to audience/item_type refinements
-      const level = searchParams.get("level");
-      if (level === "early") params.set("item_type", "easy_reader");
-      else if (level === "elementary") params.set("audience_grade", "K-3");
-      else if (level === "middle") params.set("audience_grade", "4-6");
 
       const response = await fetchWithAuth(`/api/evergreen/catalog?${params}`);
       if (response.ok) {
@@ -156,7 +159,7 @@ function KidsSearchContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [availableOnly, format, order, page, query, sort, type]);
+  }, [availableOnly, format, level, order, page, query, sort, type]);
 
   useEffect(() => {
     void searchCatalog();
@@ -425,7 +428,7 @@ function KidsSearchContent() {
             </div>
           )}
         </>
-      ) : query || format || availableOnly || sort !== "relevance" ? (
+      ) : query || format || level || availableOnly || sort !== "relevance" ? (
         <div className="text-center py-20 bg-card rounded-3xl">
           <div className="w-20 h-20 mx-auto mb-4 kids-bg-primary-light rounded-full flex items-center justify-center">
             <Search className="h-10 w-10 kids-text-primary-muted" />
