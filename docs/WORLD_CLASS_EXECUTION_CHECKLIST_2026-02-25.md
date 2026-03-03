@@ -6,8 +6,8 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 
 ## Current Gate Snapshot (2026-03-03)
 
-- **Local**: lint (quiet) pass, type-check pass, test:run pass (328/328)
-- **VM** (192.168.1.233): lint pass, type-check pass, test:run pass (328/328), test:e2e pass (81 passed, 5 skipped), run_all.sh pass
+- **Local**: lint (quiet) pass, type-check pass, test:run pass (331/331)
+- **VM** (192.168.1.233): lint pass, type-check pass, test:run pass (331/331), test:e2e pass (81 passed, 5 skipped), run_all.sh pass
 - **UI drift**: latest audit aggregate score `0` (target met)
 - **Lint warnings**: `0` warnings on non-quiet lint (`0` errors)
 - **Evergreen host** (192.168.1.232): `/openils/bin/eg_config` reports `Open-ILS 3.16.4` (validate against upstream release announcements before upgrade decisions)
@@ -79,7 +79,7 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 - [x] Resolve non-quiet lint warnings while preserving zero-error gate
 - [x] Reduce UI drift aggregate score to target (`0`)
 - [ ] External comparative user studies (task success/time, SUS, adoption, CSAT)
-- [ ] Continuous competitive benchmark program with external evidence
+- [x] Continuous competitive benchmark program with external evidence (`docs/COMPETITIVE_BENCHMARK_PROGRAM.md` + `docs/WORLD_CLASS_COMPETITOR_REFRESH_2026-03-03.md`)
 
 ---
 
@@ -89,4 +89,4 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 2. External comparative UX studies (task success/time, SUS, CSAT) for objective leaderboard proof
 3. AI-specific ops alert thresholds (fallback-rate and p95 latency alarms)
 4. Migration wizard hardening with preflight diagnostics
-5. Profile-specific OPAC polish pass with measured conversion metrics
+5. Profile-specific OPAC conversion metrics and ongoing tuning (post-polish measurement pass)

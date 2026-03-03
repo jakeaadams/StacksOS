@@ -448,7 +448,7 @@ Local:
 
 - `npm run lint -- --quiet`: pass
 - `npm run type-check`: pass
-- `npm run test:run`: pass (`328/328`)
+- `npm run test:run`: pass (`331/331`)
 - `npm run audit:ui-drift`: pass
 - `npm run audit:opac`: validated in VM runtime (requires live app + Evergreen bridge)
 - `npm run audit:task-benchmark`: pass
@@ -458,7 +458,7 @@ VM (`192.168.1.233`, `/home/jake/projects/stacksos`):
 
 - `npm run lint -- --quiet`: pass
 - `npm run type-check`: pass
-- `npm run test:run`: pass (`328/328`)
+- `npm run test:run`: pass (`331/331`)
 - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`81 passed, 5 skipped`)
 - `BASE_URL=http://127.0.0.1:3000 bash audit/run_opac_audit.sh`: pass (`42/42` OPAC pages, `21/21` OPAC API checks, Evergreen bridge `4/4`)
 - `TASK_BENCH_STAFF_USER=jake TASK_BENCH_STAFF_PASS=jake TASK_BENCH_REQUIRE_STAFF=1 TASK_BENCH_ENFORCE=1 node scripts/task-benchmark.mjs`: pass (staff metrics fully populated)
@@ -478,6 +478,7 @@ Detailed documentation lives in the `docs/` directory:
 - [TLS Setup](docs/TLS_INTERNAL_CA.md) -- Internal CA and TLS configuration
 - [Tenants](docs/StacksOS-Tenants.md) -- Multi-tenant configuration
 - [Cover Storage](docs/COVER_STORAGE_GUIDE.md) -- Book cover image handling
+- [Competitive Benchmark Program](docs/COMPETITIVE_BENCHMARK_PROGRAM.md) -- Recurring evidence-backed parity tracking process
 - [World-Class Execution Checklist](docs/WORLD_CLASS_EXECUTION_CHECKLIST_2026-02-25.md) -- Consolidated to-do and status tracker
 - [World-Class Competitor Refresh (2026-03-03)](docs/WORLD_CLASS_COMPETITOR_REFRESH_2026-03-03.md) -- Fresh parity scan and next 30-day priorities
 - [Open-Source ILS Comparison](docs/OPEN_SOURCE_ILS_COMPARISON_2026-02-25.md) -- Evergreen vs Koha vs FOLIO strategy notes
