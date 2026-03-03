@@ -987,18 +987,11 @@ const HOLD_PLAN = [
 async function resolveBibIdsFromItems({ baseUrl, jar, bibCount, copiesPerBib }) {
   console.log("[seed] resolving bib IDs from existing items...");
   const bibIds = [];
+  const limit = Math.min(bibCount, 120);
 
-  // We only need offsets used by HOLD_PLAN: 0-20 and 50-55.
-  // Look up the first copy barcode for each bib to find its record ID.
-  const neededOffsets = new Set(HOLD_PLAN.map((h) => h.bibOffset));
-  const maxOffset = Math.max(...neededOffsets) + 1;
-  const limit = Math.min(bibCount, maxOffset);
-
+  // Resolve as many bib IDs as possible to allow hold fallback when a specific
+  // title/patron combination is blocked by policy.
   for (let bibOffset = 0; bibOffset < limit; bibOffset++) {
-    if (!neededOffsets.has(bibOffset)) {
-      bibIds.push(null);
-      continue;
-    }
     const copyIdx = bibOffset * copiesPerBib;
     const barcode = String(39000001000000n + BigInt(copyIdx));
     try {
@@ -1010,7 +1003,9 @@ async function resolveBibIdsFromItems({ baseUrl, jar, bibCount, copiesPerBib }) 
       const bibId = resp?.item?.recordId ?? resp?.item?.record_id ?? resp?.item?.bibId ?? null;
       bibIds.push(bibId);
       if (bibId) {
-        console.log(`[seed] bib offset ${bibOffset}: barcode ${barcode} → record ${bibId}`);
+        if (bibOffset < 24 || bibOffset % 10 === 0) {
+          console.log(`[seed] bib offset ${bibOffset}: barcode ${barcode} -> record ${bibId}`);
+        }
       }
     } catch (e) {
       console.warn(`[seed] bib lookup failed for offset ${bibOffset} (${barcode}): ${String(e).slice(0, 120)}`);
@@ -1143,6 +1138,22 @@ async function seedCirculationActivity({ baseUrl, jar, csrfToken, orgId, patronM
   // Phase 3: Holds (title-level)
   // Use the dedicated holds endpoint so this does not consume circulation route limits.
   console.log("[seed] circulation phase 3: placing holds...");
+  const allCandidates = Array.from(
+    new Set(bibIds.filter((id) => Number.isFinite(id)).map((id) => Number(id)))
+  );
+  const usedTargets = new Set();
+  const retryableHoldErrorHints = [
+    "failed to create hold",
+    "not holdable",
+    "hold prohibited",
+    "copy cannot be targeted",
+    "cannot place hold",
+    "user already has hold",
+    "hold exists",
+    "hold already",
+    "ilsevent",
+  ];
+
   for (const entry of HOLD_PLAN) {
     const patronBc = pBarcode(entry.patronIdx);
     const patronId = patronMap.get(patronBc);
@@ -1150,40 +1161,66 @@ async function seedCirculationActivity({ baseUrl, jar, csrfToken, orgId, patronM
       console.warn(`[seed] hold skipped: no ID for patron ${patronBc}`);
       continue;
     }
-    const bibId = bibIds[entry.bibOffset];
-    if (!bibId) {
-      console.warn(`[seed] hold skipped: no bib at offset ${entry.bibOffset}`);
+    const preferred = bibIds[entry.bibOffset];
+    const candidates = [];
+    if (Number.isFinite(preferred)) candidates.push(Number(preferred));
+    for (const id of allCandidates) {
+      if (candidates.length >= 20) break;
+      if (candidates.includes(id)) continue;
+      if (usedTargets.has(id)) continue;
+      candidates.push(id);
+    }
+
+    if (candidates.length === 0) {
+      summary.errors.push(`hold patron=${patronBc}: no candidate bib IDs`);
       continue;
     }
 
-    try {
-      summary.holdsAttempted++;
-      await fetchJson(`${baseUrl}/api/evergreen/holds`, {
-        method: "POST",
-        jar,
-        csrfToken,
-        json: {
-          action: "create",
-          patronId,
-          targetId: bibId,
-          pickupLib: orgId,
-          holdType: "T",
-        },
-      });
-      summary.holdsSucceeded++;
-      await sleep(200);
-    } catch (e) {
-      const errStr = String(e).toLowerCase();
-      if (
-        errStr.includes("hold_exists") ||
-        errStr.includes("hold already") ||
-        errStr.includes("already has hold")
-      ) {
+    let placed = false;
+    let lastError = null;
+    for (const bibId of candidates) {
+      try {
+        summary.holdsAttempted++;
+        await fetchJson(`${baseUrl}/api/evergreen/holds`, {
+          method: "POST",
+          jar,
+          csrfToken,
+          json: {
+            action: "create",
+            patronId,
+            targetId: bibId,
+            pickupLib: orgId,
+            holdType: "T",
+          },
+        });
         summary.holdsSucceeded++;
-      } else {
-        summary.errors.push(`hold patron=${patronBc} bib=${bibId}: ${String(e).slice(0, 160)}`);
-        console.warn(`[seed] hold failed: ${String(e).slice(0, 160)}`);
+        usedTargets.add(bibId);
+        placed = true;
+        await sleep(200);
+        break;
+      } catch (e) {
+        const errString = String(e);
+        const errLower = errString.toLowerCase();
+        if (
+          errLower.includes("hold_exists") ||
+          errLower.includes("hold already") ||
+          errLower.includes("already has hold")
+        ) {
+          summary.holdsSucceeded++;
+          usedTargets.add(bibId);
+          placed = true;
+          break;
+        }
+        lastError = errString;
+        const retryable = retryableHoldErrorHints.some((hint) => errLower.includes(hint));
+        if (!retryable) break;
       }
+    }
+
+    if (!placed) {
+      const reason = String(lastError || "unknown hold placement failure").slice(0, 180);
+      summary.errors.push(`hold patron=${patronBc}: ${reason}`);
+      console.warn(`[seed] hold failed for patron ${patronBc}: ${reason}`);
     }
   }
   console.log(`[seed] holds: ${summary.holdsSucceeded}/${summary.holdsAttempted}`);
