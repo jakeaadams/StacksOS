@@ -32,6 +32,7 @@ import {
   Globe,
   Rocket,
   Sparkles,
+  Smartphone,
 } from "lucide-react";
 
 type AdminCard = {
@@ -98,6 +99,13 @@ export default function AdminHubPage() {
         href: "/staff/admin/settings",
         icon: Settings2,
         tone: "bg-muted text-foreground",
+      },
+      {
+        title: "Digital App Library",
+        description: "Configure Libby/OverDrive, Hoopla, cloudLibrary, and Kanopy connectors.",
+        href: "/staff/admin/settings/econtent",
+        icon: Smartphone,
+        tone: "bg-primary/10 text-primary",
       },
       {
         title: "Tenants",

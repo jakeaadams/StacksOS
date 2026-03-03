@@ -29,17 +29,26 @@
  */
 
 export type EContentType = "ebook" | "eaudiobook" | "streaming" | "emagazine";
+export type EContentConnectionMode = "linkout" | "oauth_passthrough" | "api";
+
+export type EContentProviderId = "overdrive" | "hoopla" | "cloudlibrary" | "kanopy";
 
 export interface EContentProvider {
-  id: string;
+  id: EContentProviderId;
   name: string;
   description: string;
   logoUrl: string;
   browseUrl: string;
+  appUrl?: string;
   types: EContentType[];
   color: string; // brand color for UI accents
   featured: boolean;
   alwaysAvailableTitles?: number; // approximate count of always-available titles
+  supportedModes: EContentConnectionMode[];
+  supportsPatronTransactions: {
+    checkout: boolean;
+    hold: boolean;
+  };
 }
 
 const PROVIDERS: EContentProvider[] = [
@@ -50,10 +59,16 @@ const PROVIDERS: EContentProvider[] = [
       "Borrow eBooks and eAudiobooks with the Libby app. The largest selection of digital titles from bestsellers to indie gems. Works on phones, tablets, Kindle, and computers.",
     logoUrl: "/images/providers/libby-logo.svg",
     browseUrl: process.env.OVERDRIVE_LIBRARY_URL || "https://yourlibrary.overdrive.com",
+    appUrl: process.env.OVERDRIVE_APP_URL || "https://libbyapp.com/library",
     types: ["ebook", "eaudiobook", "emagazine"],
     color: "#0A7B83",
     featured: true,
     alwaysAvailableTitles: 5000,
+    supportedModes: ["linkout", "oauth_passthrough", "api"],
+    supportsPatronTransactions: {
+      checkout: true,
+      hold: true,
+    },
   },
   {
     id: "hoopla",
@@ -62,10 +77,16 @@ const PROVIDERS: EContentProvider[] = [
       "Instantly borrow digital movies, music, eBooks, audiobooks, comics, and TV shows. No waiting -- titles are always available with a monthly checkout limit.",
     logoUrl: "/images/providers/hoopla-logo.svg",
     browseUrl: process.env.HOOPLA_LIBRARY_URL || "https://www.hoopladigital.com",
+    appUrl: process.env.HOOPLA_APP_URL || "https://www.hoopladigital.com/my/hoopla",
     types: ["ebook", "eaudiobook", "streaming"],
     color: "#E8490F",
     featured: true,
     alwaysAvailableTitles: 950000,
+    supportedModes: ["linkout", "oauth_passthrough", "api"],
+    supportsPatronTransactions: {
+      checkout: true,
+      hold: false,
+    },
   },
   {
     id: "cloudlibrary",
@@ -74,9 +95,15 @@ const PROVIDERS: EContentProvider[] = [
       "Browse and borrow eBooks and eAudiobooks with an easy-to-use app. Curated collections and personalized recommendations help you find your next great read.",
     logoUrl: "/images/providers/cloudlibrary-logo.svg",
     browseUrl: process.env.CLOUDLIBRARY_URL || "https://ebook.yourcloudlibrary.com",
+    appUrl: process.env.CLOUDLIBRARY_APP_URL || "https://ebook.yourcloudlibrary.com",
     types: ["ebook", "eaudiobook"],
     color: "#2196F3",
     featured: true,
+    supportedModes: ["linkout", "oauth_passthrough", "api"],
+    supportsPatronTransactions: {
+      checkout: true,
+      hold: true,
+    },
   },
   {
     id: "kanopy",
@@ -85,9 +112,15 @@ const PROVIDERS: EContentProvider[] = [
       "Stream thousands of films for free, including award-winning documentaries, rare and hard-to-find titles, film festival favorites, indie and classic films, and Kanopy Kids content.",
     logoUrl: "/images/providers/kanopy-logo.svg",
     browseUrl: process.env.KANOPY_LIBRARY_URL || "https://yourlibrary.kanopy.com",
+    appUrl: process.env.KANOPY_APP_URL || "https://www.kanopy.com",
     types: ["streaming"],
     color: "#2D5A27",
     featured: true,
+    supportedModes: ["linkout", "oauth_passthrough"],
+    supportsPatronTransactions: {
+      checkout: false,
+      hold: false,
+    },
   },
 ];
 
@@ -110,4 +143,8 @@ export function getEContentProvider(id: string): EContentProvider | undefined {
  */
 export function getProvidersByType(type: EContentType): EContentProvider[] {
   return PROVIDERS.filter((p) => p.types.includes(type));
+}
+
+export function getEContentProviderIds(): EContentProviderId[] {
+  return PROVIDERS.map((p) => p.id);
 }

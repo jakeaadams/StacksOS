@@ -122,6 +122,7 @@ Copy `.env.example` to `.env.local` and configure the required variables:
 - **`STACKSOS_DISCOVERY_SCOPE`** -- Default OPAC search scope (`local`, `system`, `consortium`)
 - **`STACKSOS_DISCOVERY_COPY_DEPTH`** -- Default OPAC depth (`0..99`, Evergreen-style semantics)
 - **`STACKSOS_OPAC_PASSKEYS_ENABLED` / `STACKSOS_PASSKEY_SECRET`** -- Optional passkey sign-in toggle + encryption secret
+- **`STACKSOS_WALLET_*`** -- Optional wallet enrollment link templates and signing secret for Apple/Google handoff
 - **`STACKSOS_AI_RETRY_*`** -- AI retry/backoff controls for provider latency resilience
 - **`STACKSOS_AI_MODEL_FALLBACKS`** -- Comma-separated model fallback chain before deterministic fallback
 - **`STACKSOS_AI_COPILOT_*`** -- Copilot/ops-only timeout + retry overrides for high-latency windows
@@ -145,6 +146,7 @@ StacksOS now exposes first-class OPAC scope controls aligned with Evergreen beha
 Tenant admins can set defaults in **Staff -> Admin -> Tenant & Onboarding**.
 For first-time setup, start with **Staff -> Admin -> Settings -> Start Here: Library Setup Path**
 and run the steps in order (Onboarding Wizard -> Tenant provisioning -> Policy tuning -> Go-live checks).
+Digital provider connector setup lives at **Staff -> Admin -> Settings -> Digital App Library**.
 
 How selection works:
 
@@ -199,6 +201,24 @@ Then diff the two generated folders under `audit/evergreen-footprint/`.
 - Passkey credentials are stored in StacksOS-owned `library.*` tables; Evergreen remains auth source-of-truth
 - PIN digest is encrypted at rest with `STACKSOS_PASSKEY_SECRET`
 - Passkey revoke/list APIs added under `/api/opac/passkeys/*`
+
+### Wallet Enrollment + Digital App Library Connectors
+
+- OPAC digital library card page now supports wallet enrollment link actions when configured:
+  - `GET/POST /api/opac/library-card/wallet`
+  - optional email send of enrollment links to the patron email on file
+- Wallet links are template-driven so StacksOS can integrate with your wallet-pass issuer service:
+  - `STACKSOS_WALLET_APPLE_URL_TEMPLATE`
+  - `STACKSOS_WALLET_GOOGLE_URL_TEMPLATE`
+  - placeholders supported: `{token}`, `{card_number}`, `{first_name}`, `{last_name}`, `{full_name}`, `{email}`, `{library_name}`, `{tenant_id}`
+  - signed short-lived token generated with `STACKSOS_WALLET_TOKEN_SECRET` (falls back to passkey/session secret if unset)
+- Tenant-admin **Digital App Library** page (`/staff/admin/settings/econtent`) configures provider behavior per tenant:
+  - enable/disable provider
+  - connection mode (`linkout`, `oauth_passthrough`, `api`)
+  - browse/app deep links
+  - checkout/hold capability toggles
+  - credential reference note (vault pointer; no secret material required in UI)
+- OPAC Digital Library page now reads effective provider config from `/api/opac/econtent/providers` and falls back to default catalog metadata if tenant connection data is unavailable.
 
 ### AI Copilot Expansion + Audit Trail
 

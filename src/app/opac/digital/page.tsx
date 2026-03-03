@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, notFound } from "next/navigation";
 import { featureFlags } from "@/lib/feature-flags";
@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getEContentProviders, type EContentProvider } from "@/lib/econtent-providers";
+import { fetchWithAuth } from "@/lib/client-fetch";
 import { useTranslations } from "next-intl";
 
 const TYPE_LABELS: Record<string, { label: string; icon: React.ElementType }> = {
@@ -40,7 +41,18 @@ const PROVIDER_THEME: Record<string, { shell: string; icon: string }> = {
   kanopy: { shell: "bg-emerald-500/10", icon: "text-emerald-700" },
 };
 
-function ProviderCard({ provider }: { provider: EContentProvider }) {
+type EContentProviderView = EContentProvider & {
+  enabled?: boolean;
+  mode?: string;
+  appUrl?: string;
+  supportsPatronTransactions?: {
+    checkout: boolean;
+    hold: boolean;
+  };
+  source?: "default" | "tenant_config";
+};
+
+function ProviderCard({ provider }: { provider: EContentProviderView }) {
   const theme = PROVIDER_THEME[provider.id] ?? { shell: "bg-muted", icon: "text-muted-foreground" };
 
   return (
@@ -77,12 +89,34 @@ function ProviderCard({ provider }: { provider: EContentProvider }) {
         </p>
       )}
 
-      <Button asChild>
-        <a href={provider.browseUrl} target="_blank" rel="noopener noreferrer">
-          Browse Collection
-          <ExternalLink className="h-4 w-4 ml-2" />
-        </a>
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button asChild>
+          <a href={provider.browseUrl} target="_blank" rel="noopener noreferrer">
+            Browse Collection
+            <ExternalLink className="h-4 w-4 ml-2" />
+          </a>
+        </Button>
+        {provider.appUrl ? (
+          <Button asChild variant="outline">
+            <a href={provider.appUrl} target="_blank" rel="noopener noreferrer">
+              Open App
+              <ExternalLink className="h-4 w-4 ml-2" />
+            </a>
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2 text-xs">
+        {provider.mode ? (
+          <Badge variant="outline">Mode: {provider.mode.replace("_", " ")}</Badge>
+        ) : null}
+        {provider.supportsPatronTransactions?.checkout ? (
+          <Badge variant="secondary">Checkout in provider app</Badge>
+        ) : null}
+        {provider.supportsPatronTransactions?.hold ? (
+          <Badge variant="secondary">Holds in provider app</Badge>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -132,8 +166,44 @@ export default function DigitalLibraryPage() {
   const t = useTranslations("digitalPage");
   const router = useRouter();
   const { library } = useLibrary();
-  const providers = getEContentProviders();
+  const [providers, setProviders] = useState<EContentProviderView[]>(getEContentProviders());
+  const [providersLoading, setProvidersLoading] = useState(true);
+  const [providersError, setProvidersError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadProviders = async () => {
+      setProvidersLoading(true);
+      setProvidersError(null);
+      try {
+        const response = await fetchWithAuth("/api/opac/econtent/providers");
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(String(data?.error || "Unable to load digital providers"));
+        }
+        const nextProviders = Array.isArray(data?.providers)
+          ? (data.providers as EContentProviderView[])
+          : [];
+        if (!cancelled && nextProviders.length > 0) {
+          setProviders(nextProviders);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setProvidersError(
+            error instanceof Error ? error.message : "Unable to load provider connections."
+          );
+          setProviders(getEContentProviders());
+        }
+      } finally {
+        if (!cancelled) setProvidersLoading(false);
+      }
+    };
+    void loadProviders();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,6 +271,16 @@ export default function DigitalLibraryPage() {
             Browse thousands of free digital titles through these partner platforms.
           </p>
 
+          {providersLoading ? (
+            <p className="text-sm text-muted-foreground">
+              Loading configured provider connections...
+            </p>
+          ) : null}
+          {providersError ? (
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              {providersError} Showing default provider links.
+            </p>
+          ) : null}
           <div className="grid md:grid-cols-2 gap-6">
             {providers.map((provider) => (
               <ProviderCard key={provider.id} provider={provider} />

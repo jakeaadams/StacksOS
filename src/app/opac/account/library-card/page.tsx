@@ -1,25 +1,81 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { DigitalLibraryCard } from "@/components/opac/digital-library-card";
-import { ArrowLeft, Loader2, Download, Smartphone } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  Download,
+  Smartphone,
+  Mail,
+  WalletCards,
+  ExternalLink,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
 import { printHtml, escapeHtml } from "@/lib/print";
+import { fetchWithAuth } from "@/lib/client-fetch";
+
+type WalletApiData = {
+  capabilities: {
+    appleConfigured: boolean;
+    googleConfigured: boolean;
+    emailEnabled: boolean;
+  };
+  links: {
+    apple: string | null;
+    google: string | null;
+  };
+  patron: {
+    email: string | null;
+  };
+  configured: string;
+};
 
 export default function LibraryCardPage() {
   const _t = useTranslations("accountDashboard");
   const router = useRouter();
   const { patron, isLoggedIn, isLoading } = usePatronSession();
+  const [walletData, setWalletData] = useState<WalletApiData | null>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [walletSending, setWalletSending] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isLoggedIn) {
       router.push("/opac/login?redirect=/opac/account/library-card");
     }
   }, [isLoading, isLoggedIn, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadWallet = async () => {
+      if (!isLoggedIn) return;
+      setWalletLoading(true);
+      try {
+        const response = await fetchWithAuth("/api/opac/library-card/wallet");
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(String(data?.error || "Unable to load wallet enrollment links."));
+        }
+        if (!cancelled) setWalletData(data as WalletApiData);
+      } catch (error) {
+        if (!cancelled) {
+          setWalletData(null);
+          toast.error(error instanceof Error ? error.message : "Unable to load wallet options.");
+        }
+      } finally {
+        if (!cancelled) setWalletLoading(false);
+      }
+    };
+    void loadWallet();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
 
   const handleDownload = () => {
     if (!patron) return;
@@ -41,6 +97,31 @@ export default function LibraryCardPage() {
     `;
 
     printHtml(html, { title: "Library Card", tone: "slip" });
+  };
+
+  const handleEmailWalletLinks = async () => {
+    setWalletSending(true);
+    try {
+      const response = await fetchWithAuth("/api/opac/library-card/wallet", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "email",
+          platform: "both",
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(String(data?.error || "Unable to send wallet email right now."));
+      }
+      toast.success(`Wallet links sent to ${data.recipient}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to send wallet links.");
+    } finally {
+      setWalletSending(false);
+    }
   };
 
   if (isLoading || !isLoggedIn || !patron) {
@@ -97,12 +178,77 @@ export default function LibraryCardPage() {
         <div className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-primary-100 rounded-lg">
-              <Smartphone className="h-5 w-5 text-primary-600" />
+              <WalletCards className="h-5 w-5 text-primary-600" />
             </div>
-            <h2 className="text-lg font-semibold text-foreground">Add to Your Phone</h2>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Wallet Enrollment</h2>
+              <p className="text-xs text-muted-foreground">
+                Add your card to Apple Wallet/Google Wallet when provider links are configured.
+              </p>
+            </div>
           </div>
 
           <div className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button
+                type="button"
+                asChild={Boolean(walletData?.links?.apple)}
+                disabled={!walletData?.links?.apple || walletLoading}
+                className="justify-between"
+              >
+                {walletData?.links?.apple ? (
+                  <a href={walletData.links.apple} target="_blank" rel="noopener noreferrer">
+                    Add to Apple Wallet
+                    <ExternalLink className="h-4 w-4 ml-2" />
+                  </a>
+                ) : (
+                  <span>Add to Apple Wallet</span>
+                )}
+              </Button>
+              <Button
+                type="button"
+                asChild={Boolean(walletData?.links?.google)}
+                disabled={!walletData?.links?.google || walletLoading}
+                variant="secondary"
+                className="justify-between"
+              >
+                {walletData?.links?.google ? (
+                  <a href={walletData.links.google} target="_blank" rel="noopener noreferrer">
+                    Add to Google Wallet
+                    <ExternalLink className="h-4 w-4 ml-2" />
+                  </a>
+                ) : (
+                  <span>Add to Google Wallet</span>
+                )}
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-2"
+                onClick={handleEmailWalletLinks}
+                disabled={walletSending || walletLoading || !walletData?.patron?.email}
+              >
+                {walletSending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Mail className="h-4 w-4" />
+                )}
+                Send Wallet Links by Email
+              </Button>
+              {!walletData?.patron?.email ? (
+                <span className="text-xs text-amber-700 dark:text-amber-400">
+                  Add an email in Account Settings to send wallet links.
+                </span>
+              ) : null}
+            </div>
+
+            <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+              {walletLoading ? "Loading wallet capabilities..." : walletData?.configured}
+            </div>
+
             {/* iOS instructions */}
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-2">iPhone (iOS)</h3>
@@ -132,9 +278,9 @@ export default function LibraryCardPage() {
             {/* General note */}
             <div className="pt-3 border-t border-border/50">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Apple Wallet and Google Wallet pass generation is not currently supported. You can
-                save a screenshot of your QR code for the same quick-scan experience at any library
-                location.
+                If your library has not configured wallet links yet, use the QR screenshot method
+                above. StacksOS still supports fast desk/self-check scanning using this digital
+                card.
               </p>
             </div>
           </div>

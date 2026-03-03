@@ -15,6 +15,7 @@ import {
   Rocket,
   CheckCircle2,
   ExternalLink,
+  Smartphone,
 } from "lucide-react";
 
 interface SettingsCard {
@@ -83,6 +84,21 @@ const SETTINGS_CARDS: SettingsCard[] = [
     bgColor: "bg-rose-500/10",
     features: ["Recurring fine rules", "Maximum fine rules", "Grace periods", "Fine cap behavior"],
   },
+  {
+    title: "Digital App Library",
+    description:
+      "Configure Libby/OverDrive, Hoopla, cloudLibrary, and Kanopy links + connector modes.",
+    href: "/staff/admin/settings/econtent",
+    icon: Smartphone,
+    iconColor: "text-violet-600",
+    bgColor: "bg-violet-500/10",
+    features: [
+      "Provider enablement",
+      "Link-out/OAuth/API modes",
+      "App deep links",
+      "Transaction flags",
+    ],
+  },
 ];
 
 const SETUP_STEPS: SetupStep[] = [
@@ -109,6 +125,12 @@ const SETUP_STEPS: SetupStep[] = [
     description:
       "Run workstation/login checks, then verify checkout, holds, and OPAC discovery before go-live.",
     href: "/staff/admin/go-live",
+  },
+  {
+    title: "5. Configure Digital App Library",
+    description:
+      "Set Libby/OverDrive, Hoopla, cloudLibrary, and Kanopy connectors so eContent links and app handoff are intentional.",
+    href: "/staff/admin/settings/econtent",
   },
 ];
 
