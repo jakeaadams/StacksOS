@@ -71,28 +71,17 @@ type AdminCopilotPanelProps = {
 
 // Uses design system CSS variables (--status-error-*, --status-warning-*) for theme consistency
 const priorityColors = {
-  high: "border-[hsl(var(--status-error))]",
-  medium: "border-[hsl(var(--status-warning))]",
+  high: "border-[hsl(var(--status-error))] bg-[hsl(var(--status-error-bg))] text-[hsl(var(--status-error-text))]",
+  medium:
+    "border-[hsl(var(--status-warning))] bg-[hsl(var(--status-warning-bg))] text-[hsl(var(--status-warning-text))]",
   low: "border-border text-muted-foreground",
-};
-
-const priorityInlineStyles: Record<string, React.CSSProperties> = {
-  high: {
-    backgroundColor: "hsl(var(--status-error-bg))",
-    color: "hsl(var(--status-error-text))",
-  },
-  medium: {
-    backgroundColor: "hsl(var(--status-warning-bg))",
-    color: "hsl(var(--status-warning-text))",
-  },
-  low: {},
 };
 
 const TrendIcon = ({ trend }: { trend: "up" | "down" | "flat" }) => {
   if (trend === "up")
-    return <TrendingUp className="h-4 w-4" style={{ color: "hsl(var(--status-success-text))" }} />;
+    return <TrendingUp className="h-4 w-4 text-[hsl(var(--status-success-text))]" />;
   if (trend === "down")
-    return <TrendingDown className="h-4 w-4" style={{ color: "hsl(var(--status-error-text))" }} />;
+    return <TrendingDown className="h-4 w-4 text-[hsl(var(--status-error-text))]" />;
   return <Minus className="h-4 w-4 text-muted-foreground" />;
 };
 
@@ -163,26 +152,14 @@ export function AdminCopilotPanel({ orgId, metrics, alerts, className }: AdminCo
             </Button>
 
             {error && (
-              <div
-                className="flex items-center gap-2 text-sm rounded-lg p-3"
-                style={{
-                  color: "hsl(var(--status-error-text))",
-                  backgroundColor: "hsl(var(--status-error-bg))",
-                }}
-              >
+              <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--status-error-bg))] p-3 text-sm text-[hsl(var(--status-error-text))]">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 {error}
               </div>
             )}
 
             {degraded && response && (
-              <div
-                className="text-xs rounded-lg p-2"
-                style={{
-                  color: "hsl(var(--status-warning-text))",
-                  backgroundColor: "hsl(var(--status-warning-bg))",
-                }}
-              >
+              <div className="rounded-lg bg-[hsl(var(--status-warning-bg))] p-2 text-xs text-[hsl(var(--status-warning-text))]">
                 AI provider unavailable. Showing threshold-based fallback analysis.
               </div>
             )}
@@ -227,7 +204,6 @@ export function AdminCopilotPanel({ orgId, metrics, alerts, className }: AdminCo
                                 <Badge
                                   variant="outline"
                                   className={cn("text-[10px]", priorityColors[a.priority])}
-                                  style={priorityInlineStyles[a.priority]}
                                 >
                                   {a.priority}
                                 </Badge>

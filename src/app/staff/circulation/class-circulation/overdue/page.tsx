@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageContainer, PageContent, PageHeader } from "@/components/shared";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {

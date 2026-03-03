@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchWithAuth } from "@/lib/client-fetch";
-import { featureFlags } from "@/lib/feature-flags";
 
 import { PageContainer, PageHeader, PageContent, DataTable, EmptyState } from "@/components/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -43,6 +43,22 @@ const PROFILE_META: Record<
   custom: { icon: Palette, label: "Custom", shortLabel: "Custom" },
 };
 
+const PROFILE_SWATCH_CLASS: Record<string, string> = {
+  public: "bg-teal-600",
+  school: "bg-blue-600",
+  church: "bg-amber-700",
+  academic: "bg-indigo-700",
+  custom: "bg-slate-600",
+};
+
+const PROFILE_ICON_TONE_CLASS: Record<string, string> = {
+  public: "bg-teal-500/15 text-teal-700",
+  school: "bg-blue-500/15 text-blue-700",
+  church: "bg-amber-500/15 text-amber-800",
+  academic: "bg-indigo-500/15 text-indigo-700",
+  custom: "bg-slate-500/15 text-slate-700",
+};
+
 function hexToHsl(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
@@ -77,7 +93,6 @@ function applyBrandColor(hex: string) {
 export function ProfileSwitcher() {
   const router = useRouter();
   const [currentProfile, setCurrentProfile] = useState<string>("public");
-  const [currentColor, setCurrentColor] = useState<string>("#0f766e");
   const [profiles, setProfiles] = useState<ProfileInfo[]>([]);
   const [switching, setSwitching] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -87,7 +102,6 @@ export function ProfileSwitcher() {
       .then((r) => r.json())
       .then((data) => {
         if (data?.currentProfile) setCurrentProfile(data.currentProfile);
-        if (data?.primaryColor) setCurrentColor(data.primaryColor);
         if (data?.profiles) setProfiles(data.profiles);
         if (isHexColor(data?.primaryColor)) {
           applyBrandColor(data.primaryColor);
@@ -115,7 +129,6 @@ export function ProfileSwitcher() {
         }
 
         setCurrentProfile(profileType);
-        setCurrentColor(data.primaryColor || "#0f766e");
 
         if (data.primaryColor) {
           applyBrandColor(data.primaryColor);
@@ -139,6 +152,7 @@ export function ProfileSwitcher() {
 
   const meta = (PROFILE_META[currentProfile] || PROFILE_META.public)!;
   const Icon = meta.icon;
+  const activeSwatchClass = PROFILE_SWATCH_CLASS[currentProfile] || PROFILE_SWATCH_CLASS.public;
 
   return (
     <DropdownMenu>
@@ -158,8 +172,7 @@ export function ProfileSwitcher() {
               )}
               <span className="text-xs font-medium hidden lg:inline">{meta.shortLabel}</span>
               <div
-                className="h-2.5 w-2.5 rounded-full ring-1 ring-border/50"
-                style={{ backgroundColor: currentColor }}
+                className={`h-2.5 w-2.5 rounded-full ring-1 ring-border/50 ${activeSwatchClass}`}
               />
             </Button>
           </DropdownMenuTrigger>
@@ -181,6 +194,8 @@ export function ProfileSwitcher() {
           const pmeta = (PROFILE_META[profile.type] || PROFILE_META.custom)!;
           const PIcon = pmeta.icon;
           const isActive = profile.type === currentProfile;
+          const iconToneClass =
+            PROFILE_ICON_TONE_CLASS[profile.type] || PROFILE_ICON_TONE_CLASS.custom;
 
           return (
             <DropdownMenuItem
@@ -193,13 +208,7 @@ export function ProfileSwitcher() {
               disabled={switching}
             >
               <div
-                className="mt-0.5 h-8 w-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{
-                  backgroundColor: profile.primaryColor
-                    ? `${profile.primaryColor}18`
-                    : "hsl(var(--muted))",
-                  color: profile.primaryColor || "hsl(var(--foreground))",
-                }}
+                className={`mt-0.5 h-8 w-8 rounded-xl flex items-center justify-center flex-shrink-0 ${iconToneClass}`}
               >
                 <PIcon className="h-4 w-4" />
               </div>

@@ -11,6 +11,7 @@ import { BookCard } from "@/components/opac/book-card";
 import { AddToListDialog } from "@/components/opac/add-to-list-dialog";
 import { featureFlags } from "@/lib/feature-flags";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogClose,
@@ -1078,14 +1079,14 @@ function ReviewForm({ recordId, isLoggedIn }: { recordId: number; isLoggedIn: bo
           >
             Your Review
           </label>
-          <textarea
+          <Textarea
             id="review-text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="What did you think of this title?"
             rows={4}
             maxLength={2000}
-            className="w-full rounded-lg border border-border/70 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary-600"
+            className="w-full rounded-lg border-border/70 bg-background text-sm placeholder:text-muted-foreground/50"
           />
           <div className="text-xs text-muted-foreground text-right mt-1">{text.length}/2000</div>
         </div>

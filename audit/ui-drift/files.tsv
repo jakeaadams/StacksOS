@@ -1,8 +1,4 @@
 file	score	raw_buttons	text_inputs	choice_inputs	action_inputs	selects	textareas	inline_styles	purple_palette	palette_drift	legacy_primary_combo	legacy_surface_combo	href_hash	placeholder_text	missing_button_primitive	missing_input_primitive	missing_select_primitive	missing_textarea_primitive	issues
-src/components/ai/AdminCopilotPanel.tsx	8	0	0	0	0	0	0	4	0	0	0	0	0	0	0	0	0	0	inline_style
-src/app/staff/admin/page.tsx	4	0	0	0	0	0	0	0	4	4	0	0	0	0	0	0	0	0	hardcoded_palette
-src/components/ai/CatalogingCopilotPanel.tsx	4	0	0	0	0	0	0	2	0	0	0	0	0	0	0	0	0	0	inline_style
-src/app/opac/record/[id]/page.tsx	2	1	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	1	textarea_without_ui_textarea
 src/app/error.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/global-error.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -12,10 +8,11 @@ src/app/opac/accessibility/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
 src/app/opac/account/checkouts/page.tsx	0	2	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/account/error.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/account/events/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
-src/app/opac/account/fines/page.tsx	0	2	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/opac/account/fines/page.tsx	0	1	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/account/history/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/account/holds/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/account/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/opac/account/library-card/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/account/lists/page.tsx	0	0	0	4	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/account/messages/page.tsx	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/account/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -36,16 +33,16 @@ src/app/opac/help/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
 src/app/opac/kids/account/checkouts/page.tsx	0	0	0	0	0	0	0	0	17	0	0	0	0	0	0	0	0	0	
 src/app/opac/kids/account/holds/page.tsx	0	0	0	0	0	0	0	0	11	0	0	0	0	0	0	0	0	0	
 src/app/opac/kids/account/page.tsx	0	0	0	0	0	0	0	0	21	0	0	0	0	0	0	0	0	0	
-src/app/opac/kids/account/reading-log/page.tsx	0	0	0	0	0	0	0	0	2	0	0	0	0	0	0	0	0	0	
+src/app/opac/kids/account/reading-log/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/kids/browse/page.tsx	0	0	0	0	0	0	0	0	18	0	0	0	0	0	0	0	0	0	
-src/app/opac/kids/challenges/page.tsx	0	0	0	0	0	0	0	0	23	0	0	0	0	0	0	0	0	0	
-src/app/opac/kids/error.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/opac/kids/challenges/page.tsx	0	0	0	0	0	0	0	0	2	0	0	0	0	0	0	0	0	0	
+src/app/opac/kids/error.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/kids/help/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
-src/app/opac/kids/layout.tsx	0	0	0	0	0	0	0	0	28	0	0	0	0	0	0	0	0	0	
-src/app/opac/kids/page.tsx	0	0	0	0	0	0	0	0	34	0	0	0	0	0	0	0	0	0	
+src/app/opac/kids/layout.tsx	0	0	0	0	0	0	0	0	3	0	0	0	0	0	0	0	0	0	
+src/app/opac/kids/page.tsx	0	0	0	0	0	0	0	0	10	0	0	0	0	0	0	0	0	0	
 src/app/opac/kids/parents/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
-src/app/opac/kids/record/[id]/page.tsx	0	0	0	0	0	0	0	0	34	0	0	0	0	0	0	0	0	0	
-src/app/opac/kids/search/page.tsx	0	0	0	0	0	0	0	0	42	0	0	0	0	0	0	0	0	0	
+src/app/opac/kids/record/[id]/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/opac/kids/search/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/lists/[listId]/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/lists/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -63,6 +60,7 @@ src/app/opac/privacy/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
 src/app/opac/recommendations/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/recommendations/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/record/[id]/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/opac/record/[id]/page.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/register/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/register/page.tsx	0	0	0	2	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/search/_components/ActiveFilterChips.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -71,13 +69,13 @@ src/app/opac/search/_components/SearchResultsList.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/search/layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/search/loading.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/search/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
-src/app/opac/teens/layout.tsx	0	0	0	0	0	0	0	0	17	0	0	0	0	0	0	0	0	0	
-src/app/opac/teens/page.tsx	0	1	1	0	0	0	0	0	22	0	0	0	0	0	0	0	0	0	
-src/app/opac/teens/search/page.tsx	0	0	0	0	0	0	0	0	6	0	0	0	0	0	0	0	0	0	
+src/app/opac/teens/layout.tsx	0	0	0	0	0	0	0	0	3	0	0	0	0	0	0	0	0	0	
+src/app/opac/teens/page.tsx	0	1	1	0	0	0	0	0	6	0	0	0	0	0	0	0	0	0	
+src/app/opac/teens/search/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/opac/terms/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/release-notes/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
-src/app/self-checkout/error.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/self-checkout/error.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/self-checkout/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/acquisitions/allocations/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/acquisitions/claims/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -100,9 +98,12 @@ src/app/staff/admin/error.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
 src/app/staff/admin/go-live/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/item-statuses/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/loading.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/staff/admin/migration/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/staff/admin/migration/patrons/page.tsx	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/notifications/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/onboarding/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/ops/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/staff/admin/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/permissions/_components/permissions-columns.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/permissions/_components/PermissionsDialogs.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/permissions/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -112,6 +113,7 @@ src/app/staff/admin/policies/circulation/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/policies/holds/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/policies/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/policy-inspector/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/app/staff/admin/programs/summer-reading/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/server/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/settings/circulation/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/admin/settings/fines/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -210,7 +212,9 @@ src/app/staff/settings/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
 src/app/staff/support/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/staff/training/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/app/status/page.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/ai/AdminCopilotPanel.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/ai/cataloging-copilot.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/ai/CatalogingCopilotPanel.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/ai/lazy.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/ai/policy-explainer.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/cataloging/add-item-dialog.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -222,6 +226,7 @@ src/components/dashboard/dashboard-editor.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/dashboard/lazy.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/keyboard/keyboard-shortcuts.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/layout/command-palette.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/layout/profile-switcher.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/layout/sidebar.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/layout/staff-layout.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/layout/top-nav.tsx	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -230,12 +235,15 @@ src/components/opac/accessibility-controls.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
 src/components/opac/add-to-list-dialog.tsx	0	3	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/book-card.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/book-rating.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/opac/citation-generator.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/opac/digital-library-card.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/faceted-search.tsx	0	4	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/grouped-work-card.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/HelpContactPhone.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/HelpFAQ.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/kids/ParentsControls.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/language-switcher.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/opac/marc-viewer.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/mobile-bottom-nav.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/opac-footer.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/opac-header.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -244,11 +252,13 @@ src/components/opac/recommendation-card.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
 src/components/opac/recommended-for-you.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/reviews-ratings.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/reviews-section.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
-src/components/opac/search-autocomplete.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/opac/search-autocomplete.tsx	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/opac/share-menu.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/opac/why-this-result-dialog.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/patron/notification-preferences.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/patron/patron-notices-tab.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/providers/theme-provider.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/pwa/sw-register.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/shared/barcode-input.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/shared/confirm-dialog.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/shared/cover-art-picker.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
@@ -280,6 +290,11 @@ src/components/shared/status-hud.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
 src/components/shared/table-row-actions.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/shared/universal-search.tsx	0	1	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/shared/unoptimized-image.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/staff/charts/circ-trend-line.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/staff/charts/collection-donut.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/staff/charts/daily-stats-bar.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/staff/charts/holds-donut.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+src/components/staff/charts/patron-demographics-bar.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/ui/accordion.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/ui/alert-dialog.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
 src/components/ui/alert.tsx	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	

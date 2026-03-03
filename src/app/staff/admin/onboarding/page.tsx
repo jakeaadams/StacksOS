@@ -211,7 +211,7 @@ export default function OnboardingWizardPage() {
 
   const completedTaskIds = useMemo(() => new Set(completions.map((c) => c.task_id)), [completions]);
 
-  const tasks = data?.profilePlaybook?.tasks || [];
+  const tasks = useMemo<OnboardingTask[]>(() => data?.profilePlaybook?.tasks ?? [], [data]);
 
   const tasksByPhase = useMemo(() => {
     const grouped: Record<OnboardingTaskPhase, OnboardingTask[]> = {

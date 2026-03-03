@@ -49,6 +49,26 @@ This is a fresh parity check using current public/vendor sources to keep roadmap
 3. Migration wizard hardening with preflight diagnostics and correction guidance.
 4. Profile-specific OPAC polish pass (school/church/academic differentiation beyond branding).
 
+## Fresh Addendum (2026-03-03, post-fix pass)
+
+Evidence-backed feature gaps that still matter after current closure work:
+
+1. Native mobile app parity (beyond responsive web/PWA)
+   - Competitor signal: Polaris/Vega markets dedicated mobile patron app flows and self-service convenience.
+   - StacksOS current state: responsive OPAC + PWA + digital card page, but no first-party native app shell.
+2. Patron identity and convenience auth upgrades
+   - Competitor signal: Surpass highlights social login and simpler cloud-first patron onboarding.
+   - StacksOS current state: strong card/PIN and staff auth, but no social sign-in/passkey/mobile-wallet enrollment flow.
+3. Hardware/self-service interoperability depth
+   - Competitor signal: BlueCloud positions broad service platform integration patterns for modern library operations.
+   - StacksOS current state: self-check UI exists, but ecosystem-grade kiosk/RFID/AMH interoperability remains limited.
+4. Enterprise partner ecosystem proof
+   - Competitor signal: Alma/OCLC continue to lead with mature, well-documented developer ecosystems and integration breadth.
+   - StacksOS current state: webhook and developer platform foundations are present, but needs broader public integration examples and certification-style partner onboarding assets.
+5. K-12 district-level intelligence packaging
+   - Competitor signal: Follett continues to package district/classroom workflows and AI-facing posture for schools.
+   - StacksOS current state: class circulation and K-12 modules are present; still needs stronger district executive analytics bundles for school-system buyers.
+
 ## Sources
 
 - Innovative Vega Discover: https://www.iii.com/vega-discover/

@@ -24,7 +24,6 @@ const requestSchema = z.object({
   bibId: z.number().int().positive().optional(),
 });
 
-type CatalogingCopilotRequest = z.infer<typeof requestSchema>;
 type AiErrorClass = "disabled" | "misconfigured" | "transient" | "unknown";
 
 function classifyAiError(error: unknown): AiErrorClass {

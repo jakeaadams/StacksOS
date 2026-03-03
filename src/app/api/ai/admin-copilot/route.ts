@@ -31,7 +31,6 @@ const requestSchema = z.object({
   alerts: z.array(alertSchema).max(50).optional(),
 });
 
-type AdminCopilotRequest = z.infer<typeof requestSchema>;
 type AiErrorClass = "disabled" | "misconfigured" | "transient" | "unknown";
 
 function classifyAiError(error: unknown): AiErrorClass {

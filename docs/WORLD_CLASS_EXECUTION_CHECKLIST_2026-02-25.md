@@ -8,8 +8,8 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 
 - **Local**: lint (quiet) pass, type-check pass, test:run pass (323/323)
 - **VM** (192.168.1.233): lint pass, type-check pass, test:run pass (323/323), test:e2e pass (81 passed, 5 skipped), run_all.sh pass
-- **UI drift**: latest VM audit aggregate score `30` (not zero)
-- **Lint warnings**: `18` warnings on non-quiet lint (`0` errors)
+- **UI drift**: latest audit aggregate score `0` (target met)
+- **Lint warnings**: `0` warnings on non-quiet lint (`0` errors)
 - **Evergreen host** (192.168.1.232): `/openils/bin/eg_config` reports `Open-ILS 3.16.4` (validate against upstream release announcements before upgrade decisions)
 
 ---
@@ -29,7 +29,7 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 - [x] Scope/depth parity: `search_scope`, `scope_org`, `copy_depth` enforced across search/AI/record
 - [x] Holdings: reshelving/status 7 contributes to available counts
 - [x] Cover fallback: Google Books when Open Library fails; cover picker with best-match
-- [ ] UI drift closure to zero is not yet complete (latest aggregate score `30`)
+- [x] UI drift closure to zero completed (latest aggregate score `0`)
 - [x] Full OPAC audit gate: 42/42 pages, 21/21 APIs, 4/4 Evergreen bridge
 
 ### Staff & Platform
@@ -59,7 +59,7 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 
 ## Dependencies
 
-- [x] `@types/node` 20→25, `jsdom` 27→28, `lint-staged` 15→16, `lucide-react` 0.562→0.575, `nodemailer` 7→8, `eslint-config-next` 16.1.6, `pg` 8.19.0
+- [x] Dependency wave completed for safe upgrades (`@types/node` 25.3.3, `@types/pg` 8.18.0, `lint-staged` 16.3.1, `lucide-react` 0.576.0, `swagger-ui-dist` 5.32.0, `eslint-config-next` 16.1.6)
 - [ ] `eslint` 9→10 blocked by Next ESLint plugin compatibility (react/display-name crash)
 
 ---
@@ -75,8 +75,8 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 ## Open Items
 
 - [ ] ESLint v10 upgrade (blocked by Next ESLint plugin compatibility)
-- [ ] Resolve current non-quiet lint warnings (`18`) while preserving zero-error gate
-- [ ] Reduce UI drift aggregate score (`30`) to target (`0`) in design-system sweep
+- [x] Resolve non-quiet lint warnings while preserving zero-error gate
+- [x] Reduce UI drift aggregate score to target (`0`)
 - [ ] External comparative user studies (task success/time, SUS, adoption, CSAT)
 - [ ] Continuous competitive benchmark program with external evidence
 
@@ -84,9 +84,8 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 
 ## Next Execution Priorities
 
-1. Resolve ESLint v10 when Next ESLint plugin supports it
-2. Continue design-system sweep: normalize spacing/typography/color tokens
-3. Continue `any` debt reduction on highest-risk Evergreen routes
-4. AI-specific ops alert thresholds (fallback-rate and p95 latency alarms)
-5. Migration wizard hardening with preflight diagnostics
-6. Profile-specific OPAC polish pass
+1. Re-attempt ESLint v10 only after Next plugin chain is verified compatible
+2. External comparative UX studies (task success/time, SUS, CSAT) for objective leaderboard proof
+3. AI-specific ops alert thresholds (fallback-rate and p95 latency alarms)
+4. Migration wizard hardening with preflight diagnostics
+5. Profile-specific OPAC polish pass with measured conversion metrics

@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { CalendarDays, ChevronLeft, Download, Loader2, RefreshCw, Users } from "lucide-react";
+import { CalendarDays, ChevronLeft, Download, RefreshCw, Users } from "lucide-react";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { convertToCSV, downloadFile, generateExportFilename } from "@/lib/csv";
-import { PageContainer, PageHeader, PageContent, DataTable, EmptyState } from "@/components/shared";
+import { PageContainer, PageHeader, PageContent, DataTable } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

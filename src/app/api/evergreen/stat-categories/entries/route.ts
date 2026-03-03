@@ -8,7 +8,6 @@ import {
   isOpenSRFEvent,
   parseJsonBodyWithSchema,
   payloadFirst,
-  payloadFirstArray,
   requireAuthToken,
   serverErrorResponse,
   successResponse,

@@ -10,7 +10,7 @@ import { listAiDrafts, getAiDraftWithDecisions } from "@/lib/db/ai";
  * in single-draft detail mode, which is already admin-gated.
  */
 function redactDraftForList(draft: Record<string, any>): Record<string, any> {
-  const { ip, user_agent, output, input_redacted, ...safe } = draft;
+  const { ip: _ip, user_agent: _userAgent, output, input_redacted, ...safe } = draft;
   return {
     ...safe,
     // Show presence of output without full content in list view

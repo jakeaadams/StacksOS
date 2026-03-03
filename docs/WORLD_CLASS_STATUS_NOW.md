@@ -49,15 +49,15 @@ Open items after current verification:
 1. ESLint 10 upgrade hold
    - Current stack still fails with ESLint 10 due Next plugin-chain incompatibility (`react/display-name` loader crash in this repo).
    - Action: keep ESLint 9 until upstream chain supports 10.
-2. Non-quiet lint warning cleanup
-   - Current non-quiet lint reports `18` warnings (`0` errors).
-   - Action: clear warnings while preserving current green gate and behavior.
-3. UI drift reduction
-   - Current latest VM UI-drift aggregate score is `30` (not zero).
-   - Action: continue design-system/token cleanup to target score `0`.
-4. External comparative UX proof
+2. External comparative UX proof
    - "Best UI/UX" cannot be validated by internal checks alone.
    - Action: run external comparative usability study (task completion/time/SUS/CSAT vs selected competitors).
+
+Recently closed:
+
+- Non-quiet lint warnings: now `0` warnings (`0` errors).
+- UI drift aggregate score: now `0`.
+- Safe dependency drift wave: complete (ESLint major held intentionally).
 
 ## 5) 30/60/90-Day Roadmap (Execution-Ready)
 

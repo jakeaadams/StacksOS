@@ -48,20 +48,14 @@ function DigitalLibraryCard({
   return (
     <div className="w-full max-w-md mx-auto">
       {/* Card container with perspective for 3D flip */}
-      <div className="relative w-full" style={{ perspective: "1000px" }}>
+      <div className="relative w-full [perspective:1000px]">
         <div
-          className="relative w-full transition-transform duration-700 ease-in-out"
-          style={{
-            transformStyle: "preserve-3d",
-            transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-            aspectRatio: "1.586 / 1",
-          }}
+          className={`relative w-full transition-transform duration-700 ease-in-out [aspect-ratio:1.586/1] [transform-style:preserve-3d] ${
+            isFlipped ? "[transform:rotateY(180deg)]" : "[transform:rotateY(0deg)]"
+          }`}
         >
           {/* Front of card */}
-          <div
-            className="absolute inset-0 rounded-2xl overflow-hidden shadow-xl border border-border/50"
-            style={{ backfaceVisibility: "hidden" }}
-          >
+          <div className="absolute inset-0 rounded-2xl overflow-hidden border border-border/50 shadow-xl [backface-visibility:hidden]">
             <div className="h-full bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 p-6 flex flex-col justify-between text-white">
               {/* Top section: branding */}
               <div className="flex items-start justify-between">
@@ -109,13 +103,7 @@ function DigitalLibraryCard({
           </div>
 
           {/* Back of card */}
-          <div
-            className="absolute inset-0 rounded-2xl overflow-hidden shadow-xl border border-border/50"
-            style={{
-              backfaceVisibility: "hidden",
-              transform: "rotateY(180deg)",
-            }}
-          >
+          <div className="absolute inset-0 rounded-2xl overflow-hidden border border-border/50 shadow-xl [backface-visibility:hidden] [transform:rotateY(180deg)]">
             <div className="h-full bg-card flex flex-col">
               {/* Magnetic stripe */}
               <div className="h-10 bg-foreground/80 mt-4" />

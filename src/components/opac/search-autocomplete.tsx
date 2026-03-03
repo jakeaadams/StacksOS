@@ -24,7 +24,6 @@ import {
   Smartphone,
   Headphones,
   MonitorPlay,
-  X,
 } from "lucide-react";
 import { getRecentSearches, addRecentSearch, clearRecentSearches } from "@/lib/search-history";
 

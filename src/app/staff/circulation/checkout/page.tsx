@@ -501,7 +501,7 @@ export default function CheckoutPage() {
       setScanQueue((prev) => prev.slice(1));
       itemInputRef.current?.focus();
     }
-  }, [patron, isCheckingOut, overridePrompt, scanQueue, checkoutMutation]);
+  }, [patron, isCheckingOut, overridePrompt, scanQueue, checkoutMutation, specificDueDate]);
 
   React.useEffect(() => {
     // Process queue when it changes

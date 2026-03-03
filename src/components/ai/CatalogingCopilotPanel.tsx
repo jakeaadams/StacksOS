@@ -69,21 +69,10 @@ type CatalogingCopilotPanelProps = {
 
 // Uses design system CSS variables (--status-success-*, --status-warning-*) for theme consistency
 const confidenceColors = {
-  high: "border-[hsl(var(--status-success))]",
-  medium: "border-[hsl(var(--status-warning))]",
+  high: "border-[hsl(var(--status-success))] bg-[hsl(var(--status-success-bg))] text-[hsl(var(--status-success-text))]",
+  medium:
+    "border-[hsl(var(--status-warning))] bg-[hsl(var(--status-warning-bg))] text-[hsl(var(--status-warning-text))]",
   low: "border-border text-muted-foreground",
-};
-
-const confidenceInlineStyles: Record<string, React.CSSProperties> = {
-  high: {
-    backgroundColor: "hsl(var(--status-success-bg))",
-    color: "hsl(var(--status-success-text))",
-  },
-  medium: {
-    backgroundColor: "hsl(var(--status-warning-bg))",
-    color: "hsl(var(--status-warning-text))",
-  },
-  low: {},
 };
 
 const sourceLabels: Record<string, string> = {
@@ -209,26 +198,14 @@ export function CatalogingCopilotPanel({
           </Button>
 
           {error && (
-            <div
-              className="flex items-center gap-2 text-sm rounded-lg p-3"
-              style={{
-                color: "hsl(var(--status-error-text))",
-                backgroundColor: "hsl(var(--status-error-bg))",
-              }}
-            >
+            <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--status-error-bg))] p-3 text-sm text-[hsl(var(--status-error-text))]">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               {error}
             </div>
           )}
 
           {degraded && response && (
-            <div
-              className="text-xs rounded-lg p-2"
-              style={{
-                color: "hsl(var(--status-warning-text))",
-                backgroundColor: "hsl(var(--status-warning-bg))",
-              }}
-            >
+            <div className="rounded-lg bg-[hsl(var(--status-warning-bg))] p-2 text-xs text-[hsl(var(--status-warning-text))]">
               AI provider unavailable. Showing deterministic fallback suggestions.
             </div>
           )}
@@ -255,22 +232,13 @@ export function CatalogingCopilotPanel({
                           key={key}
                           className={cn(
                             "border rounded-lg p-3 space-y-1",
+                            accepted &&
+                              "border-[hsl(var(--status-success-text))] bg-[hsl(var(--status-success-bg)/0.5)]",
+                            rejected &&
+                              "border-[hsl(var(--status-error-text)/0.4)] bg-[hsl(var(--status-error-bg)/0.3)]",
                             accepted && "opacity-100",
                             rejected && "opacity-60"
                           )}
-                          style={
-                            accepted
-                              ? {
-                                  borderColor: "hsl(var(--status-success-text))",
-                                  backgroundColor: "hsl(var(--status-success-bg) / 0.5)",
-                                }
-                              : rejected
-                                ? {
-                                    borderColor: "hsl(var(--status-error-text) / 0.4)",
-                                    backgroundColor: "hsl(var(--status-error-bg) / 0.3)",
-                                  }
-                                : undefined
-                          }
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1">
@@ -279,7 +247,6 @@ export function CatalogingCopilotPanel({
                                 <Badge
                                   variant="outline"
                                   className={cn("text-[10px]", confidenceColors[s.confidence])}
-                                  style={confidenceInlineStyles[s.confidence]}
                                 >
                                   {s.confidence}
                                 </Badge>
@@ -344,7 +311,6 @@ export function CatalogingCopilotPanel({
                           "text-[10px]",
                           confidenceColors[response.classificationSuggestion.confidence]
                         )}
-                        style={confidenceInlineStyles[response.classificationSuggestion.confidence]}
                       >
                         {response.classificationSuggestion.confidence}
                       </Badge>

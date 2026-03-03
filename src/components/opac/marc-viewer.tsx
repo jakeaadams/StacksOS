@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { BookOpen, ChevronDown, Copy } from "lucide-react";
+import { BookOpen, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -182,7 +182,7 @@ export function MarcViewer({ marcXml }: MarcViewerProps) {
       () => toast.success(t("copied")),
       () => toast.error(t("copyFailed"))
     );
-  }, [record]);
+  }, [record, t]);
 
   if (!marcXml || !record) return null;
 
