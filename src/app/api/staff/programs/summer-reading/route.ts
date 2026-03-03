@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { actor } = await requirePermissions(["STAFF_LOGIN"]);
+    const { actor } = await requirePermissions(["ADMIN_LOGIN"]);
     const actorRecord = actor && typeof actor === "object" ? (actor as Record<string, any>) : null;
     const orgUnit = Number.parseInt(String(actorRecord?.ws_ou ?? "1"), 10);
 
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { actor } = await requirePermissions(["STAFF_LOGIN"]);
+    const { actor } = await requirePermissions(["ADMIN_LOGIN"]);
     const actorRecord = actor && typeof actor === "object" ? (actor as Record<string, any>) : null;
     const orgUnit = Number.parseInt(String(actorRecord?.ws_ou ?? "1"), 10);
     const actorId =
