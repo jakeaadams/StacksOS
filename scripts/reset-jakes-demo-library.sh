@@ -13,6 +13,7 @@ STAFF_PASS="${DEMO_STAFF_PASS:-${STACKSOS_AUDIT_STAFF_PASSWORD:-${E2E_STAFF_PASS
 WORKSTATION="${DEMO_WORKSTATION:-STACKSOS-DEMO-RESET}"
 DEMO_BIB_COUNT="${DEMO_BIB_COUNT:-120}"
 DEMO_PATRON_COUNT="${DEMO_PATRON_COUNT:-24}"
+CLEAR_DEMO_RATE_LIMITS="${CLEAR_DEMO_RATE_LIMITS:-1}"
 
 SKIP_PURGE=0
 SKIP_TENANT=0
@@ -25,8 +26,43 @@ for arg in "$@"; do
   esac
 done
 
+clear_demo_rate_limits() {
+  if [ "$CLEAR_DEMO_RATE_LIMITS" != "1" ]; then
+    return 0
+  fi
+
+  case "$BASE_URL" in
+    http://127.0.0.1*|http://localhost*) ;;
+    *)
+      echo "[demo-reset] skip rate-limit clear (non-local BASE_URL)"
+      return 0
+      ;;
+  esac
+
+  if ! command -v redis-cli >/dev/null 2>&1; then
+    echo "[demo-reset] skip rate-limit clear (redis-cli not installed)"
+    return 0
+  fi
+
+  local prefix="${STACKSOS_REDIS_PREFIX:-stacksos}"
+  local cleared=0
+  for endpoint in staff-auth eg-circulation eg-holds eg-booking; do
+    for identifier in "127.0.0.1" "::1" "unknown"; do
+      local hash
+      hash="$(printf '%s' "$identifier" | sha256sum | awk '{print substr($1,1,32)}')"
+      local key="${prefix}:ratelimit:${endpoint}:${hash}"
+      if redis-cli DEL "$key" >/dev/null 2>&1; then
+        cleared=$((cleared + 1))
+      fi
+    done
+  done
+
+  echo "[demo-reset] cleared local rate-limit keys (${cleared} attempts)"
+}
+
 echo "[demo-reset] base url: ${BASE_URL}"
 echo "[demo-reset] tenant: ${DEMO_TENANT_ID} (${DEMO_TENANT_NAME})"
+clear_demo_rate_limits
 
 if [ "$SKIP_PURGE" -ne 1 ]; then
   echo "[demo-reset] purging prior demo footprint..."
