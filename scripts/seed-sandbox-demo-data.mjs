@@ -259,7 +259,7 @@ async function fetchJson(url, { method = "GET", headers = {}, json, jar, csrfTok
     if (res.status === 429 && attempt < retries) {
       const retryAfter = res.headers.get("retry-after");
       const waitMsRaw = retryAfter ? Number(retryAfter) * 1000 : 250 * 2 ** (attempt - 1);
-      const maxWaitMs = 15 * 60 * 1000; // match staff-auth window; safe for all seed calls
+      const maxWaitMs = 30 * 1000; // keep demo resets deterministic (avoid multi-minute stalls)
       const waitMs = Number.isFinite(waitMsRaw) ? Math.min(maxWaitMs, Math.max(250, waitMsRaw)) : 1000;
       console.warn(`[seed] 429 from ${method} ${url}; retrying in ${waitMs}ms (attempt ${attempt}/${retries})`);
       await sleep(waitMs);
@@ -960,8 +960,7 @@ const CHECKIN_PLAN = [
   { patronIdx: 20, copyIndices: [82, 83] },
   { patronIdx: 21, copyIndices: [84, 85] },
   { patronIdx: 22, copyIndices: [86, 87] },
-  { patronIdx: 23, copyIndices: [88, 89] },
-  { patronIdx: 24, copyIndices: [90, 91] },
+  { patronIdx: 23, copyIndices: [88] },
 ];
 
 const HOLD_PLAN = [
