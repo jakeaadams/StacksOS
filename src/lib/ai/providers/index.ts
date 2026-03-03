@@ -4,6 +4,7 @@ import { openAiProvider } from "./openai";
 import { anthropicProvider } from "./anthropic";
 import { mockProvider } from "./mock";
 import { grokProvider } from "./grok";
+import { moonshotProvider } from "./moonshot";
 
 export function getProvider(id: AiProviderId): AiProvider {
   switch (id) {
@@ -13,6 +14,8 @@ export function getProvider(id: AiProviderId): AiProvider {
       return anthropicProvider;
     case "grok":
       return grokProvider;
+    case "moonshot":
+      return moonshotProvider;
     case "mock":
       return mockProvider;
   }

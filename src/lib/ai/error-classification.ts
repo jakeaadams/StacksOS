@@ -31,6 +31,7 @@ const MISCONFIGURED_PATTERNS = [
   "misconfigured",
   "missing api_key",
   "missing grok_api_key",
+  "missing moonshot_api_key",
   "missing openai_api_key",
   "missing anthropic_api_key",
   "missing provider",

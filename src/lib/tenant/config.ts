@@ -89,8 +89,8 @@ function buildEnvTenantFallback(tenantId: string): TenantConfig {
       enabled: process.env.STACKSOS_AI_ENABLED === "1",
       provider:
         process.env.STACKSOS_AI_PROVIDER &&
-        ["openai", "anthropic", "grok"].includes(process.env.STACKSOS_AI_PROVIDER)
-          ? (process.env.STACKSOS_AI_PROVIDER as "openai" | "anthropic" | "grok")
+        ["openai", "anthropic", "grok", "moonshot"].includes(process.env.STACKSOS_AI_PROVIDER)
+          ? (process.env.STACKSOS_AI_PROVIDER as "openai" | "anthropic" | "grok" | "moonshot")
           : undefined,
       model: process.env.STACKSOS_AI_MODEL || undefined,
       fallbackModels: parseCsvList(process.env.STACKSOS_AI_MODEL_FALLBACKS),

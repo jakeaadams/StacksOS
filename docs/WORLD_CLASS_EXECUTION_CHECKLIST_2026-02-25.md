@@ -10,7 +10,7 @@ It is intended to answer one question clearly: what is done, what is blocked by 
 - [x] Local gate rerun on current branch:
   - `npm run lint -- --quiet` -> pass
   - `npm run type-check` -> pass
-  - `npm run test:run` -> pass (`322/322`)
+  - `npm run test:run` -> pass (`323/323`)
 - [x] VM gate rerun on current commit (`0e760c1`) and deployed runtime (`:3000`):
   - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e` -> pass (`81 passed, 5 skipped`)
   - `BASE_URL=http://127.0.0.1:3000 E2E_STAFF_USER=jake E2E_STAFF_PASS=jake bash audit/run_all.sh` -> pass

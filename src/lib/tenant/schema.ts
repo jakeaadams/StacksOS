@@ -29,7 +29,7 @@ export const TenantDiscoveryConfigSchema = z
 export const TenantAiConfigSchema = z
   .object({
     enabled: z.boolean().default(false),
-    provider: z.enum(["openai", "anthropic", "grok"]).optional(),
+    provider: z.enum(["openai", "anthropic", "grok", "moonshot"]).optional(),
     model: z.string().min(1).optional(),
     fallbackModels: z.array(z.string().min(1)).max(8).default([]),
     maxTokens: z.number().int().min(128).max(8192).default(1024),

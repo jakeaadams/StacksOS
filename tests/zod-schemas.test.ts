@@ -22,6 +22,10 @@ describe("Zod Schemas", () => {
       expect(aiProviderSchema.parse("grok")).toBe("grok");
     });
 
+    it("should accept 'moonshot'", () => {
+      expect(aiProviderSchema.parse("moonshot")).toBe("moonshot");
+    });
+
     it("should accept 'mock'", () => {
       expect(aiProviderSchema.parse("mock")).toBe("mock");
     });
