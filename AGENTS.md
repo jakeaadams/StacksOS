@@ -55,7 +55,7 @@ Dependency rule:
 - Local:
   - `npm run lint -- --quiet`: pass
   - `npm run type-check`: pass
-  - `npm run test:run`: pass (`323/323`)
+  - `npm run test:run`: pass (`328/328`)
   - `npm run audit:ui-drift`: pass
   - `npm run audit:opac`: validate in VM/runtime env (requires live app + Evergreen bridge)
   - `npm run audit:task-benchmark`: pass
@@ -63,7 +63,7 @@ Dependency rule:
 - VM (`192.168.1.233`):
   - `npm run lint -- --quiet`: pass
   - `npm run type-check`: pass
-  - `npm run test:run`: pass (`323/323`)
+  - `npm run test:run`: pass (`328/328`)
   - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`81 passed, 5 skipped`)
   - `BASE_URL=http://127.0.0.1:3000 bash audit/run_opac_audit.sh`: pass (`42/42` OPAC pages, `21/21` OPAC APIs, Evergreen bridge `4/4`)
   - `TASK_BENCH_STAFF_USER=jake TASK_BENCH_STAFF_PASS=jake TASK_BENCH_REQUIRE_STAFF=1 TASK_BENCH_ENFORCE=1 node scripts/task-benchmark.mjs`: pass (staff metrics fully populated)
@@ -112,6 +112,21 @@ Dependency rule:
 - Index maps: `src/lib/api/fieldmapper-maps.ts` (19 Evergreen classes)
 - Payload helpers: `src/lib/api/extract-payload.ts` (`fieldValue`, `payloadFirst`, etc.)
 - Re-exported from: `src/lib/api/index.ts`
+
+### OPAC Passkeys
+
+- Feature helpers: `src/lib/passkeys.ts` (RP/origin resolution, Evergreen-compatible auth helpers)
+- Secret crypto helper: `src/lib/passkey-secret.ts`
+- Persistence: `src/lib/db/opac-passkeys.ts` (`library.opac_passkeys`, `library.opac_passkey_challenges`)
+- API routes:
+  - `src/app/api/opac/passkeys/route.ts` (list/revoke)
+  - `src/app/api/opac/passkeys/register/options/route.ts`
+  - `src/app/api/opac/passkeys/register/verify/route.ts`
+  - `src/app/api/opac/passkeys/auth/options/route.ts`
+  - `src/app/api/opac/passkeys/auth/verify/route.ts`
+- UI:
+  - `src/app/opac/login/page.tsx` (passkey sign-in entry)
+  - `src/app/opac/account/settings/page.tsx` (enroll/list/revoke)
 
 ### Circulation UX
 

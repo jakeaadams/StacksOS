@@ -9,7 +9,7 @@ Use this file as the handoff baseline for any follow-on implementation work.
 
 - `npm run lint -- --quiet` -> pass
 - `npm run type-check` -> pass
-- `npm run test:run` -> pass (`323/323`)
+- `npm run test:run` -> pass (`328/328`)
 
 ### Runtime gates (VM: `192.168.1.233`)
 
@@ -32,6 +32,7 @@ Use this file as the handoff baseline for any follow-on implementation work.
 - End-to-end gate is green in production-like VM runtime.
 - AI provider runtime includes `moonshot` support and validates correctly.
 - OPAC/staff/Evergreen bridge audits pass under `run_all.sh`.
+- OPAC passkey flow is live: login passkey prompt, settings enrollment/revoke UI, Evergreen-compatible auth via encrypted PIN digest.
 - World-class checklist snapshot has been updated for current state and reconciled for conflicting historical notes.
 
 Primary artifacts:

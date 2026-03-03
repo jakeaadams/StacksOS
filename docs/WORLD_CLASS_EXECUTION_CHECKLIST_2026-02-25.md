@@ -6,8 +6,8 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 
 ## Current Gate Snapshot (2026-03-03)
 
-- **Local**: lint (quiet) pass, type-check pass, test:run pass (323/323)
-- **VM** (192.168.1.233): lint pass, type-check pass, test:run pass (323/323), test:e2e pass (81 passed, 5 skipped), run_all.sh pass
+- **Local**: lint (quiet) pass, type-check pass, test:run pass (328/328)
+- **VM** (192.168.1.233): lint pass, type-check pass, test:run pass (328/328), test:e2e pass (81 passed, 5 skipped), run_all.sh pass
 - **UI drift**: latest audit aggregate score `0` (target met)
 - **Lint warnings**: `0` warnings on non-quiet lint (`0` errors)
 - **Evergreen host** (192.168.1.232): `/openils/bin/eg_config` reports `Open-ILS 3.16.4` (validate against upstream release announcements before upgrade decisions)
@@ -23,6 +23,7 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 - [x] E2E tests aligned with cookie-based auth and current contracts
 - [x] E2E bypass mode (`STACKSOS_E2E_TEST_MODE`) prevents test lockout
 - [x] Zero-error lint gate closure (`eslint --quiet`); warning cleanup remains tracked in Open Items
+- [x] OPAC passkey auth (WebAuthn) implemented with Evergreen PIN SoR compatibility, encrypted digest storage, and patron self-service revoke/list
 
 ### OPAC Discovery & UX
 

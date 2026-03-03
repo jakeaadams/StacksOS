@@ -121,6 +121,7 @@ Copy `.env.example` to `.env.local` and configure the required variables:
 - **`STACKSOS_TENANT_PROFILE`** -- Tenant profile (`public`, `school`, `church`, `academic`, `custom`)
 - **`STACKSOS_DISCOVERY_SCOPE`** -- Default OPAC search scope (`local`, `system`, `consortium`)
 - **`STACKSOS_DISCOVERY_COPY_DEPTH`** -- Default OPAC depth (`0..99`, Evergreen-style semantics)
+- **`STACKSOS_OPAC_PASSKEYS_ENABLED` / `STACKSOS_PASSKEY_SECRET`** -- Optional passkey sign-in toggle + encryption secret
 - **`STACKSOS_AI_RETRY_*`** -- AI retry/backoff controls for provider latency resilience
 - **`STACKSOS_AI_MODEL_FALLBACKS`** -- Comma-separated model fallback chain before deterministic fallback
 - **`STACKSOS_AI_COPILOT_*`** -- Copilot/ops-only timeout + retry overrides for high-latency windows
@@ -183,6 +184,14 @@ npm run evergreen:footprint -- --label after-upgrade
 Then diff the two generated folders under `audit/evergreen-footprint/`.
 
 ## New in This Release
+
+### OPAC Passkey Sign-In (Evergreen-Compatible)
+
+- WebAuthn passkey enrollment from **OPAC Account -> Settings -> Privacy & Security**
+- Passkey login option added to **OPAC Login** (with library card + passkey flow)
+- Passkey credentials are stored in StacksOS-owned `library.*` tables; Evergreen remains auth source-of-truth
+- PIN digest is encrypted at rest with `STACKSOS_PASSKEY_SECRET`
+- Passkey revoke/list APIs added under `/api/opac/passkeys/*`
 
 ### AI Copilot Expansion + Audit Trail
 
@@ -403,7 +412,7 @@ Local:
 
 - `npm run lint -- --quiet`: pass
 - `npm run type-check`: pass
-- `npm run test:run`: pass (`323/323`)
+- `npm run test:run`: pass (`328/328`)
 - `npm run audit:ui-drift`: pass
 - `npm run audit:opac`: validated in VM runtime (requires live app + Evergreen bridge)
 - `npm run audit:task-benchmark`: pass
@@ -413,7 +422,7 @@ VM (`192.168.1.233`, `/home/jake/projects/stacksos`):
 
 - `npm run lint -- --quiet`: pass
 - `npm run type-check`: pass
-- `npm run test:run`: pass (`323/323`)
+- `npm run test:run`: pass (`328/328`)
 - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`81 passed, 5 skipped`)
 - `BASE_URL=http://127.0.0.1:3000 bash audit/run_opac_audit.sh`: pass (`42/42` OPAC pages, `21/21` OPAC API checks, Evergreen bridge `4/4`)
 - `TASK_BENCH_STAFF_USER=jake TASK_BENCH_STAFF_PASS=jake TASK_BENCH_REQUIRE_STAFF=1 TASK_BENCH_ENFORCE=1 node scripts/task-benchmark.mjs`: pass (staff metrics fully populated)

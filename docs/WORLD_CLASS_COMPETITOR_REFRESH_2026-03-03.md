@@ -58,7 +58,7 @@ Evidence-backed feature gaps that still matter after current closure work:
    - StacksOS current state: responsive OPAC + PWA + digital card page, but no first-party native app shell.
 2. Patron identity and convenience auth upgrades
    - Competitor signal: Surpass highlights social login and simpler cloud-first patron onboarding.
-   - StacksOS current state: strong card/PIN and staff auth, but no social sign-in/passkey/mobile-wallet enrollment flow.
+   - StacksOS current state: card/PIN + staff auth + OPAC passkey enrollment/sign-in are in place; social sign-in and native wallet pass enrollment remain open.
 3. Hardware/self-service interoperability depth
    - Competitor signal: BlueCloud positions broad service platform integration patterns for modern library operations.
    - StacksOS current state: self-check UI exists, but ecosystem-grade kiosk/RFID/AMH interoperability remains limited.

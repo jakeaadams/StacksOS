@@ -53,6 +53,11 @@ const envSchema = z.object({
   STACKSOS_RBAC_MODE: z.enum(["strict", "warn", "off"]).optional().default("strict"),
   STACKSOS_SAAS_PLATFORM_ADMINS: z.string().optional(),
   STACKSOS_CSP_STRICT_SCRIPTS: z.string().optional(),
+  STACKSOS_OPAC_PASSKEYS_ENABLED: z.string().optional(),
+  STACKSOS_PASSKEY_SECRET: z.string().optional(),
+  STACKSOS_PASSKEY_RP_ID: z.string().optional(),
+  STACKSOS_PASSKEY_RP_NAME: z.string().optional(),
+  STACKSOS_PASSKEY_EXPECTED_ORIGIN: z.string().url().optional(),
 
   // Email
   STACKSOS_EMAIL_PROVIDER: z.string().optional(),
@@ -113,6 +118,11 @@ export function validateEnv(): z.infer<typeof envSchema> {
     "STACKSOS_RBAC_MODE",
     "STACKSOS_SAAS_PLATFORM_ADMINS",
     "STACKSOS_CSP_STRICT_SCRIPTS",
+    "STACKSOS_OPAC_PASSKEYS_ENABLED",
+    "STACKSOS_PASSKEY_SECRET",
+    "STACKSOS_PASSKEY_RP_ID",
+    "STACKSOS_PASSKEY_RP_NAME",
+    "STACKSOS_PASSKEY_EXPECTED_ORIGIN",
     "STACKSOS_EMAIL_PROVIDER",
     "NEXT_PUBLIC_BASE_URL",
     "STACKSOS_REDIS_URL",
@@ -173,6 +183,19 @@ export function validateEnv(): z.infer<typeof envSchema> {
         },
         "[env-validation] Demo/mock env flags are ignored in production runtime."
       );
+    }
+
+    if (
+      envEnabled(result.data.STACKSOS_OPAC_PASSKEYS_ENABLED) &&
+      String(result.data.STACKSOS_PASSKEY_SECRET || "").trim().length < 32
+    ) {
+      const errorMsg =
+        "STACKSOS_OPAC_PASSKEYS_ENABLED=true requires STACKSOS_PASSKEY_SECRET with at least 32 characters.";
+      logger.error(
+        { component: "env-validation", envKey: "STACKSOS_PASSKEY_SECRET" },
+        `[env-validation] ${errorMsg}`
+      );
+      throw new Error(errorMsg);
     }
   }
 

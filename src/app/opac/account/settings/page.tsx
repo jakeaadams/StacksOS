@@ -2,6 +2,7 @@
 import { clientLogger } from "@/lib/client-logger";
 
 import { fetchWithAuth } from "@/lib/client-fetch";
+import { startRegistration } from "@simplewebauthn/browser";
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -16,6 +17,8 @@ import {
   Bell,
   Lock,
   Shield,
+  KeyRound,
+  Trash2,
   Save,
   Loader2,
   CheckCircle,
@@ -38,6 +41,16 @@ interface PatronSettings {
   keepHistory: boolean;
   personalizedRecommendations?: boolean;
   readingHistoryPersonalization?: boolean;
+}
+
+interface PatronPasskey {
+  id: number;
+  credentialId: string;
+  friendlyName: string | null;
+  deviceType: string | null;
+  backedUp: boolean;
+  createdAt: string;
+  lastUsedAt: string | null;
 }
 
 export default function AccountSettingsPage() {
@@ -69,6 +82,15 @@ export default function AccountSettingsPage() {
   const [showPins, setShowPins] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
   const [pinSuccess, setPinSuccess] = useState(false);
+  const [passkeysEnabled, setPasskeysEnabled] = useState(true);
+  const [passkeys, setPasskeys] = useState<PatronPasskey[]>([]);
+  const [passkeyPin, setPasskeyPin] = useState("");
+  const [passkeyFriendlyName, setPasskeyFriendlyName] = useState("");
+  const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
+  const [isRefreshingPasskeys, setIsRefreshingPasskeys] = useState(false);
+  const [passkeyMessage, setPasskeyMessage] = useState<string | null>(null);
+  const [passkeyError, setPasskeyError] = useState<string | null>(null);
+  const [passkeyBrowserSupported, setPasskeyBrowserSupported] = useState(true);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -85,6 +107,31 @@ export default function AccountSettingsPage() {
     }
   }, []);
 
+  const fetchPasskeys = useCallback(async () => {
+    try {
+      setIsRefreshingPasskeys(true);
+      const response = await fetchWithAuth("/api/opac/passkeys");
+      const data = await response.json();
+      if (!response.ok) {
+        setPasskeyError(data?.error || "Unable to load passkeys.");
+        return;
+      }
+      setPasskeysEnabled(Boolean(data?.enabled));
+      setPasskeys(Array.isArray(data?.passkeys) ? data.passkeys : []);
+    } catch (err: unknown) {
+      clientLogger.error("Error fetching passkeys:", err);
+      setPasskeyError("Unable to load passkeys.");
+    } finally {
+      setIsRefreshingPasskeys(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setPasskeyBrowserSupported(
+      typeof window !== "undefined" && typeof window.PublicKeyCredential !== "undefined"
+    );
+  }, []);
+
   useEffect(() => {
     if (!sessionLoading && !isLoggedIn) {
       router.push("/opac/login?redirect=/opac/account/settings");
@@ -92,9 +139,9 @@ export default function AccountSettingsPage() {
     }
 
     if (isLoggedIn) {
-      void fetchSettings();
+      void Promise.all([fetchSettings(), fetchPasskeys()]);
     }
-  }, [fetchSettings, isLoggedIn, router, sessionLoading]);
+  }, [fetchPasskeys, fetchSettings, isLoggedIn, router, sessionLoading]);
 
   const handleSave = async () => {
     try {
@@ -164,6 +211,86 @@ export default function AccountSettingsPage() {
       setPinError("Unable to change PIN. Please try again.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleRegisterPasskey = async () => {
+    setPasskeyError(null);
+    setPasskeyMessage(null);
+
+    if (!passkeyBrowserSupported) {
+      setPasskeyError("This browser does not support passkey enrollment.");
+      return;
+    }
+
+    if (!passkeyPin.trim()) {
+      setPasskeyError("Enter your current PIN to enroll a passkey.");
+      return;
+    }
+
+    try {
+      setIsRegisteringPasskey(true);
+      const optionsResponse = await fetchWithAuth("/api/opac/passkeys/register/options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPin: passkeyPin.trim() }),
+      });
+      const optionsData = await optionsResponse.json();
+      if (!optionsResponse.ok || !optionsData?.options) {
+        setPasskeyError(optionsData?.error || "Unable to start passkey enrollment.");
+        return;
+      }
+
+      const registration = await startRegistration({ optionsJSON: optionsData.options });
+      const verifyResponse = await fetchWithAuth("/api/opac/passkeys/register/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          challenge: optionsData.options.challenge,
+          response: registration,
+          friendlyName: passkeyFriendlyName.trim() || undefined,
+        }),
+      });
+      const verifyData = await verifyResponse.json();
+      if (!verifyResponse.ok) {
+        setPasskeyError(verifyData?.error || "Passkey enrollment failed.");
+        return;
+      }
+
+      setPasskeyPin("");
+      setPasskeyFriendlyName("");
+      setPasskeyMessage("Passkey added successfully.");
+      await fetchPasskeys();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Passkey enrollment failed.";
+      if (message.toLowerCase().includes("cancel")) {
+        setPasskeyError("Passkey setup was cancelled.");
+      } else {
+        setPasskeyError(message);
+      }
+    } finally {
+      setIsRegisteringPasskey(false);
+    }
+  };
+
+  const handleRevokePasskey = async (passkeyId: number) => {
+    setPasskeyError(null);
+    setPasskeyMessage(null);
+    try {
+      const response = await fetchWithAuth("/api/opac/passkeys", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passkeyId }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setPasskeyError(data?.error || "Unable to remove passkey.");
+        return;
+      }
+      setPasskeyMessage("Passkey removed.");
+      await fetchPasskeys();
+    } catch {
+      setPasskeyError("Unable to remove passkey.");
     }
   };
 
@@ -539,6 +666,145 @@ export default function AccountSettingsPage() {
                     </Button>
                   </div>
                 </div>
+              )}
+            </div>
+
+            {/* Passkeys */}
+            <div className="bg-card rounded-xl border border-border p-6">
+              <h2 className="text-lg font-semibold text-foreground mb-2">Passkey Sign-In</h2>
+              <p className="text-muted-foreground text-sm mb-4">
+                Enroll this device for faster sign-in. Evergreen remains your source-of-truth
+                account; passkeys use your current PIN authorization when enrolled.
+              </p>
+
+              {passkeyMessage && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <p className="text-green-700 text-sm">{passkeyMessage}</p>
+                </div>
+              )}
+
+              {passkeyError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <p className="text-red-700 text-sm">{passkeyError}</p>
+                </div>
+              )}
+
+              {!passkeysEnabled ? (
+                <div className="rounded-lg border border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
+                  Passkeys are currently disabled for this library environment.
+                </div>
+              ) : !passkeyBrowserSupported ? (
+                <div className="rounded-lg border border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
+                  This browser does not support passkeys. Use a recent version of Safari, Chrome,
+                  Edge, or Firefox.
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label
+                        htmlFor="passkey-pin"
+                        className="block text-sm font-medium text-foreground/80 mb-1"
+                      >
+                        Current PIN
+                      </label>
+                      <Input
+                        id="passkey-pin"
+                        type="password"
+                        value={passkeyPin}
+                        onChange={(e) => setPasskeyPin(e.target.value)}
+                        placeholder="Required to enroll"
+                        className="h-10 rounded-lg px-4"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="passkey-friendly-name"
+                        className="block text-sm font-medium text-foreground/80 mb-1"
+                      >
+                        Device Name (optional)
+                      </label>
+                      <Input
+                        id="passkey-friendly-name"
+                        type="text"
+                        value={passkeyFriendlyName}
+                        onChange={(e) => setPasskeyFriendlyName(e.target.value)}
+                        placeholder="e.g. Jake’s MacBook"
+                        className="h-10 rounded-lg px-4"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleRegisterPasskey}
+                      disabled={isRegisteringPasskey}
+                      className="items-center gap-2 px-4"
+                    >
+                      {isRegisteringPasskey ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <KeyRound className="h-4 w-4" />
+                      )}
+                      {isRegisteringPasskey ? "Enrolling..." : "Add passkey"}
+                    </Button>
+                  </div>
+
+                  <div className="mt-6 pt-6 border-t">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-medium text-foreground">Enrolled Devices</h3>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => void fetchPasskeys()}
+                        disabled={isRefreshingPasskeys}
+                        className="h-8 px-2 text-xs"
+                      >
+                        {isRefreshingPasskeys ? "Refreshing..." : "Refresh"}
+                      </Button>
+                    </div>
+                    {passkeys.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No passkeys enrolled yet.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {passkeys.map((passkey) => (
+                          <div
+                            key={passkey.id}
+                            className="rounded-lg border border-border/70 p-3 flex items-start justify-between gap-4"
+                          >
+                            <div>
+                              <p className="font-medium text-foreground">
+                                {passkey.friendlyName || "Unnamed device"}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {passkey.deviceType || "Passkey"} • Added{" "}
+                                {new Date(passkey.createdAt).toLocaleString()}
+                              </p>
+                              {passkey.lastUsedAt && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Last used {new Date(passkey.lastUsedAt).toLocaleString()}
+                                </p>
+                              )}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => void handleRevokePasskey(passkey.id)}
+                              className="h-8 px-2 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="ml-1 text-xs">Remove</span>
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
 

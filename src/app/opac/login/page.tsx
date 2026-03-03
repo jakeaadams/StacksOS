@@ -5,9 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { useLibrary } from "@/hooks/use-library";
+import { fetchWithAuth } from "@/lib/client-fetch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { startAuthentication } from "@simplewebauthn/browser";
 import {
   BookOpen,
   CreditCard,
@@ -16,6 +18,7 @@ import {
   EyeOff,
   Loader2,
   AlertCircle,
+  KeyRound,
   HelpCircle,
   ArrowRight,
 } from "lucide-react";
@@ -25,15 +28,23 @@ function LoginForm() {
   const t = useTranslations("loginPage");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isLoggedIn, isLoading: sessionLoading, error: sessionError } = usePatronSession();
+  const {
+    login,
+    refreshSession,
+    isLoggedIn,
+    isLoading: sessionLoading,
+    error: sessionError,
+  } = usePatronSession();
   const { library } = useLibrary();
 
   const [cardNumber, setCardNumber] = useState("");
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
+  const [passkeySupported, setPasskeySupported] = useState(false);
 
   const redirectUrl = searchParams.get("redirect") || "/opac/account";
 
@@ -43,6 +54,12 @@ function LoginForm() {
       router.push(redirectUrl);
     }
   }, [isLoggedIn, sessionLoading, router, redirectUrl]);
+
+  useEffect(() => {
+    setPasskeySupported(
+      typeof window !== "undefined" && typeof window.PublicKeyCredential !== "undefined"
+    );
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +78,7 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      const success = await login(cardNumber.trim(), pin.trim());
+      const success = await login(cardNumber.trim(), pin.trim(), rememberMe);
 
       if (success) {
         router.push(redirectUrl);
@@ -72,6 +89,58 @@ function LoginForm() {
       setError(t("connectionError"));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    setError(null);
+
+    if (!cardNumber.trim()) {
+      setError("Enter your library card number to continue with passkey sign-in.");
+      return;
+    }
+
+    setIsPasskeyLoading(true);
+    try {
+      const optionsResponse = await fetchWithAuth("/api/opac/passkeys/auth/options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ barcode: cardNumber.trim() }),
+      });
+      const optionsData = await optionsResponse.json();
+      if (!optionsResponse.ok || !optionsData?.options) {
+        setError(optionsData?.error || "Passkey sign-in is not available for this card.");
+        return;
+      }
+
+      const assertion = await startAuthentication({ optionsJSON: optionsData.options });
+
+      const verifyResponse = await fetchWithAuth("/api/opac/passkeys/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          challenge: optionsData.options.challenge,
+          response: assertion,
+          rememberMe,
+        }),
+      });
+      const verifyData = await verifyResponse.json();
+      if (!verifyResponse.ok) {
+        setError(verifyData?.error || "Passkey sign-in failed.");
+        return;
+      }
+
+      await refreshSession();
+      router.push(redirectUrl);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Passkey sign-in failed.";
+      if (message.toLowerCase().includes("cancel")) {
+        setError("Passkey prompt was cancelled.");
+      } else {
+        setError(message);
+      }
+    } finally {
+      setIsPasskeyLoading(false);
     }
   };
 
@@ -207,6 +276,31 @@ function LoginForm() {
                 </>
               )}
             </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePasskeyLogin}
+              disabled={isPasskeyLoading || isLoading || !passkeySupported || !cardNumber.trim()}
+              className="w-full h-12"
+            >
+              {isPasskeyLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Checking passkey...
+                </>
+              ) : (
+                <>
+                  <KeyRound className="h-5 w-5" />
+                  Sign in with passkey
+                </>
+              )}
+            </Button>
+            {!passkeySupported && (
+              <p className="text-xs text-muted-foreground text-center">
+                This browser does not support passkey sign-in.
+              </p>
+            )}
           </form>
 
           {/* Divider */}

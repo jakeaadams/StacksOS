@@ -82,7 +82,7 @@ interface PatronSessionContextValue {
   isLoggedIn: boolean;
   isLoading: boolean;
   error: string | null;
-  login: (cardNumber: string, pin: string) => Promise<boolean>;
+  login: (cardNumber: string, pin: string, rememberMe?: boolean) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
   // Data fetching
@@ -137,7 +137,7 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (cardNumber: string, pin: string): Promise<boolean> => {
+  const login = async (cardNumber: string, pin: string, rememberMe = false): Promise<boolean> => {
     try {
       setError(null);
       setIsLoading(true);
@@ -145,7 +145,7 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
       const response = await fetchWithAuth("/api/opac/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ barcode: cardNumber, pin }),
+        body: JSON.stringify({ barcode: cardNumber, pin, rememberMe }),
       });
 
       const data = await response.json();
