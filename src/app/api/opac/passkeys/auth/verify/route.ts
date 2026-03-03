@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     expectedChallenge: challenge.challenge,
     expectedOrigin: challenge.origin,
     expectedRPID: challenge.rpId,
-    requireUserVerification: false,
+    requireUserVerification: true,
     credential: {
       id: passkey.credentialId,
       publicKey: Buffer.from(passkey.publicKey, "base64url"),

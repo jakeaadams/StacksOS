@@ -46,7 +46,13 @@ function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false);
   const [passkeySupported, setPasskeySupported] = useState(false);
 
-  const redirectUrl = searchParams.get("redirect") || "/opac/account";
+  // Validate redirect to prevent open-redirect attacks.
+  // Only allow relative paths starting with /opac (no protocol, no host).
+  const rawRedirect = searchParams.get("redirect") || "/opac/account";
+  const redirectUrl =
+    rawRedirect.startsWith("/opac") && !rawRedirect.startsWith("//")
+      ? rawRedirect
+      : "/opac/account";
 
   // Redirect if already logged in
   useEffect(() => {

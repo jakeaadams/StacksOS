@@ -3,10 +3,10 @@ import { querySingle, query } from "@/lib/db/evergreen";
 import type { AiCompletion, AiConfig } from "./types";
 import { ensureLibrarySchemaExists } from "@/lib/db/library-schema";
 
-let aiTelemetryInitialized = false;
+// Promise-based latch to prevent concurrent DDL execution during cold start.
+let aiTelemetryReady: Promise<void> | null = null;
 
-async function ensureAiTelemetryTables(): Promise<void> {
-  if (aiTelemetryInitialized) return;
+async function initAiTelemetryTables(): Promise<void> {
   await ensureLibrarySchemaExists();
   await query(`
     CREATE TABLE IF NOT EXISTS library.ai_calls (
@@ -37,8 +37,18 @@ async function ensureAiTelemetryTables(): Promise<void> {
   await query(
     `CREATE INDEX IF NOT EXISTS idx_ai_calls_type_created_at ON library.ai_calls(type, created_at DESC)`
   );
-  aiTelemetryInitialized = true;
   logger.info({}, "AI telemetry tables initialized");
+}
+
+function ensureAiTelemetryTables(): Promise<void> {
+  if (!aiTelemetryReady) {
+    aiTelemetryReady = initAiTelemetryTables().catch((err) => {
+      // Reset so a subsequent call can retry.
+      aiTelemetryReady = null;
+      throw err;
+    });
+  }
+  return aiTelemetryReady;
 }
 
 export async function enforceAiBudgets(args: {

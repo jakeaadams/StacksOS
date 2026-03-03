@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { loadAiConfig } from "./config";
+import { classifyAiError } from "./error-classification";
 import { getProvider } from "./providers";
 import { redactObject, redactText } from "./redaction";
 import { promptHash } from "./prompts";
@@ -66,23 +67,7 @@ function parseBoundedInt(
 }
 
 function isTransientAiError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error || "");
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes("timeout") ||
-    normalized.includes("timed out") ||
-    normalized.includes("aborted") ||
-    normalized.includes("fetch failed") ||
-    normalized.includes("econnreset") ||
-    normalized.includes("socket hang up") ||
-    normalized.includes("network") ||
-    normalized.includes("rate limit") ||
-    normalized.includes("http 429") ||
-    normalized.includes("http 500") ||
-    normalized.includes("http 502") ||
-    normalized.includes("http 503") ||
-    normalized.includes("http 504")
-  );
+  return classifyAiError(error) === "transient";
 }
 
 function sleep(ms: number): Promise<void> {

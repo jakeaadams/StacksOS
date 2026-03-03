@@ -8,7 +8,11 @@ function resolveOpenAiKey(): string | null {
 }
 
 function resolveBaseUrl(): string {
-  return (process.env.OPENAI_API_BASE_URL || "https://api.openai.com").replace(/\/+$/, "");
+  // Strip trailing slashes and a trailing /v1 so we don't end up with double /v1/v1
+  // when custom base URLs already include the versioned path prefix.
+  return (process.env.OPENAI_API_BASE_URL || "https://api.openai.com")
+    .replace(/\/+$/, "")
+    .replace(/\/v1$/, "");
 }
 
 async function openAiChatCompletion(args: {
@@ -48,7 +52,17 @@ async function openAiChatCompletion(args: {
       signal: controller.signal,
     });
 
-    const json: any = await res.json().catch(() => null);
+    // Try to parse the response body. If it's not valid JSON (e.g. HTML error
+    // page from a proxy), capture the raw text for the error message instead.
+    let json: any = null;
+    try {
+      json = await res.json();
+    } catch {
+      const rawText = await res.text().catch(() => "");
+      if (!res.ok) {
+        throw new Error(`OpenAI HTTP ${res.status}: ${rawText.slice(0, 200)}`);
+      }
+    }
     if (!res.ok) {
       const msg = json?.error?.message || `OpenAI HTTP ${res.status}`;
       throw new Error(msg);

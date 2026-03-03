@@ -8,7 +8,12 @@ export type {
 } from "@/lib/reports/scheduled-report-definitions";
 
 function escapeCsv(value: unknown): string {
-  const str = String(value ?? "");
+  let str = String(value ?? "");
+  // Defend against CSV formula injection: prefix cells that start with
+  // formula-triggering characters so spreadsheet apps treat them as text.
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
   if (/[\n\r,"]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
   return str;
 }

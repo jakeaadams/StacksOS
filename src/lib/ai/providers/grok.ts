@@ -56,7 +56,15 @@ async function grokChatCompletion(args: {
       signal: controller.signal,
     });
 
-    const json: any = await res.json().catch(() => null);
+    let json: any = null;
+    try {
+      json = await res.json();
+    } catch {
+      const rawText = await res.text().catch(() => "");
+      if (!res.ok) {
+        throw new Error(`Grok HTTP ${res.status}: ${rawText.slice(0, 200)}`);
+      }
+    }
     if (!res.ok) {
       const msg = json?.error?.message || `Grok HTTP ${res.status}`;
       throw new Error(msg);

@@ -112,12 +112,8 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
   const [holds, setHolds] = useState<PatronHold[]>([]);
   const [fines, setFines] = useState<PatronFine[]>([]);
 
-  // Check for existing session on mount
-  useEffect(() => {
-    checkSession();
-  }, []);
-
-  const checkSession = async () => {
+  // Returns the patron if a valid session exists, or null.
+  const checkSession = useCallback(async (): Promise<PatronInfo | null> => {
     try {
       setIsLoading(true);
       const response = await fetch("/api/opac/session", {
@@ -128,14 +124,22 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         if (data.patron) {
           setPatron(data.patron);
+          return data.patron as PatronInfo;
         }
       }
+      return null;
     } catch (err: unknown) {
       clientLogger.error("Session check error:", err);
+      return null;
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
 
   const login = async (cardNumber: string, pin: string, rememberMe = false): Promise<boolean> => {
     try {
@@ -182,13 +186,6 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
       setCheckouts([]);
       setHolds([]);
       setFines([]);
-    }
-  };
-
-  const refreshSession = async () => {
-    await checkSession();
-    if (patron) {
-      await Promise.all([fetchCheckouts(), fetchHolds(), fetchFines()]);
     }
   };
 
@@ -354,6 +351,13 @@ export function PatronSessionProvider({ children }: { children: ReactNode }) {
       clientLogger.error("Error fetching fines:", err);
     }
   }, [patron]);
+
+  const refreshSession = useCallback(async () => {
+    const currentPatron = await checkSession();
+    if (currentPatron) {
+      await Promise.all([fetchCheckouts(), fetchHolds(), fetchFines()]);
+    }
+  }, [checkSession, fetchCheckouts, fetchHolds, fetchFines]);
 
   const parseActionDetails = (raw: any): PatronActionDetails | undefined => {
     if (!raw || typeof raw !== "object") return undefined;

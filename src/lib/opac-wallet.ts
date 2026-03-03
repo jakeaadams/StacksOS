@@ -25,11 +25,9 @@ function normalizeTemplate(value: string | undefined): string | null {
 }
 
 function getWalletSecret(): string | null {
-  const raw =
-    process.env.STACKSOS_WALLET_TOKEN_SECRET ||
-    process.env.STACKSOS_PASSKEY_SECRET ||
-    process.env.SESSION_SECRET ||
-    "";
+  // Only use the dedicated wallet secret — falling back to passkey or session
+  // secrets would mean a compromise of those secrets also compromises wallet tokens.
+  const raw = process.env.STACKSOS_WALLET_TOKEN_SECRET || "";
   const secret = String(raw).trim();
   return secret.length >= 16 ? secret : null;
 }

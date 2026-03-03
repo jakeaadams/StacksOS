@@ -59,8 +59,10 @@ export async function POST(req: NextRequest) {
 
     const cleanBarcode = String(barcode).trim();
     const cleanPin = String(pin).trim();
+    // Mask barcode for logs: show only last 4 chars to avoid PII in log files.
+    const maskedBarcode = cleanBarcode.length > 4 ? "***" + cleanBarcode.slice(-4) : "***";
 
-    logger.info({ route: "api.opac.login", barcode: cleanBarcode }, "OPAC login attempt");
+    logger.info({ route: "api.opac.login", barcode: maskedBarcode }, "OPAC login attempt");
 
     // Step 1: Get auth seed.
     //
@@ -72,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     const seed = seedResponse?.payload?.[0];
     if (!seed) {
-      logger.warn({ route: "api.opac.login", barcode: cleanBarcode }, "Failed to get auth seed");
+      logger.warn({ route: "api.opac.login", barcode: maskedBarcode }, "Failed to get auth seed");
       return errorResponse("Invalid library card number or PIN", 401);
     }
 
@@ -131,7 +133,7 @@ export async function POST(req: NextRequest) {
     }
 
     logger.warn(
-      { route: "api.opac.login", barcode: cleanBarcode, error: authResult?.textcode },
+      { route: "api.opac.login", barcode: maskedBarcode, error: authResult?.textcode },
       "OPAC login failed"
     );
     return errorResponse("Invalid library card number or PIN", 401);
