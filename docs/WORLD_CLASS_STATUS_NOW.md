@@ -24,8 +24,8 @@ Use this file as the handoff baseline for any follow-on implementation work.
 ## 2) Commit and Branch Snapshot
 
 - Current branch: `main`
-- Local branch state: ahead of `origin/main` (SSH push from this machine is currently blocked by missing GitHub SSH key).
-- Latest status-doc commit before this handoff: `685895a`
+- Local branch state: synced with `origin/main` (VM-assisted push workflow used).
+- Latest verification commit: `7e23495`
 
 ## 3) What Is Done (Execution Summary)
 
@@ -44,12 +44,18 @@ Primary artifacts:
 
 ## 4) What Is Still Open (True Remaining Items)
 
-Only these are still open as top-level status blockers:
+Open items after current verification:
 
 1. ESLint 10 upgrade hold
    - Current stack still fails with ESLint 10 due Next plugin-chain incompatibility (`react/display-name` loader crash in this repo).
    - Action: keep ESLint 9 until upstream chain supports 10.
-2. External comparative UX proof
+2. Non-quiet lint warning cleanup
+   - Current non-quiet lint reports `18` warnings (`0` errors).
+   - Action: clear warnings while preserving current green gate and behavior.
+3. UI drift reduction
+   - Current latest VM UI-drift aggregate score is `30` (not zero).
+   - Action: continue design-system/token cleanup to target score `0`.
+4. External comparative UX proof
    - "Best UI/UX" cannot be validated by internal checks alone.
    - Action: run external comparative usability study (task completion/time/SUS/CSAT vs selected competitors).
 
