@@ -1142,6 +1142,7 @@ async function seedCirculationActivity({ baseUrl, jar, csrfToken, orgId, patronM
   console.log(`[seed] checkins: ${summary.checkinsSucceeded}/${summary.checkinsAttempted}`);
 
   // Phase 3: Holds (title-level)
+  // Use the dedicated holds endpoint so this does not consume circulation route limits.
   console.log("[seed] circulation phase 3: placing holds...");
   for (const entry of HOLD_PLAN) {
     const patronBc = pBarcode(entry.patronIdx);
@@ -1158,16 +1159,16 @@ async function seedCirculationActivity({ baseUrl, jar, csrfToken, orgId, patronM
 
     try {
       summary.holdsAttempted++;
-      await fetchJson(`${baseUrl}/api/evergreen/circulation`, {
+      await fetchJson(`${baseUrl}/api/evergreen/holds`, {
         method: "POST",
         jar,
         csrfToken,
         json: {
-          action: "place_hold",
-          patron_id: patronId,
-          target_id: bibId,
-          pickup_lib: orgId,
-          hold_type: "T",
+          action: "create",
+          patronId,
+          targetId: bibId,
+          pickupLib: orgId,
+          holdType: "T",
         },
       });
       summary.holdsSucceeded++;

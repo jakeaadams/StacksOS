@@ -1,10 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { PageContainer, PageHeader, PageContent } from "@/components/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, BookOpen, MapPin, ArrowRight, Users, DollarSign } from "lucide-react";
+import {
+  Building2,
+  BookOpen,
+  MapPin,
+  ArrowRight,
+  Users,
+  DollarSign,
+  Rocket,
+  CheckCircle2,
+  ExternalLink,
+} from "lucide-react";
 
 interface SettingsCard {
   title: string;
@@ -14,6 +25,12 @@ interface SettingsCard {
   iconColor: string;
   bgColor: string;
   features: string[];
+}
+
+interface SetupStep {
+  title: string;
+  description: string;
+  href: string;
 }
 
 const SETTINGS_CARDS: SettingsCard[] = [
@@ -68,6 +85,33 @@ const SETTINGS_CARDS: SettingsCard[] = [
   },
 ];
 
+const SETUP_STEPS: SetupStep[] = [
+  {
+    title: "1. Run Onboarding Wizard",
+    description:
+      "Use profile-guided checks to confirm Evergreen connectivity, auth, and workstation readiness.",
+    href: "/staff/admin/onboarding",
+  },
+  {
+    title: "2. Configure Tenant Basics",
+    description:
+      "Set tenant profile, discovery scope/depth defaults, and Evergreen base URL for this library environment.",
+    href: "/staff/admin/tenants",
+  },
+  {
+    title: "3. Configure Library Policies",
+    description:
+      "Set circulation rules, copy locations, and fines so staff and OPAC behavior match your local policy.",
+    href: "/staff/admin/settings/library",
+  },
+  {
+    title: "4. Validate End-to-End",
+    description:
+      "Run workstation/login checks, then verify checkout, holds, and OPAC discovery before go-live.",
+    href: "/staff/admin/go-live",
+  },
+];
+
 export default function SettingsHubPage() {
   const router = useRouter();
 
@@ -75,9 +119,15 @@ export default function SettingsHubPage() {
     <PageContainer>
       <PageHeader
         title="Settings"
-        subtitle="Configure library policies, circulation rules, and system behavior."
+        subtitle="Clear setup path for policies, circulation, and Evergreen-backed system behavior."
         breadcrumbs={[{ label: "Administration", href: "/staff/admin" }, { label: "Settings" }]}
         actions={[
+          {
+            label: "Onboarding Wizard",
+            onClick: () => router.push("/staff/admin/onboarding"),
+            icon: Rocket,
+            variant: "default",
+          },
           {
             label: "User Management",
             onClick: () => router.push("/staff/admin/users"),
@@ -88,6 +138,39 @@ export default function SettingsHubPage() {
       />
 
       <PageContent className="space-y-8">
+        <Card className="rounded-2xl border-[hsl(var(--brand-1)/0.28)] bg-[hsl(var(--brand-1)/0.06)]">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Rocket className="h-4 w-4" />
+              Start Here: Library Setup Path
+            </CardTitle>
+            <CardDescription>
+              Follow these steps in order to avoid configuration drift and confusing policy
+              conflicts.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {SETUP_STEPS.map((step) => (
+              <Link
+                key={step.title}
+                href={step.href}
+                className="block rounded-xl border bg-background px-3 py-3 transition-colors hover:bg-muted/40"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-medium flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-[hsl(var(--brand-1))]" />
+                      {step.title}
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">{step.description}</p>
+                  </div>
+                  <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+
         {/* Settings Categories */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {SETTINGS_CARDS.map((card) => (

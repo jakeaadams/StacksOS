@@ -28,6 +28,7 @@ import {
   Loader2,
   PlusCircle,
   RefreshCw,
+  Rocket,
   Router,
   ServerCog,
   ShieldCheck,
@@ -224,6 +225,32 @@ export default function AdminTenantsPage() {
   const roleBindings = useMemo(
     () => (saasData?.bindings || []).slice().sort((a, b) => a.role.localeCompare(b.role)),
     [saasData?.bindings]
+  );
+
+  const setupFlow = useMemo(
+    () => [
+      {
+        title: "Run profile onboarding checks",
+        detail: "Start with the wizard so Evergreen auth/workstation checks guide setup order.",
+        href: "/staff/admin/onboarding",
+      },
+      {
+        title: "Provision tenant profile",
+        detail: "Create tenant ID, profile type, and discovery defaults before policy tuning.",
+        href: "/staff/admin/tenants",
+      },
+      {
+        title: "Configure library policies",
+        detail: "Finalize circulation, fines, and copy location behavior for staff + OPAC parity.",
+        href: "/staff/admin/settings",
+      },
+      {
+        title: "Validate go-live readiness",
+        detail: "Confirm login, holds, and OPAC discovery on real workflows before launch.",
+        href: "/staff/admin/go-live",
+      },
+    ],
+    []
   );
 
   const findCheckStatus = useCallback(
@@ -489,6 +516,33 @@ export default function AdminTenantsPage() {
             {error}
           </div>
         ) : null}
+
+        <Card className="rounded-2xl border-[hsl(var(--brand-1)/0.28)] bg-[hsl(var(--brand-1)/0.06)]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Rocket className="h-4 w-4" />
+              Setup Path (Use In Order)
+            </CardTitle>
+            <CardDescription>
+              This flow keeps tenant setup predictable and avoids conflicting settings across pages.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {setupFlow.map((step, idx) => (
+              <Link
+                key={step.title}
+                href={step.href}
+                className="rounded-xl border bg-background px-3 py-3 transition-colors hover:bg-muted/40"
+              >
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Step {idx + 1}
+                </div>
+                <div className="mt-1 text-sm font-medium">{step.title}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{step.detail}</div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card className={tenantCardTone.definedTenants.card}>
