@@ -46,7 +46,19 @@ clear_demo_rate_limits() {
 
   local prefix="${STACKSOS_REDIS_PREFIX:-stacksos}"
   local cleared=0
-  for endpoint in staff-auth eg-circulation eg-holds eg-booking; do
+  for endpoint in \
+    staff-auth \
+    eg-patrons \
+    eg-items \
+    eg-circulation \
+    eg-holds \
+    eg-booking \
+    eg-buckets \
+    eg-stat-categories \
+    eg-copy-tags \
+    eg-course-reserves \
+    eg-authority
+  do
     for identifier in "127.0.0.1" "::1" "unknown"; do
       local hash
       hash="$(printf '%s' "$identifier" | sha256sum | awk '{print substr($1,1,32)}')"
