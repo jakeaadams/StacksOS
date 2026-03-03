@@ -11,11 +11,11 @@ It is intended to answer one question clearly: what is done, what is blocked by 
   - `npm run lint -- --quiet` -> pass
   - `npm run type-check` -> pass
   - `npm run test:run` -> pass (`323/323`)
-- [x] VM gate rerun on current commit (`0e760c1`) and deployed runtime (`:3000`):
+- [x] VM gate rerun on current commit (`9ccd027`) and deployed runtime (`:3000`):
   - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e` -> pass (`81 passed, 5 skipped`)
-  - `BASE_URL=http://127.0.0.1:3000 E2E_STAFF_USER=jake E2E_STAFF_PASS=jake bash audit/run_all.sh` -> pass
-- [x] Production runtime health fixed after upgrade swap:
-  - `.env.local` corrected from invalid `STACKSOS_AI_PROVIDER=moonshot` to supported provider (`grok`) for current codebase.
+  - `BASE_URL=http://127.0.0.1:3000 bash audit/run_all.sh` -> pass
+- [x] Production runtime health and provider validation:
+  - `STACKSOS_AI_PROVIDER=moonshot` is supported in codebase and validated at runtime.
   - `.env.local` shell-safety corrected: `STACKSOS_EMAIL_FROM_NAME=\"Library System\"`.
 - [x] Audit harness hardened for current security posture:
   - `run_api_audit.sh` now probes `orgs` after auth (matches protected route contract).
@@ -25,6 +25,9 @@ Only two intentional open checklist items remain in this document:
 
 - [ ] ESLint v10 upgrade (blocked by current Next ESLint compatibility chain).
 - [ ] External comparative user studies to prove UI/UX superiority in real-world trials.
+
+Note: older sections below include historical pass snapshots from earlier runs (for traceability), which may show earlier test counts.
+Use Section 0 as the authoritative current-state gate snapshot.
 
 ---
 
