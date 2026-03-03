@@ -60,7 +60,7 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 ## Dependencies
 
 - [x] Dependency wave completed for safe upgrades (`@types/node` 25.3.3, `@types/pg` 8.18.0, `lint-staged` 16.3.1, `lucide-react` 0.576.0, `swagger-ui-dist` 5.32.0, `eslint-config-next` 16.1.6)
-- [ ] `eslint` 9→10 blocked by Next ESLint plugin compatibility (react/display-name crash)
+- [ ] `eslint` 9→10 blocked by Next ESLint plugin compatibility (retested 2026-03-03; `react/display-name` loader crash under `eslint@10.0.2`)
 
 ---
 

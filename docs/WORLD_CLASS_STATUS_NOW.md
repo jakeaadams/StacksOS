@@ -47,7 +47,8 @@ Primary artifacts:
 Open items after current verification:
 
 1. ESLint 10 upgrade hold
-   - Current stack still fails with ESLint 10 due Next plugin-chain incompatibility (`react/display-name` loader crash in this repo).
+   - Re-tested on 2026-03-03 with `eslint@10.0.2`; lint still crashes in this repo (`react/display-name`: `contextOrFilename.getFilename is not a function`).
+   - `eslint-config-next@16.1.6` declares `eslint >=9`, but transitive plugin chain is still not clean for this stack under v10.
    - Action: keep ESLint 9 until upstream chain supports 10.
 2. External comparative UX proof
    - "Best UI/UX" cannot be validated by internal checks alone.
