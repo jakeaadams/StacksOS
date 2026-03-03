@@ -10,7 +10,7 @@ import {
   successResponse,
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
-import { sendEmail } from "@/lib/email/provider";
+import { getEmailConfig, sendEmail } from "@/lib/email/provider";
 import {
   buildWalletEnrollmentLink,
   getWalletCapabilities,
@@ -124,6 +124,13 @@ export async function POST(req: NextRequest) {
       return errorResponse(
         "Add an email address in Account Settings before requesting wallet links.",
         400
+      );
+    }
+    const emailConfig = getEmailConfig();
+    if (emailConfig.provider === "console" || emailConfig.dryRun) {
+      return errorResponse(
+        "Wallet email delivery is disabled for this environment (console/dry-run email mode).",
+        503
       );
     }
 
