@@ -1173,12 +1173,16 @@ async function seedCirculationActivity({ baseUrl, jar, csrfToken, orgId, patronM
       summary.holdsSucceeded++;
       await sleep(200);
     } catch (e) {
-      const errStr = String(e);
-      if (errStr.includes("HOLD_EXISTS") || errStr.includes("hold already")) {
+      const errStr = String(e).toLowerCase();
+      if (
+        errStr.includes("hold_exists") ||
+        errStr.includes("hold already") ||
+        errStr.includes("already has hold")
+      ) {
         summary.holdsSucceeded++;
       } else {
-        summary.errors.push(`hold patron=${patronBc} bib=${bibId}: ${errStr.slice(0, 160)}`);
-        console.warn(`[seed] hold failed: ${errStr.slice(0, 160)}`);
+        summary.errors.push(`hold patron=${patronBc} bib=${bibId}: ${String(e).slice(0, 160)}`);
+        console.warn(`[seed] hold failed: ${String(e).slice(0, 160)}`);
       }
     }
   }
