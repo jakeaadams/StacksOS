@@ -397,13 +397,13 @@ If Evergreen/OpenSRF is unreachable, E2E login/setup will fail even if lint/type
   - `nodemailer` 8
 - `eslint` remains on v9 intentionally for now. `eslint@10` currently breaks with the active Next ESLint plugin stack in this project.
 
-## Verification Snapshot (2026-02-26 latest)
+## Verification Snapshot (2026-03-03 latest)
 
 Local:
 
 - `npm run lint -- --quiet`: pass
 - `npm run type-check`: pass
-- `npm run test:run`: pass (`270/270`)
+- `npm run test:run`: pass (`322/322`)
 - `npm run audit:ui-drift`: pass
 - `npm run audit:opac`: validated in VM runtime (requires live app + Evergreen bridge)
 - `npm run audit:task-benchmark`: pass
@@ -413,8 +413,8 @@ VM (`192.168.1.233`, `/home/jake/projects/stacksos`):
 
 - `npm run lint -- --quiet`: pass
 - `npm run type-check`: pass
-- `npm run test:run`: pass (`270/270`)
-- `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`70 passed, 5 skipped`)
+- `npm run test:run`: pass (`322/322`)
+- `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`81 passed, 5 skipped`)
 - `BASE_URL=http://127.0.0.1:3000 bash audit/run_opac_audit.sh`: pass (`42/42` OPAC pages, `21/21` OPAC API checks, Evergreen bridge `4/4`)
 - `TASK_BENCH_STAFF_USER=jake TASK_BENCH_STAFF_PASS=jake TASK_BENCH_REQUIRE_STAFF=1 TASK_BENCH_ENFORCE=1 node scripts/task-benchmark.mjs`: pass (staff metrics fully populated)
 - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake BASE_URL=http://127.0.0.1:3000 bash audit/run_all.sh`: pass
@@ -434,6 +434,7 @@ Detailed documentation lives in the `docs/` directory:
 - [Tenants](docs/StacksOS-Tenants.md) -- Multi-tenant configuration
 - [Cover Storage](docs/COVER_STORAGE_GUIDE.md) -- Book cover image handling
 - [World-Class Execution Checklist](docs/WORLD_CLASS_EXECUTION_CHECKLIST_2026-02-25.md) -- Consolidated to-do and status tracker
+- [World-Class Competitor Refresh (2026-03-03)](docs/WORLD_CLASS_COMPETITOR_REFRESH_2026-03-03.md) -- Fresh parity scan and next 30-day priorities
 - [Open-Source ILS Comparison](docs/OPEN_SOURCE_ILS_COMPARISON_2026-02-25.md) -- Evergreen vs Koha vs FOLIO strategy notes
 - [Competitive UI/UX Audit](audit/STACKSOS_COMPETITIVE_UIUX_AUDIT_2026-02-26.md) -- Fresh parity benchmark vs modern ILS/discovery products
 

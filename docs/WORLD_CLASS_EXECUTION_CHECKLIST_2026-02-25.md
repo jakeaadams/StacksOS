@@ -5,6 +5,29 @@ It is intended to answer one question clearly: what is done, what is blocked by 
 
 ---
 
+## 0) Current Closure Snapshot (2026-03-03)
+
+- [x] Local gate rerun on current branch:
+  - `npm run lint -- --quiet` -> pass
+  - `npm run type-check` -> pass
+  - `npm run test:run` -> pass (`322/322`)
+- [x] VM gate rerun on current commit (`0e760c1`) and deployed runtime (`:3000`):
+  - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e` -> pass (`81 passed, 5 skipped`)
+  - `BASE_URL=http://127.0.0.1:3000 E2E_STAFF_USER=jake E2E_STAFF_PASS=jake bash audit/run_all.sh` -> pass
+- [x] Production runtime health fixed after upgrade swap:
+  - `.env.local` corrected from invalid `STACKSOS_AI_PROVIDER=moonshot` to supported provider (`grok`) for current codebase.
+  - `.env.local` shell-safety corrected: `STACKSOS_EMAIL_FROM_NAME=\"Library System\"`.
+- [x] Audit harness hardened for current security posture:
+  - `run_api_audit.sh` now probes `orgs` after auth (matches protected route contract).
+  - `run_all.sh` has explicit preflight curl timeouts and lockout-tolerant task benchmark handling.
+
+Only two intentional open checklist items remain in this document:
+
+- [ ] ESLint v10 upgrade (blocked by current Next ESLint compatibility chain).
+- [ ] External comparative user studies to prove UI/UX superiority in real-world trials.
+
+---
+
 ## 1) Done and Verified in Code
 
 - [x] Auth validation hardening
