@@ -26,6 +26,46 @@ export const TenantDiscoveryConfigSchema = z
   })
   .strict();
 
+const TenantOpacChipSchema = z
+  .object({
+    label: z.string().trim().min(1).max(40),
+    href: z.string().trim().min(1).max(512),
+  })
+  .strict();
+
+export const TenantOpacSectionsSchema = z
+  .object({
+    showQuickChips: z.boolean().default(true),
+    showBrowseByFormat: z.boolean().default(true),
+    showEvents: z.boolean().default(true),
+    showRecommended: z.boolean().default(true),
+    showNewArrivals: z.boolean().default(true),
+    showPopular: z.boolean().default(true),
+    showStaffPicks: z.boolean().default(true),
+    showLibraryInfo: z.boolean().default(true),
+  })
+  .strict();
+
+export const TenantOpacConfigSchema = z
+  .object({
+    heroTitle: z.string().trim().min(1).max(120).optional(),
+    heroSubtitle: z.string().trim().min(1).max(320).optional(),
+    searchPlaceholder: z.string().trim().min(1).max(120).optional(),
+    styleVariant: z.enum(["classic", "vibrant", "clean"]).default("classic"),
+    quickChips: z.array(TenantOpacChipSchema).max(8).optional(),
+    sections: TenantOpacSectionsSchema.default(() => ({
+      showQuickChips: true,
+      showBrowseByFormat: true,
+      showEvents: true,
+      showRecommended: true,
+      showNewArrivals: true,
+      showPopular: true,
+      showStaffPicks: true,
+      showLibraryInfo: true,
+    })),
+  })
+  .strict();
+
 export const TenantAiConfigSchema = z
   .object({
     enabled: z.boolean().default(false),
@@ -95,6 +135,19 @@ export const TenantConfigSchema = z
       defaultSearchScope: "local" as const,
       defaultCopyDepth: 1,
       allowPatronScopeOverride: true,
+    })),
+    opac: TenantOpacConfigSchema.default(() => ({
+      styleVariant: "classic" as const,
+      sections: {
+        showQuickChips: true,
+        showBrowseByFormat: true,
+        showEvents: true,
+        showRecommended: true,
+        showNewArrivals: true,
+        showPopular: true,
+        showStaffPicks: true,
+        showLibraryInfo: true,
+      },
     })),
     integrations: z
       .object({

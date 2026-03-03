@@ -2,7 +2,7 @@
 
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { clientLogger } from "@/lib/client-logger";
-import { featureFlags, tenantProfile } from "@/lib/feature-flags";
+import { featureFlags, tenantProfile as defaultTenantProfile } from "@/lib/feature-flags";
 
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
@@ -61,6 +61,64 @@ const PROFILE_CHIPS: Record<string, { label: string; href: string }[]> = {
   ],
 };
 
+type OpacStyleVariant = "classic" | "vibrant" | "clean";
+
+type OpacSectionVisibility = {
+  showQuickChips: boolean;
+  showBrowseByFormat: boolean;
+  showEvents: boolean;
+  showRecommended: boolean;
+  showNewArrivals: boolean;
+  showPopular: boolean;
+  showStaffPicks: boolean;
+  showLibraryInfo: boolean;
+};
+
+interface DiscoveryConfigResponse {
+  opac?: {
+    heroTitle?: string;
+    heroSubtitle?: string;
+    searchPlaceholder?: string;
+    styleVariant?: OpacStyleVariant;
+    quickChips?: Array<{ label: string; href: string }>;
+    sections?: Partial<OpacSectionVisibility>;
+  };
+  tenant?: {
+    displayName?: string;
+    profile?: string;
+  };
+}
+
+const DEFAULT_OPAC_SECTIONS: OpacSectionVisibility = {
+  showQuickChips: true,
+  showBrowseByFormat: true,
+  showEvents: true,
+  showRecommended: true,
+  showNewArrivals: true,
+  showPopular: true,
+  showStaffPicks: true,
+  showLibraryInfo: true,
+};
+
+const HERO_VARIANT_CLASSES: Record<OpacStyleVariant, string> = {
+  classic: "bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800",
+  vibrant: "bg-gradient-to-br from-fuchsia-700 via-primary-600 to-cyan-600",
+  clean: "bg-gradient-to-br from-slate-800 via-slate-700 to-primary-700",
+};
+
+const HERO_OVERLAY_CLASSES: Record<OpacStyleVariant, string> = {
+  classic:
+    "bg-[radial-gradient(circle_at_20%_15%,hsl(var(--primary-foreground)/0.15)_0%,transparent_45%),radial-gradient(circle_at_80%_80%,hsl(var(--primary-foreground)/0.12)_0%,transparent_44%)]",
+  vibrant:
+    "bg-[radial-gradient(circle_at_15%_12%,hsl(var(--primary-foreground)/0.2)_0%,transparent_42%),radial-gradient(circle_at_85%_78%,hsl(var(--primary-foreground)/0.18)_0%,transparent_44%)]",
+  clean:
+    "bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary-foreground)/0.1)_0%,transparent_45%),radial-gradient(circle_at_75%_75%,hsl(var(--primary-foreground)/0.08)_0%,transparent_46%)]",
+};
+
+function getProfileChips(profile: string): Array<{ label: string; href: string }> {
+  return PROFILE_CHIPS[profile] || PROFILE_CHIPS.public || [];
+}
+
 interface FeaturedBook {
   id: number;
   title: string;
@@ -106,11 +164,68 @@ export default function OPACHomePage() {
   const { library, currentLocation } = useLibrary();
   const { patron, isLoggedIn, holds } = usePatronSession();
   const browseEnabled = featureFlags.opacBrowseV2;
+  const [homeProfile, setHomeProfile] = useState<string>(defaultTenantProfile);
+  const [tenantDisplayName, setTenantDisplayName] = useState<string>("");
+  const [heroTitleOverride, setHeroTitleOverride] = useState<string>("");
+  const [heroSubtitleOverride, setHeroSubtitleOverride] = useState<string>("");
+  const [searchPlaceholderOverride, setSearchPlaceholderOverride] = useState<string>("");
+  const [opacStyleVariant, setOpacStyleVariant] = useState<OpacStyleVariant>("classic");
+  const [quickChips, setQuickChips] = useState<Array<{ label: string; href: string }>>(
+    getProfileChips(defaultTenantProfile)
+  );
+  const [sectionVisibility, setSectionVisibility] =
+    useState<OpacSectionVisibility>(DEFAULT_OPAC_SECTIONS);
   const [newArrivals, setNewArrivals] = useState<FeaturedBook[]>([]);
   const [popularItems, setPopularItems] = useState<FeaturedBook[]>([]);
   const [staffPicks, setStaffPicks] = useState<StaffPick[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [featuredEvents, setFeaturedEvents] = useState<LibraryEvent[]>([]);
+
+  const fetchDiscoveryConfig = useCallback(async () => {
+    try {
+      const response = await fetch("/api/opac/discovery-config", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const payload = (await response.json()) as DiscoveryConfigResponse;
+      const resolvedProfile = String(payload?.tenant?.profile || defaultTenantProfile)
+        .trim()
+        .toLowerCase();
+      const profile = PROFILE_CHIPS[resolvedProfile] ? resolvedProfile : defaultTenantProfile;
+      const opac = payload?.opac || {};
+      const styleVariant: OpacStyleVariant =
+        opac.styleVariant === "vibrant" ||
+        opac.styleVariant === "clean" ||
+        opac.styleVariant === "classic"
+          ? opac.styleVariant
+          : "classic";
+      const configuredChips =
+        Array.isArray(opac.quickChips) && opac.quickChips.length > 0
+          ? opac.quickChips
+              .map((chip) => ({
+                label: String(chip.label || "").trim(),
+                href: String(chip.href || "").trim(),
+              }))
+              .filter((chip) => chip.label.length > 0 && chip.href.length > 0)
+              .slice(0, 8)
+          : [];
+
+      setHomeProfile(profile);
+      setTenantDisplayName(String(payload?.tenant?.displayName || ""));
+      setHeroTitleOverride(String(opac.heroTitle || "").trim());
+      setHeroSubtitleOverride(String(opac.heroSubtitle || "").trim());
+      setSearchPlaceholderOverride(String(opac.searchPlaceholder || "").trim());
+      setOpacStyleVariant(styleVariant);
+      setQuickChips(configuredChips.length > 0 ? configuredChips : getProfileChips(profile));
+      setSectionVisibility({
+        ...DEFAULT_OPAC_SECTIONS,
+        ...(opac.sections || {}),
+      });
+    } catch (error) {
+      clientLogger.warn("Failed to load OPAC discovery configuration", { error });
+    }
+  }, []);
 
   const fetchFeaturedContent = useCallback(async () => {
     if (!browseEnabled) {
@@ -176,16 +291,27 @@ export default function OPACHomePage() {
   }, [fetchFeaturedContent]);
 
   useEffect(() => {
-    document.title = library?.name
-      ? `${library.name} | ${t("libraryCatalog")}`
+    void fetchDiscoveryConfig();
+  }, [fetchDiscoveryConfig]);
+
+  useEffect(() => {
+    const resolvedLibraryName = library?.name || tenantDisplayName;
+    document.title = resolvedLibraryName
+      ? `${resolvedLibraryName} | ${t("libraryCatalog")}`
       : t("libraryCatalog");
-  }, [library?.name, t]);
+  }, [library?.name, tenantDisplayName, t]);
+
+  const heroTitle = heroTitleOverride || t("discoverTitle");
+  const heroSubtitle = heroSubtitleOverride || t("discoverSubtitle");
+  const quickChipClassName =
+    opacStyleVariant === "vibrant"
+      ? "rounded-full border border-white/35 bg-white/15 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/25"
+      : opacStyleVariant === "clean"
+        ? "rounded-full border border-white/30 bg-white/20 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/30"
+        : "rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/20 hover:text-white";
 
   const QuickSearchChip = ({ label, href }: { label: string; href: string }) => (
-    <Link
-      href={href}
-      className="rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/20 hover:text-white"
-    >
+    <Link href={href} className={quickChipClassName}>
       {label}
     </Link>
   );
@@ -216,29 +342,42 @@ export default function OPACHomePage() {
   );
 
   return (
-    <div className="min-h-screen">
+    <div
+      className="min-h-screen"
+      data-opac-profile={homeProfile}
+      data-opac-style={opacStyleVariant}
+    >
       {/* Hero section with search */}
       <section
-        className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 
-                        text-white py-16 md:py-24"
+        className={`relative ${HERO_VARIANT_CLASSES[opacStyleVariant]} text-white py-16 md:py-24`}
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,hsl(var(--primary-foreground)/0.15)_0%,transparent_45%),radial-gradient(circle_at_80%_80%,hsl(var(--primary-foreground)/0.12)_0%,transparent_44%)]" />
+        <div className={`absolute inset-0 ${HERO_OVERLAY_CLASSES[opacStyleVariant]}`} />
 
         <div className="relative max-w-4xl mx-auto px-4 text-center">
-          <h1 className="text-3xl md:text-5xl font-bold mb-4">{t("discoverTitle")}</h1>
+          <h1 className="text-3xl md:text-5xl font-bold mb-4">{heroTitle}</h1>
           <p className="text-lg md:text-xl text-primary-100 mb-8 max-w-2xl mx-auto">
-            {t("discoverSubtitle")}
+            {heroSubtitle}
           </p>
 
           {/* Search form with autocomplete and scope selector */}
-          <SearchAutocomplete variant="hero" showScopeSelector />
+          <SearchAutocomplete
+            variant="hero"
+            showScopeSelector
+            placeholder={searchPlaceholderOverride || undefined}
+          />
 
           {/* Quick search suggestions — profile-driven */}
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            {(PROFILE_CHIPS[tenantProfile] || PROFILE_CHIPS.public)!.map((chip) => (
-              <QuickSearchChip key={chip.href} label={chip.label} href={chip.href} />
-            ))}
-          </div>
+          {sectionVisibility.showQuickChips ? (
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
+              {quickChips.map((chip) => (
+                <QuickSearchChip
+                  key={`${chip.href}-${chip.label}`}
+                  label={chip.label}
+                  href={chip.href}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -279,42 +418,44 @@ export default function OPACHomePage() {
       )}
 
       {/* Browse by format */}
-      <section className="py-12 md:py-16 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8 text-center">
-            {t("browseByFormat")}
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            <FormatCard
-              icon={BookOpen}
-              label={t("books")}
-              href="/opac/search?format=book"
-              color="bg-primary-600"
-            />
-            <FormatCard
-              icon={Smartphone}
-              label={t("eBooks")}
-              href="/opac/search?format=ebook"
-              color="bg-primary-500"
-            />
-            <FormatCard
-              icon={Headphones}
-              label={t("audiobooks")}
-              href="/opac/search?format=audiobook"
-              color="bg-primary-700"
-            />
-            <FormatCard
-              icon={MonitorPlay}
-              label={t("moviesTV")}
-              href="/opac/search?format=dvd"
-              color="bg-primary-800"
-            />
+      {sectionVisibility.showBrowseByFormat ? (
+        <section className="py-12 md:py-16 bg-muted/30">
+          <div className="max-w-7xl mx-auto px-4">
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8 text-center">
+              {t("browseByFormat")}
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              <FormatCard
+                icon={BookOpen}
+                label={t("books")}
+                href="/opac/search?format=book"
+                color="bg-primary-600"
+              />
+              <FormatCard
+                icon={Smartphone}
+                label={t("eBooks")}
+                href="/opac/search?format=ebook"
+                color="bg-primary-500"
+              />
+              <FormatCard
+                icon={Headphones}
+                label={t("audiobooks")}
+                href="/opac/search?format=audiobook"
+                color="bg-primary-700"
+              />
+              <FormatCard
+                icon={MonitorPlay}
+                label={t("moviesTV")}
+                href="/opac/search?format=dvd"
+                color="bg-primary-800"
+              />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       {/* Upcoming Events */}
-      {featureFlags.opacEvents && featuredEvents.length > 0 && (
+      {featureFlags.opacEvents && sectionVisibility.showEvents && featuredEvents.length > 0 && (
         <section className="py-12 md:py-16 bg-card">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
@@ -394,10 +535,10 @@ export default function OPACHomePage() {
       )}
 
       {/* Recommended for You - only visible to logged-in patrons */}
-      <RecommendedForYou isLoggedIn={isLoggedIn} />
+      {sectionVisibility.showRecommended ? <RecommendedForYou isLoggedIn={isLoggedIn} /> : null}
 
       {/* New Arrivals */}
-      {browseEnabled ? (
+      {browseEnabled && sectionVisibility.showNewArrivals ? (
         <section className="py-12 md:py-16 bg-card">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
@@ -453,7 +594,7 @@ export default function OPACHomePage() {
       ) : null}
 
       {/* Popular This Month */}
-      {browseEnabled ? (
+      {browseEnabled && sectionVisibility.showPopular ? (
         <section className="py-12 md:py-16 bg-muted/30">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
@@ -508,7 +649,7 @@ export default function OPACHomePage() {
       ) : null}
 
       {/* Staff Picks */}
-      {browseEnabled && staffPicks.length > 0 && (
+      {browseEnabled && sectionVisibility.showStaffPicks && staffPicks.length > 0 && (
         <section className="py-12 md:py-16 bg-card">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
@@ -575,94 +716,99 @@ export default function OPACHomePage() {
       )}
 
       {/* Library info section */}
-      <section className="py-12 md:py-16 bg-foreground text-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Hours */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Clock className="h-5 w-5 text-primary-400" />
-                <h3 className="font-semibold text-lg">{t("libraryHours")}</h3>
-              </div>
-              {library?.hoursDetailed ? (
-                <ul className="space-y-1 text-white/70 text-sm">
-                  {library.hoursDetailed.map((day) => (
-                    <li key={day.day} className="flex justify-between">
-                      <span>{day.day}</span>
-                      <span>{day.hours}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-white/60 text-sm">{t("contactForHours")}</p>
-              )}
-            </div>
-
-            {/* Location */}
-            {currentLocation && (
+      {sectionVisibility.showLibraryInfo ? (
+        <section className="py-12 md:py-16 bg-foreground text-white">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {/* Hours */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <MapPin className="h-5 w-5 text-primary-400" />
-                  <h3 className="font-semibold text-lg">{t("yourLibrary")}</h3>
+                  <Clock className="h-5 w-5 text-primary-400" />
+                  <h3 className="font-semibold text-lg">{t("libraryHours")}</h3>
                 </div>
-                <p className="text-white/70 mb-2">{currentLocation.name}</p>
-                {currentLocation.address && (
-                  <p className="text-white/60 text-sm">{currentLocation.address}</p>
-                )}
-                {currentLocation.phone && (
-                  <p className="text-white/60 text-sm mt-2">{currentLocation.phone}</p>
+                {library?.hoursDetailed ? (
+                  <ul className="space-y-1 text-white/70 text-sm">
+                    {library.hoursDetailed.map((day) => (
+                      <li key={day.day} className="flex justify-between">
+                        <span>{day.day}</span>
+                        <span>{day.hours}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-white/60 text-sm">{t("contactForHours")}</p>
                 )}
               </div>
-            )}
 
-            {/* Quick Links */}
-            <div>
-              <h3 className="font-semibold text-lg mb-4">{t("quickLinks")}</h3>
-              <ul className="space-y-2 text-white/70">
-                <li>
-                  <Link href="/opac/account" className="hover:text-white transition-colors">
-                    {t("myAccount")}
-                  </Link>
-                </li>
-                <li>
-                  {featureFlags.opacKids ? (
-                    <Link href="/opac/kids" className="hover:text-white transition-colors">
-                      {t("kidsCatalog")}
+              {/* Location */}
+              {currentLocation && (
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <MapPin className="h-5 w-5 text-primary-400" />
+                    <h3 className="font-semibold text-lg">{t("yourLibrary")}</h3>
+                  </div>
+                  <p className="text-white/70 mb-2">{currentLocation.name}</p>
+                  {currentLocation.address && (
+                    <p className="text-white/60 text-sm">{currentLocation.address}</p>
+                  )}
+                  {currentLocation.phone && (
+                    <p className="text-white/60 text-sm mt-2">{currentLocation.phone}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Quick Links */}
+              <div>
+                <h3 className="font-semibold text-lg mb-4">{t("quickLinks")}</h3>
+                <ul className="space-y-2 text-white/70">
+                  <li>
+                    <Link href="/opac/account" className="hover:text-white transition-colors">
+                      {t("myAccount")}
                     </Link>
-                  ) : null}
-                </li>
-                <li>
-                  <Link
-                    href="/opac/search?format=ebook"
-                    className="hover:text-white transition-colors"
-                  >
-                    {t("digitalResources")}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/opac/help" className="hover:text-white transition-colors">
-                    {t("helpFAQs")}
-                  </Link>
-                </li>
-              </ul>
-            </div>
+                  </li>
+                  <li>
+                    {featureFlags.opacKids ? (
+                      <Link href="/opac/kids" className="hover:text-white transition-colors">
+                        {t("kidsCatalog")}
+                      </Link>
+                    ) : null}
+                  </li>
+                  <li>
+                    <Link
+                      href="/opac/search?format=ebook"
+                      className="hover:text-white transition-colors"
+                    >
+                      {t("digitalResources")}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/opac/help" className="hover:text-white transition-colors">
+                      {t("helpFAQs")}
+                    </Link>
+                  </li>
+                </ul>
+              </div>
 
-            {/* Get a Card */}
-            <div>
-              <h3 className="font-semibold text-lg mb-4">{t("getLibraryCard")}</h3>
-              <p className="text-white/60 text-sm mb-4">{t("getCardDescription")}</p>
-              <Link
-                href="/opac/register"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 
+              {/* Get a Card */}
+              <div>
+                <h3 className="font-semibold text-lg mb-4">{t("getLibraryCard")}</h3>
+                <p className="text-white/60 text-sm mb-4">{t("getCardDescription")}</p>
+                {tenantDisplayName ? (
+                  <p className="text-white/50 text-xs mb-3">{tenantDisplayName}</p>
+                ) : null}
+                <Link
+                  href="/opac/register"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 
                          hover:brightness-110 rounded-lg font-medium transition-colors"
-              >
-                {t("applyOnline")}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+                >
+                  {t("applyOnline")}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 }

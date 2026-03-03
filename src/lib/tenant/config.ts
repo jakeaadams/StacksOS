@@ -58,6 +58,13 @@ function buildEnvTenantFallback(tenantId: string): TenantConfig {
           allowPatronScopeOverrideRaw === "no"
         ? false
         : undefined;
+  const opacStyleRaw = String(process.env.STACKSOS_OPAC_STYLE_VARIANT || "")
+    .trim()
+    .toLowerCase();
+  const opacStyleVariant: "classic" | "vibrant" | "clean" | undefined =
+    opacStyleRaw === "classic" || opacStyleRaw === "vibrant" || opacStyleRaw === "clean"
+      ? opacStyleRaw
+      : undefined;
 
   return TenantConfigSchema.parse({
     tenantId,
@@ -114,6 +121,12 @@ function buildEnvTenantFallback(tenantId: string): TenantConfig {
       defaultSearchScope: discoveryScope,
       defaultCopyDepth: discoveryDepth,
       allowPatronScopeOverride,
+    },
+    opac: {
+      heroTitle: process.env.STACKSOS_OPAC_HERO_TITLE || undefined,
+      heroSubtitle: process.env.STACKSOS_OPAC_HERO_SUBTITLE || undefined,
+      searchPlaceholder: process.env.STACKSOS_OPAC_SEARCH_PLACEHOLDER || undefined,
+      styleVariant: opacStyleVariant,
     },
     integrations: {
       emailProvider: (process.env.STACKSOS_EMAIL_PROVIDER as unknown) || undefined,

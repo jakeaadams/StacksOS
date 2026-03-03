@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   ExternalLink,
   Smartphone,
+  Palette,
 } from "lucide-react";
 
 interface SettingsCard {
@@ -99,6 +100,21 @@ const SETTINGS_CARDS: SettingsCard[] = [
       "Transaction flags",
     ],
   },
+  {
+    title: "OPAC Experience",
+    description:
+      "Tune OPAC hero content, quick chips, section visibility, and visual style without touching Evergreen source.",
+    href: "/staff/admin/settings/opac",
+    icon: Palette,
+    iconColor: "text-amber-600",
+    bgColor: "bg-amber-500/10",
+    features: [
+      "Hero + search copy",
+      "Quick chips curation",
+      "Homepage section toggles",
+      "Style variant controls",
+    ],
+  },
 ];
 
 const SETUP_STEPS: SetupStep[] = [
@@ -121,13 +137,19 @@ const SETUP_STEPS: SetupStep[] = [
     href: "/staff/admin/settings/library",
   },
   {
-    title: "4. Validate End-to-End",
+    title: "4. Customize OPAC Experience",
+    description:
+      "Set hero text, quick links, and homepage section visibility for a polished patron discovery flow.",
+    href: "/staff/admin/settings/opac",
+  },
+  {
+    title: "5. Validate End-to-End",
     description:
       "Run workstation/login checks, then verify checkout, holds, and OPAC discovery before go-live.",
     href: "/staff/admin/go-live",
   },
   {
-    title: "5. Configure Digital App Library",
+    title: "6. Configure Digital App Library",
     description:
       "Set Libby/OverDrive, Hoopla, cloudLibrary, and Kanopy connectors so eContent links and app handoff are intentional.",
     href: "/staff/admin/settings/econtent",

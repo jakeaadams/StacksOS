@@ -121,6 +121,7 @@ Copy `.env.example` to `.env.local` and configure the required variables:
 - **`STACKSOS_TENANT_PROFILE`** -- Tenant profile (`public`, `school`, `church`, `academic`, `custom`)
 - **`STACKSOS_DISCOVERY_SCOPE`** -- Default OPAC search scope (`local`, `system`, `consortium`)
 - **`STACKSOS_DISCOVERY_COPY_DEPTH`** -- Default OPAC depth (`0..99`, Evergreen-style semantics)
+- **`STACKSOS_OPAC_HERO_*` / `STACKSOS_OPAC_STYLE_VARIANT`** -- Optional OPAC hero/search defaults in env fallback mode
 - **`STACKSOS_OPAC_PASSKEYS_ENABLED` / `STACKSOS_PASSKEY_SECRET`** -- Optional passkey sign-in toggle + encryption secret
 - **`STACKSOS_WALLET_*`** -- Optional wallet enrollment link templates and signing secret for Apple/Google handoff
 - **`STACKSOS_AI_RETRY_*`** -- AI retry/backoff controls for provider latency resilience
@@ -146,6 +147,8 @@ StacksOS now exposes first-class OPAC scope controls aligned with Evergreen beha
 Tenant admins can set defaults in **Staff -> Admin -> Tenant & Onboarding**.
 For first-time setup, start with **Staff -> Admin -> Settings -> Start Here: Library Setup Path**
 and run the steps in order (Onboarding Wizard -> Tenant provisioning -> Policy tuning -> Go-live checks).
+OPAC homepage presentation (hero copy, quick chips, section visibility, style variant) can be managed at
+**Staff -> Admin -> Settings -> OPAC Experience**.
 Digital provider connector setup lives at **Staff -> Admin -> Settings -> Digital App Library**.
 
 How selection works:

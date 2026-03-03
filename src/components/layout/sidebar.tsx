@@ -54,6 +54,7 @@ import {
   Gavel,
   PlugZap,
   Smartphone,
+  Palette,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMemo, useState } from "react";
@@ -255,6 +256,7 @@ const mainNav: NavSection[] = [
         ? [{ title: "Developer Platform", href: "/staff/admin/developer-platform", icon: PlugZap }]
         : []),
       { title: "System Settings", href: "/staff/admin/settings", icon: Sliders },
+      { title: "OPAC Experience", href: "/staff/admin/settings/opac", icon: Palette },
       { title: "Digital App Library", href: "/staff/admin/settings/econtent", icon: Smartphone },
       { title: "My Settings", href: "/staff/settings", icon: UserCog },
       { title: "Policy Inspector", href: "/staff/admin/policy-inspector", icon: Database },
