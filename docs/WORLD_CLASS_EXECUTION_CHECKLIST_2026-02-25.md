@@ -6,11 +6,11 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 
 ## Current Gate Snapshot (2026-03-03)
 
-- **Local**: lint pass, type-check pass, test:run pass (323/323), audit:ui-drift pass, audit:task-benchmark pass
+- **Local**: lint (quiet) pass, type-check pass, test:run pass (323/323)
 - **VM** (192.168.1.233): lint pass, type-check pass, test:run pass (323/323), test:e2e pass (81 passed, 5 skipped), run_all.sh pass
-- **UI drift**: aggregate score `0` (zero drift files)
-- **Lint warnings**: zero warning rules
-- **Evergreen**: Open-ILS 3.16.4 (192.168.1.232)
+- **UI drift**: latest VM audit aggregate score `30` (not zero)
+- **Lint warnings**: `18` warnings on non-quiet lint (`0` errors)
+- **Evergreen host** (192.168.1.232): `/openils/bin/eg_config` reports `Open-ILS 3.16.4` (validate against upstream release announcements before upgrade decisions)
 
 ---
 
@@ -29,7 +29,7 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 - [x] Scope/depth parity: `search_scope`, `scope_org`, `copy_depth` enforced across search/AI/record
 - [x] Holdings: reshelving/status 7 contributes to available counts
 - [x] Cover fallback: Google Books when Open Library fails; cover picker with best-match
-- [x] UI drift closed to zero (aggregate score `0`, no missing primitives)
+- [ ] UI drift closure to zero is not yet complete (latest aggregate score `30`)
 - [x] Full OPAC audit gate: 42/42 pages, 21/21 APIs, 4/4 Evergreen bridge
 
 ### Staff & Platform
@@ -75,6 +75,8 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 ## Open Items
 
 - [ ] ESLint v10 upgrade (blocked by Next ESLint plugin compatibility)
+- [ ] Resolve current non-quiet lint warnings (`18`) while preserving zero-error gate
+- [ ] Reduce UI drift aggregate score (`30`) to target (`0`) in design-system sweep
 - [ ] External comparative user studies (task success/time, SUS, adoption, CSAT)
 - [ ] Continuous competitive benchmark program with external evidence
 
