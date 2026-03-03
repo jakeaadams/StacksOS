@@ -231,6 +231,13 @@ const mainNav: NavSection[] = [
     ],
   },
   {
+    title: "Programs",
+    defaultOpen: false,
+    items: [
+      { title: "Summer Reading", href: "/staff/admin/programs/summer-reading", icon: BookMarked },
+    ],
+  },
+  {
     title: "Administration",
     defaultOpen: false,
     items: [

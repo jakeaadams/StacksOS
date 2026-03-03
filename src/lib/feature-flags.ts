@@ -15,6 +15,8 @@ const PROFILE = String(
 const IS_SCHOOL = PROFILE === "school";
 const IS_CHURCH = PROFILE === "church";
 
+export const tenantProfile = PROFILE;
+
 export const featureFlags = {
   // Major modules
   ill: true,

@@ -2,7 +2,7 @@
 
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { clientLogger } from "@/lib/client-logger";
-import { featureFlags } from "@/lib/feature-flags";
+import { featureFlags, tenantProfile } from "@/lib/feature-flags";
 
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
@@ -29,6 +29,37 @@ import {
 import type { LibraryEvent } from "@/lib/events-data";
 
 import { useTranslations } from "next-intl";
+
+// ---------------------------------------------------------------------------
+// Profile-specific browse categories (hero uses i18n, chips are contextual)
+// ---------------------------------------------------------------------------
+
+const PROFILE_CHIPS: Record<string, { label: string; href: string }[]> = {
+  public: [
+    { label: "New Releases", href: "/opac/new-titles" },
+    { label: "Popular", href: "/opac/search?sort=popularity" },
+    { label: "Award Winners", href: "/opac/search?q=subject%3A+award+winners" },
+    { label: "Book Club", href: "/opac/search?q=subject%3A+book+club" },
+  ],
+  school: [
+    { label: "Reading Lists", href: "/opac/search?q=subject%3A+reading+list" },
+    { label: "Research", href: "/opac/search?q=subject%3A+research" },
+    { label: "Graphic Novels", href: "/opac/search?format=graphic_novel" },
+    { label: "STEM", href: "/opac/search?q=subject%3A+STEM+science" },
+  ],
+  church: [
+    { label: "Bible Studies", href: "/opac/search?q=subject%3A+bible+study" },
+    { label: "Devotionals", href: "/opac/search?q=subject%3A+devotional" },
+    { label: "Children's Ministry", href: "/opac/search?q=subject%3A+children+ministry" },
+    { label: "Small Groups", href: "/opac/search?q=subject%3A+small+group" },
+  ],
+  academic: [
+    { label: "Course Reserves", href: "/opac/course-reserves" },
+    { label: "Databases", href: "/opac/search?format=database" },
+    { label: "Journals", href: "/opac/search?format=serial" },
+    { label: "New Acquisitions", href: "/opac/new-titles" },
+  ],
+};
 
 interface FeaturedBook {
   id: number;
@@ -202,21 +233,11 @@ export default function OPACHomePage() {
           {/* Search form with autocomplete and scope selector */}
           <SearchAutocomplete variant="hero" showScopeSelector />
 
-          {/* Quick search suggestions */}
+          {/* Quick search suggestions — profile-driven */}
           <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <QuickSearchChip
-              label={t("newReleases")}
-              href={browseEnabled ? "/opac/new-titles" : "/opac/search?sort=create_date&order=desc"}
-            />
-            <QuickSearchChip label={t("popular")} href="/opac/search?sort=popularity" />
-            <QuickSearchChip
-              label={t("awardWinners")}
-              href={`/opac/search?q=${encodeURIComponent("subject: award winners")}`}
-            />
-            <QuickSearchChip
-              label={t("bookClub")}
-              href={`/opac/search?q=${encodeURIComponent("subject: book club")}`}
-            />
+            {(PROFILE_CHIPS[tenantProfile] || PROFILE_CHIPS.public)!.map((chip) => (
+              <QuickSearchChip key={chip.href} label={chip.label} href={chip.href} />
+            ))}
           </div>
         </div>
       </section>

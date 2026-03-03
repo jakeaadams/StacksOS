@@ -45,6 +45,81 @@ const EVERGREEN_PATRON_FIELDS = [
   { key: "post_code", label: "ZIP / Postal Code" },
 ];
 
+const MIGRATION_PRESETS: Record<string, { label: string; mapping: Record<string, string> }> = {
+  koha: {
+    label: "Koha",
+    mapping: {
+      borrowernumber: "",
+      cardnumber: "barcode",
+      surname: "family_name",
+      firstname: "first_given_name",
+      email: "email",
+      phone: "day_phone",
+      dateofbirth: "dob",
+      dateexpiry: "expire_date",
+      address: "street1",
+      city: "city",
+      state: "state",
+      zipcode: "post_code",
+      userid: "usrname",
+      password: "passwd",
+    },
+  },
+  sierra: {
+    label: "Sierra / Innovative",
+    mapping: {
+      P_BARCODE: "barcode",
+      LAST_NAME: "family_name",
+      FIRST_NAME: "first_given_name",
+      MIDDLE_NAME: "second_given_name",
+      EMAIL: "email",
+      TELEPHONE: "day_phone",
+      BIRTH_DATE: "dob",
+      EXP_DATE: "expire_date",
+      ADDRESS: "street1",
+      CITY: "city",
+      STATE: "state",
+      ZIP: "post_code",
+    },
+  },
+  follett: {
+    label: "Follett Destiny",
+    mapping: {
+      Barcode: "barcode",
+      LastName: "family_name",
+      FirstName: "first_given_name",
+      MiddleName: "second_given_name",
+      Email: "email",
+      Phone: "day_phone",
+      BirthDate: "dob",
+      ExpirationDate: "expire_date",
+      Address1: "street1",
+      City: "city",
+      State: "state",
+      Zip: "post_code",
+      Username: "usrname",
+    },
+  },
+  alexandria: {
+    label: "Alexandria",
+    mapping: {
+      Barcode: "barcode",
+      Last: "family_name",
+      First: "first_given_name",
+      Middle: "second_given_name",
+      Email: "email",
+      Phone: "day_phone",
+      DOB: "dob",
+      Expires: "expire_date",
+      Address: "street1",
+      City: "city",
+      State: "state",
+      Zip: "post_code",
+      Login: "usrname",
+    },
+  },
+};
+
 interface ParsedRow {
   raw: Record<string, string>;
   mapped: Record<string, string>;
@@ -108,7 +183,7 @@ export default function PatronImportPage() {
   const [csvRows, setCsvRows] = useState<string[][]>([]);
   const [columnMap, setColumnMap] = useState<Record<string, string>>({});
   const [validatedRows, setValidatedRows] = useState<ParsedRow[]>([]);
-  const [_importing, setImporting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
@@ -153,6 +228,25 @@ export default function PatronImportPage() {
     };
     reader.readAsText(file);
   }, []);
+
+  const handlePresetSelect = useCallback(
+    (presetKey: string) => {
+      const preset = MIGRATION_PRESETS[presetKey];
+      if (!preset) return;
+      const newMap: Record<string, string> = {};
+      let mapped = 0;
+      for (const header of csvHeaders) {
+        const match = preset.mapping[header];
+        if (match !== undefined) {
+          newMap[header] = match;
+          if (match) mapped++;
+        }
+      }
+      setColumnMap((prev) => ({ ...prev, ...newMap }));
+      toast.success(`${preset.label} preset applied — ${mapped} columns auto-mapped`);
+    },
+    [csvHeaders]
+  );
 
   const handleValidate = useCallback(() => {
     const results: ParsedRow[] = [];
@@ -392,7 +486,19 @@ export default function PatronImportPage() {
                     {mappedFieldCount > 0 ? ` ${mappedFieldCount} fields auto-detected.` : ""}
                   </CardDescription>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                  <Select onValueChange={handlePresetSelect}>
+                    <SelectTrigger className="w-44 h-8 text-xs">
+                      <SelectValue placeholder="Load Preset..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(MIGRATION_PRESETS).map(([key, p]) => (
+                        <SelectItem key={key} value={key}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Button variant="ghost" size="sm" onClick={handleReset}>
                     <X className="h-4 w-4 mr-1" /> Cancel
                   </Button>
@@ -460,8 +566,13 @@ export default function PatronImportPage() {
                   <Button variant="ghost" size="sm" onClick={() => setStep("map")}>
                     Back
                   </Button>
-                  <Button size="sm" onClick={handleImport} disabled={validCount === 0}>
-                    <Users className="h-4 w-4 mr-1" /> Import {validCount} Patrons
+                  <Button size="sm" onClick={handleImport} disabled={validCount === 0 || importing}>
+                    {importing ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Users className="h-4 w-4 mr-1" />
+                    )}{" "}
+                    Import {validCount} Patrons
                   </Button>
                 </div>
               </div>

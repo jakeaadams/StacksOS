@@ -24,11 +24,49 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ShieldAlert, ScrollText, Plus, CheckCircle2, RefreshCw } from "lucide-react";
+import {
+  ShieldAlert,
+  ScrollText,
+  Plus,
+  CheckCircle2,
+  RefreshCw,
+  Activity,
+  Cpu,
+  Shield,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
+
+interface OpsStatus {
+  host?: { hostname?: string; uptime?: number; platform?: string };
+  redis?: { status?: string; latencyMs?: number };
+  services?: Array<{ name: string; status: string }>;
+  tls?: { valid?: boolean; issuer?: string; expiry?: string; daysUntilExpiry?: number };
+  ai?: {
+    callsLastHour?: number;
+    fallbackRateLastHour?: number;
+    fallbackRateLastDay?: number;
+    p95LatencyMsLastHour?: number;
+    health?: string;
+  };
+}
+
+function healthColor(health: string | undefined): string {
+  if (health === "healthy") return "text-emerald-600";
+  if (health === "degraded") return "text-amber-500";
+  return "text-rose-500";
+}
+
+function healthBg(health: string | undefined): string {
+  if (health === "healthy") return "bg-emerald-500/10";
+  if (health === "degraded") return "bg-amber-500/10";
+  return "bg-rose-500/10";
+}
 
 export default function OpsAdminPage() {
   const [incidents, setIncidents] = useState<any[]>([]);
   const [notes, setNotes] = useState<any[]>([]);
+  const [opsStatus, setOpsStatus] = useState<OpsStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -52,9 +90,10 @@ export default function OpsAdminPage() {
     try {
       setLoading(true);
       setError(null);
-      const [iRes, nRes] = await Promise.all([
+      const [iRes, nRes, oRes] = await Promise.all([
         fetchWithAuth("/api/admin/incidents"),
         fetchWithAuth("/api/release-notes"),
+        fetchWithAuth("/api/admin/ops-status").catch(() => null),
       ]);
       const iJson = await iRes.json();
       const nJson = await nRes.json();
@@ -64,6 +103,10 @@ export default function OpsAdminPage() {
         throw new Error(nJson.error || "Failed to load release notes");
       setIncidents(Array.isArray(iJson.incidents) ? iJson.incidents : []);
       setNotes(Array.isArray(nJson.notes) ? nJson.notes : []);
+      if (oRes && oRes.ok) {
+        const oJson = await oRes.json();
+        setOpsStatus(oJson);
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
       setIncidents([]);
@@ -182,6 +225,168 @@ export default function OpsAdminPage() {
           <LoadingSpinner message="Loading ops data..." />
         ) : (
           <>
+            {/* System Health Dashboard */}
+            {opsStatus && (
+              <div className="grid gap-4 md:grid-cols-3">
+                {/* AI Health */}
+                <Card className="rounded-2xl border-border/70 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Cpu className="h-4 w-4" /> AI Health
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Status</span>
+                      <span
+                        className={`text-sm font-semibold capitalize ${healthColor(opsStatus.ai?.health)}`}
+                      >
+                        {opsStatus.ai?.health || "unknown"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Calls / hour</span>
+                      <span className="text-sm font-medium">
+                        {opsStatus.ai?.callsLastHour ?? "—"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Fallback rate (1h)</span>
+                      <span className="text-sm font-medium">
+                        {opsStatus.ai?.fallbackRateLastHour != null
+                          ? `${(opsStatus.ai.fallbackRateLastHour * 100).toFixed(1)}%`
+                          : "—"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Fallback rate (24h)</span>
+                      <span className="text-sm font-medium">
+                        {opsStatus.ai?.fallbackRateLastDay != null
+                          ? `${(opsStatus.ai.fallbackRateLastDay * 100).toFixed(1)}%`
+                          : "—"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">p95 latency (1h)</span>
+                      <span className="text-sm font-medium">
+                        {opsStatus.ai?.p95LatencyMsLastHour != null
+                          ? `${opsStatus.ai.p95LatencyMsLastHour}ms`
+                          : "—"}
+                      </span>
+                    </div>
+                    <div
+                      className={`rounded-lg p-2 text-center text-xs font-medium ${healthBg(opsStatus.ai?.health)} ${healthColor(opsStatus.ai?.health)}`}
+                    >
+                      {opsStatus.ai?.health === "healthy"
+                        ? "All AI systems nominal"
+                        : opsStatus.ai?.health === "degraded"
+                          ? "AI degraded — fallback active"
+                          : "AI unavailable"}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Services */}
+                <Card className="rounded-2xl border-border/70 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Activity className="h-4 w-4" /> Services
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Redis</span>
+                      <div className="flex items-center gap-1.5">
+                        {opsStatus.redis?.status === "connected" ? (
+                          <Wifi className="h-3 w-3 text-emerald-500" />
+                        ) : (
+                          <WifiOff className="h-3 w-3 text-rose-500" />
+                        )}
+                        <span className="text-sm font-medium capitalize">
+                          {opsStatus.redis?.status || "unknown"}
+                        </span>
+                      </div>
+                    </div>
+                    {opsStatus.redis?.latencyMs != null && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Redis latency</span>
+                        <span className="text-sm font-medium">{opsStatus.redis.latencyMs}ms</span>
+                      </div>
+                    )}
+                    {opsStatus.services && opsStatus.services.length > 0 && (
+                      <div className="space-y-1.5 pt-1 border-t border-border/50">
+                        {opsStatus.services.map((svc) => (
+                          <div key={svc.name} className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground truncate">
+                              {svc.name}
+                            </span>
+                            <span
+                              className={`h-2 w-2 rounded-full ${svc.status === "active" ? "bg-emerald-500" : "bg-rose-500"}`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {opsStatus.host?.hostname && (
+                      <div className="text-[10px] text-muted-foreground/60 pt-2 border-t border-border/50">
+                        Host: {opsStatus.host.hostname}
+                        {opsStatus.host.uptime != null &&
+                          ` · Up ${Math.floor(opsStatus.host.uptime / 3600)}h`}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* TLS / Cert */}
+                <Card className="rounded-2xl border-border/70 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Shield className="h-4 w-4" /> TLS / Certificate
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Valid</span>
+                      <span
+                        className={`text-sm font-semibold ${opsStatus.tls?.valid ? "text-emerald-600" : "text-rose-500"}`}
+                      >
+                        {opsStatus.tls?.valid ? "Yes" : "No"}
+                      </span>
+                    </div>
+                    {opsStatus.tls?.issuer && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Issuer</span>
+                        <span className="text-xs font-medium truncate max-w-[140px]">
+                          {opsStatus.tls.issuer}
+                        </span>
+                      </div>
+                    )}
+                    {opsStatus.tls?.expiry && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Expires</span>
+                        <span className="text-xs font-medium">
+                          {new Date(opsStatus.tls.expiry).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
+                    {opsStatus.tls?.daysUntilExpiry != null && (
+                      <div
+                        className={`rounded-lg p-2 text-center text-xs font-medium ${
+                          opsStatus.tls.daysUntilExpiry > 30
+                            ? "bg-emerald-500/10 text-emerald-600"
+                            : opsStatus.tls.daysUntilExpiry > 7
+                              ? "bg-amber-500/10 text-amber-600"
+                              : "bg-rose-500/10 text-rose-600"
+                        }`}
+                      >
+                        {opsStatus.tls.daysUntilExpiry} days until renewal
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             <Card className="rounded-2xl">
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
