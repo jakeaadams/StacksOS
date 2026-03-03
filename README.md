@@ -143,6 +143,8 @@ StacksOS now exposes first-class OPAC scope controls aligned with Evergreen beha
 - `copy_depth`: descendant depth from scope org (0=current only, 1=children, 99=all descendants)
 
 Tenant admins can set defaults in **Staff -> Admin -> Tenant & Onboarding**.
+For first-time setup, start with **Staff -> Admin -> Settings -> Start Here: Library Setup Path**
+and run the steps in order (Onboarding Wizard -> Tenant provisioning -> Policy tuning -> Go-live checks).
 
 How selection works:
 
@@ -161,6 +163,11 @@ npm run demo:reset
 ```
 
 Script path: `scripts/reset-jakes-demo-library.sh`
+
+Reset reliability note:
+
+- The reset script now clears local Redis rate-limit keys (localhost/127.0.0.1 only) before purge/seed,
+  so repeated demo resets do not get stuck behind auth/circulation throttles during QA and sales prep.
 
 Recommended demo guardrails:
 
