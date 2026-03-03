@@ -100,9 +100,10 @@ function normalizeConfig(data: OpacSettingsResponse | null) {
       Array.isArray(opac.quickChips) && opac.quickChips.length > 0
         ? opac.quickChips.map((chip) => ({ label: chip.label || "", href: chip.href || "" }))
         : [
-            { label: "New Releases", href: "/opac/new-titles" },
-            { label: "Popular", href: "/opac/search?sort=popularity" },
-            { label: "Digital Library", href: "/opac/digital" },
+            { label: "New Arrivals", href: "/opac/new-titles" },
+            { label: "Popular Now", href: "/opac/search?sort=popularity" },
+            { label: "Staff Picks", href: "/opac/lists" },
+            { label: "Browse Subjects", href: "/opac/browse" },
           ],
     sections: {
       ...DEFAULT_SECTIONS,

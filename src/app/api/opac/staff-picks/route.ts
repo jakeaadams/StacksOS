@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { callOpenSRF, successResponse } from "@/lib/api";
 import { payloadFirst } from "@/lib/api/extract-payload";
+import { isDemoDataEnabled } from "@/lib/demo-data";
 import { logger } from "@/lib/logger";
 
 interface StaffPick {
@@ -12,6 +13,61 @@ interface StaffPick {
   staffBranch: string;
   review?: string;
   recordId: number;
+}
+
+const SHOWCASE_NOTES = [
+  "A reliable favorite with broad appeal and steady circulation.",
+  "Excellent entry point if you are exploring this section for the first time.",
+  "Frequently recommended by staff for book groups and community reads.",
+  "Strong reader feedback and consistent hold activity.",
+  "A standout pick for discovery displays and seasonal promotions.",
+  "High re-read and renewal value across patron types.",
+];
+
+async function buildShowcaseFallbackPicks(limit: number): Promise<StaffPick[]> {
+  const searchResponse = await callOpenSRF(
+    "open-ils.search",
+    "open-ils.search.biblio.multiclass.query",
+    [{ limit: Math.max(limit * 2, 12), sort: ["popularity", "desc"] }, "keyword:*", 1]
+  );
+
+  const payload = payloadFirst(searchResponse) as Record<string, any> | null;
+  const idsRaw = Array.isArray(payload?.ids) ? payload.ids : [];
+  const bibIds = idsRaw
+    .map((entry) => (Array.isArray(entry) ? Number(entry[0]) : Number(entry)))
+    .filter((id) => Number.isFinite(id) && id > 0)
+    .slice(0, Math.max(limit * 2, 12));
+
+  const picks: StaffPick[] = [];
+  for (let idx = 0; idx < bibIds.length; idx++) {
+    const bibId = bibIds[idx];
+    if (!Number.isFinite(bibId) || !bibId) continue;
+    try {
+      const modsResponse = await callOpenSRF(
+        "open-ils.search",
+        "open-ils.search.biblio.record.mods_slim.retrieve",
+        [bibId]
+      );
+      const mods = payloadFirst(modsResponse) as Record<string, any> | null;
+      if (!mods || mods.ilsevent) continue;
+      picks.push({
+        id: bibId,
+        recordId: bibId,
+        title: String(mods.title || "Untitled"),
+        author: String(mods.author || ""),
+        coverUrl: mods.isbn
+          ? `https://covers.openlibrary.org/b/isbn/${mods.isbn}-M.jpg`
+          : undefined,
+        staffName: "StacksOS Staff",
+        staffBranch: "Demo Library",
+        review: SHOWCASE_NOTES[idx % SHOWCASE_NOTES.length],
+      });
+      if (picks.length >= limit) break;
+    } catch {
+      // best-effort fallback
+    }
+  }
+  return picks;
 }
 
 // GET /api/opac/staff-picks - Fetch staff picks from public bookbags
@@ -31,11 +87,21 @@ export async function GET(req: NextRequest) {
       );
       bookbags = searchResponse?.payload?.[0] || [];
     } catch (error: unknown) {
-      // Method may not exist or may require auth - return empty picks
+      // Method may not exist or may require auth.
+      // In demo mode, provide deterministic showcase picks from popular records.
       logger.info(
         { error: String(error) },
         "Staff picks not available - method not supported or not configured"
       );
+      if (isDemoDataEnabled()) {
+        const fallbackPicks = await buildShowcaseFallbackPicks(limit);
+        return successResponse({
+          picks: fallbackPicks,
+          total: fallbackPicks.length,
+          source: "demo_fallback",
+          message: "Using demo showcase staff picks fallback.",
+        });
+      }
       return successResponse({
         picks: [],
         message:
@@ -44,6 +110,15 @@ export async function GET(req: NextRequest) {
     }
 
     if (!Array.isArray(bookbags) || bookbags.length === 0) {
+      if (isDemoDataEnabled()) {
+        const fallbackPicks = await buildShowcaseFallbackPicks(limit);
+        return successResponse({
+          picks: fallbackPicks,
+          total: fallbackPicks.length,
+          source: "demo_fallback",
+          message: "Using demo showcase staff picks fallback.",
+        });
+      }
       return successResponse({
         picks: [],
         message: "No staff picks configured",
@@ -57,6 +132,15 @@ export async function GET(req: NextRequest) {
     });
 
     if (staffPickBags.length === 0) {
+      if (isDemoDataEnabled()) {
+        const fallbackPicks = await buildShowcaseFallbackPicks(limit);
+        return successResponse({
+          picks: fallbackPicks,
+          total: fallbackPicks.length,
+          source: "demo_fallback",
+          message: "Using demo showcase staff picks fallback.",
+        });
+      }
       return successResponse({
         picks: [],
         message:

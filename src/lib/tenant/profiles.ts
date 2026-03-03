@@ -39,15 +39,16 @@ const PROFILE_DEFAULTS: Record<TenantProfileType, TenantProfileDefaults> = {
     description: "Public library defaults: discovery, events, digital, family-friendly OPAC.",
     branding: { primaryColor: "#0f766e" },
     opac: {
-      heroTitle: "Discover Your Next Favorite",
-      heroSubtitle: "Search books, movies, audiobooks, and digital resources in one place.",
-      searchPlaceholder: "Search books, movies, music...",
+      heroTitle: "Discover Something Great Today",
+      heroSubtitle:
+        "Find books, audiobooks, movies, and digital resources with real-time availability.",
+      searchPlaceholder: "Search titles, authors, subjects, or ISBN...",
       styleVariant: "classic",
       quickChips: [
-        { label: "New Releases", href: "/opac/new-titles" },
-        { label: "Popular", href: "/opac/search?sort=popularity" },
-        { label: "Award Winners", href: "/opac/search?q=subject%3A+award+winners" },
-        { label: "Book Club", href: "/opac/search?q=subject%3A+book+club" },
+        { label: "New Arrivals", href: "/opac/new-titles" },
+        { label: "Popular Now", href: "/opac/search?sort=popularity" },
+        { label: "Staff Picks", href: "/opac/lists" },
+        { label: "Browse Subjects", href: "/opac/browse" },
       ],
     },
     discovery: {
@@ -71,15 +72,16 @@ const PROFILE_DEFAULTS: Record<TenantProfileType, TenantProfileDefaults> = {
     description: "School/K-12 defaults: class workflows, reserves, youth discovery.",
     branding: { primaryColor: "#1d4ed8" },
     opac: {
-      heroTitle: "Read, Learn, and Explore",
-      heroSubtitle: "Find classroom titles, research materials, and reading-level collections.",
-      searchPlaceholder: "Search books, assignments, and topics...",
+      heroTitle: "Read, Learn, and Grow",
+      heroSubtitle:
+        "Support classroom learning with reading-level discovery, research tools, and youth-friendly browsing.",
+      searchPlaceholder: "Search assignments, reading lists, and topics...",
       styleVariant: "vibrant",
       quickChips: [
-        { label: "Reading Lists", href: "/opac/search?q=subject%3A+reading+list" },
-        { label: "Research", href: "/opac/search?q=subject%3A+research" },
-        { label: "Graphic Novels", href: "/opac/search?format=graphic_novel" },
-        { label: "STEM", href: "/opac/search?q=subject%3A+STEM+science" },
+        { label: "Kids Search", href: "/opac/kids/search" },
+        { label: "Graphic Novels", href: "/opac/search?q=graphic+novel" },
+        { label: "STEM Explorer", href: "/opac/search?q=science" },
+        { label: "Homework Help", href: "/opac/events" },
       ],
     },
     discovery: {
@@ -103,15 +105,16 @@ const PROFILE_DEFAULTS: Record<TenantProfileType, TenantProfileDefaults> = {
     description: "Faith/church defaults: lightweight operations, events, groups, and outreach.",
     branding: { primaryColor: "#7c2d12" },
     opac: {
-      heroTitle: "Discover Faith and Community Resources",
-      heroSubtitle: "Find studies, devotionals, and family resources for every ministry.",
-      searchPlaceholder: "Search studies, devotionals, and more...",
+      heroTitle: "Grow Faith, Family, and Community",
+      heroSubtitle:
+        "Discover resources for study groups, family reading, outreach events, and lifelong learning.",
+      searchPlaceholder: "Search faith, family, and community resources...",
       styleVariant: "clean",
       quickChips: [
-        { label: "Bible Studies", href: "/opac/search?q=subject%3A+bible+study" },
-        { label: "Devotionals", href: "/opac/search?q=subject%3A+devotional" },
-        { label: "Children's Ministry", href: "/opac/search?q=subject%3A+children+ministry" },
-        { label: "Small Groups", href: "/opac/search?q=subject%3A+small+group" },
+        { label: "Community Reads", href: "/opac/search?q=community" },
+        { label: "Family Collection", href: "/opac/search?q=family" },
+        { label: "Programs & Events", href: "/opac/events" },
+        { label: "Kids Corner", href: "/opac/kids" },
       ],
     },
     discovery: {
@@ -136,16 +139,16 @@ const PROFILE_DEFAULTS: Record<TenantProfileType, TenantProfileDefaults> = {
       "Academic defaults: broader discovery scope, course reserves, and research workflows.",
     branding: { primaryColor: "#1e3a8a" },
     opac: {
-      heroTitle: "Research Starts Here",
+      heroTitle: "Research, Discover, and Cite with Confidence",
       heroSubtitle:
-        "Search reserves, journals, and scholarly materials across your campus libraries.",
-      searchPlaceholder: "Search course reserves, journals, and topics...",
+        "Find scholarly resources, digital collections, and current acquisitions across your library system.",
+      searchPlaceholder: "Search research topics, authors, and titles...",
       styleVariant: "clean",
       quickChips: [
-        { label: "Course Reserves", href: "/opac/course-reserves" },
-        { label: "Databases", href: "/opac/search?format=database" },
-        { label: "Journals", href: "/opac/search?format=serial" },
+        { label: "Advanced Search", href: "/opac/advanced-search" },
         { label: "New Acquisitions", href: "/opac/new-titles" },
+        { label: "Digital Library", href: "/opac/digital" },
+        { label: "Subject Browse", href: "/opac/browse" },
       ],
     },
     discovery: {
@@ -168,7 +171,16 @@ const PROFILE_DEFAULTS: Record<TenantProfileType, TenantProfileDefaults> = {
   custom: {
     description: "Custom profile: no default overrides beyond base platform values.",
     opac: {
+      heroTitle: "Welcome to Your Library Discovery Experience",
+      heroSubtitle: "Customize this homepage from Staff > Admin > Settings > OPAC Experience.",
+      searchPlaceholder: "Search your catalog...",
       styleVariant: "classic",
+      quickChips: [
+        { label: "New Arrivals", href: "/opac/new-titles" },
+        { label: "Popular Now", href: "/opac/search?sort=popularity" },
+        { label: "Browse", href: "/opac/browse" },
+        { label: "Events", href: "/opac/events" },
+      ],
     },
     discovery: {
       defaultSearchScope: "local",

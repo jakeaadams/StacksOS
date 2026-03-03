@@ -8,6 +8,7 @@ EVERGREEN_BASE_URL="${DEMO_EVERGREEN_BASE_URL:-${EVERGREEN_BASE_URL:-}}"
 DEMO_TENANT_ID="${DEMO_TENANT_ID:-jakes-demo-library}"
 DEMO_TENANT_NAME="${DEMO_TENANT_NAME:-Jakes Demo Library}"
 DEMO_TENANT_PROFILE="${DEMO_TENANT_PROFILE:-public}"
+DEMO_OPAC_PACK="${DEMO_OPAC_PACK:-showcase}"
 STAFF_USER="${DEMO_STAFF_USER:-${STACKSOS_AUDIT_STAFF_USERNAME:-${E2E_STAFF_USER:-jake}}}"
 STAFF_PASS="${DEMO_STAFF_PASS:-${STACKSOS_AUDIT_STAFF_PASSWORD:-${E2E_STAFF_PASS:-jake}}}"
 WORKSTATION="${DEMO_WORKSTATION:-STACKSOS-DEMO-RESET}"
@@ -110,7 +111,8 @@ if [ "$SKIP_TENANT" -ne 1 ]; then
         --tenant-id "$DEMO_TENANT_ID" \
         --display-name "$DEMO_TENANT_NAME" \
         --evergreen-base-url "$EVERGREEN_BASE_URL" \
-        --profile "$DEMO_TENANT_PROFILE"
+        --profile "$DEMO_TENANT_PROFILE" \
+        --opac-pack "$DEMO_OPAC_PACK"
     )
   fi
 else

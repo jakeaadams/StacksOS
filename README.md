@@ -174,6 +174,12 @@ Reset reliability note:
 - The reset script now clears local Redis rate-limit keys (localhost/127.0.0.1 only) before purge/seed,
   so repeated demo resets do not get stuck behind auth/circulation throttles during QA and sales prep.
 
+Demo showcase note:
+
+- `demo:reset` now provisions tenant OPAC defaults with `--opac-pack showcase` (override via `DEMO_OPAC_PACK`).
+- Seed also prepares a public **Staff Picks - StacksOS Demo** list for homepage rails when OPAC list APIs are available.
+- If Evergreen public bookbag retrieval is unavailable, OPAC staff picks use a demo-only fallback rail (disabled by default in production via demo-data guards).
+
 Recommended demo guardrails:
 
 - Isolated Evergreen/StacksOS environment (not production data)

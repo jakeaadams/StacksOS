@@ -6,6 +6,84 @@ import { applyTenantProfileDefaults } from "../src/lib/tenant/profiles";
 
 type Args = Record<string, string | boolean>;
 
+type OpacStyleVariant = "classic" | "vibrant" | "clean";
+
+function buildShowcaseOpacPack(
+  profile: string,
+  displayName: string
+): {
+  heroTitle: string;
+  heroSubtitle: string;
+  searchPlaceholder: string;
+  styleVariant: OpacStyleVariant;
+  quickChips: Array<{ label: string; href: string }>;
+} {
+  const normalized = String(profile || "public")
+    .trim()
+    .toLowerCase();
+
+  if (normalized === "school") {
+    return {
+      heroTitle: `${displayName} Learning Hub`,
+      heroSubtitle:
+        "Reading-level discovery, classroom support, and student-friendly catalog exploration.",
+      searchPlaceholder: "Search assignments, reading lists, and topics...",
+      styleVariant: "vibrant",
+      quickChips: [
+        { label: "Kids Search", href: "/opac/kids/search" },
+        { label: "Graphic Novels", href: "/opac/search?q=graphic+novel" },
+        { label: "STEM Explorer", href: "/opac/search?q=science" },
+        { label: "Homework Help", href: "/opac/events" },
+      ],
+    };
+  }
+
+  if (normalized === "church") {
+    return {
+      heroTitle: `${displayName} Community Library`,
+      heroSubtitle:
+        "Family-focused discovery for ministry groups, community programs, and everyday reading.",
+      searchPlaceholder: "Search faith, family, and community resources...",
+      styleVariant: "clean",
+      quickChips: [
+        { label: "Community Reads", href: "/opac/search?q=community" },
+        { label: "Family Collection", href: "/opac/search?q=family" },
+        { label: "Programs & Events", href: "/opac/events" },
+        { label: "Kids Corner", href: "/opac/kids" },
+      ],
+    };
+  }
+
+  if (normalized === "academic") {
+    return {
+      heroTitle: `${displayName} Research Portal`,
+      heroSubtitle:
+        "Fast access to new acquisitions, digital resources, and advanced discovery workflows.",
+      searchPlaceholder: "Search research topics, authors, and titles...",
+      styleVariant: "clean",
+      quickChips: [
+        { label: "Advanced Search", href: "/opac/advanced-search" },
+        { label: "New Acquisitions", href: "/opac/new-titles" },
+        { label: "Digital Library", href: "/opac/digital" },
+        { label: "Subject Browse", href: "/opac/browse" },
+      ],
+    };
+  }
+
+  return {
+    heroTitle: `${displayName} Discovery`,
+    heroSubtitle: "Search books, audiobooks, movies, and digital resources with live availability.",
+    searchPlaceholder: "Search titles, authors, subjects, or ISBN...",
+    styleVariant: "classic",
+    quickChips: [
+      { label: "New Arrivals", href: "/opac/new-titles" },
+      { label: "Popular Now", href: "/opac/search?sort=popularity" },
+      { label: "Staff Picks", href: "/opac/lists" },
+      { label: "Browse Subjects", href: "/opac/browse" },
+    ],
+  };
+}
+
 function parseArgs(argv: string[]): Args {
   const args: Args = {};
   for (let i = 0; i < argv.length; i++) {
@@ -113,10 +191,11 @@ async function main() {
       : allowScopeOverrideRaw === "0" || allowScopeOverrideRaw === "false"
         ? false
         : undefined;
+  const opacPack = optionalString(args, "opac-pack");
 
   const dryRun = args["dry-run"] === true;
 
-  const config = applyTenantProfileDefaults(
+  const baseConfig = applyTenantProfileDefaults(
     TenantConfigSchema.parse({
       tenantId,
       displayName,
@@ -131,6 +210,28 @@ async function main() {
       },
     })
   );
+
+  const config =
+    opacPack === "showcase"
+      ? TenantConfigSchema.parse({
+          ...baseConfig,
+          opac: {
+            ...(baseConfig.opac || {}),
+            ...buildShowcaseOpacPack(profile, displayName),
+            sections: {
+              ...(baseConfig.opac?.sections || {}),
+              showQuickChips: true,
+              showBrowseByFormat: true,
+              showEvents: true,
+              showRecommended: true,
+              showNewArrivals: true,
+              showPopular: true,
+              showStaffPicks: true,
+              showLibraryInfo: true,
+            },
+          },
+        })
+      : baseConfig;
 
   const dispatcher = buildDispatcher(args);
 
@@ -147,6 +248,7 @@ async function main() {
     tenantId,
     outPath,
     profile: config.profile?.type || "public",
+    opacPack: opacPack || null,
     evergreen: {
       eg2,
       osrfGateway,

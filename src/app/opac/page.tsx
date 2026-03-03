@@ -36,28 +36,28 @@ import { useTranslations } from "next-intl";
 
 const PROFILE_CHIPS: Record<string, { label: string; href: string }[]> = {
   public: [
-    { label: "New Releases", href: "/opac/new-titles" },
-    { label: "Popular", href: "/opac/search?sort=popularity" },
-    { label: "Award Winners", href: "/opac/search?q=subject%3A+award+winners" },
-    { label: "Book Club", href: "/opac/search?q=subject%3A+book+club" },
+    { label: "New Arrivals", href: "/opac/new-titles" },
+    { label: "Popular Now", href: "/opac/search?sort=popularity" },
+    { label: "Staff Picks", href: "/opac/lists" },
+    { label: "Browse Subjects", href: "/opac/browse" },
   ],
   school: [
-    { label: "Reading Lists", href: "/opac/search?q=subject%3A+reading+list" },
-    { label: "Research", href: "/opac/search?q=subject%3A+research" },
-    { label: "Graphic Novels", href: "/opac/search?format=graphic_novel" },
-    { label: "STEM", href: "/opac/search?q=subject%3A+STEM+science" },
+    { label: "Kids Search", href: "/opac/kids/search" },
+    { label: "Graphic Novels", href: "/opac/search?q=graphic+novel" },
+    { label: "STEM Explorer", href: "/opac/search?q=science" },
+    { label: "Homework Help", href: "/opac/events" },
   ],
   church: [
-    { label: "Bible Studies", href: "/opac/search?q=subject%3A+bible+study" },
-    { label: "Devotionals", href: "/opac/search?q=subject%3A+devotional" },
-    { label: "Children's Ministry", href: "/opac/search?q=subject%3A+children+ministry" },
-    { label: "Small Groups", href: "/opac/search?q=subject%3A+small+group" },
+    { label: "Community Reads", href: "/opac/search?q=community" },
+    { label: "Family Collection", href: "/opac/search?q=family" },
+    { label: "Programs & Events", href: "/opac/events" },
+    { label: "Kids Corner", href: "/opac/kids" },
   ],
   academic: [
-    { label: "Course Reserves", href: "/opac/course-reserves" },
-    { label: "Databases", href: "/opac/search?format=database" },
-    { label: "Journals", href: "/opac/search?format=serial" },
+    { label: "Advanced Search", href: "/opac/advanced-search" },
     { label: "New Acquisitions", href: "/opac/new-titles" },
+    { label: "Digital Library", href: "/opac/digital" },
+    { label: "Subject Browse", href: "/opac/browse" },
   ],
 };
 

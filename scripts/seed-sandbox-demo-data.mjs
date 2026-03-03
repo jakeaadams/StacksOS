@@ -984,6 +984,17 @@ const HOLD_PLAN = [
   { patronIdx: 18, bibOffset: 55 },
 ];
 
+const SHOWCASE_STAFF_PICK_NOTES = [
+  "A dependable crowd-pleaser with strong circulation and broad appeal.",
+  "Great for first-time visitors who want an easy entry into this topic.",
+  "Excellent pick for book clubs and discussion groups.",
+  "High patron satisfaction and strong renewal activity.",
+  "Balanced pacing and accessible writing make this a frequent recommendation.",
+  "A standout title for discovery displays and seasonal highlights.",
+];
+
+const SHOWCASE_STAFF_PICK_BIB_OFFSETS = [0, 6, 14, 24, 40, 52];
+
 async function resolveBibIdsFromItems({ baseUrl, jar, bibCount, copiesPerBib }) {
   console.log("[seed] resolving bib IDs from existing items...");
   const bibIds = [];
@@ -1016,6 +1027,113 @@ async function resolveBibIdsFromItems({ baseUrl, jar, bibCount, copiesPerBib }) 
   const resolved = bibIds.filter(Boolean).length;
   console.log(`[seed] resolved ${resolved} bib IDs from ${limit} item lookups`);
   return bibIds;
+}
+
+async function loginPatronSession({ baseUrl, barcode, pin }) {
+  const jar = new CookieJar();
+  const csrf = await fetchJson(`${baseUrl}/api/csrf-token`, { jar });
+  const csrfToken = csrf?.token;
+  if (!csrfToken) throw new Error("Failed to fetch CSRF token for patron session");
+
+  await fetchJson(`${baseUrl}/api/opac/login`, {
+    method: "POST",
+    jar,
+    csrfToken,
+    json: { barcode, pin },
+  });
+
+  const session = await fetchJson(`${baseUrl}/api/opac/session`, { jar });
+  if (!session?.authenticated) {
+    throw new Error("Patron session authentication failed for showcase seeding");
+  }
+
+  return { jar, csrfToken };
+}
+
+async function ensureShowcaseStaffPicks({ baseUrl, patronBarcode, patronPin, bibIds }) {
+  if (process.env.DEMO_SHOWCASE_STAFF_PICKS === "0") {
+    console.log("[seed] skipping showcase staff picks (DEMO_SHOWCASE_STAFF_PICKS=0)");
+    return { seeded: false, listId: null, added: 0, total: 0 };
+  }
+
+  const { jar, csrfToken } = await loginPatronSession({
+    baseUrl,
+    barcode: patronBarcode,
+    pin: patronPin,
+  });
+
+  const listName = "Staff Picks - StacksOS Demo";
+  const listDescription = "Curated showcase picks for StacksOS demo rails";
+  const listsRes = await fetchJson(`${baseUrl}/api/opac/lists`, { jar });
+  const lists = Array.isArray(listsRes?.lists) ? listsRes.lists : [];
+  const existing = lists.find((list) => String(list.name || "").trim() === listName) || null;
+
+  let listId = existing?.id ? Number(existing.id) : null;
+  if (!listId) {
+    const created = await fetchJson(`${baseUrl}/api/opac/lists`, {
+      method: "POST",
+      jar,
+      csrfToken,
+      json: {
+        name: listName,
+        description: listDescription,
+        visibility: "public",
+      },
+    });
+    listId = Number(created?.list?.id || 0) || null;
+  } else {
+    await fetchJson(`${baseUrl}/api/opac/lists/${listId}`, {
+      method: "PATCH",
+      jar,
+      csrfToken,
+      json: {
+        name: listName,
+        description: listDescription,
+        visibility: "public",
+      },
+    });
+  }
+
+  if (!listId) {
+    throw new Error("Unable to create or resolve showcase staff picks list");
+  }
+
+  const detail = await fetchJson(`${baseUrl}/api/opac/lists/${listId}`, { jar });
+  const existingItems = Array.isArray(detail?.items) ? detail.items : [];
+  const existingBibIds = new Set(
+    existingItems
+      .map((item) => Number(item?.bibId))
+      .filter((value) => Number.isFinite(value) && value > 0)
+  );
+
+  const candidates = SHOWCASE_STAFF_PICK_BIB_OFFSETS.map((offset) => Number(bibIds[offset]))
+    .filter((bibId) => Number.isFinite(bibId) && bibId > 0)
+    .slice(0, SHOWCASE_STAFF_PICK_NOTES.length);
+
+  let added = 0;
+  for (let i = 0; i < candidates.length; i++) {
+    const bibId = candidates[i];
+    if (existingBibIds.has(bibId)) continue;
+    const notes = SHOWCASE_STAFF_PICK_NOTES[i] || "Curated staff recommendation.";
+    try {
+      await fetchJson(`${baseUrl}/api/opac/lists/${listId}/items`, {
+        method: "POST",
+        jar,
+        csrfToken,
+        json: { bibId, notes },
+      });
+      existingBibIds.add(bibId);
+      added++;
+      await sleep(200);
+    } catch (error) {
+      console.warn(`[seed] showcase staff pick add failed for bib ${bibId}: ${String(error).slice(0, 160)}`);
+    }
+  }
+
+  const refreshed = await fetchJson(`${baseUrl}/api/opac/lists/${listId}`, { jar });
+  const total = Array.isArray(refreshed?.items) ? refreshed.items.length : existingBibIds.size;
+  console.log(`[seed] showcase staff picks ready: list=${listId} total=${total} added=${added}`);
+  return { seeded: true, listId, added, total };
 }
 
 async function seedCirculationActivity({ baseUrl, jar, csrfToken, orgId, patronMap, bibIds }) {
@@ -1357,6 +1475,18 @@ async function main() {
     bibIdsForCirc = await resolveBibIdsFromItems({ baseUrl, jar, bibCount, copiesPerBib });
   }
 
+  let showcaseStaffPicks = { seeded: false, listId: null, added: 0, total: 0 };
+  try {
+    showcaseStaffPicks = await ensureShowcaseStaffPicks({
+      baseUrl,
+      patronBarcode: demoPatronBarcode,
+      patronPin: demoPatronPin,
+      bibIds: bibIdsForCirc,
+    });
+  } catch (error) {
+    console.warn(`[seed] showcase staff picks skipped: ${String(error).slice(0, 160)}`);
+  }
+
   const circActivity = await seedCirculationActivity({
     baseUrl,
     jar,
@@ -1395,6 +1525,7 @@ async function main() {
       overdueItems: circActivity.overdueCount,
       errors: circActivity.errors.length,
     },
+    showcaseStaffPicks,
   };
 
   const outPath = path.join(__dirname, "..", "audit", "demo_data.json");
