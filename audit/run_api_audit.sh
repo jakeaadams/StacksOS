@@ -184,11 +184,17 @@ if [[ "$ALREADY_AUTHED" != "1" ]]; then
     echo "or provide COOKIE_JAR_SEED to reuse a prior session." >&2
     exit 1
   fi
-  # Login
-  AUTH_PAYLOAD=$(cat <<JSON
-{"username":"$STAFF_USERNAME","password":"$STAFF_PASSWORD","workstation":"$WORKSTATION"}
-JSON
-)
+  # Login (use jq to safely encode credentials that may contain special chars)
+  if command -v jq >/dev/null 2>&1; then
+    AUTH_PAYLOAD=$(jq -n --arg u "$STAFF_USERNAME" --arg p "$STAFF_PASSWORD" --arg w "$WORKSTATION" \
+      '{username: $u, password: $p, workstation: $w}')
+  else
+    # Fallback: escape backslashes and double-quotes for JSON safety
+    _esc_user=$(printf '%s' "$STAFF_USERNAME" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    _esc_pass=$(printf '%s' "$STAFF_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    _esc_ws=$(printf '%s' "$WORKSTATION" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    AUTH_PAYLOAD="{\"username\":\"${_esc_user}\",\"password\":\"${_esc_pass}\",\"workstation\":\"${_esc_ws}\"}"
+  fi
   call "auth_login" "$BASE_URL/api/evergreen/auth" "POST" "$AUTH_PAYLOAD"
 
   # Detect if workstation registration is needed

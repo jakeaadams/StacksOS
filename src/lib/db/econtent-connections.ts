@@ -155,7 +155,7 @@ export async function upsertEcontentConnection(args: {
       Boolean(args.supportsCheckout),
       Boolean(args.supportsHold),
       args.notes || null,
-      args.updatedBy || null,
+      args.updatedBy ?? null,
     ]
   );
   if (!row) {

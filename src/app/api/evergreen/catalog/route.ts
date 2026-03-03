@@ -244,8 +244,9 @@ function extractAudienceFromMARC(marcXml: string | null): string {
       case "c": // Pre-adolescent
         return "juvenile";
       case "d": // Adolescent
-      case "e": // Adult
         return "young_adult";
+      case "e": // Adult
+        return "general";
       case "j": // Juvenile
         return "juvenile";
     }
@@ -562,8 +563,10 @@ export async function GET(req: NextRequest) {
   const action = searchParams.get("action") || "search";
   const query = searchParams.get("q") || "";
   const searchType = searchParams.get("type") || "keyword";
-  const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100);
-  const offset = parseInt(searchParams.get("offset") || "0");
+  const limitRaw = parseInt(searchParams.get("limit") || "20", 10);
+  const limit = Math.min(Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 20, 100);
+  const offsetRaw = parseInt(searchParams.get("offset") || "0", 10);
+  const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
   const bibId = searchParams.get("id");
   const sort = searchParams.get("sort");
   const orderDir = (searchParams.get("order") || searchParams.get("sort_dir") || "").toLowerCase();
@@ -622,10 +625,15 @@ export async function GET(req: NextRequest) {
         "Catalog record fetch"
       );
 
+      const bibIdNum = parseInt(bibId, 10);
+      if (!Number.isFinite(bibIdNum) || bibIdNum <= 0) {
+        return errorResponse("Invalid record ID", 400);
+      }
+
       const modsResponse = await callOpenSRF(
         "open-ils.search",
         "open-ils.search.biblio.record.mods_slim.retrieve",
-        [parseInt(bibId)]
+        [bibIdNum]
       );
 
       const mods = modsResponse?.payload?.[0];
@@ -636,7 +644,7 @@ export async function GET(req: NextRequest) {
       const marcResponse = await callOpenSRF(
         "open-ils.supercat",
         "open-ils.supercat.record.marcxml.retrieve",
-        [parseInt(bibId)]
+        [bibIdNum]
       );
 
       const marcXml = marcResponse?.payload?.[0];

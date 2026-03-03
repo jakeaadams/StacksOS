@@ -313,8 +313,10 @@ export async function savePatronPasskey(args: {
         friendly_name = EXCLUDED.friendly_name,
         auth_identifier = EXCLUDED.auth_identifier,
         pin_digest_encrypted = EXCLUDED.pin_digest_encrypted,
-        updated_at = NOW(),
-        revoked_at = NULL
+        updated_at = NOW()
+      -- Do NOT reset revoked_at: a revoked passkey cannot be silently re-enrolled.
+      -- The patron must have staff delete the old credential first.
+      WHERE library.opac_passkeys.revoked_at IS NULL
       RETURNING *
     `,
     [
@@ -332,7 +334,10 @@ export async function savePatronPasskey(args: {
   );
 
   if (!row) {
-    throw new Error("Failed to save passkey");
+    throw new Error(
+      "Failed to save passkey — the credential may have been previously revoked. " +
+        "Please contact library staff to remove the old credential before re-enrolling."
+    );
   }
 
   return mapPasskeyRow(row);

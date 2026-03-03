@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-const PASKEY_ALGO = "aes-256-gcm";
+const PASSKEY_ALGO = "aes-256-gcm";
 
 function base64UrlEncode(input: Buffer): string {
   return input.toString("base64url");
@@ -25,7 +25,7 @@ export function isPasskeyConfigured(): boolean {
 export function encryptPasskeyPinDigest(pinDigest: string): string {
   const key = getPasskeySecretKey();
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv(PASKEY_ALGO, key, iv);
+  const cipher = crypto.createCipheriv(PASSKEY_ALGO, key, iv);
   const ciphertext = Buffer.concat([cipher.update(pinDigest, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return `${base64UrlEncode(iv)}.${base64UrlEncode(tag)}.${base64UrlEncode(ciphertext)}`;
@@ -42,7 +42,7 @@ export function decryptPasskeyPinDigest(payload: string): string {
   const tag = base64UrlDecode(tagPart);
   const ciphertext = base64UrlDecode(cipherPart);
 
-  const decipher = crypto.createDecipheriv(PASKEY_ALGO, key, iv);
+  const decipher = crypto.createDecipheriv(PASSKEY_ALGO, key, iv);
   decipher.setAuthTag(tag);
   const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
   return plaintext.toString("utf8");

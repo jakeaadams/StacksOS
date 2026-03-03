@@ -41,7 +41,8 @@ export async function POST(req: NextRequest) {
 
   const passkeys = await listActivePasskeysByAuthIdentifier(authIdentifier);
   if (passkeys.length === 0) {
-    return errorResponse("No passkeys are enrolled for this library card", 404);
+    // Return a generic 401 to avoid disclosing whether passkeys are enrolled for this card
+    return errorResponse("Passkey authentication is not available", 401);
   }
 
   const { rpID, origin } = getPasskeyRpConfig(req);

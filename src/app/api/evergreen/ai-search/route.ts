@@ -107,8 +107,10 @@ export async function GET(req: NextRequest) {
   }
 
   const rawQuery = (req.nextUrl.searchParams.get("q") || "").trim();
-  const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") || "20", 10) || 20, 50);
-  const offset = parseInt(req.nextUrl.searchParams.get("offset") || "0", 10) || 0;
+  const limitRaw = parseInt(req.nextUrl.searchParams.get("limit") || "20", 10);
+  const limit = Math.min(Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 20, 50);
+  const offsetRaw = parseInt(req.nextUrl.searchParams.get("offset") || "0", 10);
+  const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
   const tenantDiscovery = getTenantConfig().discovery;
   const searchScopeParam = String(req.nextUrl.searchParams.get("search_scope") || "")
     .trim()
@@ -132,6 +134,9 @@ export async function GET(req: NextRequest) {
     return errorResponse("Query too long (max 500 chars)", 400);
   }
 
+  // NOTE: This endpoint is intentionally unauthenticated — it serves OPAC
+  // patrons who do not have staff sessions.  Rate limiting (per-IP) is the
+  // primary abuse-prevention mechanism.
   // Rate limit: 20 AI searches per hour per IP
   const ip = getClientIp(req);
   const rateResult = await checkRateLimit(ip, {

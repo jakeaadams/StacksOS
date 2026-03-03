@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
       attestationType: "none",
       authenticatorSelection: {
         residentKey: "preferred",
-        userVerification: "preferred",
+        userVerification: "required",
       },
       excludeCredentials: existing.map((row) => ({
         id: row.credentialId,
