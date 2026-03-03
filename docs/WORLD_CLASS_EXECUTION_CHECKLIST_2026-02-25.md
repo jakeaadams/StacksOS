@@ -22,7 +22,7 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 - [x] Server-side `console.*` removed from `src/` in favor of structured logging
 - [x] E2E tests aligned with cookie-based auth and current contracts
 - [x] E2E bypass mode (`STACKSOS_E2E_TEST_MODE`) prevents test lockout
-- [x] Zero-warning lint closure (`@typescript-eslint/no-explicit-any` off for Evergreen boundaries)
+- [x] Zero-error lint gate closure (`eslint --quiet`); warning cleanup remains tracked in Open Items
 
 ### OPAC Discovery & UX
 
