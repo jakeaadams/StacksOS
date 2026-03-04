@@ -14,6 +14,7 @@ import {
   DollarSign,
   Rocket,
   CheckCircle2,
+  CreditCard,
   ExternalLink,
   Smartphone,
   Palette,
@@ -115,6 +116,20 @@ const SETTINGS_CARDS: SettingsCard[] = [
       "Style variant controls",
     ],
   },
+  {
+    title: "Payment Processing",
+    description: "Configure Stripe for online fine and fee payments from patrons.",
+    href: "/staff/admin/settings/payments",
+    icon: CreditCard,
+    iconColor: "text-purple-600",
+    bgColor: "bg-purple-500/10",
+    features: [
+      "Stripe API key setup",
+      "Test vs. live mode",
+      "Receipt customization",
+      "Payment minimums",
+    ],
+  },
 ];
 
 const SETUP_STEPS: SetupStep[] = [
@@ -153,6 +168,11 @@ const SETUP_STEPS: SetupStep[] = [
     description:
       "Set Libby/OverDrive, Hoopla, cloudLibrary, and Kanopy connectors so eContent links and app handoff are intentional.",
     href: "/staff/admin/settings/econtent",
+  },
+  {
+    title: "7. Configure Payment Processing",
+    description: "Set up Stripe API keys so patrons can pay fines and fees online from the OPAC.",
+    href: "/staff/admin/settings/payments",
   },
 ];
 

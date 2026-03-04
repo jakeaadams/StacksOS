@@ -4,11 +4,19 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/use-patron-session";
-import { CreditCard, CheckCircle, Loader2, ArrowLeft, Calendar, Receipt } from "lucide-react";
+import { CreditCard, CheckCircle, Loader2, ArrowLeft, Calendar, Receipt, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { Button } from "@/components/ui/button";
+import { PaymentForm } from "@/components/opac/payment-form";
+
+interface PaymentIntent {
+  clientSecret: string;
+  publishableKey: string;
+  amount: number;
+  currency: string;
+}
 
 export default function FinesPage() {
   const t = useTranslations("finesPage");
@@ -18,6 +26,7 @@ export default function FinesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFines, setSelectedFines] = useState<number[]>([]);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null);
 
   useEffect(() => {
     if (!sessionLoading && !isLoggedIn) {
@@ -63,7 +72,7 @@ export default function FinesPage() {
     if (isProcessingPayment || selectedFines.length === 0) return;
     setIsProcessingPayment(true);
     try {
-      await fetchWithAuth("/api/opac/payments", {
+      const res = await fetchWithAuth("/api/opac/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -72,15 +81,90 @@ export default function FinesPage() {
           description: "Fine payment",
         }),
       });
-      toast.success(t("paymentSuccessToast"));
-      setSelectedFines([]);
-      await fetchFines();
-    } catch (_error) {
-      toast.error(t("paymentErrorToast"));
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(String(data?.error || "Failed to create payment"));
+      }
+
+      // If we received a clientSecret, Stripe is configured — show the payment form.
+      // Otherwise, fall back to the simple payment flow (non-Stripe).
+      if (data.clientSecret && data.publishableKey) {
+        setPaymentIntent({
+          clientSecret: data.clientSecret,
+          publishableKey: data.publishableKey,
+          amount: data.amount || Math.round(selectedTotal * 100),
+          currency: data.currency || "usd",
+        });
+      } else {
+        // Legacy flow — payment was recorded directly
+        toast.success(t("paymentSuccessToast"));
+        setSelectedFines([]);
+        await fetchFines();
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("paymentErrorToast"));
     } finally {
       setIsProcessingPayment(false);
     }
   };
+
+  const handlePaymentCancel = () => {
+    setPaymentIntent(null);
+  };
+
+  const handlePaymentSuccess = () => {
+    // Stripe redirects to payment-result page, so this is mainly for
+    // non-redirect flows (rare). Refresh fines just in case.
+    setPaymentIntent(null);
+    setSelectedFines([]);
+    fetchFines().catch(() => {});
+    toast.success(t("paymentSuccessToast"));
+  };
+
+  // ---------------------------------------------------------------------------
+  // Payment form overlay
+  // ---------------------------------------------------------------------------
+
+  if (paymentIntent) {
+    return (
+      <div className="min-h-screen bg-muted/30 py-8">
+        <div className="max-w-lg mx-auto px-4">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-xl font-bold text-foreground">Complete Payment</h1>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handlePaymentCancel}
+              aria-label="Cancel payment"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
+          <div className="stx-surface rounded-xl p-6">
+            <PaymentForm
+              publishableKey={paymentIntent.publishableKey}
+              clientSecret={paymentIntent.clientSecret}
+              amount={paymentIntent.amount}
+              currency={paymentIntent.currency}
+              onSuccess={handlePaymentSuccess}
+              onCancel={handlePaymentCancel}
+            />
+          </div>
+
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            You will be redirected to a confirmation page after payment.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Fines list view
+  // ---------------------------------------------------------------------------
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">
@@ -187,7 +271,7 @@ export default function FinesPage() {
                         type="checkbox"
                         checked={selectedFines.includes(fine.id)}
                         onChange={() => {}}
-                        className="h-5 w-5 rounded border-border text-primary-600 
+                        className="h-5 w-5 rounded border-border text-primary-600
                                  focus:ring-primary-500"
                       />
                       <div className="flex-1 min-w-0">
@@ -244,9 +328,9 @@ export default function FinesPage() {
         <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-xl">
           <h3 className="font-semibold text-blue-900 mb-2">{t("paymentOptions")}</h3>
           <ul className="text-sm text-blue-800 space-y-1">
-            <li>{`• ${t("payOnlineCard")}`}</li>
-            <li>{`• ${t("payInPerson")}`}</li>
-            <li>{`• ${t("paymentMethodsAccepted")}`}</li>
+            <li>{`\u2022 ${t("payOnlineCard")}`}</li>
+            <li>{`\u2022 ${t("payInPerson")}`}</li>
+            <li>{`\u2022 ${t("paymentMethodsAccepted")}`}</li>
           </ul>
           <p className="text-sm text-blue-700 mt-3">
             {t("contactQuestion")}{" "}
