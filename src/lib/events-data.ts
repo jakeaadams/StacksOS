@@ -334,10 +334,21 @@ const MOCK_EVENTS: LibraryEvent[] = [
   },
 ];
 
-export type EventCatalogSource = "mock" | "none";
+export type EventCatalogSource = "mock" | "libcal" | "none";
 
 export function getEventCatalogSource(): EventCatalogSource {
+  if (process.env.LIBCAL_CLIENT_ID) return "libcal";
   return areMockEventsEnabled() ? "mock" : "none";
+}
+
+async function getConfiguredEventsAsync(): Promise<LibraryEvent[]> {
+  const source = getEventCatalogSource();
+  if (source === "libcal") {
+    const { fetchLibCalEvents } = await import("./events-libcal");
+    return fetchLibCalEvents();
+  }
+  if (source === "mock") return MOCK_EVENTS;
+  return [];
 }
 
 function getConfiguredEvents(): LibraryEvent[] {
@@ -346,8 +357,39 @@ function getConfiguredEvents(): LibraryEvent[] {
 }
 
 /**
+ * Async version of getUpcomingEvents — fetches from LibCal when configured.
+ */
+export async function getUpcomingEventsAsync(options?: {
+  branch?: string;
+  type?: EventType;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+  featuredOnly?: boolean;
+}): Promise<LibraryEvent[]> {
+  let events = [...(await getConfiguredEventsAsync())];
+
+  events.sort((a, b) => {
+    const dateCompare = a.date.localeCompare(b.date);
+    if (dateCompare !== 0) return dateCompare;
+    return a.startTime.localeCompare(b.startTime);
+  });
+
+  if (options?.branch)
+    events = events.filter((e) => e.branch.toLowerCase() === options.branch!.toLowerCase());
+  if (options?.type)
+    events = events.filter((e) => e.type.toLowerCase() === options.type!.toLowerCase());
+  if (options?.startDate) events = events.filter((e) => e.date >= options.startDate!);
+  if (options?.endDate) events = events.filter((e) => e.date <= options.endDate!);
+  if (options?.featuredOnly) events = events.filter((e) => e.featured);
+  if (options?.limit) events = events.slice(0, options.limit);
+
+  return events;
+}
+
+/**
  * Get upcoming events, optionally filtered.
- * In production, replace this with a call to LibCal API.
+ * Synchronous version — uses mock data only. Use getUpcomingEventsAsync for LibCal support.
  */
 export function getUpcomingEvents(options?: {
   branch?: string;

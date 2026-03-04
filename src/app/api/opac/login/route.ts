@@ -11,6 +11,8 @@ import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
 import { hashPassword } from "@/lib/password";
 import { isCookieSecure } from "@/lib/csrf";
+import { isMfaEnabled } from "@/lib/mfa";
+import { getActiveMfaMethods } from "@/lib/db/opac-mfa";
 import { z } from "zod";
 
 /**
@@ -94,19 +96,6 @@ export async function POST(req: NextRequest) {
     const authResult = authResponse?.payload?.[0];
 
     if (authResult?.ilsevent === 0 && authResult?.payload?.authtoken) {
-      const cookieStore = await cookies();
-      const cookieSecure = isCookieSecure(req);
-
-      cookieStore.set("patron_authtoken", authResult.payload.authtoken, {
-        httpOnly: true,
-        secure: cookieSecure,
-        sameSite: "lax",
-        path: "/",
-        // Library-safe session durations: patrons often use shared public terminals,
-        // so we cap "remember me" at 24h and default sessions at 2h.
-        maxAge: rememberMe ? 60 * 60 * 24 : 60 * 60 * 2,
-      });
-
       const userResponse = await callOpenSRF("open-ils.auth", "open-ils.auth.session.retrieve", [
         authResult.payload.authtoken,
       ]);
@@ -114,7 +103,56 @@ export async function POST(req: NextRequest) {
       const user = userResponse?.payload?.[0];
 
       if (user && !user.ilsevent) {
-        logger.info({ route: "api.opac.login", patronId: user.id }, "OPAC login successful");
+        const patronId = Number(user.id);
+
+        // Check if MFA is required before setting the auth cookie
+        if (isMfaEnabled()) {
+          try {
+            const mfaMethods = await getActiveMfaMethods(patronId);
+            if (mfaMethods.length > 0) {
+              // MFA required — don't set cookie yet. Return the authtoken
+              // for the client to hold temporarily during the MFA challenge.
+              logger.info(
+                { route: "api.opac.login", patronId, mfaMethods: mfaMethods.length },
+                "MFA required, sending challenge"
+              );
+
+              return successResponse({
+                success: true,
+                requiresMfa: true,
+                patronToken: authResult.payload.authtoken,
+                methods: mfaMethods.map((m) => m.type),
+                patron: {
+                  id: patronId,
+                  firstName: user.first_given_name,
+                  lastName: user.family_name,
+                },
+              });
+            }
+          } catch (mfaError) {
+            // If MFA check fails, proceed without MFA (fail-open for availability)
+            logger.warn(
+              { error: String(mfaError), patronId },
+              "MFA check failed, proceeding without MFA"
+            );
+          }
+        }
+
+        // No MFA needed — set the auth cookie directly
+        const cookieStore = await cookies();
+        const cookieSecure = isCookieSecure(req);
+
+        cookieStore.set("patron_authtoken", authResult.payload.authtoken, {
+          httpOnly: true,
+          secure: cookieSecure,
+          sameSite: "lax",
+          path: "/",
+          // Library-safe session durations: patrons often use shared public terminals,
+          // so we cap "remember me" at 24h and default sessions at 2h.
+          maxAge: rememberMe ? 60 * 60 * 24 : 60 * 60 * 2,
+        });
+
+        logger.info({ route: "api.opac.login", patronId }, "OPAC login successful");
 
         await recordSuccess(ip || "unknown", "patron-auth");
 

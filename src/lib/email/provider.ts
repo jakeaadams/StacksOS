@@ -1,9 +1,9 @@
 /**
  * Email Service Provider Integration
- * Supports SMTP (recommended for pilots), Resend, and SendGrid.
- * Amazon SES is planned but not yet implemented.
+ * Supports SMTP (recommended for pilots), Resend, SendGrid, and Amazon SES.
  */
 
+import { createHmac, createHash } from "node:crypto";
 import { logger } from "@/lib/logger";
 import type { EmailOptions } from "./types";
 
@@ -74,11 +74,17 @@ async function sendViaSmtp(options: EmailOptions, config: ProviderConfig): Promi
   });
 
   const from = options.from?.email
-    ? (options.from.name ? `${options.from.name} <${options.from.email}>` : options.from.email)
-    : (config.fromName ? `${config.fromName} <${config.fromEmail}>` : config.fromEmail);
+    ? options.from.name
+      ? `${options.from.name} <${options.from.email}>`
+      : options.from.email
+    : config.fromName
+      ? `${config.fromName} <${config.fromEmail}>`
+      : config.fromEmail;
 
   const replyTo = options.replyTo?.email
-    ? (options.replyTo.name ? `${options.replyTo.name} <${options.replyTo.email}>` : options.replyTo.email)
+    ? options.replyTo.name
+      ? `${options.replyTo.name} <${options.replyTo.email}>`
+      : options.replyTo.email
     : undefined;
 
   const info = await transport.sendMail({
@@ -164,10 +170,101 @@ async function sendViaSendGrid(options: EmailOptions, apiKey: string): Promise<v
   );
 }
 
-async function sendViaSES(_options: EmailOptions, _apiKey: string, _region: string): Promise<void> {
-  // Note: AWS SES requires AWS SDK and signature v4 signing.
-  // This is a placeholder that would need the AWS SDK for Node.js
-  throw new Error("Amazon SES integration requires AWS SDK - not yet implemented");
+/**
+ * AWS Signature V4 signing — pure Node.js, no AWS SDK.
+ */
+function hmacSHA256(key: Buffer | string, data: string): Buffer {
+  return createHmac("sha256", key).update(data, "utf8").digest();
+}
+
+function sha256Hex(data: string): string {
+  return createHash("sha256").update(data, "utf8").digest("hex");
+}
+
+function getSignatureKey(
+  secretKey: string,
+  dateStamp: string,
+  region: string,
+  service: string
+): Buffer {
+  const kDate = hmacSHA256(`AWS4${secretKey}`, dateStamp);
+  const kRegion = hmacSHA256(kDate, region);
+  const kService = hmacSHA256(kRegion, service);
+  return hmacSHA256(kService, "aws4_request");
+}
+
+async function sendViaSES(
+  options: EmailOptions,
+  accessKeyId: string,
+  region: string
+): Promise<void> {
+  const secretKey = process.env.STACKSOS_AWS_SECRET_KEY;
+  if (!secretKey) throw new Error("STACKSOS_AWS_SECRET_KEY is required for SES provider");
+
+  const config = getConfig();
+  const host = `email.${region}.amazonaws.com`;
+  const url = `https://${host}/v2/email/outbound-emails`;
+  const method = "POST";
+  const service = "ses";
+
+  const fromAddress = options.from?.email
+    ? options.from.name
+      ? `${options.from.name} <${options.from.email}>`
+      : options.from.email
+    : config.fromName
+      ? `${config.fromName} <${config.fromEmail}>`
+      : config.fromEmail;
+
+  const body = JSON.stringify({
+    Content: {
+      Simple: {
+        Subject: { Data: options.subject, Charset: "UTF-8" },
+        Body: {
+          Html: { Data: options.html, Charset: "UTF-8" },
+          ...(options.text ? { Text: { Data: options.text, Charset: "UTF-8" } } : {}),
+        },
+      },
+    },
+    Destination: { ToAddresses: [options.to.email] },
+    FromEmailAddress: fromAddress,
+    ...(options.replyTo?.email ? { ReplyToAddresses: [options.replyTo.email] } : {}),
+  });
+
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "");
+  const dateStamp = amzDate.slice(0, 8);
+  const payloadHash = sha256Hex(body);
+  const canonicalHeaders = `content-type:application/json\nhost:${host}\nx-amz-date:${amzDate}\n`;
+  const signedHeaders = "content-type;host;x-amz-date";
+  const canonicalRequest = `${method}\n/v2/email/outbound-emails\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
+
+  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+  const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${credentialScope}\n${sha256Hex(canonicalRequest)}`;
+  const signingKey = getSignatureKey(secretKey, dateStamp, region, service);
+  const signature = createHmac("sha256", signingKey).update(stringToSign, "utf8").digest("hex");
+
+  const authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  const response = await fetch(url, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Amz-Date": amzDate,
+      Authorization: authorization,
+    },
+    body,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`SES API error: ${response.status} - ${errorText}`);
+  }
+
+  const result = (await response.json()) as { MessageId?: string };
+  logger.info(
+    { component: "email", provider: "ses", messageId: result.MessageId, to: options.to.email },
+    "Email sent via Amazon SES"
+  );
 }
 
 function logToConsole(options: EmailOptions): void {
@@ -207,15 +304,18 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
         await sendViaSmtp(options, config);
         break;
       case "resend":
-        if (!config.apiKey) throw new Error(`Email provider ${config.provider} requires STACKSOS_EMAIL_API_KEY`);
+        if (!config.apiKey)
+          throw new Error(`Email provider ${config.provider} requires STACKSOS_EMAIL_API_KEY`);
         await sendViaResend(options, config.apiKey!);
         break;
       case "sendgrid":
-        if (!config.apiKey) throw new Error(`Email provider ${config.provider} requires STACKSOS_EMAIL_API_KEY`);
+        if (!config.apiKey)
+          throw new Error(`Email provider ${config.provider} requires STACKSOS_EMAIL_API_KEY`);
         await sendViaSendGrid(options, config.apiKey!);
         break;
       case "ses":
-        if (!config.apiKey) throw new Error(`Email provider ${config.provider} requires STACKSOS_EMAIL_API_KEY`);
+        if (!config.apiKey)
+          throw new Error(`Email provider ${config.provider} requires STACKSOS_EMAIL_API_KEY`);
         await sendViaSES(options, config.apiKey!, config.region || "us-east-1");
         break;
       default:

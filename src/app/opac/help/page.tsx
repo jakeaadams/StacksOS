@@ -104,7 +104,7 @@ export default function HelpPage() {
               <p className="text-muted-foreground text-sm mb-2">
                 Stop by any branch for in-person assistance.
               </p>
-              <Link href="/locations" className="text-primary-600 hover:underline">
+              <Link href="/opac/locations" className="text-primary-600 hover:underline">
                 Find a Branch
               </Link>
             </div>

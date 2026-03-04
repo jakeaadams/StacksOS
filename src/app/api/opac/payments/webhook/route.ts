@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { callOpenSRF } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 
@@ -93,28 +94,77 @@ async function handlePaymentSucceeded(intent: StripeEventObject): Promise<void> 
     "Webhook: recording payment in Evergreen"
   );
 
-  // Record payment in Evergreen
+  // Record payment in Evergreen via service account
   try {
-    // Retrieve patron authtoken for payment recording
-    // In production this would use a service account; here we log the intent
-    // and the payment-result page handles the Evergreen recording client-side.
     await logAuditEvent({
       action: "opac.payment.webhook_succeeded",
       entity: "payment_intent",
       entityId: intent.id,
       status: "success",
-      details: {
-        patronId,
-        fineIds,
-        amount,
-        currency: intent.currency,
-        receiptUrl,
-      },
+      details: { patronId, fineIds, amount, currency: intent.currency, receiptUrl },
     }).catch(() => {});
+
+    const serviceBarcode = process.env.STACKSOS_SERVICE_ACCOUNT_BARCODE;
+    const servicePin = process.env.STACKSOS_SERVICE_ACCOUNT_PIN;
+
+    if (!serviceBarcode || !servicePin) {
+      logger.warn(
+        { intentId: intent.id },
+        "Webhook: STACKSOS_SERVICE_ACCOUNT_BARCODE/PIN not configured, skipping Evergreen recording"
+      );
+      return;
+    }
+
+    // Authenticate as service account
+    const initRes = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.init", [
+      serviceBarcode,
+    ]);
+    const nonce = initRes?.payload?.[0];
+    if (!nonce) throw new Error("Auth init returned no nonce");
+
+    const { createHash } = await import("node:crypto");
+    const hashedPin = createHash("md5")
+      .update(nonce + createHash("md5").update(servicePin).digest("hex"))
+      .digest("hex");
+
+    const authRes = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.complete", [
+      { username: serviceBarcode, password: hashedPin, type: "staff" },
+    ]);
+    const authPayload = authRes?.payload?.[0];
+    const serviceToken = authPayload?.payload?.authtoken;
+    if (!serviceToken) throw new Error("Service account auth failed");
+
+    // Record the payment via open-ils.circ.money.payment
+    const payments = fineIds.map((id) => [id, amount / fineIds.length]);
+    const payResult = await callOpenSRF("open-ils.circ", "open-ils.circ.money.payment", [
+      serviceToken,
+      {
+        userid: patronId,
+        payments,
+        payment_type: "credit_card_payment",
+        note: `Stripe payment ${intent.id || ""}`.trim(),
+      },
+      patronId,
+    ]);
+
+    const payPayload = payResult?.payload?.[0];
+    if (payPayload && typeof payPayload === "object" && "ilsevent" in payPayload) {
+      logger.error(
+        { intentId: intent.id, ilsevent: payPayload },
+        "Webhook: Evergreen payment recording returned an event error"
+      );
+    } else {
+      logger.info(
+        { intentId: intent.id, patronId, fineIds },
+        "Webhook: payment recorded in Evergreen"
+      );
+    }
   } catch (error) {
+    // Log but don't fail — we still return 200 to Stripe.
+    // The audit trail allows manual reconciliation if needed.
     logger.error(
       { error: String(error), intentId: intent.id },
-      "Webhook: failed to process payment"
+      "Webhook: failed to record payment in Evergreen"
     );
   }
 }

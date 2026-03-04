@@ -27,9 +27,14 @@ async function resolveGateway(provider: string, currency: string): Promise<Payme
       const { StripeGateway } = await import("@/lib/payments/stripe-gateway");
       return new StripeGateway(currency);
     }
-    // Future providers can be added here:
-    // case "square": { ... }
-    // case "paypal": { ... }
+    case "square": {
+      const { SquareGateway } = await import("@/lib/payments/square-gateway");
+      return new SquareGateway(currency);
+    }
+    case "paypal": {
+      const { PayPalGateway } = await import("@/lib/payments/paypal-gateway");
+      return new PayPalGateway(currency);
+    }
     default:
       throw new Error(`Unsupported payment provider: ${provider}`);
   }

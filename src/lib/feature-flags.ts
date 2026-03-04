@@ -34,6 +34,7 @@ export const featureFlags = {
   // OPAC events calendar and digital library
   opacEvents: true,
   opacDigitalLibrary: true,
+  opacLibCal: Boolean(process.env.LIBCAL_CLIENT_ID),
 
   // Cataloging power tools
   recordBuckets: true,
@@ -64,6 +65,9 @@ export const featureFlags = {
 
   // Staff charts
   staffCharts: true,
+
+  // OPAC MFA (TOTP)
+  opacMfa: Boolean(process.env.STACKSOS_MFA_SECRET),
 
   // Advanced admin tooling
   policyEditors: true,

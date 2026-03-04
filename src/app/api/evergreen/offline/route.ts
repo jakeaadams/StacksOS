@@ -91,14 +91,75 @@ export async function GET(req: NextRequest) {
       }
 
       case "patrons": {
-        // Download patron cache - in production this would be a subset
-        // based on recent activity or configured patron groups
-        return successResponse(
-          {
-            patrons: [],
-          },
-          "Patron cache downloaded"
-        );
+        // Download a subset of patron records for offline circulation.
+        // Fetches patrons with active circulations so staff can check out
+        // / check in when the network is down.
+        const patronLimit = parseInt(process.env.STACKSOS_OFFLINE_PATRON_LIMIT || "500", 10);
+
+        try {
+          // Retrieve patron IDs with active circulations at the working org unit
+          const orgId = searchParams.get("orgId") || "1";
+          const patronIdsResponse = await callOpenSRF(
+            "open-ils.actor",
+            "open-ils.actor.user.retrieve_id_list_with_circs",
+            [authtoken, parseInt(orgId, 10)]
+          );
+
+          const rawIds = patronIdsResponse?.payload?.[0];
+          const patronIds: number[] = (Array.isArray(rawIds) ? rawIds : [])
+            .map((id: unknown) => Number(id))
+            .filter((id: number) => Number.isFinite(id) && id > 0)
+            .slice(0, patronLimit);
+
+          // Fetch minimal patron data for each ID
+          const patrons: Array<{
+            id: number;
+            barcode: string;
+            firstName: string;
+            lastName: string;
+            profile: number;
+          }> = [];
+
+          for (const pid of patronIds) {
+            try {
+              const userResponse = await callOpenSRF(
+                "open-ils.actor",
+                "open-ils.actor.user.fleshed.retrieve",
+                [authtoken, pid, ["card"]]
+              );
+              const user = userResponse?.payload?.[0];
+              if (user) {
+                patrons.push({
+                  id: pid,
+                  barcode: user.card?.barcode || user.usrname || "",
+                  firstName: user.first_given_name || "",
+                  lastName: user.family_name || "",
+                  profile: user.profile || 0,
+                });
+              }
+            } catch {
+              // Skip individual patron failures
+            }
+          }
+
+          return successResponse(
+            {
+              patrons,
+              count: patrons.length,
+              cappedAt: patronLimit,
+            },
+            "Patron cache downloaded"
+          );
+        } catch (error) {
+          logger.error(
+            { error: String(error), component: "offline" },
+            "Failed to fetch offline patron cache, returning empty set"
+          );
+          return successResponse(
+            { patrons: [], count: 0, cappedAt: patronLimit },
+            "Patron cache empty (Evergreen unavailable)"
+          );
+        }
       }
 
       case "policies": {

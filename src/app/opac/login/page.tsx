@@ -21,7 +21,9 @@ import {
   KeyRound,
   HelpCircle,
   ArrowRight,
+  Shield,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
 function LoginForm() {
@@ -45,6 +47,13 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const [passkeySupported, setPasskeySupported] = useState(false);
+
+  // MFA challenge state
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaToken, setMfaToken] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [isMfaLoading, setIsMfaLoading] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
 
   // Validate redirect to prevent open-redirect attacks.
   // Only allow relative paths starting with /opac (no protocol, no host).
@@ -84,17 +93,74 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      const success = await login(cardNumber.trim(), pin.trim(), rememberMe);
+      // Use direct fetch to check for MFA challenge response
+      const res = await fetchWithAuth("/api/opac/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          barcode: cardNumber.trim(),
+          pin: pin.trim(),
+          rememberMe,
+        }),
+      });
+      const data = await res.json();
 
-      if (success) {
+      if (res.ok && data.requiresMfa) {
+        // MFA required — show code input
+        setMfaRequired(true);
+        setMfaToken(data.patronToken);
+        setError(null);
+        return;
+      }
+
+      if (res.ok && data.success) {
+        await refreshSession();
         router.push(redirectUrl);
       } else {
-        setError(sessionError || t("invalidCredentials"));
+        setError(data.error || sessionError || t("invalidCredentials"));
       }
     } catch (_error) {
       setError(t("connectionError"));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!mfaCode.trim()) {
+      setError("Please enter your verification code.");
+      return;
+    }
+
+    setIsMfaLoading(true);
+    try {
+      const res = await fetchWithAuth("/api/opac/mfa/challenge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: mfaCode.trim(),
+          patronToken: mfaToken,
+          rememberMe,
+        }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        if (data.usedRecoveryCode) {
+          toast.info("You used a recovery code. Consider enrolling a new authenticator app.");
+        }
+        await refreshSession();
+        router.push(redirectUrl);
+      } else {
+        setError(data.error || "Verification failed. Please try again.");
+      }
+    } catch {
+      setError("Connection error. Please try again.");
+    } finally {
+      setIsMfaLoading(false);
     }
   };
 
@@ -154,6 +220,123 @@ function LoginForm() {
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center">
         <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // MFA challenge screen
+  // ---------------------------------------------------------------------------
+
+  if (mfaRequired) {
+    return (
+      <div
+        className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50
+                    flex items-center justify-center p-4"
+      >
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl shadow-lg mb-4">
+              <Shield className="h-8 w-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">Two-Factor Authentication</h1>
+            <p className="text-muted-foreground mt-2">
+              {showRecovery
+                ? "Enter one of your recovery codes"
+                : "Enter the 6-digit code from your authenticator app"}
+            </p>
+          </div>
+
+          <div className="bg-card rounded-2xl shadow-xl border border-border p-8">
+            <form onSubmit={handleMfaSubmit} className="space-y-6">
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
+              )}
+
+              {showRecovery ? (
+                <div>
+                  <Label htmlFor="recovery-code" className="block text-sm font-medium mb-2">
+                    Recovery Code
+                  </Label>
+                  <Input
+                    id="recovery-code"
+                    type="text"
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value)}
+                    placeholder="XXXX-XXXX"
+                    className="h-12 text-center text-lg font-mono tracking-wider"
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                <div>
+                  <Label htmlFor="mfa-code" className="block text-sm font-medium mb-2">
+                    Verification Code
+                  </Label>
+                  <Input
+                    id="mfa-code"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="000000"
+                    className="h-14 text-center text-2xl tracking-[0.5em] font-mono"
+                    autoFocus
+                  />
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                disabled={isMfaLoading || !mfaCode.trim()}
+                className="w-full h-12"
+              >
+                {isMfaLoading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  "Verify"
+                )}
+              </Button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRecovery(!showRecovery);
+                    setMfaCode("");
+                    setError(null);
+                  }}
+                  className="text-sm text-primary-600 hover:text-primary-700"
+                >
+                  {showRecovery ? "Use authenticator app instead" : "Use a recovery code"}
+                </button>
+              </div>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMfaRequired(false);
+                    setMfaToken("");
+                    setMfaCode("");
+                    setError(null);
+                    setShowRecovery(false);
+                  }}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Back to login
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     );
   }
