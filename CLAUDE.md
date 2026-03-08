@@ -32,25 +32,19 @@ Lint policy note:
 - `@typescript-eslint/no-explicit-any` is intentionally off for Evergreen/OpenSRF dynamic payload boundaries.
 - Safety is enforced through runtime validation, adapter audits, and end-to-end gates.
 
-## Latest Verification Snapshot (2026-03-03)
+## Latest Verification Snapshot (2026-03-08)
 
 - Local:
   - `npm run lint -- --quiet`: pass
   - `npm run type-check`: pass
   - `npm run test:run`: pass (`331/331`)
-  - `npm run audit:ui-drift`: pass
-  - `npm run audit:opac`: validate in VM/runtime env (requires live app + Evergreen bridge)
-  - `npm run audit:task-benchmark`: pass
-  - lint warning inventory (JSON): zero warning rules
 - VM (`192.168.1.233`):
   - `npm run lint -- --quiet`: pass
   - `npm run type-check`: pass
   - `npm run test:run`: pass (`331/331`)
   - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`81 passed, 5 skipped`)
-  - `BASE_URL=http://127.0.0.1:3000 bash audit/run_opac_audit.sh`: pass (`42/42` OPAC pages, `21/21` OPAC APIs, Evergreen bridge `4/4`)
-  - `TASK_BENCH_STAFF_USER=jake TASK_BENCH_STAFF_PASS=jake TASK_BENCH_REQUIRE_STAFF=1 TASK_BENCH_ENFORCE=1 node scripts/task-benchmark.mjs`: pass (staff metrics fully populated)
   - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake BASE_URL=http://127.0.0.1:3000 bash audit/run_all.sh`: pass
-  - Forced lockout resilience check (poisoned limiter + rerun): pass (`run_all.sh` auto-clears stale benchmark limiter keys)
+  - `run_all.sh` includes green UI audit, OPAC audit, task benchmark, API audit, workflow QA, and perf budgets
 
 ## World-Class UX Rules
 
@@ -62,7 +56,7 @@ Lint policy note:
 - Keep `audit/task-benchmark/REPORT.md` current for measurable UX outcomes.
 - Latest measured baseline (2026-02-26): aggregate drift score `0` (no drift files).
 
-## AI Reliability Rules (Grok/xAI)
+## AI Reliability Rules (Grok/Moonshot)
 
 - AI output must degrade safely when provider latency spikes.
 - Measure and tune fallback behavior via `/api/admin/ops-status`:

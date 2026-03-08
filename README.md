@@ -124,6 +124,9 @@ Copy `.env.example` to `.env.local` and configure the required variables:
 - **`STACKSOS_OPAC_HERO_*` / `STACKSOS_OPAC_STYLE_VARIANT`** -- Optional OPAC hero/search defaults in env fallback mode
 - **`STACKSOS_OPAC_PASSKEYS_ENABLED` / `STACKSOS_PASSKEY_SECRET`** -- Optional passkey sign-in toggle + encryption secret
 - **`STACKSOS_WALLET_*`** -- Optional wallet enrollment link templates and signing secret for Apple/Google handoff
+- **`STACKSOS_PAYMENT_*`** -- Online payment provider selection and gateway configuration (`stripe`, `square`, `paypal`, `none`)
+- **`STACKSOS_MFA_*`** -- Optional patron TOTP MFA encryption, issuer, and enforcement controls
+- **`LIBCAL_*`** -- Optional Springshare LibCal OAuth2/event calendar integration
 - **`STACKSOS_AI_RETRY_*`** -- AI retry/backoff controls for provider latency resilience
 - **`STACKSOS_AI_MODEL_FALLBACKS`** -- Comma-separated model fallback chain before deterministic fallback
 - **`STACKSOS_AI_COPILOT_*`** -- Copilot/ops-only timeout + retry overrides for high-latency windows
@@ -220,7 +223,7 @@ Then diff the two generated folders under `audit/evergreen-footprint/`.
   - `STACKSOS_WALLET_APPLE_URL_TEMPLATE`
   - `STACKSOS_WALLET_GOOGLE_URL_TEMPLATE`
   - placeholders supported: `{token}`, `{card_number}`, `{first_name}`, `{last_name}`, `{full_name}`, `{email}`, `{library_name}`, `{tenant_id}`
-  - signed short-lived token generated with `STACKSOS_WALLET_TOKEN_SECRET` (falls back to passkey/session secret if unset)
+  - signed short-lived token generated with `STACKSOS_WALLET_TOKEN_SECRET`
 - Tenant-admin **Digital App Library** page (`/staff/admin/settings/econtent`) configures provider behavior per tenant:
   - enable/disable provider
   - connection mode (`linkout`, `oauth_passthrough`, `api`)
@@ -228,6 +231,14 @@ Then diff the two generated folders under `audit/evergreen-footprint/`.
   - checkout/hold capability toggles
   - credential reference note (vault pointer; no secret material required in UI)
 - OPAC Digital Library page now reads effective provider config from `/api/opac/econtent/providers` and falls back to default catalog metadata if tenant connection data is unavailable.
+
+### Payments, MFA, and Events Integrations
+
+- OPAC fine payments are wired through `/api/opac/payments` with a staff admin setup surface at `/staff/admin/settings/payments`
+- Stripe is the current first-class admin-configured payment path; Square and PayPal gateway adapters are available for env-configured/provider-driven rollout
+- Payment result state and patron payment history are available under the OPAC account experience
+- Patron TOTP MFA is implemented with setup, verify, challenge, and revoke APIs plus a dedicated page at `/opac/account/security/mfa`
+- LibCal integration is available through `LIBCAL_*` env configuration and is loaded by the events data layer when configured
 
 ### AI Copilot Expansion + Audit Trail
 
@@ -442,17 +453,13 @@ If Evergreen/OpenSRF is unreachable, E2E login/setup will fail even if lint/type
   - `nodemailer` 8
 - `eslint` remains on v9 intentionally for now. `eslint@10` currently breaks with the active Next ESLint plugin stack in this project.
 
-## Verification Snapshot (2026-03-03 latest)
+## Verification Snapshot (2026-03-08 latest)
 
 Local:
 
 - `npm run lint -- --quiet`: pass
 - `npm run type-check`: pass
 - `npm run test:run`: pass (`331/331`)
-- `npm run audit:ui-drift`: pass
-- `npm run audit:opac`: validated in VM runtime (requires live app + Evergreen bridge)
-- `npm run audit:task-benchmark`: pass
-- lint warnings (JSON run): `0` rule hits
 
 VM (`192.168.1.233`, `/home/jake/projects/stacksos`):
 
@@ -460,11 +467,8 @@ VM (`192.168.1.233`, `/home/jake/projects/stacksos`):
 - `npm run type-check`: pass
 - `npm run test:run`: pass (`331/331`)
 - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`81 passed, 5 skipped`)
-- `BASE_URL=http://127.0.0.1:3000 bash audit/run_opac_audit.sh`: pass (`42/42` OPAC pages, `21/21` OPAC API checks, Evergreen bridge `4/4`)
-- `TASK_BENCH_STAFF_USER=jake TASK_BENCH_STAFF_PASS=jake TASK_BENCH_REQUIRE_STAFF=1 TASK_BENCH_ENFORCE=1 node scripts/task-benchmark.mjs`: pass (staff metrics fully populated)
 - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake BASE_URL=http://127.0.0.1:3000 bash audit/run_all.sh`: pass
-- Forced lockout resilience check:
-  - after intentionally poisoning auth limiter with repeated bad logins, `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake BASE_URL=http://127.0.0.1:3000 bash audit/run_all.sh`: pass (auto-clears stale benchmark limiter keys)
+- `run_all.sh` includes current green results for UI audit, OPAC audit, task benchmark, API audit, workflow QA, and perf budgets
 
 ## Documentation
 
