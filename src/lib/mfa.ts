@@ -105,5 +105,5 @@ export function isMfaRequired(): boolean {
 }
 
 export function isMfaEnabled(): boolean {
-  return isMfaConfigured();
+  return isMfaConfigured() && process.env.STACKSOS_MFA_ENABLED === "true";
 }

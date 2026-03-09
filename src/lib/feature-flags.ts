@@ -67,7 +67,7 @@ export const featureFlags = {
   staffCharts: true,
 
   // OPAC MFA (TOTP)
-  opacMfa: Boolean(process.env.STACKSOS_MFA_SECRET),
+  opacMfa: Boolean(process.env.STACKSOS_MFA_SECRET) && process.env.STACKSOS_MFA_ENABLED === "true",
 
   // Advanced admin tooling
   policyEditors: true,

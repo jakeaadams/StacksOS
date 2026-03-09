@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Smartphone,
   Palette,
+  Shield,
 } from "lucide-react";
 
 interface SettingsCard {
@@ -128,6 +129,21 @@ const SETTINGS_CARDS: SettingsCard[] = [
       "Test vs. live mode",
       "Receipt customization",
       "Payment minimums",
+    ],
+  },
+  {
+    title: "Security",
+    description:
+      "Configure multi-factor authentication, session policies, and account security options.",
+    href: "/staff/admin/settings/security",
+    icon: Shield,
+    iconColor: "text-cyan-600",
+    bgColor: "bg-cyan-500/10",
+    features: [
+      "MFA (TOTP) enrollment",
+      "Patron MFA toggle",
+      "Session duration",
+      "Security policies",
     ],
   },
 ];

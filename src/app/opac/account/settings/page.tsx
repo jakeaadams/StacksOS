@@ -91,6 +91,7 @@ export default function AccountSettingsPage() {
   const [passkeyMessage, setPasskeyMessage] = useState<string | null>(null);
   const [passkeyError, setPasskeyError] = useState<string | null>(null);
   const [passkeyBrowserSupported, setPasskeyBrowserSupported] = useState(true);
+  const [mfaAvailable, setMfaAvailable] = useState(false);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -132,6 +133,18 @@ export default function AccountSettingsPage() {
     );
   }, []);
 
+  const fetchMfaStatus = useCallback(async () => {
+    try {
+      const res = await fetchWithAuth("/api/opac/mfa");
+      if (res.ok) {
+        const data = await res.json();
+        setMfaAvailable(data.enabled ?? false);
+      }
+    } catch {
+      // MFA not available
+    }
+  }, []);
+
   useEffect(() => {
     if (!sessionLoading && !isLoggedIn) {
       router.push("/opac/login?redirect=/opac/account/settings");
@@ -139,9 +152,9 @@ export default function AccountSettingsPage() {
     }
 
     if (isLoggedIn) {
-      void Promise.all([fetchSettings(), fetchPasskeys()]);
+      void Promise.all([fetchSettings(), fetchPasskeys(), fetchMfaStatus()]);
     }
-  }, [fetchPasskeys, fetchSettings, isLoggedIn, router, sessionLoading]);
+  }, [fetchMfaStatus, fetchPasskeys, fetchSettings, isLoggedIn, router, sessionLoading]);
 
   const handleSave = async () => {
     try {
@@ -807,6 +820,24 @@ export default function AccountSettingsPage() {
                 </>
               )}
             </div>
+
+            {/* Two-Factor Authentication */}
+            {mfaAvailable && (
+              <div className="bg-card rounded-xl border border-border p-6">
+                <h2 className="text-lg font-semibold text-foreground mb-2">
+                  Two-Factor Authentication
+                </h2>
+                <p className="text-muted-foreground text-sm mb-4">
+                  Add an extra layer of security with an authenticator app.
+                </p>
+                <Button variant="outline" asChild className="items-center gap-2 px-4">
+                  <Link href="/opac/account/security/mfa">
+                    <Shield className="h-4 w-4" />
+                    Manage Two-Factor Authentication
+                  </Link>
+                </Button>
+              </div>
+            )}
 
             {/* Reading History */}
             <div className="bg-card rounded-xl border border-border p-6">

@@ -1,31 +1,11 @@
 import { areMockEventsEnabled } from "@/lib/demo-data";
 
 /**
- * Mock Events Data for OPAC Events Calendar
+ * Events Data for OPAC Events Calendar
  *
- * Events data is loaded from the database via opac-events.ts; LibCal integration is planned for a future release.
- * ==========================================
- * When ready to integrate with Springshare LibCal:
- * 1. Use the LibCal Events API: https://api2.libcal.com/1.1/events
- * 2. Authentication: OAuth2 client credentials flow
- *    - POST https://api2.libcal.com/1.1/oauth/token
- *    - Body: { grant_type: "client_credentials", client_id: "...", client_secret: "..." }
- * 3. Fetch events: GET https://api2.libcal.com/1.1/events?cal_id={calendarId}&limit=20
- * 4. Map LibCal response fields to our LibraryEvent type:
- *    - id -> id
- *    - title -> title
- *    - description -> description (HTML, strip tags)
- *    - start -> date + startTime
- *    - end -> endTime
- *    - location.name -> branch
- *    - category.name -> type
- *    - registration -> registrationRequired / registrationUrl
- *    - seats.taken / seats.total -> spotsAvailable / capacity
- *
- * Environment variables needed:
- *   LIBCAL_CLIENT_ID - LibCal API client ID
- *   LIBCAL_CLIENT_SECRET - LibCal API client secret
- *   LIBCAL_CALENDAR_ID - Your library's LibCal calendar ID
+ * Events are loaded from the database via opac-events.ts.
+ * When LIBCAL_CLIENT_ID is configured, events are fetched from LibCal (see events-libcal.ts).
+ * Mock data is used in demo mode only.
  */
 
 export type EventType =
