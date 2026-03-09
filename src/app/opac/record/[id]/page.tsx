@@ -470,7 +470,7 @@ export default function RecordDetailPage() {
         ) : null}
         {/* Success message */}
         {holdSuccess && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+          <div className="mb-6 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/50 rounded-lg flex items-center gap-3">
             <CheckCircle className="h-5 w-5 text-green-600" />
             <p className="text-green-800 font-medium">Hold placed successfully!</p>
           </div>
@@ -931,7 +931,7 @@ export default function RecordDetailPage() {
           </div>
 
           {holdError ? (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg text-red-700 dark:text-red-300 text-sm">
               <div className="font-medium">{holdError.message}</div>
               {holdError.nextSteps && holdError.nextSteps.length > 0 ? (
                 <div className="mt-2">

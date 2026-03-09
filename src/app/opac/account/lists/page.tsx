@@ -350,7 +350,7 @@ export default function MyListsPage() {
 
         {/* Error display */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg flex items-center gap-3">
             <AlertCircle className="h-5 w-5 text-red-600" />
             <p className="text-red-700">{error}</p>
             <Button
@@ -604,7 +604,7 @@ export default function MyListsPage() {
       {/* Create List Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="bg-background rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-semibold text-foreground mb-4">Create New List</h3>
 
             <div className="space-y-4">
@@ -650,9 +650,12 @@ export default function MyListsPage() {
                   Visibility
                 </label>
                 <div className="flex gap-4">
-                  <label htmlFor="private" className="flex items-center gap-2 cursor-pointer">
+                  <label
+                    htmlFor="visibility-private"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
                     <input
-                      id="visibility"
+                      id="visibility-private"
                       type="radio"
                       name="visibility"
                       value="private"
@@ -663,9 +666,12 @@ export default function MyListsPage() {
                     <Lock className="h-4 w-4 text-muted-foreground" />
                     Private
                   </label>
-                  <label htmlFor="public" className="flex items-center gap-2 cursor-pointer">
+                  <label
+                    htmlFor="visibility-public"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
                     <input
-                      id="private"
+                      id="visibility-public"
                       type="radio"
                       name="visibility"
                       value="public"
@@ -705,7 +711,7 @@ export default function MyListsPage() {
       {/* Edit List Modal */}
       {showEditModal && selectedList && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="bg-background rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-semibold text-foreground mb-4">Edit List</h3>
 
             <div className="space-y-4">
@@ -749,9 +755,12 @@ export default function MyListsPage() {
                   Visibility
                 </label>
                 <div className="flex gap-4">
-                  <label htmlFor="private-2" className="flex items-center gap-2 cursor-pointer">
+                  <label
+                    htmlFor="edit-visibility-private"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
                     <input
-                      id="visibility-2"
+                      id="edit-visibility-private"
                       type="radio"
                       name="edit-visibility"
                       value="private"
@@ -762,9 +771,12 @@ export default function MyListsPage() {
                     <Lock className="h-4 w-4 text-muted-foreground" />
                     Private
                   </label>
-                  <label htmlFor="public-2" className="flex items-center gap-2 cursor-pointer">
+                  <label
+                    htmlFor="edit-visibility-public"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
                     <input
-                      id="private-2"
+                      id="edit-visibility-public"
                       type="radio"
                       name="edit-visibility"
                       value="public"
@@ -804,7 +816,7 @@ export default function MyListsPage() {
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="bg-background rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-semibold text-foreground mb-4">Delete List</h3>
             <p className="text-muted-foreground mb-6">
               Are you sure you want to delete <strong>{showDeleteConfirm.name}</strong>? This action

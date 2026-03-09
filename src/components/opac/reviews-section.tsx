@@ -280,7 +280,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
           </h3>
 
           {submitError && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+            <div className="mb-4 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-red-600" />
               <p className="text-red-700">{submitError}</p>
             </div>
@@ -295,10 +295,14 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">
+              <label
+                htmlFor="review-title"
+                className="block text-sm font-medium text-foreground/80 mb-1"
+              >
                 Review Title
               </label>
               <Input
+                id="review-title"
                 type="text"
                 value={reviewTitle}
                 onChange={(e) => setReviewTitle(e.target.value)}
@@ -307,10 +311,14 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">
+              <label
+                htmlFor="review-text"
+                className="block text-sm font-medium text-foreground/80 mb-1"
+              >
                 Your Review
               </label>
               <Textarea
+                id="review-text"
                 value={reviewText}
                 onChange={(e) => setReviewText(e.target.value)}
                 placeholder="Tell others what you thought about this book..."
@@ -348,7 +356,7 @@ export function ReviewsSection({ bibId, title }: ReviewsSectionProps) {
 
       {/* Success message */}
       {submitSuccess && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+        <div className="mb-6 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/50 rounded-lg flex items-center gap-2">
           <CheckCircle className="h-5 w-5 text-green-600" />
           <p className="text-green-700">Your review has been submitted. Thank you for sharing!</p>
           <Button

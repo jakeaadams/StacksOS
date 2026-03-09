@@ -171,9 +171,9 @@ function SuggestionCard({ suggestion, onApply }: { suggestion: Suggestion; onApp
   };
   const bgColors = {
     fill: "bg-primary/5 border-primary/20",
-    correct: "bg-amber-50 border-amber-200",
-    enhance: "bg-sky-50 border-sky-200",
-    warning: "bg-amber-50 border-amber-200",
+    correct: "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50",
+    enhance: "bg-sky-50 dark:bg-sky-950/20 border-sky-200 dark:border-sky-900/50",
+    warning: "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50",
   };
 
   const Icon = icons[suggestion.type];

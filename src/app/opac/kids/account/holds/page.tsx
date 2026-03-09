@@ -197,7 +197,9 @@ export default function KidsHoldsPage() {
       {message ? (
         <div
           className={`mb-6 rounded-2xl border-2 p-4 flex items-center gap-3 ${
-            message.type === "success" ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
+            message.type === "success"
+              ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50"
+              : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50"
           }`}
         >
           {message.type === "success" ? (
@@ -427,7 +429,7 @@ function KidsHoldCard({
 
   return (
     <div
-      className={`rounded-3xl border-2 bg-card p-4 shadow-sm ${hold.status === "ready" ? "border-green-200 bg-green-50/40" : "border-border"}`}
+      className={`rounded-3xl border-2 bg-card p-4 shadow-sm ${hold.status === "ready" ? "border-green-200 dark:border-green-900/50 bg-green-50/40 dark:bg-green-950/20" : "border-border"}`}
     >
       <div className="flex gap-4">
         <Link href={`/opac/kids/record/${hold.recordId}`} className="shrink-0">

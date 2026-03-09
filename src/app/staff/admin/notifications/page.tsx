@@ -555,7 +555,7 @@ export default function NotificationsAdminPage() {
                   />
                 </div>
                 <div className="text-sm text-muted-foreground">Preview</div>
-                <div className="rounded-lg border bg-white p-3 min-h-[420px] overflow-auto">
+                <div className="rounded-lg border bg-background p-3 min-h-[420px] overflow-auto">
                   {previewHtml ? (
                     <iframe
                       title="Template preview"

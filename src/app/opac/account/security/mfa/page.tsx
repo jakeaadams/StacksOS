@@ -270,10 +270,11 @@ export default function MfaPage() {
 
             {/* Verification input */}
             <div className="space-y-3">
-              <label className="text-sm font-medium text-foreground">
+              <label htmlFor="mfa-verify-code" className="text-sm font-medium text-foreground">
                 Enter the 6-digit code from your app:
               </label>
               <Input
+                id="mfa-verify-code"
                 type="text"
                 inputMode="numeric"
                 maxLength={6}
@@ -422,7 +423,7 @@ export default function MfaPage() {
             </div>
 
             {/* Info */}
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 rounded-xl">
               <h3 className="font-semibold text-blue-900 text-sm mb-1">How it works</h3>
               <ul className="text-sm text-blue-800 space-y-1">
                 <li>

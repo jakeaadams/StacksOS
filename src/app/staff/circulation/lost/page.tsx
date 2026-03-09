@@ -604,7 +604,7 @@ export default function LostMissingDamagedPage() {
                     {!selectedItem.isDamaged && (
                       <Button
                         variant="outline"
-                        className="border-orange-500 text-orange-500 hover:bg-orange-50"
+                        className="border-orange-500 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20"
                         onClick={() => setMarkDamagedOpen(true)}
                         disabled={loading}
                       >

@@ -240,7 +240,7 @@ export default function StaffEventsPage() {
               ? "bg-emerald-100 text-emerald-800"
               : s === "waitlisted"
                 ? "bg-amber-100 text-amber-800"
-                : "bg-gray-100 text-gray-600";
+                : "bg-muted text-muted-foreground";
           return (
             <Badge variant="secondary" className={`text-xs ${color}`}>
               {s}

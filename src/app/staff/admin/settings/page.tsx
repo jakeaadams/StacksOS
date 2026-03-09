@@ -119,13 +119,13 @@ const SETTINGS_CARDS: SettingsCard[] = [
   },
   {
     title: "Payment Processing",
-    description: "Configure Stripe for online fine and fee payments from patrons.",
+    description: "Configure online payment processing for patron fines and fees.",
     href: "/staff/admin/settings/payments",
     icon: CreditCard,
     iconColor: "text-purple-600",
     bgColor: "bg-purple-500/10",
     features: [
-      "Stripe API key setup",
+      "Gateway selection",
       "Test vs. live mode",
       "Receipt customization",
       "Payment minimums",

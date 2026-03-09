@@ -153,6 +153,7 @@ export const TenantConfigSchema = z
       .object({
         emailProvider: z.enum(["smtp", "resend", "sendgrid", "ses", "console"]).optional(),
         smsProvider: z.enum(["webhook", "twilio", "console"]).optional(),
+        paymentProvider: z.enum(["stripe", "square", "paypal", "none"]).optional(),
       })
       .default({}),
   })

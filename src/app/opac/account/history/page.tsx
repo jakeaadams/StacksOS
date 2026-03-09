@@ -296,7 +296,7 @@ export default function ReadingHistoryPage() {
 
         {/* Error state */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-center gap-3">
+          <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl p-4 mb-6 flex items-center gap-3">
             <AlertCircle className="h-5 w-5 text-red-600" />
             <p className="text-red-700">{error}</p>
           </div>

@@ -570,7 +570,7 @@ export default function KidsRecordDetailPage() {
                     </p>
 
                     {holdError ? (
-                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                      <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl text-red-700 dark:text-red-300 text-sm">
                         <div className="font-medium">{holdError.message}</div>
                         {holdError.nextSteps && holdError.nextSteps.length > 0 ? (
                           <div className="mt-2">

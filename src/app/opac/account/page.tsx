@@ -143,9 +143,9 @@ export default function AccountDashboard() {
         {(overdueItems.length > 0 || readyHolds.length > 0 || totalFineBalance > 0) && (
           <div className="mb-6 space-y-3">
             {overdueItems.length > 0 && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-                <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
-                <p className="text-red-800">
+              <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
+                <p className="text-red-800 dark:text-red-300">
                   You have <strong>{overdueItems.length}</strong> overdue item
                   {overdueItems.length !== 1 && "s"}.
                   <Link href="/opac/account/checkouts" className="ml-2 underline">
@@ -156,9 +156,9 @@ export default function AccountDashboard() {
             )}
 
             {readyHolds.length > 0 && (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
-                <p className="text-green-800">
+              <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/50 rounded-lg flex items-center gap-3">
+                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+                <p className="text-green-800 dark:text-green-300">
                   <strong>{readyHolds.length}</strong> hold{readyHolds.length !== 1 && "s"} ready
                   for pickup!
                   <Link href="/opac/account/holds" className="ml-2 underline">
@@ -169,9 +169,9 @@ export default function AccountDashboard() {
             )}
 
             {totalFineBalance > 0 && (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3">
-                <DollarSign className="h-5 w-5 text-amber-600 shrink-0" />
-                <p className="text-amber-800">
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg flex items-center gap-3">
+                <DollarSign className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <p className="text-amber-800 dark:text-amber-300">
                   You have <strong>${totalFineBalance.toFixed(2)}</strong> in fines.
                   <Link href="/opac/account/fines" className="ml-2 underline">
                     View & pay
@@ -336,7 +336,7 @@ export default function AccountDashboard() {
 
               {/* Scannable library card barcode */}
               {patron?.cardNumber && (
-                <div className="mb-4 p-3 bg-white rounded-lg border border-border/70 text-center">
+                <div className="mb-4 p-3 bg-white dark:bg-white rounded-lg border border-border/70 text-center">
                   <svg
                     viewBox="0 0 200 55"
                     className="w-full max-w-[200px] mx-auto h-14"

@@ -276,7 +276,7 @@ export default function RegisterPage() {
           className="bg-card rounded-2xl shadow-sm border border-border p-6 md:p-8"
         >
           {submitError && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-red-600" />
               <p className="text-red-700">{submitError}</p>
             </div>
@@ -607,7 +607,7 @@ export default function RegisterPage() {
               </div>
 
               {formData.cardType === "juvenile" && (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg">
                   <h3 className="font-medium text-amber-900 mb-3">Parent/Guardian Information</h3>
                   <div className="space-y-4">
                     <div>

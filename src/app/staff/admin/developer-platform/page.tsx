@@ -240,7 +240,7 @@ export default function DeveloperPlatformPage() {
 
       <PageContent className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Card className="rounded-2xl border-emerald-200/70 bg-emerald-50/60">
+          <Card className="rounded-2xl border-emerald-200/70 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/20">
             <CardHeader className="pb-2">
               <CardDescription className="text-emerald-800">Active Webhooks</CardDescription>
               <CardTitle className="text-2xl text-emerald-900">
@@ -252,7 +252,7 @@ export default function DeveloperPlatformPage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl border-cyan-200/70 bg-cyan-50/60">
+          <Card className="rounded-2xl border-cyan-200/70 bg-cyan-50/60 dark:border-cyan-900/50 dark:bg-cyan-950/20">
             <CardHeader className="pb-2">
               <CardDescription className="text-cyan-800">Event Coverage</CardDescription>
               <CardTitle className="text-2xl text-cyan-900">{stats.eventCoverage}%</CardTitle>
@@ -262,7 +262,7 @@ export default function DeveloperPlatformPage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl border-blue-200/70 bg-blue-50/60">
+          <Card className="rounded-2xl border-blue-200/70 bg-blue-50/60 dark:border-blue-900/50 dark:bg-blue-950/20">
             <CardHeader className="pb-2">
               <CardDescription className="text-blue-800">Delivery Success</CardDescription>
               <CardTitle className="text-2xl text-blue-900">{stats.deliverySuccessRate}%</CardTitle>
@@ -272,7 +272,7 @@ export default function DeveloperPlatformPage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl border-rose-200/70 bg-rose-50/60">
+          <Card className="rounded-2xl border-rose-200/70 bg-rose-50/60 dark:border-rose-900/50 dark:bg-rose-950/20">
             <CardHeader className="pb-2">
               <CardDescription className="text-rose-800">Failed Deliveries</CardDescription>
               <CardTitle className="text-2xl text-rose-900">{stats.failed}</CardTitle>
@@ -283,7 +283,7 @@ export default function DeveloperPlatformPage() {
           </Card>
         </div>
 
-        <Card className="rounded-2xl border-indigo-200/70 bg-indigo-50/50">
+        <Card className="rounded-2xl border-indigo-200/70 bg-indigo-50/50 dark:border-indigo-900/50 dark:bg-indigo-950/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <ShieldCheck className="h-4 w-4" />
@@ -295,19 +295,19 @@ export default function DeveloperPlatformPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2 text-sm md:grid-cols-3">
-            <div className="rounded-xl border border-indigo-200 bg-white/70 px-3 py-2">
+            <div className="rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-white/70 dark:bg-indigo-950/30 px-3 py-2">
               <div className="font-medium">Security</div>
               <div className="text-xs text-muted-foreground">
                 Validate HMAC signature and timestamp before processing.
               </div>
             </div>
-            <div className="rounded-xl border border-indigo-200 bg-white/70 px-3 py-2">
+            <div className="rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-white/70 dark:bg-indigo-950/30 px-3 py-2">
               <div className="font-medium">Reliability</div>
               <div className="text-xs text-muted-foreground">
                 Treat webhook payloads as at-least-once delivery and dedupe safely.
               </div>
             </div>
-            <div className="rounded-xl border border-indigo-200 bg-white/70 px-3 py-2">
+            <div className="rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-white/70 dark:bg-indigo-950/30 px-3 py-2">
               <div className="font-medium">Observability</div>
               <div className="text-xs text-muted-foreground">
                 Track status code, latency, and replay failures quickly.

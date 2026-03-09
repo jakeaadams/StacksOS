@@ -7,7 +7,11 @@ import { useRouter } from "next/navigation";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { featureFlags } from "@/lib/feature-flags";
-import { computeBookBadgeProgress, computeKidsReadingStats, type KidsReadingLogEntry } from "@/lib/kids-engagement";
+import {
+  computeBookBadgeProgress,
+  computeKidsReadingStats,
+  type KidsReadingLogEntry,
+} from "@/lib/kids-engagement";
 import {
   BookOpen,
   Star,
@@ -80,7 +84,9 @@ export default function KidsAccountPage() {
     void (async () => {
       const res = await fetchWithAuth("/api/opac/kids/reading-log?limit=400");
       const data = await res.json().catch(() => ({}));
-      const raw = Array.isArray((data as Record<string, any>)?.entries) ? (data as Record<string, any>).entries : [];
+      const raw = Array.isArray((data as Record<string, any>)?.entries)
+        ? (data as Record<string, any>).entries
+        : [];
       const entries: KidsReadingLogEntry[] = raw
         .filter((e: any) => e && typeof e.id === "number")
         .map((e: any) => ({
@@ -93,8 +99,11 @@ export default function KidsAccountPage() {
         }));
 
       const stats = computeKidsReadingStats(entries);
-      const bookBadgeCount = [1, 5, 10, 25, 50, 100].filter((t: any) => stats.totalBooks >= t).length;
-      const streakBadgeCount = (stats.currentStreak >= 7 ? 1 : 0) + (stats.currentStreak >= 30 ? 1 : 0);
+      const bookBadgeCount = [1, 5, 10, 25, 50, 100].filter(
+        (t: any) => stats.totalBooks >= t
+      ).length;
+      const streakBadgeCount =
+        (stats.currentStreak >= 7 ? 1 : 0) + (stats.currentStreak >= 30 ? 1 : 0);
       const progress = computeBookBadgeProgress(stats.totalBooks);
 
       if (!cancelled) {
@@ -182,7 +191,7 @@ export default function KidsAccountPage() {
       {(overdueCount > 0 || readyHoldsCount > 0) && (
         <div className="space-y-3 mb-8">
           {overdueCount > 0 && (
-            <div className="flex items-center gap-3 p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
+            <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950/20 border-2 border-red-200 dark:border-red-900/50 rounded-2xl">
               <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
                 <AlertCircle className="h-5 w-5 text-red-500" />
               </div>
@@ -202,7 +211,7 @@ export default function KidsAccountPage() {
           )}
 
           {readyHoldsCount > 0 && (
-            <div className="flex items-center gap-3 p-4 bg-green-50 border-2 border-green-200 rounded-2xl">
+            <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 border-2 border-green-200 dark:border-green-900/50 rounded-2xl">
               <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center shrink-0">
                 <Gift className="h-5 w-5 text-green-500" />
               </div>
@@ -333,8 +342,10 @@ function BookCard({ book }: { book: RecentBook }) {
 
   return (
     <Link href={`/opac/kids/record/${book.id}`} className="group block">
-      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
-                    shadow-sm group-hover:shadow-md transition-all">
+      <div
+        className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 
+                    shadow-sm group-hover:shadow-md transition-all"
+      >
         {book.coverUrl && !imageError ? (
           <Image
             src={book.coverUrl}
@@ -352,11 +363,14 @@ function BookCard({ book }: { book: RecentBook }) {
 
         {/* Due date badge */}
         {book.dueDate && (
-          <div className={`absolute bottom-2 left-2 right-2 px-2 py-1 rounded-lg text-xs font-medium text-center
-                        ${book.isOverdue 
-                          ? "bg-red-100 text-red-700" 
-                          : "bg-card/90 text-foreground/80"
-                        }`}>
+          <div
+            className={`absolute bottom-2 left-2 right-2 px-2 py-1 rounded-lg text-xs font-medium text-center
+                        ${
+                          book.isOverdue
+                            ? "bg-red-100 text-red-700"
+                            : "bg-card/90 text-foreground/80"
+                        }`}
+          >
             {book.isOverdue ? "Overdue!" : `Due ${book.dueDate}`}
           </div>
         )}
@@ -384,10 +398,7 @@ function MenuLink({
   color: string;
 }) {
   return (
-    <Link
-      href={href}
-      className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors"
-    >
+    <Link href={href} className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors">
       <div className={`w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center`}>
         <Icon className={`h-5 w-5 ${color}`} />
       </div>

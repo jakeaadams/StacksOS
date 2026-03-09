@@ -149,17 +149,17 @@ function formatDateTime(value?: string | null) {
 function getStatusColor(statusId: number) {
   switch (statusId) {
     case 0:
-      return "text-green-600 bg-green-50 border-green-200";
+      return "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50";
     case 1:
-      return "text-blue-600 bg-blue-50 border-blue-200";
+      return "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50";
     case 6:
-      return "text-amber-600 bg-amber-50 border-amber-200";
+      return "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50";
     case 8:
-      return "text-indigo-600 bg-indigo-50 border-indigo-200";
+      return "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/50";
     case 3:
-      return "text-red-600 bg-red-50 border-red-200"; // Lost
+      return "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50"; // Lost
     case 4:
-      return "text-orange-600 bg-orange-50 border-orange-200"; // Missing
+      return "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900/50"; // Missing
     default:
       return "text-muted-foreground bg-muted border-border";
   }
@@ -873,7 +873,7 @@ export default function ItemDetailPage() {
                       {item.refItem && <Badge variant="outline">Reference</Badge>}
                     </div>
                     {item.alertMessage && (
-                      <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-300">
                         <AlertTriangle className="h-4 w-4 mt-0.5" />
                         <p className="text-sm">{item.alertMessage}</p>
                       </div>
@@ -1032,7 +1032,7 @@ export default function ItemDetailPage() {
             </CardHeader>
             <CardContent>
               {item.historyError && (
-                <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <div className="mb-3 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
                   {item.historyError}
                 </div>
               )}

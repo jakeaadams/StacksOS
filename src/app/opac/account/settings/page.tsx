@@ -366,16 +366,16 @@ export default function AccountSettingsPage() {
       <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Success/Error messages */}
         {saveSuccess && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
-            <CheckCircle className="h-5 w-5 text-green-600" />
-            <p className="text-green-700">Settings saved successfully!</p>
+          <div className="mb-6 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/50 rounded-lg flex items-center gap-3">
+            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+            <p className="text-green-700 dark:text-green-300">Settings saved successfully!</p>
           </div>
         )}
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <p className="text-red-700">{error}</p>
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            <p className="text-red-700 dark:text-red-300">{error}</p>
           </div>
         )}
 
@@ -570,9 +570,11 @@ export default function AccountSettingsPage() {
               </p>
 
               {pinSuccess && (
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <p className="text-green-700 text-sm">PIN changed successfully!</p>
+                <div className="mb-4 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/50 rounded-lg flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <p className="text-green-700 dark:text-green-300 text-sm">
+                    PIN changed successfully!
+                  </p>
                 </div>
               )}
 
@@ -589,7 +591,7 @@ export default function AccountSettingsPage() {
               ) : (
                 <div className="space-y-4">
                   {pinError && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg">
                       <p className="text-red-700 text-sm">{pinError}</p>
                     </div>
                   )}
@@ -691,16 +693,16 @@ export default function AccountSettingsPage() {
               </p>
 
               {passkeyMessage && (
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <p className="text-green-700 text-sm">{passkeyMessage}</p>
+                <div className="mb-4 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/50 rounded-lg flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <p className="text-green-700 dark:text-green-300 text-sm">{passkeyMessage}</p>
                 </div>
               )}
 
               {passkeyError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-red-600" />
-                  <p className="text-red-700 text-sm">{passkeyError}</p>
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  <p className="text-red-700 dark:text-red-300 text-sm">{passkeyError}</p>
                 </div>
               )}
 

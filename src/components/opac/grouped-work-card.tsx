@@ -240,7 +240,7 @@ export function GroupedWorkCard({
                   key={type}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm ${
                     typeAvailable > 0
-                      ? "bg-green-50 text-green-700 border border-green-200"
+                      ? "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-900/50"
                       : "bg-muted/50 text-muted-foreground border border-border"
                   }`}
                 >

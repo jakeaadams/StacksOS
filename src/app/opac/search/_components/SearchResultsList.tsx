@@ -87,7 +87,7 @@ export function SearchResultsList({
   // Error state
   if (error) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50/90 p-4 flex items-start gap-3">
+      <div className="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/90 dark:bg-red-950/20 p-4 flex items-start gap-3">
         <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
         <div>
           <p className="font-medium text-red-800">{t("searchError")}</p>

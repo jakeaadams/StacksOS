@@ -77,13 +77,13 @@ const MARC_FIELD_LABELS: Record<string, string> = {
 function confidenceColor(c: string) {
   switch (c) {
     case "high":
-      return "bg-green-100 text-green-800 border-green-200";
+      return "bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-900/50";
     case "medium":
-      return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      return "bg-yellow-100 dark:bg-yellow-950/30 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-900/50";
     case "low":
-      return "bg-red-100 text-red-800 border-red-200";
+      return "bg-red-100 dark:bg-red-950/30 text-red-800 dark:text-red-300 border-red-200 dark:border-red-900/50";
     default:
-      return "bg-gray-100 text-gray-800 border-gray-200";
+      return "bg-muted text-muted-foreground border-border";
   }
 }
 
@@ -419,7 +419,7 @@ export default function CreateRecordPage() {
                         </Button>
                       </div>
 
-                      <Alert className="bg-amber-50 border-amber-200">
+                      <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50">
                         <Info className="h-4 w-4 text-amber-600" />
                         <AlertDescription className="text-amber-800">
                           This is an AI-generated draft. All fields must be reviewed and approved by
@@ -430,7 +430,7 @@ export default function CreateRecordPage() {
 
                       {/* Fixed fields */}
                       <div className="space-y-2">
-                        <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-3">
+                        <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-mono text-xs font-bold text-foreground">LDR</span>
                             <span className="text-xs text-muted-foreground">Leader</span>
@@ -440,7 +440,7 @@ export default function CreateRecordPage() {
                           </code>
                         </div>
 
-                        <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-3">
+                        <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-mono text-xs font-bold text-foreground">008</span>
                             <span className="text-xs text-muted-foreground">
@@ -458,7 +458,7 @@ export default function CreateRecordPage() {
                         {aiResult.fields.map((field, idx) => (
                           <div
                             key={`${field.tag}-${idx}`}
-                            className="bg-amber-50/50 border border-amber-200 rounded-lg p-3"
+                            className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3"
                           >
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-mono text-xs font-bold text-foreground">

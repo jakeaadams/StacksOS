@@ -776,7 +776,7 @@ export default function AdminTenantsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center justify-between rounded-xl border bg-white/80 px-3 py-2">
+              <div className="flex items-center justify-between rounded-xl border bg-card/80 px-3 py-2">
                 <div className="text-sm">
                   <div className="font-medium">Active Tenant</div>
                   <div className="text-muted-foreground">
@@ -794,7 +794,7 @@ export default function AdminTenantsPage() {
                   return (
                     <div
                       key={step.title}
-                      className="rounded-xl border bg-white/80 px-3 py-2 text-sm"
+                      className="rounded-xl border bg-card/80 px-3 py-2 text-sm"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
@@ -810,7 +810,7 @@ export default function AdminTenantsPage() {
               </div>
 
               {playbookTasks.length > 0 ? (
-                <div className="rounded-xl border bg-white/80 px-3 py-2">
+                <div className="rounded-xl border bg-card/80 px-3 py-2">
                   <div className="mb-2 flex items-center gap-2 text-sm font-medium">
                     <ListChecks className="h-4 w-4" />
                     Profile Playbook ({onboarding?.profilePlaybook?.profile || "custom"})
@@ -862,7 +862,7 @@ export default function AdminTenantsPage() {
               ) : null}
 
               {onboardingEntries.length > 0 ? (
-                <div className="rounded-xl border bg-white/80 px-3 py-2">
+                <div className="rounded-xl border bg-card/80 px-3 py-2">
                   <div className="mb-2 text-sm font-medium">Detailed checks</div>
                   <div className="space-y-2">
                     {onboardingEntries.map(([key, check]) => (
@@ -879,7 +879,7 @@ export default function AdminTenantsPage() {
               ) : null}
 
               {onboarding?.recommendations?.length ? (
-                <div className="rounded-xl border border-amber-300/50 bg-amber-50 px-3 py-2 text-sm">
+                <div className="rounded-xl border border-amber-300/50 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/50 px-3 py-2 text-sm">
                   <div className="mb-1 font-medium text-amber-900 flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4" /> Recommended actions
                   </div>

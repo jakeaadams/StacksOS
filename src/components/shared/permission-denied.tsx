@@ -32,7 +32,12 @@ export function PermissionDeniedState({
   const uniqueMissing = Array.from(new Set((missing || []).filter(Boolean))).sort();
 
   return (
-    <Card className={cn("border-amber-200 bg-amber-50/40", className)}>
+    <Card
+      className={cn(
+        "border-amber-200 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/20",
+        className
+      )}
+    >
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <ShieldAlert className="h-5 w-5 text-amber-600" />

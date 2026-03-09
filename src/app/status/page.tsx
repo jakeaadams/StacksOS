@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { PageContainer, PageHeader, PageContent, StatusBadge, ErrorMessage, LoadingSpinner } from "@/components/shared";
+import {
+  PageContainer,
+  PageHeader,
+  PageContent,
+  StatusBadge,
+  ErrorMessage,
+  LoadingSpinner,
+} from "@/components/shared";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { RefreshCw, ShieldAlert } from "lucide-react";
 
@@ -40,7 +47,9 @@ export default function StatusPage() {
         title="Status"
         subtitle="Service status for this tenant"
         breadcrumbs={[{ label: "Status" }]}
-        actions={[{ label: "Refresh", onClick: load, icon: RefreshCw, variant: "outline" as const }]}
+        actions={[
+          { label: "Refresh", onClick: load, icon: RefreshCw, variant: "outline" as const },
+        ]}
       />
       <PageContent className="space-y-6">
         {error ? <ErrorMessage message={error} onRetry={load} /> : null}
@@ -50,7 +59,7 @@ export default function StatusPage() {
         ) : (
           <>
             {incident ? (
-              <Card className="rounded-2xl border-amber-200 bg-amber-50">
+              <Card className="rounded-2xl border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20">
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
                     <ShieldAlert className="h-4 w-4" />
@@ -61,7 +70,8 @@ export default function StatusPage() {
                 <CardContent className="text-sm">
                   <div className="mb-2">{incident.message}</div>
                   <div className="text-xs text-muted-foreground">
-                    Started: {incident.starts_at ? new Date(incident.starts_at).toLocaleString() : "—"}
+                    Started:{" "}
+                    {incident.starts_at ? new Date(incident.starts_at).toLocaleString() : "—"}
                   </div>
                 </CardContent>
               </Card>
@@ -73,13 +83,22 @@ export default function StatusPage() {
                 <CardDescription>ILS backend reachability</CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-between">
-                <StatusBadge label={evergreenOk ? "Online" : "Offline"} status={evergreenOk ? "success" : "error"} />
-                <div className="text-xs text-muted-foreground">HTTP {data?.evergreen?.status ?? "—"}</div>
+                <StatusBadge
+                  label={evergreenOk ? "Online" : "Offline"}
+                  status={evergreenOk ? "success" : "error"}
+                />
+                <div className="text-xs text-muted-foreground">
+                  HTTP {data?.evergreen?.status ?? "—"}
+                </div>
               </CardContent>
             </Card>
 
             <div className="text-sm text-muted-foreground">
-              Staff? Go to <Link className="underline underline-offset-2" href="/login">/login</Link>.
+              Staff? Go to{" "}
+              <Link className="underline underline-offset-2" href="/login">
+                /login
+              </Link>
+              .
             </div>
           </>
         )}

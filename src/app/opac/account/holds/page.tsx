@@ -199,8 +199,8 @@ export default function HoldsPage() {
             className={`mb-6 p-4 rounded-lg flex items-center gap-3
                         ${
                           message.type === "success"
-                            ? "bg-green-50 border border-green-200"
-                            : "bg-red-50 border border-red-200"
+                            ? "bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/50"
+                            : "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50"
                         }`}
           >
             {message.type === "success" ? (
@@ -419,7 +419,7 @@ function HoldCard({
   return (
     <div
       className={`bg-card rounded-xl shadow-sm border p-4 flex gap-4
-                   ${hold.status === "ready" ? "border-green-200 bg-green-50/50" : "border-border"}`}
+                   ${hold.status === "ready" ? "border-green-200 dark:border-green-900/50 bg-green-50/50 dark:bg-green-950/20" : "border-border"}`}
     >
       <div className="w-16 h-24 bg-muted rounded-lg overflow-hidden shrink-0">
         {hold.coverUrl ? (
@@ -542,7 +542,7 @@ function HoldCard({
           variant="outline"
           size="sm"
           className="border-red-300 text-red-700 text-sm font-medium
-                   hover:bg-red-50 disabled:opacity-50 flex items-center gap-1"
+                   hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-50 flex items-center gap-1"
         >
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
           Cancel

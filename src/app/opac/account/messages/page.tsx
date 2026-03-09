@@ -228,7 +228,7 @@ export default function PatronMessagesPage() {
         </div>
 
         {error ? (
-          <div className="mb-6 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
+          <div className="mb-6 flex items-center gap-3 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 p-4">
             <AlertCircle className="h-5 w-5 text-red-600" />
             <p className="text-red-700">{error}</p>
             <Button
@@ -320,7 +320,7 @@ export default function PatronMessagesPage() {
                           className={[
                             "flex items-start gap-3 p-4",
                             isSelected ? "bg-primary-50" : "",
-                            !message.isRead ? "bg-blue-50/50" : "",
+                            !message.isRead ? "bg-blue-50/50 dark:bg-blue-950/20" : "",
                           ]
                             .filter(Boolean)
                             .join(" ")}

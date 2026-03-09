@@ -193,7 +193,11 @@ function PolicyResponse({
             <Button
               variant="ghost"
               size="sm"
-              className={cn("h-7 px-2", feedback === true && "text-green-600 bg-green-50")}
+              className={cn(
+                "h-7 px-2",
+                feedback === true &&
+                  "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/20"
+              )}
               onClick={() => handleFeedback(true)}
               disabled={feedback !== null}
             >
@@ -202,7 +206,10 @@ function PolicyResponse({
             <Button
               variant="ghost"
               size="sm"
-              className={cn("h-7 px-2", feedback === false && "text-red-600 bg-red-50")}
+              className={cn(
+                "h-7 px-2",
+                feedback === false && "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20"
+              )}
               onClick={() => handleFeedback(false)}
               disabled={feedback !== null}
             >

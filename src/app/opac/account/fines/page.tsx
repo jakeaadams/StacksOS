@@ -185,8 +185,8 @@ export default function FinesPage() {
         <div
           className={`rounded-xl p-6 mb-6 ${
             totalBalance > 0
-              ? "bg-amber-50 border border-amber-200"
-              : "bg-green-50 border border-green-200"
+              ? "bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50"
+              : "bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/50"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -325,7 +325,7 @@ export default function FinesPage() {
         )}
 
         {/* Payment info */}
-        <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-xl">
+        <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 rounded-xl">
           <h3 className="font-semibold text-blue-900 mb-2">{t("paymentOptions")}</h3>
           <ul className="text-sm text-blue-800 space-y-1">
             <li>{`\u2022 ${t("payOnlineCard")}`}</li>

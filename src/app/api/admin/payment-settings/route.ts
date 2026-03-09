@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
 
 const postSchema = z
   .object({
-    provider: z.enum(["stripe", "none"]).optional(),
+    provider: z.enum(["stripe", "square", "paypal", "none"]).optional(),
     currency: z.string().min(3).max(3).optional(),
     minimumAmount: z.number().int().min(0).max(100000).optional(),
     allowPartialPayment: z.boolean().optional(),

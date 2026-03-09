@@ -7,7 +7,13 @@ import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { NotificationPreferences } from "@/components/patron/notification-preferences";
@@ -21,7 +27,9 @@ interface PatronNoticesTabProps {
 export function PatronNoticesTab({ patronId, patronEmail }: PatronNoticesTabProps) {
   const [noticeType, setNoticeType] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
-  const [lastSent, setLastSent] = useState<{ type: string; status: string; time: Date } | null>(null);
+  const [lastSent, setLastSent] = useState<{ type: string; status: string; time: Date } | null>(
+    null
+  );
 
   const handleSendNotice = async () => {
     if (!noticeType) {
@@ -76,7 +84,11 @@ export function PatronNoticesTab({ patronId, patronEmail }: PatronNoticesTabProp
     { value: "hold_ready", label: "Hold Ready", description: "Notify patron their hold is ready" },
     { value: "overdue", label: "Overdue Items", description: "Send overdue notice" },
     { value: "pre_overdue", label: "Pre-Overdue Courtesy", description: "Send courtesy reminder" },
-    { value: "card_expiration", label: "Card Expiration", description: "Remind about card expiration" },
+    {
+      value: "card_expiration",
+      label: "Card Expiration",
+      description: "Remind about card expiration",
+    },
     { value: "fine_bill", label: "Fines & Bills", description: "Send bill notice" },
   ];
 
@@ -123,7 +135,7 @@ export function PatronNoticesTab({ patronId, patronEmail }: PatronNoticesTabProp
           </Button>
 
           {!patronEmail && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+            <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900/50 rounded-md p-3">
               <p className="text-sm text-yellow-800">
                 This patron does not have an email address on file. Email notices cannot be sent.
               </p>
@@ -136,7 +148,9 @@ export function PatronNoticesTab({ patronId, patronEmail }: PatronNoticesTabProp
                 {lastSent.status === "sent" ? (
                   <>
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <span className="font-medium text-green-600">Last notice sent successfully</span>
+                    <span className="font-medium text-green-600">
+                      Last notice sent successfully
+                    </span>
                   </>
                 ) : (
                   <>
@@ -162,9 +176,7 @@ export function PatronNoticesTab({ patronId, patronEmail }: PatronNoticesTabProp
       <Card>
         <CardHeader>
           <CardTitle>Notice History</CardTitle>
-          <CardDescription>
-            Recent email notifications sent to this patron
-          </CardDescription>
+          <CardDescription>Recent email notifications sent to this patron</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-sm text-muted-foreground text-center py-8">

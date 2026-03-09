@@ -93,7 +93,7 @@ export default function ForgotPinPage() {
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-6">
                 {error && (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                  <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg flex items-start gap-3">
                     <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
                     <p id="forgot-pin-error" role="alert" className="text-red-700 text-sm">
                       {error}
@@ -151,7 +151,7 @@ export default function ForgotPinPage() {
               </form>
 
               {/* No email note */}
-              <div className="mt-6 p-4 border border-amber-200 bg-amber-50 rounded-lg">
+              <div className="mt-6 p-4 border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
                 <h2 className="font-medium text-amber-800 text-sm">No email on file?</h2>
                 <p className="text-sm text-amber-700 mt-1">
                   If you don&apos;t have an email address on your account, please visit or call your

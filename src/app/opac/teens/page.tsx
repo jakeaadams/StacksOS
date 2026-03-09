@@ -94,8 +94,8 @@ const browseCategories: CategoryItem[] = [
     icon: Ghost,
     label: "Horror",
     query: "horror young adult",
-    color: "text-gray-600",
-    bgColor: "bg-gray-100",
+    color: "text-gray-600 dark:text-gray-400",
+    bgColor: "bg-gray-100 dark:bg-gray-800",
   },
   {
     icon: Rocket,

@@ -286,7 +286,7 @@ export default function AccountEventsPage() {
                 waitlisted.map((registration) => (
                   <div
                     key={registration.id}
-                    className="rounded-xl border border-amber-200 bg-amber-50/60 p-4"
+                    className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20 p-4"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div>

@@ -825,7 +825,7 @@ export default function EDIPage() {
                 )}
               </div>
               {selectedMessage.error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-md">
                   <div className="flex items-center gap-2 text-red-800 font-medium">
                     <AlertCircle className="h-4 w-4" />
                     Error

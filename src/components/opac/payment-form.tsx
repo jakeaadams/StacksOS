@@ -79,7 +79,7 @@ function CheckoutForm({ amount, currency, onCancel, returnUrl }: CheckoutFormPro
 
       {/* Error message */}
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+        <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg flex items-start gap-2">
           <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
           <p className="text-red-700 text-sm">{error}</p>
         </div>

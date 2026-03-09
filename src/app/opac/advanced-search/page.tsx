@@ -413,7 +413,7 @@ export default function AdvancedSearchPage() {
         </form>
 
         {/* Search tips */}
-        <div className="mt-8 bg-blue-50 rounded-xl p-6">
+        <div className="mt-8 bg-blue-50 dark:bg-blue-950/20 rounded-xl p-6">
           <h3 className="font-semibold text-blue-900 mb-2">{t("searchTips")}</h3>
           <ul className="text-sm text-blue-800 space-y-1">
             <li>{`• ${t("tipAnd")}`}</li>

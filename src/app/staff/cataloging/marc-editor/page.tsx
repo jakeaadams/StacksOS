@@ -730,7 +730,7 @@ function MarcEditorContent() {
 
           {/* Error/validation banners */}
           {error && (
-            <div className="px-4 py-2 bg-red-50 border-b">
+            <div className="px-4 py-2 bg-red-50 dark:bg-red-950/20 border-b">
               <div className="flex items-center gap-2 text-sm text-red-600">
                 <AlertTriangle className="h-4 w-4" />
                 {error}
@@ -738,7 +738,7 @@ function MarcEditorContent() {
             </div>
           )}
           {validationErrors.length > 0 && (
-            <div className="px-4 py-2 bg-red-50 border-b">
+            <div className="px-4 py-2 bg-red-50 dark:bg-red-950/20 border-b">
               {validationErrors.map((err, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-sm text-red-600">
                   <AlertTriangle className="h-4 w-4" />

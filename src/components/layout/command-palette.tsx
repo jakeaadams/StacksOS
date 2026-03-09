@@ -154,11 +154,11 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const getStatusColor = (statusId: number) => {
     switch (statusId) {
       case 0:
-        return "text-green-600 bg-green-50";
+        return "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/20";
       case 1:
-        return "text-blue-600 bg-blue-50";
+        return "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20";
       case 6:
-        return "text-amber-600 bg-amber-50";
+        return "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20";
       default:
         return "text-muted-foreground bg-muted";
     }

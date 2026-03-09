@@ -619,7 +619,7 @@ export default function EventsPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {!isLoading && eventsSource === "none" ? (
-          <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="mb-4 rounded-lg border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-sm text-amber-900 dark:text-amber-300">
             Events are not configured for this library yet. Ask staff to connect a real events
             source.
           </div>

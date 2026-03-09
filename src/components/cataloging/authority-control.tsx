@@ -347,8 +347,8 @@ export function AuthorityLink({
                             variant="outline"
                             className={
                               auth.source === "lc"
-                                ? "bg-blue-50 text-blue-700"
-                                : "bg-indigo-50 text-indigo-700"
+                                ? "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300"
+                                : "bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300"
                             }
                           >
                             {auth.source.toUpperCase()}

@@ -146,8 +146,8 @@ export default function CheckoutsPage() {
             className={`mb-6 p-4 rounded-lg flex items-center gap-3
                         ${
                           message.type === "success"
-                            ? "bg-green-50 border border-green-200"
-                            : "bg-red-50 border border-red-200"
+                            ? "bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/50"
+                            : "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50"
                         }`}
           >
             {message.type === "success" ? (
@@ -251,7 +251,7 @@ function CheckoutCard({
   return (
     <div
       className={`bg-card rounded-xl shadow-sm border p-4 flex gap-4
-                   ${checkout.isOverdue ? "border-red-200 bg-red-50/50" : "border-border"}`}
+                   ${checkout.isOverdue ? "border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20" : "border-border"}`}
     >
       {/* Cover */}
       <div className="w-16 h-24 bg-muted rounded-lg overflow-hidden shrink-0">

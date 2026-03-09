@@ -36,6 +36,8 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
+type PaymentGateway = "stripe" | "square" | "paypal";
+
 interface PaymentSettingsResponse {
   ok: boolean;
   provider: string;
@@ -56,9 +58,19 @@ interface PaymentSettingsResponse {
 
 interface FormState {
   enabled: boolean;
+  gateway: PaymentGateway;
   publicKey: string;
   secretKey: string;
   webhookSecret: string;
+  // Square fields
+  squareAccessToken: string;
+  squareLocationId: string;
+  squareEnvironment: "sandbox" | "production";
+  // PayPal fields
+  paypalClientId: string;
+  paypalClientSecret: string;
+  paypalEnvironment: "sandbox" | "live";
+  // Common fields
   currency: string;
   minimumAmount: string;
   allowPartialPayment: boolean;
@@ -75,12 +87,31 @@ const CURRENCIES = [
   { value: "aud", label: "AUD — Australian Dollar" },
 ];
 
+const GATEWAY_OPTIONS: { value: PaymentGateway; label: string }[] = [
+  { value: "stripe", label: "Stripe" },
+  { value: "square", label: "Square" },
+  { value: "paypal", label: "PayPal" },
+];
+
+function resolveGateway(provider: string | undefined): PaymentGateway {
+  if (provider === "square" || provider === "paypal") return provider;
+  return "stripe";
+}
+
 function initialForm(data: PaymentSettingsResponse | null): FormState {
+  const gateway = resolveGateway(data?.provider);
   return {
-    enabled: data?.provider === "stripe",
+    enabled: data?.provider !== undefined && data.provider !== "none",
+    gateway,
     publicKey: data?.publicKey || "",
     secretKey: "",
     webhookSecret: "",
+    squareAccessToken: "",
+    squareLocationId: "",
+    squareEnvironment: "sandbox",
+    paypalClientId: "",
+    paypalClientSecret: "",
+    paypalEnvironment: "sandbox",
     currency: data?.currency || "usd",
     minimumAmount: data ? String(data.minimumAmount / 100) : "1.00",
     allowPartialPayment: data?.allowPartialPayment ?? true,
@@ -105,6 +136,8 @@ export default function PaymentSettingsPage() {
   } | null>(null);
   const [showSecretKey, setShowSecretKey] = useState(false);
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+  const [showSquareAccessToken, setShowSquareAccessToken] = useState(false);
+  const [showPaypalClientSecret, setShowPaypalClientSecret] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
   const { data, isLoading, refetch } = useApi<PaymentSettingsResponse>(
@@ -123,7 +156,15 @@ export default function PaymentSettingsPage() {
   };
 
   const isTestMode =
-    form.publicKey.startsWith("pk_test") || (!form.publicKey && data?.mode === "test");
+    form.gateway === "stripe" &&
+    (form.publicKey.startsWith("pk_test") || (!form.publicKey && data?.mode === "test"));
+
+  const isSquareSandbox = form.gateway === "square" && form.squareEnvironment === "sandbox";
+  const isPaypalSandbox = form.gateway === "paypal" && form.paypalEnvironment === "sandbox";
+
+  const showTestBadge = form.enabled && (isTestMode || isSquareSandbox || isPaypalSandbox);
+  const testBadgeLabel =
+    isTestMode || isSquareSandbox || isPaypalSandbox ? "Test Mode" : "Live Mode";
 
   // ---------------------------------------------------------------------------
   // Validate Stripe secret key
@@ -173,11 +214,13 @@ export default function PaymentSettingsPage() {
         return;
       }
 
+      const provider = form.enabled ? form.gateway : "none";
+
       const res = await fetchWithAuth("/api/admin/payment-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          provider: form.enabled ? "stripe" : "none",
+          provider,
           currency: form.currency,
           minimumAmount: minimumCents,
           allowPartialPayment: form.allowPartialPayment,
@@ -205,7 +248,7 @@ export default function PaymentSettingsPage() {
     <PageContainer>
       <PageHeader
         title="Payment Processing"
-        subtitle="Configure Stripe for online fine and fee payments from patrons."
+        subtitle="Configure online fine and fee payment processing for patrons."
         breadcrumbs={[
           { label: "Administration", href: "/staff/admin" },
           { label: "Settings", href: "/staff/admin/settings" },
@@ -219,20 +262,11 @@ export default function PaymentSettingsPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
-              Stripe Payment Gateway
+              Payment Gateway Configuration
             </CardTitle>
             <CardDescription>
-              Accept credit/debit card payments for fines and fees directly from the OPAC. API keys
-              come from your{" "}
-              <a
-                href="https://dashboard.stripe.com/apikeys"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline underline-offset-4"
-              >
-                Stripe Dashboard
-              </a>
-              .
+              Accept credit/debit card payments for fines and fees directly from the OPAC. Select a
+              payment gateway and configure its credentials below.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
@@ -265,177 +299,378 @@ export default function PaymentSettingsPage() {
                 </div>
               </CardHeader>
               {form.enabled && (
-                <CardContent className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={isTestMode ? "outline" : "default"}
-                      className={
-                        isTestMode
-                          ? "border-amber-300 bg-amber-50 text-amber-700"
-                          : "bg-green-100 text-green-700"
-                      }
+                <CardContent className="space-y-4">
+                  {/* Gateway selector */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="gateway">Gateway</Label>
+                    <Select
+                      value={form.gateway}
+                      onValueChange={(value) => patch({ gateway: value as PaymentGateway })}
                     >
-                      {isTestMode ? "Test Mode" : "Live Mode"}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {isTestMode
-                        ? "Using test API keys — no real charges will be made."
-                        : "Using live API keys — real charges will be processed."}
-                    </span>
+                      <SelectTrigger id="gateway">
+                        <SelectValue placeholder="Select gateway" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GATEWAY_OPTIONS.map((g) => (
+                          <SelectItem key={g.value} value={g.value}>
+                            {g.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+
+                  {showTestBadge && (
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={testBadgeLabel === "Test Mode" ? "outline" : "default"}
+                        className={
+                          testBadgeLabel === "Test Mode"
+                            ? "border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300"
+                            : "bg-green-100 dark:bg-green-950/20 text-green-700 dark:text-green-300"
+                        }
+                      >
+                        {testBadgeLabel}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {testBadgeLabel === "Test Mode"
+                          ? "Using test/sandbox credentials — no real charges will be made."
+                          : "Using live credentials — real charges will be processed."}
+                      </span>
+                    </div>
+                  )}
                 </CardContent>
               )}
             </Card>
 
             {form.enabled && (
               <>
-                {/* Stripe API Keys */}
-                <Card className="rounded-2xl">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="h-4 w-4" />
-                      Stripe API Keys
-                    </CardTitle>
-                    <CardDescription>
-                      Your keys are stored securely as environment variables and never exposed to
-                      the browser or logged.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Publishable key */}
-                    <div className="space-y-1.5">
-                      <Label htmlFor="publishable-key">Publishable Key</Label>
-                      <Input
-                        id="publishable-key"
-                        value={form.publicKey}
-                        onChange={(e) => patch({ publicKey: e.target.value })}
-                        placeholder="pk_test_..."
-                        className="font-mono text-sm"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Starts with <code>pk_test_</code> or <code>pk_live_</code>. This key is safe
-                        to embed in client-side code.
-                      </p>
-                    </div>
+                {/* ----- Stripe API Keys ----- */}
+                {form.gateway === "stripe" && (
+                  <Card className="rounded-2xl">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Stripe API Keys
+                      </CardTitle>
+                      <CardDescription>
+                        Your keys are stored securely as environment variables and never exposed to
+                        the browser or logged.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Publishable key */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="publishable-key">Publishable Key</Label>
+                        <Input
+                          id="publishable-key"
+                          value={form.publicKey}
+                          onChange={(e) => patch({ publicKey: e.target.value })}
+                          placeholder="pk_test_..."
+                          className="font-mono text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Starts with <code>pk_test_</code> or <code>pk_live_</code>. This key is
+                          safe to embed in client-side code.
+                        </p>
+                      </div>
 
-                    {/* Secret key */}
-                    <div className="space-y-1.5">
-                      <Label htmlFor="secret-key">Secret Key</Label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
+                      {/* Secret key */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="secret-key">Secret Key</Label>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Input
+                              id="secret-key"
+                              type={showSecretKey ? "text" : "password"}
+                              value={form.secretKey}
+                              onChange={(e) => {
+                                patch({ secretKey: e.target.value });
+                                setValidationResult(null);
+                              }}
+                              placeholder={
+                                data?.secretKeyConfigured
+                                  ? `Configured (••••${data.secretKeyLast4})`
+                                  : "sk_test_..."
+                              }
+                              className="font-mono text-sm pr-10"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowSecretKey(!showSecretKey)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              tabIndex={-1}
+                            >
+                              {showSecretKey ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleValidate}
+                            disabled={isValidating || !form.secretKey.trim()}
+                            className="gap-2 shrink-0"
+                          >
+                            {isValidating ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Zap className="h-4 w-4" />
+                            )}
+                            Validate
+                          </Button>
+                        </div>
+                        {data?.secretKeyConfigured && !form.secretKey && (
+                          <p className="text-xs text-green-600 flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Secret key is configured (ends in {data.secretKeyLast4}). Enter a new
+                            key to change it.
+                          </p>
+                        )}
+                        {validationResult && (
+                          <p
+                            className={`text-xs flex items-center gap-1 ${
+                              validationResult.valid ? "text-green-600" : "text-red-600"
+                            }`}
+                          >
+                            {validationResult.valid ? (
+                              <>
+                                <CheckCircle2 className="h-3 w-3" />
+                                Valid {validationResult.mode} mode key
+                              </>
+                            ) : (
+                              <>
+                                <AlertCircle className="h-3 w-3" />
+                                {validationResult.error || "Invalid key"}
+                              </>
+                            )}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Webhook secret */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="webhook-secret">Webhook Secret</Label>
+                        <div className="relative">
                           <Input
-                            id="secret-key"
-                            type={showSecretKey ? "text" : "password"}
-                            value={form.secretKey}
-                            onChange={(e) => {
-                              patch({ secretKey: e.target.value });
-                              setValidationResult(null);
-                            }}
+                            id="webhook-secret"
+                            type={showWebhookSecret ? "text" : "password"}
+                            value={form.webhookSecret}
+                            onChange={(e) => patch({ webhookSecret: e.target.value })}
                             placeholder={
-                              data?.secretKeyConfigured
-                                ? `Configured (••••${data.secretKeyLast4})`
-                                : "sk_test_..."
+                              data?.webhookSecretConfigured ? "Configured (••••)" : "whsec_..."
                             }
                             className="font-mono text-sm pr-10"
                           />
                           <button
                             type="button"
-                            onClick={() => setShowSecretKey(!showSecretKey)}
+                            onClick={() => setShowWebhookSecret(!showWebhookSecret)}
                             className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                             tabIndex={-1}
                           >
-                            {showSecretKey ? (
+                            {showWebhookSecret ? (
                               <EyeOff className="h-4 w-4" />
                             ) : (
                               <Eye className="h-4 w-4" />
                             )}
                           </button>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleValidate}
-                          disabled={isValidating || !form.secretKey.trim()}
-                          className="gap-2 shrink-0"
-                        >
-                          {isValidating ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Zap className="h-4 w-4" />
-                          )}
-                          Validate
-                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          From Stripe Dashboard &rarr; Developers &rarr; Webhooks. Required for
+                          server-side payment confirmation.
+                        </p>
+                        {data?.webhookSecretConfigured && !form.webhookSecret && (
+                          <p className="text-xs text-green-600 flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Webhook secret is configured.
+                          </p>
+                        )}
                       </div>
-                      {data?.secretKeyConfigured && !form.secretKey && (
-                        <p className="text-xs text-green-600 flex items-center gap-1">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Secret key is configured (ends in {data.secretKeyLast4}). Enter a new key
-                          to change it.
-                        </p>
-                      )}
-                      {validationResult && (
-                        <p
-                          className={`text-xs flex items-center gap-1 ${
-                            validationResult.valid ? "text-green-600" : "text-red-600"
-                          }`}
-                        >
-                          {validationResult.valid ? (
-                            <>
-                              <CheckCircle2 className="h-3 w-3" />
-                              Valid {validationResult.mode} mode key
-                            </>
-                          ) : (
-                            <>
-                              <AlertCircle className="h-3 w-3" />
-                              {validationResult.error || "Invalid key"}
-                            </>
-                          )}
-                        </p>
-                      )}
-                    </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-                    {/* Webhook secret */}
-                    <div className="space-y-1.5">
-                      <Label htmlFor="webhook-secret">Webhook Secret</Label>
-                      <div className="relative">
+                {/* ----- Square Credentials ----- */}
+                {form.gateway === "square" && (
+                  <Card className="rounded-2xl">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Square Credentials
+                      </CardTitle>
+                      <CardDescription>
+                        Your credentials are stored securely as environment variables and never
+                        exposed to the browser or logged.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Access Token */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="square-access-token">Access Token</Label>
+                        <div className="relative">
+                          <Input
+                            id="square-access-token"
+                            type={showSquareAccessToken ? "text" : "password"}
+                            value={form.squareAccessToken}
+                            onChange={(e) => patch({ squareAccessToken: e.target.value })}
+                            placeholder="EAAAl..."
+                            className="font-mono text-sm pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowSquareAccessToken(!showSquareAccessToken)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            tabIndex={-1}
+                          >
+                            {showSquareAccessToken ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          From your{" "}
+                          <a
+                            href="https://developer.squareup.com/apps"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary underline underline-offset-4"
+                          >
+                            Square Developer Dashboard
+                          </a>
+                          .
+                        </p>
+                      </div>
+
+                      {/* Location ID */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="square-location-id">Location ID</Label>
                         <Input
-                          id="webhook-secret"
-                          type={showWebhookSecret ? "text" : "password"}
-                          value={form.webhookSecret}
-                          onChange={(e) => patch({ webhookSecret: e.target.value })}
-                          placeholder={
-                            data?.webhookSecretConfigured ? "Configured (••••)" : "whsec_..."
-                          }
-                          className="font-mono text-sm pr-10"
+                          id="square-location-id"
+                          value={form.squareLocationId}
+                          onChange={(e) => patch({ squareLocationId: e.target.value })}
+                          placeholder="L..."
+                          className="font-mono text-sm"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowWebhookSecret(!showWebhookSecret)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          tabIndex={-1}
-                        >
-                          {showWebhookSecret ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        From Stripe Dashboard &rarr; Developers &rarr; Webhooks. Required for
-                        server-side payment confirmation.
-                      </p>
-                      {data?.webhookSecretConfigured && !form.webhookSecret && (
-                        <p className="text-xs text-green-600 flex items-center gap-1">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Webhook secret is configured.
+                        <p className="text-xs text-muted-foreground">
+                          The Square location to associate payments with.
                         </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                      </div>
 
-                {/* Payment Options */}
+                      {/* Environment */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="square-environment">Environment</Label>
+                        <Select
+                          value={form.squareEnvironment}
+                          onValueChange={(value) =>
+                            patch({ squareEnvironment: value as "sandbox" | "production" })
+                          }
+                        >
+                          <SelectTrigger id="square-environment">
+                            <SelectValue placeholder="Select environment" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sandbox">Sandbox</SelectItem>
+                            <SelectItem value="production">Production</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* ----- PayPal Credentials ----- */}
+                {form.gateway === "paypal" && (
+                  <Card className="rounded-2xl">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        PayPal Credentials
+                      </CardTitle>
+                      <CardDescription>
+                        Your credentials are stored securely as environment variables and never
+                        exposed to the browser or logged.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Client ID */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="paypal-client-id">Client ID</Label>
+                        <Input
+                          id="paypal-client-id"
+                          value={form.paypalClientId}
+                          onChange={(e) => patch({ paypalClientId: e.target.value })}
+                          placeholder="AV..."
+                          className="font-mono text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          From your{" "}
+                          <a
+                            href="https://developer.paypal.com/dashboard/applications"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary underline underline-offset-4"
+                          >
+                            PayPal Developer Dashboard
+                          </a>
+                          .
+                        </p>
+                      </div>
+
+                      {/* Client Secret */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="paypal-client-secret">Client Secret</Label>
+                        <div className="relative">
+                          <Input
+                            id="paypal-client-secret"
+                            type={showPaypalClientSecret ? "text" : "password"}
+                            value={form.paypalClientSecret}
+                            onChange={(e) => patch({ paypalClientSecret: e.target.value })}
+                            placeholder="EK..."
+                            className="font-mono text-sm pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPaypalClientSecret(!showPaypalClientSecret)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            tabIndex={-1}
+                          >
+                            {showPaypalClientSecret ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Environment */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="paypal-environment">Environment</Label>
+                        <Select
+                          value={form.paypalEnvironment}
+                          onValueChange={(value) =>
+                            patch({ paypalEnvironment: value as "sandbox" | "live" })
+                          }
+                        >
+                          <SelectTrigger id="paypal-environment">
+                            <SelectValue placeholder="Select environment" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sandbox">Sandbox</SelectItem>
+                            <SelectItem value="live">Live</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Payment Options (all providers) */}
                 <Card className="rounded-2xl">
                   <CardHeader>
                     <CardTitle>Payment Options</CardTitle>
@@ -503,7 +738,7 @@ export default function PaymentSettingsPage() {
                   </CardContent>
                 </Card>
 
-                {/* Receipt & Branding */}
+                {/* Receipt & Branding (all providers) */}
                 <Card className="rounded-2xl">
                   <CardHeader>
                     <CardTitle>Receipt & Branding</CardTitle>
@@ -543,7 +778,7 @@ export default function PaymentSettingsPage() {
                           placeholder="billing@library.org"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Shown on Stripe receipts for payment inquiries.
+                          Shown on payment receipts for payment inquiries.
                         </p>
                       </div>
                     </div>
@@ -566,36 +801,39 @@ export default function PaymentSettingsPage() {
                   </CardContent>
                 </Card>
 
-                {/* Webhook Endpoint Info */}
-                <Card className="rounded-2xl border-dashed">
-                  <CardHeader>
-                    <CardTitle className="text-base">Webhook Endpoint</CardTitle>
-                    <CardDescription>
-                      Configure this URL in your Stripe Dashboard under Developers &rarr; Webhooks.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="rounded-lg bg-muted/50 p-3">
-                      <p className="text-xs text-muted-foreground mb-1">Endpoint URL</p>
-                      <code className="text-sm font-mono text-foreground break-all">
-                        {typeof window !== "undefined"
-                          ? `${window.location.origin}/api/opac/payments/webhook`
-                          : "https://your-domain.com/api/opac/payments/webhook"}
-                      </code>
-                    </div>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      <p className="font-medium text-foreground">Events to listen for:</p>
-                      <ul className="list-disc list-inside text-xs space-y-0.5 ml-1">
-                        <li>
-                          <code>payment_intent.succeeded</code>
-                        </li>
-                        <li>
-                          <code>payment_intent.payment_failed</code>
-                        </li>
-                      </ul>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Webhook Endpoint Info (Stripe only) */}
+                {form.gateway === "stripe" && (
+                  <Card className="rounded-2xl border-dashed">
+                    <CardHeader>
+                      <CardTitle className="text-base">Webhook Endpoint</CardTitle>
+                      <CardDescription>
+                        Configure this URL in your Stripe Dashboard under Developers &rarr;
+                        Webhooks.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="rounded-lg bg-muted/50 p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Endpoint URL</p>
+                        <code className="text-sm font-mono text-foreground break-all">
+                          {typeof window !== "undefined"
+                            ? `${window.location.origin}/api/opac/payments/webhook`
+                            : "https://your-domain.com/api/opac/payments/webhook"}
+                        </code>
+                      </div>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <p className="font-medium text-foreground">Events to listen for:</p>
+                        <ul className="list-disc list-inside text-xs space-y-0.5 ml-1">
+                          <li>
+                            <code>payment_intent.succeeded</code>
+                          </li>
+                          <li>
+                            <code>payment_intent.payment_failed</code>
+                          </li>
+                        </ul>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </>
             )}
 

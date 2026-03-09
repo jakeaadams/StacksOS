@@ -89,7 +89,11 @@ export function ParentsControls() {
   const handleUnlock = useCallback(async () => {
     setMessage(null);
     const ok = await gate.requestUnlock({ reason: "Unlock Kids account actions" });
-    if (ok) setMessage({ type: "success", text: "Unlocked. You can make account changes for a short time." });
+    if (ok)
+      setMessage({
+        type: "success",
+        text: "Unlocked. You can make account changes for a short time.",
+      });
     else setMessage({ type: "error", text: "Still locked." });
     setTimeout(() => setMessage(null), 4000);
   }, [gate]);
@@ -104,7 +108,8 @@ export function ParentsControls() {
               <h2 className="text-lg font-semibold text-foreground">Parent/guardian gate</h2>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              Optional. Requires a PIN before renewing books or changing/canceling holds in Kids mode. Saved on this device only.
+              Optional. Requires a PIN before renewing books or changing/canceling holds in Kids
+              mode. Saved on this device only.
             </p>
           </div>
           <div className="shrink-0">
@@ -112,8 +117,8 @@ export function ParentsControls() {
               className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
                 gate.enabled
                   ? gate.isUnlocked
-                    ? "bg-green-50 text-green-700"
-                    : "bg-amber-50 text-amber-700"
+                    ? "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300"
+                    : "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300"
                   : "bg-muted text-muted-foreground"
               }`}
             >
@@ -126,8 +131,8 @@ export function ParentsControls() {
           <div
             className={`mt-4 rounded-xl border p-3 text-sm ${
               message.type === "success"
-                ? "bg-green-50 border-green-200 text-green-800"
-                : "bg-red-50 border-red-200 text-red-800"
+                ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50 text-green-800 dark:text-green-300"
+                : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50 text-red-800 dark:text-red-300"
             }`}
           >
             {message.text}
@@ -136,7 +141,9 @@ export function ParentsControls() {
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-border/70 bg-muted/10 p-4">
-            <div className="text-sm font-medium text-foreground">{gate.enabled ? "Change PIN" : "Set a PIN"}</div>
+            <div className="text-sm font-medium text-foreground">
+              {gate.enabled ? "Change PIN" : "Set a PIN"}
+            </div>
             <div className="mt-3 space-y-3">
               <div className="grid gap-2">
                 <Label htmlFor="kids-gate-pin">PIN (4–8 digits)</Label>
@@ -171,22 +178,32 @@ export function ParentsControls() {
             <div className="mt-3 flex flex-wrap gap-2">
               {gate.enabled ? (
                 <>
-                  <Button variant="outline" onClick={() => void handleUnlock()} disabled={busy || gate.isUnlocked}>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleUnlock()}
+                    disabled={busy || gate.isUnlocked}
+                  >
                     <Unlock className="h-4 w-4 mr-2" />
                     Unlock
                   </Button>
-                  <Button variant="outline" onClick={gate.lockNow} disabled={busy || !gate.isUnlocked}>
+                  <Button
+                    variant="outline"
+                    onClick={gate.lockNow}
+                    disabled={busy || !gate.isUnlocked}
+                  >
                     <Lock className="h-4 w-4 mr-2" />
                     Lock now
                   </Button>
-                  <Button variant="destructive" onClick={() => void handleDisable()} disabled={busy}>
+                  <Button
+                    variant="destructive"
+                    onClick={() => void handleDisable()}
+                    disabled={busy}
+                  >
                     Disable gate
                   </Button>
                 </>
               ) : (
-                <div className="text-sm text-muted-foreground">
-                  Set a PIN to enable the gate.
-                </div>
+                <div className="text-sm text-muted-foreground">Set a PIN to enable the gate.</div>
               )}
             </div>
             {gate.enabled ? (
@@ -203,16 +220,20 @@ export function ParentsControls() {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <Type className="h-5 w-5 text-muted-foreground" />
-              <h2 className="text-lg font-semibold text-foreground">Dyslexia-friendly typography</h2>
+              <h2 className="text-lg font-semibold text-foreground">
+                Dyslexia-friendly typography
+              </h2>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
               Increase spacing for readability. Applies to OPAC + Kids pages on this device.
             </p>
           </div>
-          <Switch checked={dyslexiaFriendly} onCheckedChange={(checked) => setDyslexiaFriendly(Boolean(checked))} />
+          <Switch
+            checked={dyslexiaFriendly}
+            onCheckedChange={(checked) => setDyslexiaFriendly(Boolean(checked))}
+          />
         </div>
       </div>
     </div>
   );
 }
-
