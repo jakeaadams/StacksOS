@@ -104,7 +104,7 @@ Secrets stay in env vars (examples):
 - OPENAI_API_KEY
 - ANTHROPIC_API_KEY
 - GROK_API_KEY
-- STACKSOS_MFA_MASTER_KEY
+- STACKSOS_MFA_SECRET
 
 Recommended AI defaults for Grok operations assistant:
 
