@@ -55,11 +55,11 @@ Dependency rule:
 - Local:
   - `npm run lint -- --quiet`: pass
   - `npm run type-check`: pass
-  - `npm run test:run`: pass (`331/331`)
+  - `npm run test:run`: pass (`394/394`)
 - VM (`192.168.1.233`):
   - `npm run lint -- --quiet`: pass
   - `npm run type-check`: pass
-  - `npm run test:run`: pass (`331/331`)
+  - `npm run test:run`: pass (`394/394`)
   - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`81 passed, 5 skipped`)
   - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake BASE_URL=http://127.0.0.1:3000 bash audit/run_all.sh`: pass
   - `run_all.sh` includes green UI audit, OPAC audit, task benchmark, API audit, workflow QA, and perf budgets

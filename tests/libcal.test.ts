@@ -68,7 +68,7 @@ describe("LibCal Integration", () => {
 
       await fetchLibCalEvents();
 
-      const [oauthUrl, oauthOptions] = vi.mocked(fetch).mock.calls[0];
+      const [oauthUrl, oauthOptions] = vi.mocked(fetch).mock.calls[0]!;
       expect(oauthUrl).toBe("https://api2.libcal.com/1.1/oauth/token");
       expect(oauthOptions?.method).toBe("POST");
       expect((oauthOptions?.headers as Record<string, string>)["Content-Type"]).toBe(
@@ -90,7 +90,7 @@ describe("LibCal Integration", () => {
       const events = await fetchLibCalEvents();
 
       expect(events).toHaveLength(1);
-      const ev = events[0];
+      const ev = events[0]!;
       expect(ev.id).toBe("libcal-101");
       expect(ev.title).toBe("Summer Reading Storytime");
       expect(ev.branch).toBe("Main Branch");
@@ -111,7 +111,7 @@ describe("LibCal Integration", () => {
       mockOAuthAndEvents([sampleLibCalEvent]);
 
       const events = await fetchLibCalEvents();
-      expect(events[0].description).toBe("Join us for a fun storytime!");
+      expect(events[0]!.description).toBe("Join us for a fun storytime!");
     });
 
     it("should decode HTML entities", async () => {
@@ -124,7 +124,7 @@ describe("LibCal Integration", () => {
       ]);
 
       const events = await fetchLibCalEvents();
-      expect(events[0].description).toBe('Books & more <reading> "fun" it\'s great');
+      expect(events[0]!.description).toBe('Books & more <reading> "fun" it\'s great');
     });
   });
 
@@ -162,7 +162,7 @@ describe("LibCal Integration", () => {
       const refreshed = await fetchLibCalEvents();
       // 3 total fetches: 1 OAuth + 1 events (first call) + 1 events (second call, reused token)
       expect(fetch).toHaveBeenCalledTimes(3);
-      expect(refreshed[0].title).toBe("Updated Event");
+      expect(refreshed[0]!.title).toBe("Updated Event");
     });
   });
 

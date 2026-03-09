@@ -58,7 +58,7 @@ describe("SquareGateway", () => {
       });
 
       expect(fetch).toHaveBeenCalledTimes(1);
-      const [url, options] = vi.mocked(fetch).mock.calls[0];
+      const [url, options] = vi.mocked(fetch).mock.calls[0]!;
       expect(url).toBe("https://connect.squareupsandbox.com/v2/payments");
       expect(options?.method).toBe("POST");
       expect((options?.headers as Record<string, string>)["Authorization"]).toBe(

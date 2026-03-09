@@ -107,10 +107,10 @@ describe("PayPalGateway", () => {
       // 3 total fetches: 1 OAuth + 2 API calls (not 2 OAuth + 2 API)
       expect(fetch).toHaveBeenCalledTimes(3);
       // First call was OAuth
-      const firstCallUrl = vi.mocked(fetch).mock.calls[0][0] as string;
+      const firstCallUrl = vi.mocked(fetch).mock.calls[0]![0] as string;
       expect(firstCallUrl).toContain("/v1/oauth2/token");
       // Second call was the first API call (not another OAuth)
-      const secondCallUrl = vi.mocked(fetch).mock.calls[1][0] as string;
+      const secondCallUrl = vi.mocked(fetch).mock.calls[1]![0] as string;
       expect(secondCallUrl).toContain("/v2/checkout/orders");
     });
   });
@@ -141,7 +141,7 @@ describe("PayPalGateway", () => {
       });
 
       // Verify the orders API call (second fetch)
-      const [url, options] = vi.mocked(fetch).mock.calls[1];
+      const [url, options] = vi.mocked(fetch).mock.calls[1]!;
       expect(url).toContain("/v2/checkout/orders");
       expect(options?.method).toBe("POST");
       expect((options?.headers as Record<string, string>)["Authorization"]).toBe(
@@ -184,7 +184,7 @@ describe("PayPalGateway", () => {
         description: "test",
       });
 
-      const body = JSON.parse(vi.mocked(fetch).mock.calls[1][1]?.body as string);
+      const body = JSON.parse(vi.mocked(fetch).mock.calls[1]![1]?.body as string);
       expect(body.purchase_units[0].amount.value).toBe("12.75");
     });
 
