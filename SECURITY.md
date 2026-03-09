@@ -28,20 +28,24 @@ Disabling TLS verification (e.g. `NODE_TLS_REJECT_UNAUTHORIZED=0`) enables man-i
 - Session security: Device/session list + revocation, idle timeout (`STACKSOS_IDLE_TIMEOUT_MINUTES`)
 - Network hardening: Optional IP allowlist (`STACKSOS_IP_ALLOWLIST`)
 
-## MFA (strategy)
+## MFA (TOTP — implemented)
 
-StacksOS uses Evergreen credentials for staff auth, but MFA can be layered at the StacksOS boundary:
+TOTP-based multi-factor authentication is fully implemented for patron OPAC login. Key details:
 
-- **TOTP (recommended):** per-staff secret stored encrypted at rest in a StacksOS-owned store (pilot: `library.*` schema). Enforce MFA at the StacksOS session layer, not by modifying Evergreen auth.
+- **Per-patron TOTP secrets** are encrypted at rest (AES-256-GCM via `STACKSOS_MFA_SECRET`) in the `library.opac_mfa_methods` table.
+- **Admin-configurable:** MFA is off by default. Admins enable it via `STACKSOS_MFA_ENABLED=true` and can optionally require it for all patrons (`STACKSOS_MFA_REQUIRED=true`). The admin UI is at `/staff/admin/settings/security`.
+- **Fail-open:** If the MFA database check fails, login proceeds without MFA to preserve library availability.
+- **Recovery codes:** 8 SHA-256 hashed recovery codes per enrollment, single-use.
 - **SSO (future):** OIDC/SAML front-door for staff, with Evergreen session issued server-side.
 
 Operational guidance:
 
-- Start with MFA optional per tenant, then make it mandatory for admins.
+- `STACKSOS_MFA_SECRET` must be at least 32 characters for encryption security.
 - Never log OTP codes or MFA secrets.
 - Ensure break-glass procedure exists (two admin users, offline doc, audited disable flow).
+- Patron MFA enrollment/revoke is audited via the standard audit log.
 
-Last Updated: February 5, 2026
+Last Updated: March 9, 2026
 
 ---
 

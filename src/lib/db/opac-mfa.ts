@@ -129,7 +129,7 @@ export async function revokeMfaMethod(methodId: number, patronId: number): Promi
      WHERE id = $1 AND patron_id = $2 AND revoked_at IS NULL`,
     [methodId, patronId]
   );
-  return (result?.length ?? 0) >= 0;
+  return (result?.length ?? 0) > 0;
 }
 
 export async function updateMfaLastUsed(methodId: number): Promise<void> {

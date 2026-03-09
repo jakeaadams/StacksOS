@@ -135,7 +135,11 @@ async function handlePaymentSucceeded(intent: StripeEventObject): Promise<void> 
     if (!serviceToken) throw new Error("Service account auth failed");
 
     // Record the payment via open-ils.circ.money.payment
-    const payments = fineIds.map((id) => [id, amount / fineIds.length]);
+    // Distribute amount evenly across fines, giving any remainder (from rounding)
+    // to the first fine to ensure the total equals the charged amount exactly.
+    const perFine = Math.floor(amount / fineIds.length);
+    const remainder = amount - perFine * fineIds.length;
+    const payments = fineIds.map((id, idx) => [id, idx === 0 ? perFine + remainder : perFine]);
     const payResult = await callOpenSRF("open-ils.circ", "open-ils.circ.money.payment", [
       serviceToken,
       {

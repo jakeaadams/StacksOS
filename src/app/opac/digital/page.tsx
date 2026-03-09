@@ -246,7 +246,7 @@ export default function DigitalLibraryPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t("searchPlaceholder")}
                 aria-label={t("searchDigitalContent")}
-                className="h-12 rounded-full border-0 bg-white pl-5 pr-14 text-foreground shadow-lg focus-visible:ring-4 focus-visible:ring-white/30"
+                className="h-12 rounded-full border-0 bg-white dark:bg-card pl-5 pr-14 text-foreground shadow-lg focus-visible:ring-4 focus-visible:ring-white/30"
               />
               <Button
                 type="submit"

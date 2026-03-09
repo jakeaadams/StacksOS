@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
 import { hashPassword } from "@/lib/password";
 import { isCookieSecure } from "@/lib/csrf";
-import { isMfaEnabled } from "@/lib/mfa";
+import { isMfaEnabled, isMfaRequired } from "@/lib/mfa";
 import { getActiveMfaMethods } from "@/lib/db/opac-mfa";
 import { z } from "zod";
 
@@ -105,23 +105,31 @@ export async function POST(req: NextRequest) {
       if (user && !user.ilsevent) {
         const patronId = Number(user.id);
 
-        // Check if MFA is required before setting the auth cookie
+        // Check if MFA is enabled and whether the patron needs to complete a challenge
         if (isMfaEnabled()) {
           try {
             const mfaMethods = await getActiveMfaMethods(patronId);
-            if (mfaMethods.length > 0) {
+            const mustChallenge = mfaMethods.length > 0 || isMfaRequired();
+
+            if (mustChallenge) {
               // MFA required — don't set cookie yet. Return the authtoken
               // for the client to hold temporarily during the MFA challenge.
               logger.info(
-                { route: "api.opac.login", patronId, mfaMethods: mfaMethods.length },
+                {
+                  route: "api.opac.login",
+                  patronId,
+                  mfaMethods: mfaMethods.length,
+                  mfaRequired: isMfaRequired(),
+                },
                 "MFA required, sending challenge"
               );
 
               return successResponse({
                 success: true,
                 requiresMfa: true,
+                requiresEnrollment: mfaMethods.length === 0 && isMfaRequired(),
                 patronToken: authResult.payload.authtoken,
-                methods: mfaMethods.map((m) => m.type),
+                methods: mfaMethods.length > 0 ? mfaMethods.map((m) => m.type) : [],
                 patron: {
                   id: patronId,
                   firstName: user.first_given_name,

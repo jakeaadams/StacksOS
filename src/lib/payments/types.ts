@@ -97,17 +97,45 @@ export function getPaymentCustomization(): PaymentCustomization {
   };
 }
 
-/** Derive mode (test or live) from the publishable key prefix. */
+/** Derive mode (test or live) from the provider-specific configuration. */
 export function getPaymentMode(): "test" | "live" {
-  const pk = process.env.STACKSOS_PAYMENT_PUBLIC_KEY || "";
-  return pk.startsWith("pk_live") ? "live" : "test";
+  const provider = (process.env.STACKSOS_PAYMENT_PROVIDER || "none") as PaymentProvider;
+
+  switch (provider) {
+    case "stripe": {
+      const pk = process.env.STACKSOS_PAYMENT_PUBLIC_KEY || "";
+      return pk.startsWith("pk_live") ? "live" : "test";
+    }
+    case "square":
+      return process.env.STACKSOS_SQUARE_ENVIRONMENT === "production" ? "live" : "test";
+    case "paypal":
+      return process.env.STACKSOS_PAYPAL_ENVIRONMENT === "production" ? "live" : "test";
+    default:
+      return "test";
+  }
+}
+
+/** Get the provider-specific secret key for admin status display. */
+function getProviderSecretKey(): string {
+  const provider = (process.env.STACKSOS_PAYMENT_PROVIDER || "none") as PaymentProvider;
+
+  switch (provider) {
+    case "stripe":
+      return process.env.STACKSOS_STRIPE_SECRET_KEY || "";
+    case "square":
+      return process.env.STACKSOS_SQUARE_ACCESS_TOKEN || "";
+    case "paypal":
+      return process.env.STACKSOS_PAYPAL_CLIENT_SECRET || "";
+    default:
+      return "";
+  }
 }
 
 /** Build the full admin-visible settings (never exposes full secrets). */
 export function getPaymentSettings(): PaymentSettings {
   const config = getPaymentConfig();
   const customization = getPaymentCustomization();
-  const sk = process.env.STACKSOS_STRIPE_SECRET_KEY || "";
+  const sk = getProviderSecretKey();
   const ws = config.webhookSecret || "";
   return {
     provider: config.provider,

@@ -253,7 +253,7 @@ export default function MfaPage() {
             </div>
 
             {/* QR Code */}
-            <div className="flex justify-center p-6 bg-white rounded-xl">
+            <div className="flex justify-center p-6 bg-white dark:bg-white rounded-xl">
               <QRCodeSVG value={setupData.uri} size={200} level="M" />
             </div>
 
