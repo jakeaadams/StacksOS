@@ -51,7 +51,7 @@ describe("SES Email Provider", () => {
     });
 
     expect(fetch).toHaveBeenCalledTimes(1);
-    const [url] = vi.mocked(fetch).mock.calls[0];
+    const [url] = vi.mocked(fetch).mock.calls[0]!;
     expect(url).toBe("https://email.us-west-2.amazonaws.com/v2/email/outbound-emails");
   });
 
@@ -69,7 +69,7 @@ describe("SES Email Provider", () => {
       html: "<p>Your items are overdue.</p>",
     });
 
-    const [, options] = vi.mocked(fetch).mock.calls[0];
+    const [, options] = vi.mocked(fetch).mock.calls[0]!;
     const authHeader = (options?.headers as Record<string, string>)["Authorization"];
     expect(authHeader).toContain("AWS4-HMAC-SHA256");
     expect(authHeader).toContain("Credential=AKIAIOSFODNN7EXAMPLE");
@@ -127,7 +127,7 @@ describe("SES Email Provider", () => {
       text: "You owe $5.00",
     });
 
-    const [, options] = vi.mocked(fetch).mock.calls[0];
+    const [, options] = vi.mocked(fetch).mock.calls[0]!;
     const body = JSON.parse(options?.body as string);
     expect(body.Content.Simple.Subject.Data).toBe("Fine Bill");
     expect(body.Content.Simple.Body.Html.Data).toBe("<p>You owe $5.00</p>");
