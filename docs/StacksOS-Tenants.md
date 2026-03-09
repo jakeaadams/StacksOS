@@ -35,7 +35,7 @@ Tenant-provided values always win.
 "security": {
 "ipAllowlist": ["192.168.1.0/24"],
 "idleTimeoutMinutes": 30,
-"mfa": { "required": false, "issuer": "StacksOS" }
+"mfa": { "enabled": false, "required": false, "issuer": "StacksOS" }
 },
 "ai": {
 "enabled": false,
@@ -48,6 +48,20 @@ Tenant-provided values always win.
 "defaultSearchScope": "local",
 "defaultCopyDepth": 1,
 "allowPatronScopeOverride": true
+},
+"payment": {
+"provider": "stripe",
+"currency": "usd",
+"minimumAmount": 100,
+"allowPartialPayment": true,
+"customization": {
+"statementDescriptor": "Library Payment",
+"supportEmail": "billing@example.org",
+"receiptMessage": "Thank you for supporting your library."
+},
+"stripe": { "publicKey": "pk_test_123" },
+"square": { "environment": "sandbox" },
+"paypal": { "environment": "sandbox" }
 },
 "integrations": {}
 }
@@ -105,6 +119,16 @@ Secrets stay in env vars (examples):
 - ANTHROPIC_API_KEY
 - GROK_API_KEY
 - STACKSOS_MFA_SECRET
+- STACKSOS_STRIPE_SECRET_KEY
+- STACKSOS_PAYMENT_WEBHOOK_SECRET
+- STACKSOS_SQUARE_ACCESS_TOKEN
+- STACKSOS_PAYPAL_CLIENT_SECRET
+
+Non-secret payment and patron-MFA behavior can live in tenant config:
+
+- `payment.provider`, currency, minimum amount, partial-payment policy, receipt customization
+- Stripe publishable key, Square location/environment, PayPal client ID/environment
+- `security.mfa.enabled`, `security.mfa.required`, `security.mfa.issuer`
 
 Recommended AI defaults for Grok operations assistant:
 

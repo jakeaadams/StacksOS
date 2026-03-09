@@ -7,6 +7,7 @@
 
 import { describe, it, expect, afterEach } from "vitest";
 import * as OTPAuth from "otpauth";
+import { clearTenantConfigCache } from "@/lib/tenant/config";
 import {
   generateTotpSecret,
   encryptTotpSecret,
@@ -23,6 +24,7 @@ const originalMfaEnabled = process.env.STACKSOS_MFA_ENABLED;
 afterEach(() => {
   process.env.STACKSOS_MFA_SECRET = originalMfaSecret;
   process.env.STACKSOS_MFA_ENABLED = originalMfaEnabled;
+  clearTenantConfigCache();
 });
 
 describe("MFA Module", () => {

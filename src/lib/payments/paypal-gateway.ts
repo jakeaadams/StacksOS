@@ -5,14 +5,15 @@
 
 import { logger } from "@/lib/logger";
 import type { PaymentGateway, PaymentIntent, PaymentResult } from "./types";
+import { getPaymentConfig } from "./types";
 
 function getBaseUrl(): string {
-  const env = process.env.STACKSOS_PAYPAL_ENVIRONMENT || "sandbox";
+  const env = getPaymentConfig().paypalEnvironment || "sandbox";
   return env === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 }
 
 function getClientId(): string {
-  const id = process.env.STACKSOS_PAYPAL_CLIENT_ID;
+  const id = getPaymentConfig().paypalClientId;
   if (!id) throw new Error("STACKSOS_PAYPAL_CLIENT_ID is not configured");
   return id;
 }

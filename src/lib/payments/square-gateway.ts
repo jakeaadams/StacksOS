@@ -6,9 +6,10 @@
 import { randomUUID } from "node:crypto";
 import { logger } from "@/lib/logger";
 import type { PaymentGateway, PaymentIntent, PaymentResult } from "./types";
+import { getPaymentConfig } from "./types";
 
 function getBaseUrl(): string {
-  const env = process.env.STACKSOS_SQUARE_ENVIRONMENT || "sandbox";
+  const env = getPaymentConfig().squareEnvironment || "sandbox";
   return env === "production"
     ? "https://connect.squareup.com"
     : "https://connect.squareupsandbox.com";
@@ -21,7 +22,7 @@ function getAccessToken(): string {
 }
 
 function getLocationId(): string {
-  const id = process.env.STACKSOS_SQUARE_LOCATION_ID;
+  const id = getPaymentConfig().squareLocationId;
   if (!id) throw new Error("STACKSOS_SQUARE_LOCATION_ID is not configured");
   return id;
 }

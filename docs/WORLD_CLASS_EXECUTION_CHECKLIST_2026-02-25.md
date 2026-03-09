@@ -4,10 +4,10 @@ Consolidated tracker for the full multi-message request set (audit + parity + UX
 
 ---
 
-## Current Gate Snapshot (2026-03-03)
+## Current Gate Snapshot (2026-03-09)
 
-- **Local**: lint (quiet) pass, type-check pass, test:run pass (394/394)
-- **VM** (192.168.1.233): lint pass, type-check pass, test:run pass (394/394), test:e2e pass (81 passed, 5 skipped), run_all.sh pass
+- **Local**: lint (quiet) pass, type-check pass, test:run pass (404/404)
+- **VM** (192.168.1.233): lint pass, type-check pass, test:run pass (404/404), test:e2e pass (81 passed, 5 skipped), run_all.sh pass
 - **UI drift**: latest audit aggregate score `0` (target met)
 - **Lint warnings**: `0` warnings on non-quiet lint (`0` errors)
 - **Evergreen host** (192.168.1.232): `/openils/bin/eg_config` reports `Open-ILS 3.16.4` (validate against upstream release announcements before upgrade decisions)

@@ -95,10 +95,50 @@ export const TenantSecurityConfigSchema = z
       .default(30),
     mfa: z
       .object({
+        enabled: z.boolean().default(false),
         required: z.boolean().default(false),
         issuer: z.string().min(1).default("StacksOS"),
       })
-      .default({ required: false, issuer: "StacksOS" }),
+      .default({ enabled: false, required: false, issuer: "StacksOS" }),
+  })
+  .strict();
+
+export const TenantPaymentCustomizationSchema = z
+  .object({
+    statementDescriptor: z.string().trim().max(22).default("Library Payment"),
+    supportEmail: z.string().email().or(z.literal("")).default(""),
+    receiptMessage: z.string().max(500).default(""),
+  })
+  .strict();
+
+export const TenantPaymentConfigSchema = z
+  .object({
+    provider: z.enum(["stripe", "square", "paypal", "none"]).default("none"),
+    currency: z.string().trim().length(3).default("usd"),
+    minimumAmount: z.number().int().min(0).max(100000).default(100),
+    allowPartialPayment: z.boolean().default(true),
+    customization: TenantPaymentCustomizationSchema.default({
+      statementDescriptor: "Library Payment",
+      supportEmail: "",
+      receiptMessage: "",
+    }),
+    stripe: z
+      .object({
+        publicKey: z.string().trim().max(256).optional(),
+      })
+      .default({}),
+    square: z
+      .object({
+        locationId: z.string().trim().max(128).optional(),
+        environment: z.enum(["sandbox", "production"]).default("sandbox"),
+      })
+      .default({ environment: "sandbox" }),
+    paypal: z
+      .object({
+        clientId: z.string().trim().max(256).optional(),
+        environment: z.enum(["sandbox", "live"]).default("sandbox"),
+      })
+      .default({ environment: "sandbox" }),
   })
   .strict();
 
@@ -121,7 +161,7 @@ export const TenantConfigSchema = z
     security: TenantSecurityConfigSchema.default(() => ({
       ipAllowlist: [],
       idleTimeoutMinutes: 30,
-      mfa: { required: false, issuer: "StacksOS" },
+      mfa: { enabled: false, required: false, issuer: "StacksOS" },
     })),
     ai: TenantAiConfigSchema.default(() => ({
       enabled: false,
@@ -148,6 +188,20 @@ export const TenantConfigSchema = z
         showStaffPicks: true,
         showLibraryInfo: true,
       },
+    })),
+    payment: TenantPaymentConfigSchema.default(() => ({
+      provider: "none" as const,
+      currency: "usd",
+      minimumAmount: 100,
+      allowPartialPayment: true,
+      customization: {
+        statementDescriptor: "Library Payment",
+        supportEmail: "",
+        receiptMessage: "",
+      },
+      stripe: {},
+      square: { environment: "sandbox" as const },
+      paypal: { environment: "sandbox" as const },
     })),
     integrations: z
       .object({

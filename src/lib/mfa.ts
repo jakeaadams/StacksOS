@@ -7,6 +7,7 @@
 
 import crypto from "node:crypto";
 import * as OTPAuth from "otpauth";
+import { getTenantConfig } from "@/lib/tenant/config";
 
 const MFA_ALGO = "aes-256-gcm";
 
@@ -59,7 +60,7 @@ export function generateTotpSecret(): string {
 
 export function generateTotpUri(secret: string, patronIdentifier: string, issuer?: string): string {
   const totp = new OTPAuth.TOTP({
-    issuer: issuer || process.env.STACKSOS_MFA_ISSUER || "StacksOS Library",
+    issuer: issuer || getMfaIssuer(),
     label: patronIdentifier,
     algorithm: "SHA1",
     digits: 6,
@@ -101,9 +102,13 @@ export function generateRecoveryCodes(count = 8): string[] {
 // ---------------------------------------------------------------------------
 
 export function isMfaRequired(): boolean {
-  return process.env.STACKSOS_MFA_REQUIRED === "true";
+  return getTenantConfig().security?.mfa?.required ?? false;
 }
 
 export function isMfaEnabled(): boolean {
-  return isMfaConfigured() && process.env.STACKSOS_MFA_ENABLED === "true";
+  return isMfaConfigured() && (getTenantConfig().security?.mfa?.enabled ?? false);
+}
+
+export function getMfaIssuer(): string {
+  return getTenantConfig().security?.mfa?.issuer || "StacksOS Library";
 }

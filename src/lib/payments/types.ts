@@ -3,6 +3,8 @@
  * Supports Stripe, Square, and PayPal with a unified interface.
  */
 
+import { getTenantConfig } from "@/lib/tenant/config";
+
 export type PaymentProvider = "stripe" | "square" | "paypal" | "none";
 
 export interface PaymentConfig {
@@ -14,6 +16,10 @@ export interface PaymentConfig {
   minimumAmount: number;
   /** Whether to allow partial payments */
   allowPartialPayment: boolean;
+  squareLocationId?: string;
+  squareEnvironment?: "sandbox" | "production";
+  paypalClientId?: string;
+  paypalEnvironment?: "sandbox" | "live";
 }
 
 export interface PaymentIntent {
@@ -73,43 +79,86 @@ export interface PaymentSettings {
   minimumAmount: number;
   allowPartialPayment: boolean;
   customization: PaymentCustomization;
+  squareLocationId: string;
+  squareEnvironment: "sandbox" | "production";
+  paypalClientId: string;
+  paypalEnvironment: "sandbox" | "live";
+}
+
+function resolveProvider(): PaymentProvider {
+  const tenant = getTenantConfig();
+  const provider = tenant.payment?.provider || tenant.integrations?.paymentProvider || "none";
+  return provider;
+}
+
+function getStripePublicKey(): string {
+  const tenant = getTenantConfig();
+  return tenant.payment?.stripe?.publicKey || "";
+}
+
+function getSquareLocationId(): string {
+  const tenant = getTenantConfig();
+  return tenant.payment?.square?.locationId || "";
+}
+
+function getSquareEnvironment(): "sandbox" | "production" {
+  const tenant = getTenantConfig();
+  return tenant.payment?.square?.environment || "sandbox";
+}
+
+function getPayPalClientId(): string {
+  const tenant = getTenantConfig();
+  return tenant.payment?.paypal?.clientId || "";
+}
+
+function getPayPalEnvironment(): "sandbox" | "live" {
+  const tenant = getTenantConfig();
+  return tenant.payment?.paypal?.environment || "sandbox";
 }
 
 export function getPaymentConfig(): PaymentConfig {
-  const provider = (process.env.STACKSOS_PAYMENT_PROVIDER || "none") as PaymentProvider;
+  const tenant = getTenantConfig();
+  const payment = tenant.payment;
+  const provider = resolveProvider();
   return {
     provider,
-    publicKey: process.env.STACKSOS_PAYMENT_PUBLIC_KEY || "",
+    publicKey: getStripePublicKey(),
     webhookSecret: process.env.STACKSOS_PAYMENT_WEBHOOK_SECRET,
-    currency: process.env.STACKSOS_PAYMENT_CURRENCY || "usd",
-    minimumAmount: parseInt(process.env.STACKSOS_PAYMENT_MINIMUM || "100", 10),
-    allowPartialPayment: process.env.STACKSOS_PAYMENT_PARTIAL !== "false",
+    currency: payment?.currency || "usd",
+    minimumAmount: payment?.minimumAmount ?? 100,
+    allowPartialPayment: payment?.allowPartialPayment ?? true,
+    squareLocationId: getSquareLocationId(),
+    squareEnvironment: getSquareEnvironment(),
+    paypalClientId: getPayPalClientId(),
+    paypalEnvironment: getPayPalEnvironment(),
   };
 }
 
 export function getPaymentCustomization(): PaymentCustomization {
+  const payment = getTenantConfig().payment;
   return {
-    statementDescriptor: (
-      process.env.STACKSOS_PAYMENT_STATEMENT_DESCRIPTOR || "Library Payment"
-    ).slice(0, 22),
-    supportEmail: process.env.STACKSOS_PAYMENT_SUPPORT_EMAIL || "",
-    receiptMessage: process.env.STACKSOS_PAYMENT_RECEIPT_MESSAGE || "",
+    statementDescriptor: (payment?.customization?.statementDescriptor || "Library Payment").slice(
+      0,
+      22
+    ),
+    supportEmail: payment?.customization?.supportEmail || "",
+    receiptMessage: payment?.customization?.receiptMessage || "",
   };
 }
 
 /** Derive mode (test or live) from the provider-specific configuration. */
 export function getPaymentMode(): "test" | "live" {
-  const provider = (process.env.STACKSOS_PAYMENT_PROVIDER || "none") as PaymentProvider;
+  const provider = resolveProvider();
 
   switch (provider) {
     case "stripe": {
-      const pk = process.env.STACKSOS_PAYMENT_PUBLIC_KEY || "";
+      const pk = getStripePublicKey();
       return pk.startsWith("pk_live") ? "live" : "test";
     }
     case "square":
-      return process.env.STACKSOS_SQUARE_ENVIRONMENT === "production" ? "live" : "test";
+      return getSquareEnvironment() === "production" ? "live" : "test";
     case "paypal":
-      return process.env.STACKSOS_PAYPAL_ENVIRONMENT === "production" ? "live" : "test";
+      return getPayPalEnvironment() === "live" ? "live" : "test";
     default:
       return "test";
   }
@@ -117,7 +166,7 @@ export function getPaymentMode(): "test" | "live" {
 
 /** Get the provider-specific secret key for admin status display. */
 function getProviderSecretKey(): string {
-  const provider = (process.env.STACKSOS_PAYMENT_PROVIDER || "none") as PaymentProvider;
+  const provider = resolveProvider();
 
   switch (provider) {
     case "stripe":
@@ -148,5 +197,9 @@ export function getPaymentSettings(): PaymentSettings {
     minimumAmount: config.minimumAmount,
     allowPartialPayment: config.allowPartialPayment,
     customization,
+    squareLocationId: config.squareLocationId || "",
+    squareEnvironment: config.squareEnvironment || "sandbox",
+    paypalClientId: config.paypalClientId || "",
+    paypalEnvironment: config.paypalEnvironment || "sandbox",
   };
 }

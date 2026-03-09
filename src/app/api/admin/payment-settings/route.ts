@@ -12,6 +12,10 @@ import { logAuditEvent } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { requireSaaSAccess } from "@/lib/saas-rbac";
 import { getPaymentSettings } from "@/lib/payments/types";
+import { clearTenantConfigCache, getTenantConfig, getTenantId } from "@/lib/tenant/config";
+import { applyTenantProfileDefaults } from "@/lib/tenant/profiles";
+import { TenantConfigSchema } from "@/lib/tenant/schema";
+import { loadTenantConfigFromDisk, saveTenantConfigToDisk } from "@/lib/tenant/store";
 
 // ---------------------------------------------------------------------------
 // GET /api/admin/payment-settings — return current payment configuration
@@ -38,6 +42,10 @@ export async function GET(req: NextRequest) {
       minimumAmount: settings.minimumAmount,
       allowPartialPayment: settings.allowPartialPayment,
       customization: settings.customization,
+      squareLocationId: settings.squareLocationId,
+      squareEnvironment: settings.squareEnvironment,
+      paypalClientId: settings.paypalClientId,
+      paypalEnvironment: settings.paypalEnvironment,
     });
   } catch (error) {
     return serverErrorResponse(error, "GET /api/admin/payment-settings", req);
@@ -54,6 +62,23 @@ const postSchema = z
     currency: z.string().min(3).max(3).optional(),
     minimumAmount: z.number().int().min(0).max(100000).optional(),
     allowPartialPayment: z.boolean().optional(),
+    stripe: z
+      .object({
+        publicKey: z.string().trim().max(256).optional(),
+      })
+      .optional(),
+    square: z
+      .object({
+        locationId: z.string().trim().max(128).optional(),
+        environment: z.enum(["sandbox", "production"]).optional(),
+      })
+      .optional(),
+    paypal: z
+      .object({
+        clientId: z.string().trim().max(256).optional(),
+        environment: z.enum(["sandbox", "live"]).optional(),
+      })
+      .optional(),
     customization: z
       .object({
         statementDescriptor: z.string().max(22).optional(),
@@ -94,15 +119,49 @@ export async function POST(req: NextRequest) {
     const body = await parseJsonBodyWithSchema(req, postSchema);
     if (body instanceof Response) return body;
 
-    // In a production SaaS, these would be written to a secure tenant config store.
-    // For single-tenant installs, they map to environment variables.
-    // We log what was changed without including secret values.
+    const tenantId = getTenantId();
     const actorId = actorIdFromActor(actor);
+    const existing = loadTenantConfigFromDisk(tenantId) || getTenantConfig();
+    const existingPayment = existing.payment;
+    const updated = applyTenantProfileDefaults(
+      TenantConfigSchema.parse({
+        ...existing,
+        payment: {
+          ...existingPayment,
+          provider: body.provider ?? existingPayment?.provider,
+          currency: body.currency ?? existingPayment?.currency,
+          minimumAmount: body.minimumAmount ?? existingPayment?.minimumAmount,
+          allowPartialPayment: body.allowPartialPayment ?? existingPayment?.allowPartialPayment,
+          customization: {
+            ...(existingPayment?.customization || {}),
+            ...(body.customization || {}),
+          },
+          stripe: {
+            ...(existingPayment?.stripe || {}),
+            ...(body.stripe || {}),
+          },
+          square: {
+            ...(existingPayment?.square || {}),
+            ...(body.square || {}),
+          },
+          paypal: {
+            ...(existingPayment?.paypal || {}),
+            ...(body.paypal || {}),
+          },
+        },
+        integrations: {
+          ...(existing.integrations || {}),
+          paymentProvider: body.provider ?? existing.integrations?.paymentProvider,
+        },
+      })
+    );
+    saveTenantConfigToDisk(updated);
+    clearTenantConfigCache();
 
     await logAuditEvent({
       action: "payment.settings.update",
       entity: "tenant",
-      entityId: "payment-config",
+      entityId: tenantId,
       status: "success",
       actor: actor as import("@/lib/audit").AuditActor | null,
       ip,
@@ -115,23 +174,29 @@ export async function POST(req: NextRequest) {
         minimumAmount: body.minimumAmount,
         allowPartialPayment: body.allowPartialPayment,
         hasCustomization: Boolean(body.customization),
+        hasStripePublicKey: Boolean(body.stripe?.publicKey),
+        hasSquareLocationId: Boolean(body.square?.locationId),
+        squareEnvironment: body.square?.environment,
+        hasPayPalClientId: Boolean(body.paypal?.clientId),
+        paypalEnvironment: body.paypal?.environment,
       },
     }).catch(() => {});
 
-    // Return the current settings (from env — in a full SaaS this would reflect saved values)
     const settings = getPaymentSettings();
 
     return successResponse({
       saved: true,
       settings: {
-        provider: body.provider ?? settings.provider,
-        currency: body.currency ?? settings.currency,
-        minimumAmount: body.minimumAmount ?? settings.minimumAmount,
-        allowPartialPayment: body.allowPartialPayment ?? settings.allowPartialPayment,
-        customization: {
-          ...settings.customization,
-          ...(body.customization || {}),
-        },
+        provider: settings.provider,
+        publicKey: settings.publicKey,
+        currency: settings.currency,
+        minimumAmount: settings.minimumAmount,
+        allowPartialPayment: settings.allowPartialPayment,
+        customization: settings.customization,
+        squareLocationId: settings.squareLocationId,
+        squareEnvironment: settings.squareEnvironment,
+        paypalClientId: settings.paypalClientId,
+        paypalEnvironment: settings.paypalEnvironment,
       },
     });
   } catch (error) {

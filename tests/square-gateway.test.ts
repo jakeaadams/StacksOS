@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { clearTenantConfigCache } from "@/lib/tenant/config";
 
 vi.mock("@/lib/logger", () => ({
   logger: {
@@ -23,11 +24,14 @@ beforeEach(() => {
   process.env.STACKSOS_SQUARE_ACCESS_TOKEN = "test-square-token";
   process.env.STACKSOS_SQUARE_LOCATION_ID = "test-location-id";
   process.env.STACKSOS_SQUARE_ENVIRONMENT = "sandbox";
+  process.env.STACKSOS_PAYMENT_PROVIDER = "square";
   vi.stubGlobal("fetch", vi.fn());
+  clearTenantConfigCache();
 });
 
 afterEach(() => {
   process.env = { ...originalEnv };
+  clearTenantConfigCache();
   vi.restoreAllMocks();
 });
 

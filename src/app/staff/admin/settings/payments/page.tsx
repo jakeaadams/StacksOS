@@ -49,6 +49,10 @@ interface PaymentSettingsResponse {
   currency: string;
   minimumAmount: number;
   allowPartialPayment: boolean;
+  squareLocationId: string;
+  squareEnvironment: "sandbox" | "production";
+  paypalClientId: string;
+  paypalEnvironment: "sandbox" | "live";
   customization: {
     statementDescriptor: string;
     supportEmail: string;
@@ -107,11 +111,11 @@ function initialForm(data: PaymentSettingsResponse | null): FormState {
     secretKey: "",
     webhookSecret: "",
     squareAccessToken: "",
-    squareLocationId: "",
-    squareEnvironment: "sandbox",
-    paypalClientId: "",
+    squareLocationId: data?.squareLocationId || "",
+    squareEnvironment: data?.squareEnvironment || "sandbox",
+    paypalClientId: data?.paypalClientId || "",
     paypalClientSecret: "",
-    paypalEnvironment: "sandbox",
+    paypalEnvironment: data?.paypalEnvironment || "sandbox",
     currency: data?.currency || "usd",
     minimumAmount: data ? String(data.minimumAmount / 100) : "1.00",
     allowPartialPayment: data?.allowPartialPayment ?? true,
@@ -224,6 +228,26 @@ export default function PaymentSettingsPage() {
           currency: form.currency,
           minimumAmount: minimumCents,
           allowPartialPayment: form.allowPartialPayment,
+          stripe:
+            form.gateway === "stripe"
+              ? {
+                  publicKey: form.publicKey.trim() || undefined,
+                }
+              : undefined,
+          square:
+            form.gateway === "square"
+              ? {
+                  locationId: form.squareLocationId.trim() || undefined,
+                  environment: form.squareEnvironment,
+                }
+              : undefined,
+          paypal:
+            form.gateway === "paypal"
+              ? {
+                  clientId: form.paypalClientId.trim() || undefined,
+                  environment: form.paypalEnvironment,
+                }
+              : undefined,
           customization: {
             statementDescriptor: form.statementDescriptor.trim() || undefined,
             supportEmail: form.supportEmail.trim() || undefined,
@@ -236,6 +260,16 @@ export default function PaymentSettingsPage() {
         throw new Error(String(json?.error || "Failed to save payment settings."));
       }
       toast.success("Payment settings saved.");
+      if (
+        form.secretKey.trim() ||
+        form.webhookSecret.trim() ||
+        form.squareAccessToken.trim() ||
+        form.paypalClientSecret.trim()
+      ) {
+        toast.message(
+          "Gateway secrets are not stored in tenant config. Keep them in your deploy-time secret store."
+        );
+      }
       await refetch();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save payment settings.");
@@ -271,7 +305,9 @@ export default function PaymentSettingsPage() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             StacksOS handles payment state independently and writes back to Evergreen when
-            transactions settle. No Evergreen schema changes required.
+            transactions settle. No Evergreen schema changes required. Patron web checkout is fully
+            wired for Stripe; other gateways can be pre-configured here while their settlement
+            automation is finalized per deployment.
           </CardContent>
         </Card>
 
@@ -354,8 +390,8 @@ export default function PaymentSettingsPage() {
                         Stripe API Keys
                       </CardTitle>
                       <CardDescription>
-                        Your keys are stored securely as environment variables and never exposed to
-                        the browser or logged.
+                        Save the publishable key here for this tenant. Secret values stay in your
+                        deploy-time secret store and are never written to tenant config.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -370,8 +406,8 @@ export default function PaymentSettingsPage() {
                           className="font-mono text-sm"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Starts with <code>pk_test_</code> or <code>pk_live_</code>. This key is
-                          safe to embed in client-side code.
+                          Starts with <code>pk_test_</code> or <code>pk_live_</code>. This value is
+                          safe to persist in tenant config and is used by the OPAC checkout flow.
                         </p>
                       </div>
 
@@ -479,8 +515,8 @@ export default function PaymentSettingsPage() {
                           </button>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          From Stripe Dashboard &rarr; Developers &rarr; Webhooks. Required for
-                          server-side payment confirmation.
+                          Configure this in your deploy secret store. It is required for server-side
+                          payment confirmation but is not saved from this UI.
                         </p>
                         {data?.webhookSecretConfigured && !form.webhookSecret && (
                           <p className="text-xs text-green-600 flex items-center gap-1">
@@ -502,8 +538,8 @@ export default function PaymentSettingsPage() {
                         Square Credentials
                       </CardTitle>
                       <CardDescription>
-                        Your credentials are stored securely as environment variables and never
-                        exposed to the browser or logged.
+                        Save non-secret Square settings here. Access tokens remain deploy-time
+                        secrets and are not written to tenant config.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -557,7 +593,7 @@ export default function PaymentSettingsPage() {
                           className="font-mono text-sm"
                         />
                         <p className="text-xs text-muted-foreground">
-                          The Square location to associate payments with.
+                          Saved in tenant config for runtime use.
                         </p>
                       </div>
 
@@ -592,8 +628,8 @@ export default function PaymentSettingsPage() {
                         PayPal Credentials
                       </CardTitle>
                       <CardDescription>
-                        Your credentials are stored securely as environment variables and never
-                        exposed to the browser or logged.
+                        Save the PayPal client ID and environment here. The client secret remains a
+                        deploy-time secret.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">

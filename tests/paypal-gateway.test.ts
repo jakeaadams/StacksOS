@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { clearTenantConfigCache } from "@/lib/tenant/config";
 
 vi.mock("@/lib/logger", () => ({
   logger: {
@@ -22,11 +23,14 @@ beforeEach(() => {
   process.env.STACKSOS_PAYPAL_CLIENT_ID = "test-client-id";
   process.env.STACKSOS_PAYPAL_CLIENT_SECRET = "test-client-secret";
   process.env.STACKSOS_PAYPAL_ENVIRONMENT = "sandbox";
+  process.env.STACKSOS_PAYMENT_PROVIDER = "paypal";
   vi.stubGlobal("fetch", vi.fn());
+  clearTenantConfigCache();
 });
 
 afterEach(() => {
   process.env = { ...originalEnv };
+  clearTenantConfigCache();
   vi.restoreAllMocks();
   // Reset module state (cached token) between tests
   vi.resetModules();

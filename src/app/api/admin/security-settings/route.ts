@@ -11,7 +11,11 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { requireSaaSAccess } from "@/lib/saas-rbac";
-import { isMfaConfigured } from "@/lib/mfa";
+import { getMfaIssuer, isMfaConfigured } from "@/lib/mfa";
+import { clearTenantConfigCache, getTenantConfig, getTenantId } from "@/lib/tenant/config";
+import { applyTenantProfileDefaults } from "@/lib/tenant/profiles";
+import { TenantConfigSchema } from "@/lib/tenant/schema";
+import { loadTenantConfigFromDisk, saveTenantConfigToDisk } from "@/lib/tenant/store";
 
 // ---------------------------------------------------------------------------
 // GET /api/admin/security-settings — return current security configuration
@@ -28,9 +32,9 @@ export async function GET(req: NextRequest) {
     return successResponse({
       mfa: {
         secretConfigured: isMfaConfigured(),
-        enabled: process.env.STACKSOS_MFA_ENABLED === "true",
-        required: process.env.STACKSOS_MFA_REQUIRED === "true",
-        issuer: process.env.STACKSOS_MFA_ISSUER || "StacksOS Library",
+        enabled: getTenantConfig().security?.mfa?.enabled ?? false,
+        required: getTenantConfig().security?.mfa?.required ?? false,
+        issuer: getMfaIssuer(),
       },
       sessions: {
         defaultDurationMinutes: 120,
@@ -83,12 +87,36 @@ export async function POST(req: NextRequest) {
     const body = await parseJsonBodyWithSchema(req, postSchema);
     if (body instanceof Response) return body;
 
+    const tenantId = getTenantId();
     const actorId = actorIdFromActor(actor);
+    const existing = loadTenantConfigFromDisk(tenantId) || getTenantConfig();
+    const currentMfa = existing.security?.mfa || {
+      enabled: false,
+      required: false,
+      issuer: getMfaIssuer(),
+    };
+    const nextEnabled = body.mfaEnabled ?? currentMfa.enabled;
+    const nextRequired = nextEnabled ? (body.mfaRequired ?? currentMfa.required) : false;
+    const updated = applyTenantProfileDefaults(
+      TenantConfigSchema.parse({
+        ...existing,
+        security: {
+          ...(existing.security || {}),
+          mfa: {
+            ...currentMfa,
+            enabled: nextEnabled,
+            required: nextRequired,
+          },
+        },
+      })
+    );
+    saveTenantConfigToDisk(updated);
+    clearTenantConfigCache();
 
     await logAuditEvent({
       action: "security.settings.update",
       entity: "tenant",
-      entityId: "security-config",
+      entityId: tenantId,
       status: "success",
       actor: actor as import("@/lib/audit").AuditActor | null,
       ip,
@@ -101,16 +129,14 @@ export async function POST(req: NextRequest) {
       },
     }).catch(() => {});
 
-    // In a production SaaS, these would be written to a secure tenant config store.
-    // For single-tenant installs, they map to environment variables.
     return successResponse({
       saved: true,
       settings: {
         mfa: {
           secretConfigured: isMfaConfigured(),
-          enabled: body.mfaEnabled ?? process.env.STACKSOS_MFA_ENABLED === "true",
-          required: body.mfaRequired ?? process.env.STACKSOS_MFA_REQUIRED === "true",
-          issuer: process.env.STACKSOS_MFA_ISSUER || "StacksOS Library",
+          enabled: updated.security.mfa.enabled,
+          required: updated.security.mfa.required,
+          issuer: updated.security.mfa.issuer,
         },
       },
     });

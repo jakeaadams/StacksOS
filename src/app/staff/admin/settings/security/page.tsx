@@ -59,6 +59,17 @@ export default function SecuritySettingsPage() {
         body: JSON.stringify({ mfaEnabled, mfaRequired: mfaEnabled && mfaRequired }),
       });
       if (res.ok) {
+        const data = await res.json().catch(() => null);
+        if (data?.settings?.mfa) {
+          setSettings((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  mfa: data.settings.mfa,
+                }
+              : prev
+          );
+        }
         toast.success("Security settings saved.");
       } else {
         const data = await res.json().catch(() => ({}));
@@ -160,7 +171,8 @@ export default function SecuritySettingsPage() {
                 </Label>
                 <p className="text-sm text-muted-foreground mt-0.5">
                   When enabled, patrons can optionally enroll an authenticator app for two-step
-                  login.
+                  login. This preference is saved in tenant config; the encryption secret remains
+                  deploy-managed.
                 </p>
               </div>
               <Switch
@@ -204,8 +216,9 @@ export default function SecuritySettingsPage() {
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   This appears in the patron&apos;s authenticator app. Configure via{" "}
-                  <code className="bg-muted px-1 rounded text-xs">STACKSOS_MFA_ISSUER</code>{" "}
-                  environment variable.
+                  <code className="bg-muted px-1 rounded text-xs">STACKSOS_MFA_ISSUER</code> when
+                  bootstrapping a tenant or edit the tenant config directly if you need a custom
+                  issuer.
                 </p>
               </div>
             )}

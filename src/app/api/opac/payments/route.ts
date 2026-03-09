@@ -40,6 +40,19 @@ async function resolveGateway(provider: string, currency: string): Promise<Payme
   }
 }
 
+function providerLabel(provider: string): string {
+  switch (provider) {
+    case "paypal":
+      return "PayPal";
+    case "stripe":
+      return "Stripe";
+    case "square":
+      return "Square";
+    default:
+      return provider;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // POST /api/opac/payments -- create a payment intent
 // ---------------------------------------------------------------------------
@@ -81,6 +94,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { ok: false, error: "Online payments are not configured for this library." },
         { status: 501 }
+      );
+    }
+
+    if (config.provider !== "stripe") {
+      return errorResponse(
+        `${providerLabel(config.provider)} checkout is configured for this tenant, but patron web checkout is currently fully wired only for Stripe.`,
+        501
       );
     }
 
@@ -127,6 +147,7 @@ export async function POST(req: NextRequest) {
     return successResponse({
       intentId: intent.id,
       clientSecret: intent.clientSecret,
+      publishableKey: config.publicKey,
       amount: intent.amount,
       currency: intent.currency,
       status: intent.status,

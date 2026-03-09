@@ -235,9 +235,12 @@ Then diff the two generated folders under `audit/evergreen-footprint/`.
 ### Payments, MFA, and Events Integrations
 
 - OPAC fine payments are wired through `/api/opac/payments` with a staff admin setup surface at `/staff/admin/settings/payments`
-- Stripe is the current first-class admin-configured payment path; Square and PayPal gateway adapters are available for env-configured/provider-driven rollout
+- Non-secret payment behavior is now tenant-backed: provider, currency, minimum amount, partial-payment policy, receipt customization, Stripe publishable key, Square location/environment, and PayPal client ID/environment persist in tenant config
+- Payment secrets remain deploy-managed: Stripe secret/webhook secrets, Square access tokens, and PayPal client secrets are not written to tenant JSON
+- Stripe is the current first-class patron web checkout path; Square and PayPal admin settings can be preconfigured per tenant while provider-specific settlement automation is finalized per deployment
 - Payment result state and patron payment history are available under the OPAC account experience
 - Patron TOTP MFA is implemented with setup, verify, challenge, and revoke APIs plus a dedicated page at `/opac/account/security/mfa`
+- Patron MFA enable/require flags are tenant-backed through `/staff/admin/settings/security`; the MFA encryption secret remains deploy-managed
 - LibCal integration is available through `LIBCAL_*` env configuration and is loaded by the events data layer when configured
 
 ### AI Copilot Expansion + Audit Trail
@@ -459,13 +462,13 @@ Local:
 
 - `npm run lint -- --quiet`: pass
 - `npm run type-check`: pass
-- `npm run test:run`: pass (`394/394`)
+- `npm run test:run`: pass (`404/404`)
 
 VM (`192.168.1.233`, `/home/jake/projects/stacksos`):
 
 - `npm run lint -- --quiet`: pass
 - `npm run type-check`: pass
-- `npm run test:run`: pass (`394/394`)
+- `npm run test:run`: pass (`404/404`)
 - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake npm run test:e2e`: pass (`81 passed, 5 skipped`)
 - `E2E_STAFF_USER=jake E2E_STAFF_PASS=jake BASE_URL=http://127.0.0.1:3000 bash audit/run_all.sh`: pass
 - `run_all.sh` includes current green results for UI audit, OPAC audit, task benchmark, API audit, workflow QA, and perf budgets

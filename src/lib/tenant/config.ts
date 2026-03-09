@@ -88,6 +88,7 @@ function buildEnvTenantFallback(tenantId: string): TenantConfig {
         ? Number(process.env.STACKSOS_IDLE_TIMEOUT_MINUTES)
         : undefined,
       mfa: {
+        enabled: process.env.STACKSOS_MFA_ENABLED === "true",
         required: process.env.STACKSOS_MFA_REQUIRED === "true",
         issuer: process.env.STACKSOS_MFA_ISSUER || undefined,
       },
@@ -128,9 +129,51 @@ function buildEnvTenantFallback(tenantId: string): TenantConfig {
       searchPlaceholder: process.env.STACKSOS_OPAC_SEARCH_PLACEHOLDER || undefined,
       styleVariant: opacStyleVariant,
     },
+    payment: {
+      provider:
+        process.env.STACKSOS_PAYMENT_PROVIDER &&
+        ["stripe", "square", "paypal", "none"].includes(process.env.STACKSOS_PAYMENT_PROVIDER)
+          ? (process.env.STACKSOS_PAYMENT_PROVIDER as "stripe" | "square" | "paypal" | "none")
+          : undefined,
+      currency: process.env.STACKSOS_PAYMENT_CURRENCY || undefined,
+      minimumAmount: Number.isFinite(Number(process.env.STACKSOS_PAYMENT_MINIMUM))
+        ? Number(process.env.STACKSOS_PAYMENT_MINIMUM)
+        : undefined,
+      allowPartialPayment:
+        process.env.STACKSOS_PAYMENT_PARTIAL === undefined
+          ? undefined
+          : process.env.STACKSOS_PAYMENT_PARTIAL !== "false",
+      customization: {
+        statementDescriptor: process.env.STACKSOS_PAYMENT_STATEMENT_DESCRIPTOR || undefined,
+        supportEmail: process.env.STACKSOS_PAYMENT_SUPPORT_EMAIL || undefined,
+        receiptMessage: process.env.STACKSOS_PAYMENT_RECEIPT_MESSAGE || undefined,
+      },
+      stripe: {
+        publicKey: process.env.STACKSOS_PAYMENT_PUBLIC_KEY || undefined,
+      },
+      square: {
+        locationId: process.env.STACKSOS_SQUARE_LOCATION_ID || undefined,
+        environment:
+          process.env.STACKSOS_SQUARE_ENVIRONMENT === "production"
+            ? "production"
+            : process.env.STACKSOS_SQUARE_ENVIRONMENT === "sandbox"
+              ? "sandbox"
+              : undefined,
+      },
+      paypal: {
+        clientId: process.env.STACKSOS_PAYPAL_CLIENT_ID || undefined,
+        environment:
+          process.env.STACKSOS_PAYPAL_ENVIRONMENT === "live"
+            ? "live"
+            : process.env.STACKSOS_PAYPAL_ENVIRONMENT === "sandbox"
+              ? "sandbox"
+              : undefined,
+      },
+    },
     integrations: {
       emailProvider: (process.env.STACKSOS_EMAIL_PROVIDER as unknown) || undefined,
       smsProvider: (process.env.STACKSOS_SMS_PROVIDER as unknown) || undefined,
+      paymentProvider: (process.env.STACKSOS_PAYMENT_PROVIDER as unknown) || undefined,
     },
   });
 }
