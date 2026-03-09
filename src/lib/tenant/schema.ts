@@ -152,7 +152,7 @@ export const TenantConfigSchema = z
     integrations: z
       .object({
         emailProvider: z.enum(["smtp", "resend", "sendgrid", "ses", "console"]).optional(),
-        smsProvider: z.enum(["webhook", "console"]).optional(),
+        smsProvider: z.enum(["webhook", "twilio", "console"]).optional(),
       })
       .default({}),
   })

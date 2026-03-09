@@ -453,7 +453,7 @@ If Evergreen/OpenSRF is unreachable, E2E login/setup will fail even if lint/type
   - `nodemailer` 8
 - `eslint` remains on v9 intentionally for now. `eslint@10` currently breaks with the active Next ESLint plugin stack in this project.
 
-## Verification Snapshot (2026-03-08 latest)
+## Verification Snapshot (2026-03-09 latest)
 
 Local:
 
