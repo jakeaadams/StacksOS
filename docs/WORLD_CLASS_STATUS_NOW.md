@@ -1,4 +1,4 @@
-# StacksOS World-Class Status Now (2026-03-03)
+# StacksOS World-Class Status Now (2026-03-10)
 
 This is the single source of truth for current project status and next-step execution.
 Use this file as the handoff baseline for any follow-on implementation work.
@@ -9,7 +9,7 @@ Use this file as the handoff baseline for any follow-on implementation work.
 
 - `npm run lint -- --quiet` -> pass
 - `npm run type-check` -> pass
-- `npm run test:run` -> pass (`328/328`)
+- `npm run test:run` -> pass (`440/440`)
 
 ### Runtime gates (VM: `192.168.1.233`)
 
@@ -25,11 +25,12 @@ Use this file as the handoff baseline for any follow-on implementation work.
 
 - Current branch: `main`
 - Local branch state: synced with `origin/main` (VM-assisted push workflow used).
-- Latest verification commit: `7e23495`
+- Latest verification commit: `c290f54`
 
 ## 3) What Is Done (Execution Summary)
 
 - End-to-end gate is green in production-like VM runtime.
+- Stripe, Square, and PayPal patron payments are tenant-backed and wired end-to-end through the OPAC; Square now uses a StacksOS-owned payment session instead of a placeholder provider payment.
 - AI provider runtime includes `moonshot` support and validates correctly.
 - OPAC/staff/Evergreen bridge audits pass under `run_all.sh`.
 - OPAC passkey flow is live: login passkey prompt, settings enrollment/revoke UI, Evergreen-compatible auth via encrypted PIN digest.
