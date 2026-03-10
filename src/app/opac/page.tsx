@@ -24,6 +24,8 @@ import {
   MonitorPlay,
   MapPin,
   CalendarDays,
+  Search,
+  Library,
 } from "lucide-react";
 
 import type { LibraryEvent } from "@/lib/events-data";
@@ -157,6 +159,68 @@ function transformCatalogResults(records: any[]): FeaturedBook[] {
     totalCopies: record.total_copies || record.availability?.total || 0,
     rating: record.rating,
   }));
+}
+
+function buildStartHereActions(options: {
+  isLoggedIn: boolean;
+  hasDigital: boolean;
+  hasEvents: boolean;
+}): Array<{ label: string; description: string; href: string; icon: React.ElementType }> {
+  const actions: Array<{
+    label: string;
+    description: string;
+    href: string;
+    icon: React.ElementType;
+  }> = [
+    {
+      label: "Search the catalog",
+      description: "Start with books, media, and live availability at your current scope.",
+      href: "/opac/search",
+      icon: Search,
+    },
+    {
+      label: options.isLoggedIn ? "Open my account" : "Sign in to my account",
+      description: options.isLoggedIn
+        ? "Renew items, review holds, and keep your card details in one place."
+        : "Checkouts, holds, lists, and saved account settings live here.",
+      href: options.isLoggedIn ? "/opac/account" : "/opac/login?redirect=/opac/account",
+      icon: Library,
+    },
+  ];
+
+  if (options.hasDigital) {
+    actions.push({
+      label: "Open the digital library",
+      description: "Jump to Libby, Hoopla, cloudLibrary, Kanopy, and other configured services.",
+      href: "/opac/digital",
+      icon: Smartphone,
+    });
+  } else {
+    actions.push({
+      label: "Use advanced search",
+      description: "Narrow by format, subject, language, audience, and publication details.",
+      href: "/opac/advanced-search",
+      icon: BookOpen,
+    });
+  }
+
+  if (options.hasEvents) {
+    actions.push({
+      label: "Browse programs and events",
+      description: "Find storytimes, workshops, clubs, and featured events at your library.",
+      href: "/opac/events",
+      icon: CalendarDays,
+    });
+  } else {
+    actions.push({
+      label: "Browse subjects",
+      description: "Explore new arrivals, staff picks, and subject-driven discovery paths.",
+      href: "/opac/browse",
+      icon: Star,
+    });
+  }
+
+  return actions;
 }
 
 export default function OPACHomePage() {
@@ -416,6 +480,49 @@ export default function OPACHomePage() {
           </div>
         </section>
       )}
+
+      <section className="border-b border-border bg-card/70 py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Start here
+              </p>
+              <h2 className="mt-1 text-2xl font-bold text-foreground">
+                Move from discovery to action without hunting through the catalog
+              </h2>
+            </div>
+            {currentLocation ? (
+              <div className="hidden items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-sm text-muted-foreground md:flex">
+                <MapPin className="h-4 w-4" />
+                {currentLocation.name}
+              </div>
+            ) : null}
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {buildStartHereActions({
+              isLoggedIn,
+              hasDigital: featureFlags.opacDigitalLibrary,
+              hasEvents: featureFlags.opacEvents,
+            }).map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="stx-surface rounded-2xl p-5 transition-all hover:border-primary-400/40 hover:shadow-md"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="rounded-xl bg-primary-100 p-3 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+                    <action.icon className="h-5 w-5" />
+                  </div>
+                  <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+                </div>
+                <h3 className="mt-4 text-base font-semibold text-foreground">{action.label}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{action.description}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Browse by format */}
       {sectionVisibility.showBrowseByFormat ? (

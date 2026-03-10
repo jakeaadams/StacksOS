@@ -81,10 +81,11 @@ export function AccountNav() {
         <div>
           <p className="text-sm font-semibold text-foreground">My Account</p>
           <p className="text-sm text-muted-foreground">
-            Keep loans, holds, payments, saved lists, and account security in one place.
+            Keep loans, holds, payments, saved lists, and account security in one place with a clear
+            next step on every screen.
           </p>
         </div>
-        <nav className="flex gap-2 overflow-x-auto pb-1">
+        <nav className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
           {items.map((item) => {
             const active = isAccountActive(pathname, item.href);
             return (
@@ -92,7 +93,7 @@ export function AccountNav() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors",
+                  "inline-flex min-h-11 shrink-0 snap-start items-center gap-2 rounded-full border px-4 py-2 text-sm whitespace-nowrap transition-colors",
                   active
                     ? "border-[hsl(var(--brand-1))]/25 bg-[hsl(var(--brand-1))]/10 text-foreground"
                     : "border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground"

@@ -583,7 +583,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <CommandGroup heading="Admin">
               <CommandItem onSelect={() => runCommand(() => router.push("/staff/admin/settings"))}>
                 <Sliders className="mr-2 h-4 w-4" />
-                <span>Settings</span>
+                <span>Settings Hub</span>
               </CommandItem>
               <CommandItem onSelect={() => runCommand(() => router.push("/staff/admin/users"))}>
                 <Users className="mr-2 h-4 w-4" />
@@ -591,7 +591,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               </CommandItem>
               <CommandItem onSelect={() => runCommand(() => router.push("/staff/admin"))}>
                 <Building className="mr-2 h-4 w-4" />
-                <span>Locations</span>
+                <span>Admin Home</span>
               </CommandItem>
               <CommandItem
                 onSelect={() => runCommand(() => router.push("/staff/admin/permissions"))}
@@ -603,7 +603,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 onSelect={() => runCommand(() => router.push("/staff/admin/policy-inspector"))}
               >
                 <Database className="mr-2 h-4 w-4" />
-                <span>Org Units</span>
+                <span>Policy Inspector</span>
               </CommandItem>
             </CommandGroup>
 

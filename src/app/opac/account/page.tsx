@@ -27,6 +27,7 @@ import {
   Phone,
   CreditCard,
   QrCode,
+  Wallet,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -63,6 +64,31 @@ function QuickStatCard({ title, value, icon: Icon, href, color, alert }: QuickSt
         View details
         <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
       </div>
+    </Link>
+  );
+}
+
+type QuickActionCardProps = {
+  title: string;
+  description: string;
+  href: string;
+  icon: ElementType;
+};
+
+function QuickActionCard({ title, description, href, icon: Icon }: QuickActionCardProps) {
+  return (
+    <Link
+      href={href}
+      className="stx-surface rounded-xl p-5 transition-all hover:border-primary-400/40 hover:shadow-md"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="rounded-xl bg-primary-100 p-3 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+          <Icon className="h-5 w-5" />
+        </div>
+        <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+      </div>
+      <h3 className="mt-4 text-base font-semibold text-foreground">{title}</h3>
+      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
     </Link>
   );
 }
@@ -136,7 +162,41 @@ export default function AccountDashboard() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Welcome, {patron?.firstName}!</h1>
-          <p className="text-muted-foreground mt-1">Manage your library account</p>
+          <p className="text-muted-foreground mt-1">
+            Manage checkouts, holds, payments, and account details
+            {currentLocation ? ` for ${currentLocation.name}` : ""}.
+          </p>
+        </div>
+
+        <div className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <QuickActionCard
+            title="Manage checkouts"
+            description="Renew active loans, review due dates, and see what needs attention first."
+            href="/opac/account/checkouts"
+            icon={BookOpen}
+          />
+          <QuickActionCard
+            title="Review holds"
+            description="Track requests, pickup windows, and next steps for ready items."
+            href="/opac/account/holds"
+            icon={Clock}
+          />
+          <QuickActionCard
+            title={totalFineBalance > 0 ? "Pay fines and fees" : "Show library card"}
+            description={
+              totalFineBalance > 0
+                ? "Resolve outstanding balances before they interrupt self-service borrowing."
+                : "Keep your digital card handy for quick desk lookup and self-service access."
+            }
+            href={totalFineBalance > 0 ? "/opac/account/fines" : "/opac/account/library-card"}
+            icon={totalFineBalance > 0 ? Wallet : QrCode}
+          />
+          <QuickActionCard
+            title="Account settings"
+            description="Update contact info, privacy controls, passkeys, and multi-factor security."
+            href="/opac/account/settings"
+            icon={Settings}
+          />
         </div>
 
         {/* Alerts */}

@@ -35,6 +35,7 @@ import {
   Smartphone,
   CreditCard,
   Palette,
+  Compass,
 } from "lucide-react";
 
 type AdminCard = {
@@ -96,7 +97,7 @@ export default function AdminHubPage() {
         enabled: featureFlags.adminWorkstations,
       },
       {
-        title: "Settings",
+        title: "Settings Hub",
         description:
           "Start from a clear settings hub for setup order, policy review, and UX tuning.",
         href: "/staff/admin/settings",
@@ -172,7 +173,7 @@ export default function AdminHubPage() {
         tone: "bg-muted text-foreground",
       },
       {
-        title: "Go-live",
+        title: "Go-Live Checklist",
         description: "Operational checklist for pilot readiness.",
         href: "/staff/admin/go-live",
         icon: ClipboardCheck,
@@ -235,6 +236,63 @@ export default function AdminHubPage() {
       </PageHeader>
 
       <PageContent className="space-y-6">
+        <Card className="rounded-2xl border-[hsl(var(--brand-1)/0.25)] bg-[hsl(var(--brand-1)/0.05)]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Compass className="h-4 w-4 text-[hsl(var(--brand-1))]" />
+              Start Here
+            </CardTitle>
+            <CardDescription>
+              Use this path when you are setting up a library, preparing a demo, or validating a
+              pilot shift.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-4">
+            {[
+              {
+                label: "Run onboarding",
+                href: "/staff/admin/onboarding",
+                description: "Check Evergreen connectivity, auth, and workstation readiness.",
+                icon: Rocket,
+              },
+              {
+                label: "Open Settings Hub",
+                href: "/staff/admin/settings",
+                description: "Move through policies, OPAC setup, digital, payments, and security.",
+                icon: Settings2,
+              },
+              {
+                label: "Review Go-Live",
+                href: "/staff/admin/go-live",
+                description: "Confirm pilot-readiness checks before staff use.",
+                icon: ClipboardCheck,
+              },
+              {
+                label: "View OPAC",
+                href: "/opac",
+                description: "Open the patron experience and verify discovery flows end to end.",
+                icon: Globe,
+              },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-xl border bg-background px-4 py-4 transition-colors hover:bg-muted/40"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-lg bg-[hsl(var(--brand-1)/0.12)] p-2">
+                    <item.icon className="h-4 w-4 text-[hsl(var(--brand-1))]" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-foreground">{item.label}</div>
+                    <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="rounded-2xl md:col-span-1">
             <CardHeader>

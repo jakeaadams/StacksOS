@@ -227,9 +227,9 @@ export default function SettingsHubPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Settings"
-        subtitle="Clear setup path for policies, circulation, and Evergreen-backed system behavior."
-        breadcrumbs={[{ label: "Administration", href: "/staff/admin" }, { label: "Settings" }]}
+        title="Settings Hub"
+        subtitle="Move through setup in order, then tune the Evergreen-backed settings that shape staff workflows and patron discovery."
+        breadcrumbs={[{ label: "Administration", href: "/staff/admin" }, { label: "Settings Hub" }]}
         actions={[
           {
             label: "Onboarding Wizard",
@@ -238,8 +238,8 @@ export default function SettingsHubPage() {
             variant: "default",
           },
           {
-            label: "User Management",
-            onClick: () => router.push("/staff/admin/users"),
+            label: "Go-Live Checklist",
+            onClick: () => router.push("/staff/admin/go-live"),
             icon: Users,
             variant: "outline",
           },
@@ -254,8 +254,8 @@ export default function SettingsHubPage() {
               Start Here: Library Setup Path
             </CardTitle>
             <CardDescription>
-              Follow these steps in order to avoid configuration drift and confusing policy
-              conflicts.
+              Follow this order so tenant defaults, Evergreen policies, patron discovery, and launch
+              checks stay aligned.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -333,7 +333,9 @@ export default function SettingsHubPage() {
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base">About Evergreen Settings</CardTitle>
-            <CardDescription>Understanding how settings work in Evergreen ILS</CardDescription>
+            <CardDescription>
+              How StacksOS settings map onto Evergreen policy behavior
+            </CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-4">
             <p>

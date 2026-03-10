@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { PageContainer, PageHeader, PageContent, StatusBadge, ErrorMessage } from "@/components/shared";
+import {
+  PageContainer,
+  PageHeader,
+  PageContent,
+  StatusBadge,
+  ErrorMessage,
+} from "@/components/shared";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { CheckCircle2, XCircle, ArrowRight } from "lucide-react";
+import { CheckCircle2, XCircle, ArrowRight, ClipboardCheck, Rocket, BookOpen } from "lucide-react";
 
 export default function GoLiveChecklistPage() {
   const [status, setStatus] = useState<any>(null);
@@ -26,7 +32,8 @@ export default function GoLiveChecklistPage() {
       const oJson = await oRes.json();
       if (!sRes.ok || sJson.ok === false) throw new Error(sJson.error || "Failed to load status");
       if (!eRes.ok || eJson.ok === false) throw new Error(eJson.error || "Failed to load env");
-      if (!oRes.ok || oJson.ok === false) throw new Error(oJson.error || "Failed to load ops status");
+      if (!oRes.ok || oJson.ok === false)
+        throw new Error(oJson.error || "Failed to load ops status");
       setStatus(sJson);
       setEnv(eJson.env);
       setOps(oJson);
@@ -52,7 +59,10 @@ export default function GoLiveChecklistPage() {
   const rebootRequired = ops?.host?.rebootRequired === true;
   const proxyActive = ops?.services?.proxy?.activeState === "active";
   const dbTunnelActive = ops?.services?.evergreenDbTunnel?.activeState === "active";
-  const dbTunnelUser = typeof ops?.services?.evergreenDbTunnel?.user === "string" ? ops.services.evergreenDbTunnel.user : null;
+  const dbTunnelUser =
+    typeof ops?.services?.evergreenDbTunnel?.user === "string"
+      ? ops.services.evergreenDbTunnel.user
+      : null;
   const dbTunnelHardened = dbTunnelActive && Boolean(dbTunnelUser) && dbTunnelUser !== "jake";
   const tlsBypass = ops?.tls?.tlsVerificationDisabled === true;
   const caConfigured = ops?.tls?.caBundleConfigured === true;
@@ -63,15 +73,21 @@ export default function GoLiveChecklistPage() {
   const baseUrlHttps = typeof baseUrl === "string" ? baseUrl.startsWith("https://") : false;
   const cookieSecureExplicit = env?.cookieSecureExplicit;
   const cookieSecureOk =
-    cookieSecureExplicit === true ? true :
-    cookieSecureExplicit === false ? false :
-    isHttps === true;
+    cookieSecureExplicit === true
+      ? true
+      : cookieSecureExplicit === false
+        ? false
+        : isHttps === true;
 
   const Row = ({ label, ok, details }: { label: string; ok: boolean; details?: string }) => (
     <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
       <div className="min-w-0">
         <div className="font-medium flex items-center gap-2">
-          {ok ? <CheckCircle2 className="h-4 w-4 text-green-700" /> : <XCircle className="h-4 w-4 text-red-700" />}
+          {ok ? (
+            <CheckCircle2 className="h-4 w-4 text-green-700" />
+          ) : (
+            <XCircle className="h-4 w-4 text-red-700" />
+          )}
           {label}
         </div>
         {details ? <div className="text-xs text-muted-foreground mt-1">{details}</div> : null}
@@ -83,31 +99,105 @@ export default function GoLiveChecklistPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Go-live checklist"
-        subtitle="Operational readiness checks for pilots"
-        breadcrumbs={[{ label: "Admin", href: "/staff/admin" }, { label: "Go-live" }]}
+        title="Go-Live Checklist"
+        subtitle="Confirm launch readiness in the same order staff will actually configure and validate the system."
+        breadcrumbs={[{ label: "Admin", href: "/staff/admin" }, { label: "Go-Live Checklist" }]}
       />
       <PageContent className="space-y-6">
         {error ? <ErrorMessage message={error} onRetry={load} /> : null}
 
+        <Card className="rounded-2xl border-[hsl(var(--brand-1)/0.28)] bg-[hsl(var(--brand-1)/0.06)]">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4" />
+              Recommended order
+            </CardTitle>
+            <CardDescription>
+              Use this path when you are preparing a demo, pilot branch, or launch rehearsal.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-3">
+            <Link
+              href="/staff/admin/onboarding"
+              className="rounded-xl border bg-background px-4 py-4 transition-colors hover:bg-muted/40"
+            >
+              <div className="flex items-center gap-2 font-medium text-foreground">
+                <Rocket className="h-4 w-4 text-[hsl(var(--brand-1))]" />
+                1. Run onboarding
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Confirm Evergreen connectivity, auth, and workstation readiness first.
+              </p>
+            </Link>
+            <Link
+              href="/staff/admin/settings"
+              className="rounded-xl border bg-background px-4 py-4 transition-colors hover:bg-muted/40"
+            >
+              <div className="flex items-center gap-2 font-medium text-foreground">
+                <BookOpen className="h-4 w-4 text-[hsl(var(--brand-1))]" />
+                2. Review Settings Hub
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Validate policies, OPAC settings, digital connectors, and payments in one pass.
+              </p>
+            </Link>
+            <Link
+              href="/staff/help#runbook"
+              className="rounded-xl border bg-background px-4 py-4 transition-colors hover:bg-muted/40"
+            >
+              <div className="flex items-center gap-2 font-medium text-foreground">
+                <ClipboardCheck className="h-4 w-4 text-[hsl(var(--brand-1))]" />
+                3. Open the runbook
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Use the operator checklist when you move from setup to live validation.
+              </p>
+            </Link>
+          </CardContent>
+        </Card>
+
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base">Readiness</CardTitle>
-            <CardDescription>These are necessary (not sufficient) checks for pilot operations.</CardDescription>
+            <CardDescription>
+              These are necessary (not sufficient) checks for pilot operations.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Row label="Evergreen reachable" ok={evergreenOk} details={`HTTP ${status?.evergreen?.status ?? "—"}`} />
-            <Row label="RBAC strict mode enabled" ok={rbacStrict} details={`STACKSOS_RBAC_MODE=${env?.rbacMode ?? "—"}`} />
-            <Row label="Idle timeout configured" ok={idleConfigured} details={idleConfigured ? `${env.idleTimeoutMinutes} minutes` : "Set STACKSOS_IDLE_TIMEOUT_MINUTES"} />
+            <Row
+              label="Evergreen reachable"
+              ok={evergreenOk}
+              details={`HTTP ${status?.evergreen?.status ?? "—"}`}
+            />
+            <Row
+              label="RBAC strict mode enabled"
+              ok={rbacStrict}
+              details={`STACKSOS_RBAC_MODE=${env?.rbacMode ?? "—"}`}
+            />
+            <Row
+              label="Idle timeout configured"
+              ok={idleConfigured}
+              details={
+                idleConfigured
+                  ? `${env.idleTimeoutMinutes} minutes`
+                  : "Set STACKSOS_IDLE_TIMEOUT_MINUTES"
+              }
+            />
             <Row
               label="StacksOS is served over HTTPS"
               ok={isHttps === true}
-              details={isHttps === true ? window.location.origin : "Terminate TLS (recommended: Caddy) and use https://"}
+              details={
+                isHttps === true
+                  ? window.location.origin
+                  : "Terminate TLS (recommended: Caddy) and use https://"
+              }
             />
             <Row
               label="Base URL configured for HTTPS"
               ok={baseUrlHttps}
-              details={baseUrl ? `STACKSOS_BASE_URL=${baseUrl}` : "Set STACKSOS_BASE_URL=https://..."}
+              details={
+                baseUrl ? `STACKSOS_BASE_URL=${baseUrl}` : "Set STACKSOS_BASE_URL=https://..."
+              }
             />
             <Row
               label="Secure cookies enabled"
@@ -169,11 +259,18 @@ export default function GoLiveChecklistPage() {
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base">Next steps</CardTitle>
-            <CardDescription>Operator tasks to run before opening for a pilot shift.</CardDescription>
+            <CardDescription>
+              Operator tasks to run before opening for a pilot shift.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <div>1) Run the one-command quality gate on the host: <span className="font-mono">BASE_URL=http://127.0.0.1:3000 ./audit/run_all.sh</span></div>
-            <div>2) Confirm backups: Evergreen nightly backup + StacksOS backup units (see runbook).</div>
+            <div>
+              1) Run the one-command quality gate on the host:{" "}
+              <span className="font-mono">BASE_URL=http://127.0.0.1:3000 ./audit/run_all.sh</span>
+            </div>
+            <div>
+              2) Confirm backups: Evergreen nightly backup + StacksOS backup units (see runbook).
+            </div>
             <div>3) Confirm a non-dev can restart production safely (see runbook).</div>
             <div className="pt-2">
               <Link className="underline underline-offset-2" href="/staff/help#runbook">

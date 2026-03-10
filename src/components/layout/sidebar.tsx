@@ -259,7 +259,7 @@ const mainNav: NavSection[] = [
         : []),
       { title: "Permissions", href: "/staff/admin/permissions", icon: KeyRound },
       { title: "Migration", href: "/staff/admin/migration", icon: Download },
-      { title: "Go-live", href: "/staff/admin/go-live", icon: ClipboardList },
+      { title: "Go-Live Checklist", href: "/staff/admin/go-live", icon: ClipboardList },
       { title: "Ops", href: "/staff/admin/ops", icon: Activity },
       { title: "Notifications", href: "/staff/admin/notifications", icon: Bell },
       ...(featureFlags.developerPlatform
