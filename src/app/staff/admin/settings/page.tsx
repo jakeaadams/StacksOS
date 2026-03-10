@@ -187,7 +187,8 @@ const SETUP_STEPS: SetupStep[] = [
   },
   {
     title: "7. Configure Payment Processing",
-    description: "Set up Stripe API keys so patrons can pay fines and fees online from the OPAC.",
+    description:
+      "Select a payment gateway (Stripe, Square, or PayPal), enter API credentials, and test patron checkout.",
     href: "/staff/admin/settings/payments",
   },
 ];

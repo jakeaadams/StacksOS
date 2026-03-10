@@ -45,7 +45,7 @@ describe("Twilio SMS Provider", () => {
     await sendSms({ to: "+15559876543", message: "Your hold is ready!" });
 
     expect(fetch).toHaveBeenCalledTimes(1);
-    const [url] = vi.mocked(fetch).mock.calls[0];
+    const [url] = vi.mocked(fetch).mock.calls[0]!;
     expect(url).toBe("https://api.twilio.com/2010-04-01/Accounts/ACtest123456789/Messages.json");
   });
 
@@ -59,7 +59,7 @@ describe("Twilio SMS Provider", () => {
 
     await sendSms({ to: "+15559876543", message: "Overdue notice" });
 
-    const [, options] = vi.mocked(fetch).mock.calls[0];
+    const [, options] = vi.mocked(fetch).mock.calls[0]!;
     const authHeader = (options?.headers as Record<string, string>)["Authorization"];
     const expectedCredentials = Buffer.from("ACtest123456789:test-auth-token").toString("base64");
     expect(authHeader).toBe(`Basic ${expectedCredentials}`);
@@ -75,7 +75,7 @@ describe("Twilio SMS Provider", () => {
 
     await sendSms({ to: "+15559876543", message: "Your items are overdue." });
 
-    const [, options] = vi.mocked(fetch).mock.calls[0];
+    const [, options] = vi.mocked(fetch).mock.calls[0]!;
     expect((options?.headers as Record<string, string>)["Content-Type"]).toBe(
       "application/x-www-form-urlencoded"
     );

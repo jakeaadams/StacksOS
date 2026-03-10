@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-import { callOpenSRF } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { logAuditEvent } from "@/lib/audit";
+import { recordPaymentInEvergreen, logPaymentFailure } from "@/lib/payments/record-payment";
 
 /**
  * POST /api/opac/payments/webhook
@@ -81,116 +80,26 @@ async function handlePaymentSucceeded(intent: StripeEventObject): Promise<void> 
   const receiptUrl = intent.charges?.data?.[0]?.receipt_url ?? undefined;
   const amount = intent.amount ?? 0;
 
-  if (!patronId || fineIds.length === 0) {
-    logger.warn(
-      { intentId: intent.id, patronId, fineIds },
-      "Webhook: payment_intent.succeeded missing metadata"
-    );
-    return;
-  }
-
-  logger.info(
-    { intentId: intent.id, patronId, fineIds, amount },
-    "Webhook: recording payment in Evergreen"
-  );
-
-  // Record payment in Evergreen via service account
-  try {
-    await logAuditEvent({
-      action: "opac.payment.webhook_succeeded",
-      entity: "payment_intent",
-      entityId: intent.id,
-      status: "success",
-      details: { patronId, fineIds, amount, currency: intent.currency, receiptUrl },
-    }).catch(() => {});
-
-    const serviceBarcode = process.env.STACKSOS_SERVICE_ACCOUNT_BARCODE;
-    const servicePin = process.env.STACKSOS_SERVICE_ACCOUNT_PIN;
-
-    if (!serviceBarcode || !servicePin) {
-      logger.warn(
-        { intentId: intent.id },
-        "Webhook: STACKSOS_SERVICE_ACCOUNT_BARCODE/PIN not configured, skipping Evergreen recording"
-      );
-      return;
-    }
-
-    // Authenticate as service account
-    const initRes = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.init", [
-      serviceBarcode,
-    ]);
-    const nonce = initRes?.payload?.[0];
-    if (!nonce) throw new Error("Auth init returned no nonce");
-
-    const { createHash } = await import("node:crypto");
-    const hashedPin = createHash("md5")
-      .update(nonce + createHash("md5").update(servicePin).digest("hex"))
-      .digest("hex");
-
-    const authRes = await callOpenSRF("open-ils.auth", "open-ils.auth.authenticate.complete", [
-      { username: serviceBarcode, password: hashedPin, type: "staff" },
-    ]);
-    const authPayload = authRes?.payload?.[0];
-    const serviceToken = authPayload?.payload?.authtoken;
-    if (!serviceToken) throw new Error("Service account auth failed");
-
-    // Record the payment via open-ils.circ.money.payment
-    // Distribute amount evenly across fines, giving any remainder (from rounding)
-    // to the first fine to ensure the total equals the charged amount exactly.
-    const perFine = Math.floor(amount / fineIds.length);
-    const remainder = amount - perFine * fineIds.length;
-    const payments = fineIds.map((id, idx) => [id, idx === 0 ? perFine + remainder : perFine]);
-    const payResult = await callOpenSRF("open-ils.circ", "open-ils.circ.money.payment", [
-      serviceToken,
-      {
-        userid: patronId,
-        payments,
-        payment_type: "credit_card_payment",
-        note: `Stripe payment ${intent.id || ""}`.trim(),
-      },
-      patronId,
-    ]);
-
-    const payPayload = payResult?.payload?.[0];
-    if (payPayload && typeof payPayload === "object" && "ilsevent" in payPayload) {
-      logger.error(
-        { intentId: intent.id, ilsevent: payPayload },
-        "Webhook: Evergreen payment recording returned an event error"
-      );
-    } else {
-      logger.info(
-        { intentId: intent.id, patronId, fineIds },
-        "Webhook: payment recorded in Evergreen"
-      );
-    }
-  } catch (error) {
-    // Log but don't fail — we still return 200 to Stripe.
-    // The audit trail allows manual reconciliation if needed.
-    logger.error(
-      { error: String(error), intentId: intent.id },
-      "Webhook: failed to record payment in Evergreen"
-    );
-  }
+  await recordPaymentInEvergreen({
+    provider: "stripe",
+    paymentId: intent.id || "",
+    patronId,
+    fineIds,
+    amount,
+    currency: intent.currency,
+    receiptUrl,
+  });
 }
 
 async function handlePaymentFailed(intent: StripeEventObject): Promise<void> {
   const patronId = parseInt(intent.metadata?.patronId ?? "0", 10);
 
-  await logAuditEvent({
-    action: "opac.payment.webhook_failed",
-    entity: "payment_intent",
-    entityId: intent.id,
-    status: "failure",
-    details: {
-      patronId,
-      status: intent.status,
-    },
-  }).catch(() => {});
-
-  logger.warn(
-    { intentId: intent.id, patronId, status: intent.status },
-    "Webhook: payment_intent.payment_failed"
-  );
+  await logPaymentFailure({
+    provider: "stripe",
+    paymentId: intent.id,
+    patronId,
+    status: intent.status,
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -221,15 +130,23 @@ export async function POST(req: NextRequest) {
 
   logger.info({ eventId: event.id, type: event.type }, "Stripe webhook event received");
 
-  switch (event.type) {
-    case "payment_intent.succeeded":
-      await handlePaymentSucceeded(event.data.object);
-      break;
-    case "payment_intent.payment_failed":
-      await handlePaymentFailed(event.data.object);
-      break;
-    default:
-      logger.info({ type: event.type }, "Stripe webhook: unhandled event type");
+  try {
+    switch (event.type) {
+      case "payment_intent.succeeded":
+        await handlePaymentSucceeded(event.data.object);
+        break;
+      case "payment_intent.payment_failed":
+        await handlePaymentFailed(event.data.object);
+        break;
+      default:
+        logger.info({ type: event.type }, "Stripe webhook: unhandled event type");
+    }
+  } catch (error) {
+    // Log but still return 200 — don't cause Stripe to retry
+    logger.error(
+      { error: String(error), eventId: event.id, type: event.type },
+      "Stripe webhook: error processing event"
+    );
   }
 
   return NextResponse.json({ received: true }, { status: 200 });

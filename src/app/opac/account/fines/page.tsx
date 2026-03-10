@@ -10,12 +10,22 @@ import { toast } from "sonner";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { Button } from "@/components/ui/button";
 import { PaymentForm } from "@/components/opac/payment-form";
+import { SquarePaymentForm } from "@/components/opac/square-payment-form";
+import { PayPalPaymentForm } from "@/components/opac/paypal-payment-form";
+import type { PaymentProvider } from "@/lib/payments/types";
 
 interface PaymentIntent {
+  provider: PaymentProvider;
   clientSecret: string;
   publishableKey: string;
   amount: number;
   currency: string;
+  intentId: string;
+  // Square-specific
+  applicationId?: string;
+  locationId?: string;
+  // PayPal-specific
+  clientId?: string;
 }
 
 export default function FinesPage() {
@@ -87,20 +97,48 @@ export default function FinesPage() {
         throw new Error(String(data?.error || "Failed to create payment"));
       }
 
-      // If we received a clientSecret, Stripe is configured — show the payment form.
-      // Otherwise, fall back to the simple payment flow (non-Stripe).
-      if (data.clientSecret && data.publishableKey) {
+      // Route to the appropriate payment form based on the provider
+      const provider = data.provider || "stripe";
+      const paymentAmount = data.amount || Math.round(selectedTotal * 100);
+      const paymentCurrency = data.currency || "usd";
+
+      if (provider === "stripe" && data.clientSecret && data.publishableKey) {
         setPaymentIntent({
+          provider: "stripe",
           clientSecret: data.clientSecret,
           publishableKey: data.publishableKey,
-          amount: data.amount || Math.round(selectedTotal * 100),
-          currency: data.currency || "usd",
+          amount: paymentAmount,
+          currency: paymentCurrency,
+          intentId: data.intentId,
         });
-      } else {
+      } else if (provider === "square" && data.applicationId && data.locationId) {
+        setPaymentIntent({
+          provider: "square",
+          clientSecret: "",
+          publishableKey: "",
+          amount: paymentAmount,
+          currency: paymentCurrency,
+          intentId: data.intentId,
+          applicationId: data.applicationId,
+          locationId: data.locationId,
+        });
+      } else if (provider === "paypal" && data.clientId) {
+        setPaymentIntent({
+          provider: "paypal",
+          clientSecret: "",
+          publishableKey: "",
+          amount: paymentAmount,
+          currency: paymentCurrency,
+          intentId: data.intentId,
+          clientId: data.clientId,
+        });
+      } else if (provider !== "none") {
         // Legacy flow — payment was recorded directly
         toast.success(t("paymentSuccessToast"));
         setSelectedFines([]);
         await fetchFines();
+      } else {
+        throw new Error("Online payments are not configured.");
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("paymentErrorToast"));
@@ -144,14 +182,39 @@ export default function FinesPage() {
           </div>
 
           <div className="stx-surface rounded-xl p-6">
-            <PaymentForm
-              publishableKey={paymentIntent.publishableKey}
-              clientSecret={paymentIntent.clientSecret}
-              amount={paymentIntent.amount}
-              currency={paymentIntent.currency}
-              onSuccess={handlePaymentSuccess}
-              onCancel={handlePaymentCancel}
-            />
+            {paymentIntent.provider === "stripe" && (
+              <PaymentForm
+                publishableKey={paymentIntent.publishableKey}
+                clientSecret={paymentIntent.clientSecret}
+                amount={paymentIntent.amount}
+                currency={paymentIntent.currency}
+                onSuccess={handlePaymentSuccess}
+                onCancel={handlePaymentCancel}
+              />
+            )}
+            {paymentIntent.provider === "square" &&
+              paymentIntent.applicationId &&
+              paymentIntent.locationId && (
+                <SquarePaymentForm
+                  applicationId={paymentIntent.applicationId}
+                  locationId={paymentIntent.locationId}
+                  amount={paymentIntent.amount}
+                  currency={paymentIntent.currency}
+                  intentId={paymentIntent.intentId}
+                  onSuccess={handlePaymentSuccess}
+                  onCancel={handlePaymentCancel}
+                />
+              )}
+            {paymentIntent.provider === "paypal" && paymentIntent.clientId && (
+              <PayPalPaymentForm
+                clientId={paymentIntent.clientId}
+                amount={paymentIntent.amount}
+                currency={paymentIntent.currency}
+                intentId={paymentIntent.intentId}
+                onSuccess={handlePaymentSuccess}
+                onCancel={handlePaymentCancel}
+              />
+            )}
           </div>
 
           <p className="mt-4 text-center text-xs text-muted-foreground">

@@ -20,9 +20,15 @@ vi.mock("@/lib/opac-auth", () => ({
 }));
 vi.mock("@/lib/payments/types", () => ({ getPaymentConfig }));
 vi.mock("@/lib/logger", () => ({ logger }));
+const createPayPalIntent = vi.fn();
 vi.mock("@/lib/payments/stripe-gateway", () => ({
   StripeGateway: class StripeGateway {
     createPaymentIntent = createPaymentIntent;
+  },
+}));
+vi.mock("@/lib/payments/paypal-gateway", () => ({
+  PayPalGateway: class PayPalGateway {
+    createPaymentIntent = createPayPalIntent;
   },
 }));
 
@@ -61,17 +67,25 @@ describe("opac payments route", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
+    expect(data.provider).toBe("stripe");
     expect(data.clientSecret).toBe("pi_secret_123");
     expect(data.publishableKey).toBe("pk_test_123");
   });
 
-  it("rejects non-Stripe patron checkout with a truthful error", async () => {
+  it("routes PayPal checkout and returns clientId instead of clientSecret", async () => {
     getPaymentConfig.mockReturnValue({
       provider: "paypal",
       publicKey: "",
+      paypalClientId: "sb-client-123",
       currency: "usd",
       minimumAmount: 100,
       allowPartialPayment: true,
+    });
+    createPayPalIntent.mockResolvedValue({
+      id: "order_abc",
+      amount: 500,
+      currency: "usd",
+      status: "pending",
     });
 
     const { POST } = await import("@/app/api/opac/payments/route");
@@ -84,8 +98,11 @@ describe("opac payments route", () => {
     );
     const data = await response.json();
 
-    expect(response.status).toBe(501);
-    expect(String(data.error || "")).toContain("PayPal checkout is configured");
+    expect(response.status).toBe(200);
+    expect(data.provider).toBe("paypal");
+    expect(data.clientId).toBe("sb-client-123");
+    expect(data.intentId).toBe("order_abc");
     expect(createPaymentIntent).not.toHaveBeenCalled();
+    expect(createPayPalIntent).toHaveBeenCalledTimes(1);
   });
 });
