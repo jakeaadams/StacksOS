@@ -46,7 +46,7 @@ export default defineConfig({
 
   // Start dev server before tests
   webServer: {
-    command: `NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/evergreen-192.168.1.232.crt STACKSOS_COOKIE_SECURE=false STACKSOS_E2E_TEST_MODE=1 NEXT_TELEMETRY_DISABLED=1 npm run dev -- -p ${basePort}`,
+    command: `NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/evergreen-192.168.1.232.crt STACKSOS_COOKIE_SECURE=false STACKSOS_E2E_TEST_MODE=1 NEXT_TELEMETRY_DISABLED=1 npm run dev -- --webpack -p ${basePort}`,
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120000,

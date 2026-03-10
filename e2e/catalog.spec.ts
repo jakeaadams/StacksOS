@@ -22,9 +22,6 @@ test.describe("Catalog Workflows", () => {
     test("OPAC homepage has search functionality", async ({ page }) => {
       await page.goto("/opac");
 
-      // Wait for page to load
-      await page.waitForLoadState("networkidle");
-
       // Verify page is visible
       await expect(page.locator("body")).toBeVisible();
 
@@ -55,9 +52,6 @@ test.describe("Catalog Workflows", () => {
 
     test("OPAC can perform basic search", async ({ page }) => {
       await page.goto("/opac/search");
-
-      // Wait for page to be ready
-      await page.waitForLoadState("networkidle");
 
       // Try to find and interact with search
       const searchInput = page.locator("input[type='text'], input[type='search']").first();
