@@ -128,7 +128,7 @@ export async function createOpacPaymentSession(params: {
        $6::integer[],
        $7,
        $8::jsonb,
-       NOW() + ($9 || ' minutes')::interval
+       NOW() + ($9::integer * INTERVAL '1 minute')
      )
      RETURNING *`,
     [
@@ -140,7 +140,7 @@ export async function createOpacPaymentSession(params: {
       params.fineIds,
       params.description,
       JSON.stringify(params.metadata || {}),
-      String(expiresInMinutes),
+      expiresInMinutes,
     ]
   );
 

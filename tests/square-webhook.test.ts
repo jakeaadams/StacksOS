@@ -24,7 +24,6 @@ const originalEnv = { ...process.env };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.resetModules();
   process.env.STACKSOS_SQUARE_WEBHOOK_SIGNATURE_KEY = WEBHOOK_SIGNATURE_KEY;
   process.env.STACKSOS_SQUARE_WEBHOOK_URL = WEBHOOK_URL;
 });
