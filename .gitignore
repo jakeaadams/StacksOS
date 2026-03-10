@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-e2e/
 /.next-ci/
 /.next.build/
 /.next.prev.*/
@@ -82,6 +83,7 @@ audit/REPORT.md
 audit/FEATURE_MATRIX.md
 audit/REPO_INVENTORY.md
 audit/demo_data.json
+audit/task-benchmark/
 
 # File-based data stores (reviews, etc.)
 .data/
