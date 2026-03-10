@@ -122,7 +122,7 @@ export function StaffLayout({ children }: StaffLayoutProps) {
             <span className="text-white font-semibold text-sm">SO</span>
           </div>
           <Loader2 className="h-6 w-6 animate-spin text-[hsl(var(--brand-1))]" />
-          <p className="text-sm text-muted-foreground">Loading StacksOS...</p>
+          <p className="text-sm font-medium text-foreground/80">Loading StacksOS...</p>
         </div>
       </div>
     );

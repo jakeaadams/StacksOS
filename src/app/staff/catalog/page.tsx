@@ -10,7 +10,6 @@ import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 
 import {
-
   PageContainer,
   PageHeader,
   PageContent,
@@ -103,7 +102,9 @@ function CatalogSearchContent() {
 
     try {
       const query = encodeURIComponent(queryRaw);
-      const res = await fetchWithAuth(`/api/evergreen/catalog?q=${query}&type=${effectiveType}&limit=50`);
+      const res = await fetchWithAuth(
+        `/api/evergreen/catalog?q=${query}&type=${effectiveType}&limit=50`
+      );
       const data = await res.json();
 
       if (data.ok) {
@@ -154,10 +155,10 @@ function CatalogSearchContent() {
     () => [
       {
         accessorKey: "title",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />, 
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
         cell: ({ row }) => (
           <div className="space-y-1">
-            <div 
+            <div
               className="font-medium leading-tight cursor-pointer hover:text-primary hover:underline"
               onClick={(e) => {
                 e.stopPropagation();
@@ -166,7 +167,9 @@ function CatalogSearchContent() {
             >
               {row.original.title}
             </div>
-            <div className="text-xs text-muted-foreground">{row.original.author || "Unknown author"}</div>
+            <div className="text-xs text-muted-foreground">
+              {row.original.author || "Unknown author"}
+            </div>
           </div>
         ),
       },
@@ -181,14 +184,16 @@ function CatalogSearchContent() {
       },
       {
         accessorKey: "pubdate",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Year" />, 
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Year" />,
         cell: ({ row }) => <span className="text-xs">{row.original.pubdate || "—"}</span>,
       },
       {
         accessorKey: "isbn",
         header: "ISBN",
         cell: ({ row }) => (
-          <span className="text-xs font-mono text-muted-foreground">{row.original.isbn || "—"}</span>
+          <span className="text-xs font-mono text-muted-foreground">
+            {row.original.isbn || "—"}
+          </span>
         ),
       },
       {
@@ -265,7 +270,9 @@ function CatalogSearchContent() {
             label: "Manage Holds",
             onClick: () =>
               selectedRecord
-                ? router.push(`/staff/circulation/holds-management?tab=title&title_id=${selectedRecord.id}`)
+                ? router.push(
+                    `/staff/circulation/holds-management?tab=title&title_id=${selectedRecord.id}`
+                  )
                 : router.push("/staff/circulation/holds-management"),
             icon: Bookmark,
             variant: "outline",
@@ -289,7 +296,8 @@ function CatalogSearchContent() {
             </Badge>
           )}
           {patronContextBarcode && (
-            <button type="button"
+            <button
+              type="button"
               className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-mono text-muted-foreground hover:bg-muted"
               onClick={clearPatronContext}
               title="Clear patron context"
@@ -303,7 +311,9 @@ function CatalogSearchContent() {
       <PageContent className="space-y-6">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">Search Catalog</CardTitle>
+            <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">
+              Search Catalog
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-3 items-center">
@@ -318,7 +328,7 @@ function CatalogSearchContent() {
                 />
               </div>
               <Select value={searchType} onValueChange={setSearchType}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-[160px]" aria-label="Catalog search type">
                   <SelectValue placeholder="Search type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -364,7 +374,11 @@ function CatalogSearchContent() {
           onOpenChange={setPlaceHoldOpen}
           record={
             selectedRecord
-              ? { id: selectedRecord.id, title: selectedRecord.title, author: selectedRecord.author }
+              ? {
+                  id: selectedRecord.id,
+                  title: selectedRecord.title,
+                  author: selectedRecord.author,
+                }
               : null
           }
           initialPatronBarcode={patronContextBarcode || undefined}

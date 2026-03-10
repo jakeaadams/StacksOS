@@ -25,7 +25,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { UserPlus, Search, CreditCard, BookOpen, History, RefreshCw, Eye } from "lucide-react";
 
@@ -166,7 +172,9 @@ function PatronSearchContent() {
       {
         accessorKey: "homeLibrary",
         header: "Home Library",
-        cell: ({ row }) => <span className="text-xs">{formatHomeLibrary(row.original.homeLibrary)}</span>,
+        cell: ({ row }) => (
+          <span className="text-xs">{formatHomeLibrary(row.original.homeLibrary)}</span>
+        ),
       },
       {
         id: "status",
@@ -176,11 +184,7 @@ function PatronSearchContent() {
             ? new Date(row.original.cardExpiry) < new Date()
             : false;
           return (
-            <PatronStatusBadge
-              active={row.original.isActive}
-              barred={false}
-              expired={expired}
-            />
+            <PatronStatusBadge active={row.original.isActive} barred={false} expired={expired} />
           );
         },
       },
@@ -189,11 +193,7 @@ function PatronSearchContent() {
         header: "Actions",
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => handleQuickView(row.original, e)}
-            >
+            <Button variant="ghost" size="sm" onClick={(e) => handleQuickView(row.original, e)}>
               <Eye className="h-4 w-4 mr-1" />
               Quick View
             </Button>
@@ -250,11 +250,7 @@ function PatronSearchContent() {
       >
         <div className="flex flex-wrap items-center gap-2">
           {hasSearched ? (
-            <Badge
-              variant="secondary"
-              className="rounded-full"
-              data-testid="patron-search-results"
-            >
+            <Badge variant="secondary" className="rounded-full" data-testid="patron-search-results">
               {isLoading ? "Searching…" : `Results: ${patrons.length}`}
             </Badge>
           ) : null}
@@ -291,7 +287,7 @@ function PatronSearchContent() {
                 />
               </div>
               <Select value={searchType} onValueChange={setSearchType}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-[160px]" aria-label="Patron search type">
                   <SelectValue placeholder="Search type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -302,7 +298,11 @@ function PatronSearchContent() {
                 </SelectContent>
               </Select>
               <Button onClick={handleSearch} disabled={isLoading}>
-                {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                {isLoading ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
                 <span className="ml-2">Search</span>
               </Button>
             </div>

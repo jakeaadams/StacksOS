@@ -148,7 +148,7 @@ export default function PurchaseOrdersPage() {
               onChange={(e) => setPoName(e.target.value)}
             />
             <Select value={vendorId} onValueChange={setVendorId}>
-              <SelectTrigger>
+              <SelectTrigger aria-label="Purchase order vendor">
                 <SelectValue placeholder="Select vendor" />
               </SelectTrigger>
               <SelectContent>
