@@ -8,7 +8,10 @@ export default defineConfig({
   fullyParallel: false, // Run tests sequentially to avoid auth conflicts
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : 2,
+  // The suite exercises a single shared Evergreen-backed dev server and shared
+  // authenticated storage state. One worker keeps route timing stable and
+  // avoids cold-route flakiness on heavy staff pages like circulation checkin.
+  workers: 1,
   reporter: "html",
   globalSetup: "./e2e/global-setup.ts",
 
