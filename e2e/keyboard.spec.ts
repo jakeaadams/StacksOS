@@ -13,7 +13,10 @@ test.describe("Keyboard-only smoke", () => {
     // Focus username via tabbing (no mouse).
     for (let i = 0; i < 10; i++) {
       await page.keyboard.press("Tab");
-      const focused = await page.locator("input#username").evaluate((el) => el === document.activeElement).catch(() => false);
+      const focused = await page
+        .locator("input#username")
+        .evaluate((el) => el === document.activeElement)
+        .catch(() => false);
       if (focused) break;
     }
     await expect(page.locator("input#username")).toBeFocused();
@@ -35,13 +38,13 @@ test.describe("Keyboard-only smoke", () => {
     test("sidebar navigation works from focused links", async ({ page }) => {
       await page.goto("/staff");
 
-      const checkoutLink = page.getByRole("link", { name: /^check out$/i });
+      const checkoutLink = page.locator('a[href="/staff/circulation/checkout"]:visible').first();
       await checkoutLink.focus();
       await expect(checkoutLink).toBeFocused();
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/\/staff\/circulation\/checkout/);
 
-      const patronsLink = page.getByRole("link", { name: /search patrons/i });
+      const patronsLink = page.locator('a[href="/staff/patrons"]:visible').first();
       await patronsLink.focus();
       await expect(patronsLink).toBeFocused();
       await page.keyboard.press("Enter");

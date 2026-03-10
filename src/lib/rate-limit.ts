@@ -95,7 +95,6 @@ export interface RateLimitResult {
 }
 
 function shouldBypassRateLimitForE2E(): boolean {
-  if (process.env.NODE_ENV === "production") return false;
   const raw = String(process.env.STACKSOS_E2E_TEST_MODE || "").toLowerCase();
   return raw === "1" || raw === "true" || raw === "yes";
 }

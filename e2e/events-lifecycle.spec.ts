@@ -1,5 +1,14 @@
 import { test, expect } from "@playwright/test";
 
+async function getCsrfToken(request: any): Promise<string> {
+  const response = await request.get("/api/csrf-token");
+  expect(response.status()).toBe(200);
+  const data = await response.json();
+  expect(data.ok).toBe(true);
+  expect(typeof data.token).toBe("string");
+  return data.token;
+}
+
 test.describe("Events Lifecycle", () => {
   test("events list page loads and renders heading", async ({ page }) => {
     const response = await page.goto("/opac/events");
@@ -254,9 +263,13 @@ test.describe("Events Lifecycle", () => {
   });
 
   test("event registrations API rejects unauthenticated POST", async ({ request }) => {
+    const token = await getCsrfToken(request);
     const res = await request.post("/api/opac/events/registrations", {
       data: { action: "register", eventId: "evt-001" },
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-csrf-token": token,
+      },
     });
 
     // Should be 401 (unauthorized) since no session cookie is set
