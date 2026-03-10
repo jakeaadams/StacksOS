@@ -9,6 +9,7 @@ import {
   Building2,
   BookOpen,
   MapPin,
+  Calendar,
   ArrowRight,
   Users,
   DollarSign,
@@ -20,6 +21,7 @@ import {
   Palette,
   Shield,
 } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
 
 interface SettingsCard {
   title: string;
@@ -88,6 +90,16 @@ const SETTINGS_CARDS: SettingsCard[] = [
     features: ["Recurring fine rules", "Maximum fine rules", "Grace periods", "Fine cap behavior"],
   },
   {
+    title: "Hours & Closures",
+    description:
+      "Maintain open hours, closed dates, and calendar changes that affect holds, due dates, and patron expectations.",
+    href: "/staff/admin/settings/hours",
+    icon: Calendar,
+    iconColor: "text-sky-600",
+    bgColor: "bg-sky-500/10",
+    features: ["Weekly hours", "Closed dates", "Calendar versions", "Rollback support"],
+  },
+  {
     title: "Digital App Library",
     description:
       "Configure Libby/OverDrive, Hoopla, cloudLibrary, and Kanopy links + connector modes.",
@@ -150,51 +162,67 @@ const SETTINGS_CARDS: SettingsCard[] = [
 
 const SETUP_STEPS: SetupStep[] = [
   {
-    title: "1. Run Onboarding Wizard",
+    title: "Run Onboarding Wizard",
     description:
       "Use profile-guided checks to confirm Evergreen connectivity, auth, and workstation readiness.",
     href: "/staff/admin/onboarding",
   },
   {
-    title: "2. Configure Tenant Basics",
+    title: "Configure Tenant Basics",
     description:
       "Set tenant profile, discovery scope/depth defaults, and Evergreen base URL for this library environment.",
     href: "/staff/admin/tenants",
   },
   {
-    title: "3. Configure Library Policies",
+    title: "Configure Library Policies",
     description:
       "Set circulation rules, copy locations, and fines so staff and OPAC behavior match your local policy.",
     href: "/staff/admin/settings/library",
   },
   {
-    title: "4. Customize OPAC Experience",
+    title: "Set Hours & Closures",
+    description:
+      "Confirm open hours and holiday closures before validating circulation and hold behavior.",
+    href: "/staff/admin/settings/hours",
+  },
+  {
+    title: "Customize OPAC Experience",
     description:
       "Set hero text, quick links, and homepage section visibility for a polished patron discovery flow.",
     href: "/staff/admin/settings/opac",
   },
   {
-    title: "5. Validate End-to-End",
-    description:
-      "Run workstation/login checks, then verify checkout, holds, and OPAC discovery before go-live.",
-    href: "/staff/admin/go-live",
-  },
-  {
-    title: "6. Configure Digital App Library",
+    title: "Configure Digital App Library",
     description:
       "Set Libby/OverDrive, Hoopla, cloudLibrary, and Kanopy connectors so eContent links and app handoff are intentional.",
     href: "/staff/admin/settings/econtent",
   },
   {
-    title: "7. Configure Payment Processing",
+    title: "Configure Payment Processing",
     description:
       "Select a payment gateway (Stripe, Square, or PayPal), enter API credentials, and test patron checkout.",
     href: "/staff/admin/settings/payments",
+  },
+  {
+    title: "Review Security Settings",
+    description:
+      "Decide whether patron MFA is available or required before opening self-service account access broadly.",
+    href: "/staff/admin/settings/security",
+  },
+  {
+    title: "Validate End-to-End",
+    description:
+      "Run workstation/login checks, then verify checkout, holds, digital handoff, and OPAC discovery before go-live.",
+    href: "/staff/admin/go-live",
   },
 ];
 
 export default function SettingsHubPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const setupSteps = user?.isPlatformAdmin
+    ? SETUP_STEPS
+    : SETUP_STEPS.filter((step) => step.href !== "/staff/admin/tenants");
 
   return (
     <PageContainer>
@@ -231,7 +259,7 @@ export default function SettingsHubPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {SETUP_STEPS.map((step) => (
+            {setupSteps.map((step, index) => (
               <Link
                 key={step.title}
                 href={step.href}
@@ -241,6 +269,9 @@ export default function SettingsHubPage() {
                   <div>
                     <div className="font-medium flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-[hsl(var(--brand-1))]" />
+                      <span className="text-xs font-semibold text-muted-foreground">
+                        {index + 1}.
+                      </span>
                       {step.title}
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">{step.description}</p>

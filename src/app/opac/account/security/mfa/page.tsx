@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { fetchWithAuth } from "@/lib/client-fetch";
@@ -33,7 +33,11 @@ type SetupState = "idle" | "qr" | "verify" | "recovery";
 
 export default function MfaPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isLoggedIn, isLoading: sessionLoading } = usePatronSession();
+  const returnTab = searchParams.get("returnTab") === "privacy" ? "privacy" : "profile";
+  const settingsHref =
+    returnTab === "privacy" ? "/opac/account/settings?tab=privacy" : "/opac/account/settings";
 
   const [methods, setMethods] = useState<MfaMethod[]>([]);
   const [mfaEnabled, setMfaEnabled] = useState(false);
@@ -327,7 +331,7 @@ export default function MfaPage() {
     <div className="min-h-screen bg-muted/30 py-8">
       <div className="max-w-2xl mx-auto px-4">
         <Link
-          href="/opac/account/settings"
+          href={settingsHref}
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6"
         >
           <ArrowLeft className="h-4 w-4" />

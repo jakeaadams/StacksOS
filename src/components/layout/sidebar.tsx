@@ -52,9 +52,11 @@ import {
   Bell,
   KeyRound,
   Gavel,
+  Shield,
   PlugZap,
   Smartphone,
   Palette,
+  Rocket,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMemo, useState } from "react";
@@ -243,7 +245,15 @@ const mainNav: NavSection[] = [
     title: "Administration",
     defaultOpen: false,
     items: [
-      { title: "Local Admin", href: "/staff/admin", icon: Settings },
+      { title: "Admin Home", href: "/staff/admin", icon: Settings },
+      { title: "Onboarding Wizard", href: "/staff/admin/onboarding", icon: Rocket },
+      { title: "Settings Hub", href: "/staff/admin/settings", icon: Sliders },
+      { title: "Library Settings", href: "/staff/admin/settings/library", icon: Globe },
+      { title: "Hours & Closures", href: "/staff/admin/settings/hours", icon: Calendar },
+      { title: "OPAC Experience", href: "/staff/admin/settings/opac", icon: Palette },
+      { title: "Digital App Library", href: "/staff/admin/settings/econtent", icon: Smartphone },
+      { title: "Payment Processing", href: "/staff/admin/settings/payments", icon: CreditCard },
+      { title: "Security", href: "/staff/admin/settings/security", icon: Shield },
       ...(featureFlags.tenantConsole
         ? [{ title: "Tenants", href: "/staff/admin/tenants", icon: Globe }]
         : []),
@@ -255,9 +265,6 @@ const mainNav: NavSection[] = [
       ...(featureFlags.developerPlatform
         ? [{ title: "Developer Platform", href: "/staff/admin/developer-platform", icon: PlugZap }]
         : []),
-      { title: "System Settings", href: "/staff/admin/settings", icon: Sliders },
-      { title: "OPAC Experience", href: "/staff/admin/settings/opac", icon: Palette },
-      { title: "Digital App Library", href: "/staff/admin/settings/econtent", icon: Smartphone },
       { title: "My Settings", href: "/staff/settings", icon: UserCog },
       { title: "Policy Inspector", href: "/staff/admin/policy-inspector", icon: Database },
       ...(featureFlags.policyEditors

@@ -414,7 +414,22 @@ export default function MyListsPage() {
                     );
                   })}
                   {lists.length === 0 && (
-                    <div className="p-6 text-center text-muted-foreground">{t("noLists")}</div>
+                    <div className="p-6 text-center">
+                      <p className="text-sm text-muted-foreground">{t("noLists")}</p>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          setNewListName("");
+                          setNewListDescription("");
+                          setNewListVisibility("private");
+                          setShowCreateModal(true);
+                        }}
+                        className="mt-4 inline-flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Create your first list
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -590,10 +605,29 @@ export default function MyListsPage() {
               ) : (
                 <div className="stx-surface rounded-xl p-12 text-center">
                   <List className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-                  <h2 className="text-xl font-semibold text-foreground mb-2">Select a list</h2>
+                  <h2 className="text-xl font-semibold text-foreground mb-2">
+                    {lists.length === 0 ? "Create your first list" : "Select a list"}
+                  </h2>
                   <p className="text-muted-foreground">
-                    Choose a list from the sidebar or create a new one
+                    {lists.length === 0
+                      ? "Save titles you want to revisit, share, or organize by topic."
+                      : "Choose a list from the sidebar or create a new one."}
                   </p>
+                  {lists.length === 0 && (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setNewListName("");
+                        setNewListDescription("");
+                        setNewListVisibility("private");
+                        setShowCreateModal(true);
+                      }}
+                      className="mt-6 inline-flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Create List
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

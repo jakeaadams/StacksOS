@@ -33,6 +33,8 @@ import {
   Rocket,
   Sparkles,
   Smartphone,
+  CreditCard,
+  Palette,
 } from "lucide-react";
 
 type AdminCard = {
@@ -95,10 +97,19 @@ export default function AdminHubPage() {
       },
       {
         title: "Settings",
-        description: "Library settings, circulation policies, and copy locations.",
+        description:
+          "Start from a clear settings hub for setup order, policy review, and UX tuning.",
         href: "/staff/admin/settings",
         icon: Settings2,
         tone: "bg-muted text-foreground",
+      },
+      {
+        title: "OPAC Experience",
+        description:
+          "Shape homepage hierarchy, chips, and discovery copy without touching Evergreen.",
+        href: "/staff/admin/settings/opac",
+        icon: Palette,
+        tone: "bg-primary/10 text-primary",
       },
       {
         title: "Digital App Library",
@@ -106,6 +117,20 @@ export default function AdminHubPage() {
         href: "/staff/admin/settings/econtent",
         icon: Smartphone,
         tone: "bg-primary/10 text-primary",
+      },
+      {
+        title: "Payment Processing",
+        description: "Configure patron fine payments and test provider checkout flows.",
+        href: "/staff/admin/settings/payments",
+        icon: CreditCard,
+        tone: "bg-secondary text-secondary-foreground",
+      },
+      {
+        title: "Security",
+        description: "Control patron MFA availability and review session policy expectations.",
+        href: "/staff/admin/settings/security",
+        icon: ShieldCheck,
+        tone: "bg-accent text-accent-foreground",
       },
       {
         title: "Tenants",

@@ -5,7 +5,7 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 import { startRegistration } from "@simplewebauthn/browser";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +56,8 @@ interface PatronPasskey {
 export default function AccountSettingsPage() {
   const _t = useTranslations("settingsPage");
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { patron, isLoggedIn, isLoading: sessionLoading } = usePatronSession();
 
   const [settings, setSettings] = useState<PatronSettings>({
@@ -72,8 +74,6 @@ export default function AccountSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"profile" | "notifications" | "privacy">("profile");
-
   // PIN change state
   const [showPinChange, setShowPinChange] = useState(false);
   const [currentPin, setCurrentPin] = useState("");
@@ -155,6 +155,23 @@ export default function AccountSettingsPage() {
       void Promise.all([fetchSettings(), fetchPasskeys(), fetchMfaStatus()]);
     }
   }, [fetchMfaStatus, fetchPasskeys, fetchSettings, isLoggedIn, router, sessionLoading]);
+
+  const activeTab = (() => {
+    const tab = searchParams.get("tab");
+    if (tab === "notifications" || tab === "privacy") return tab;
+    return "profile";
+  })();
+
+  const setActiveTab = (tab: "profile" | "notifications" | "privacy") => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (tab === "profile") {
+      next.delete("tab");
+    } else {
+      next.set("tab", tab);
+    }
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
 
   const handleSave = async () => {
     try {
@@ -833,7 +850,7 @@ export default function AccountSettingsPage() {
                   Add an extra layer of security with an authenticator app.
                 </p>
                 <Button variant="outline" asChild className="items-center gap-2 px-4">
-                  <Link href="/opac/account/security/mfa">
+                  <Link href="/opac/account/security/mfa?returnTab=privacy">
                     <Shield className="h-4 w-4" />
                     Manage Two-Factor Authentication
                   </Link>
