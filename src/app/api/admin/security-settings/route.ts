@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 import { requireSaaSAccess } from "@/lib/saas-rbac";
 import { getMfaIssuer, isMfaConfigured } from "@/lib/mfa";
 import { clearTenantConfigCache, getTenantConfig, getTenantId } from "@/lib/tenant/config";
@@ -29,11 +30,13 @@ export async function GET(req: NextRequest) {
       autoBootstrapPlatformOwner: true,
     });
 
+    const tenant = getTenantConfig();
+
     return successResponse({
       mfa: {
         secretConfigured: isMfaConfigured(),
-        enabled: getTenantConfig().security?.mfa?.enabled ?? false,
-        required: getTenantConfig().security?.mfa?.required ?? false,
+        enabled: tenant.security?.mfa?.enabled ?? false,
+        required: tenant.security?.mfa?.required ?? false,
         issuer: getMfaIssuer(),
       },
       sessions: {
@@ -127,7 +130,9 @@ export async function POST(req: NextRequest) {
         mfaEnabled: body.mfaEnabled,
         mfaRequired: body.mfaRequired,
       },
-    }).catch(() => {});
+    }).catch((err) => {
+      logger.warn({ error: String(err) }, "Failed to write security settings audit log");
+    });
 
     return successResponse({
       saved: true,

@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { logAuditEvent } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 import { requireSaaSAccess } from "@/lib/saas-rbac";
 import { getPaymentSettings } from "@/lib/payments/types";
 import { clearTenantConfigCache, getTenantConfig, getTenantId } from "@/lib/tenant/config";
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
       minimumAmount: settings.minimumAmount,
       allowPartialPayment: settings.allowPartialPayment,
       customization: settings.customization,
+      squareApplicationId: settings.squareApplicationId,
       squareLocationId: settings.squareLocationId,
       squareEnvironment: settings.squareEnvironment,
       paypalClientId: settings.paypalClientId,
@@ -69,6 +71,7 @@ const postSchema = z
       .optional(),
     square: z
       .object({
+        applicationId: z.string().trim().max(256).optional(),
         locationId: z.string().trim().max(128).optional(),
         environment: z.enum(["sandbox", "production"]).optional(),
       })
@@ -175,12 +178,15 @@ export async function POST(req: NextRequest) {
         allowPartialPayment: body.allowPartialPayment,
         hasCustomization: Boolean(body.customization),
         hasStripePublicKey: Boolean(body.stripe?.publicKey),
+        hasSquareApplicationId: Boolean(body.square?.applicationId),
         hasSquareLocationId: Boolean(body.square?.locationId),
         squareEnvironment: body.square?.environment,
         hasPayPalClientId: Boolean(body.paypal?.clientId),
         paypalEnvironment: body.paypal?.environment,
       },
-    }).catch(() => {});
+    }).catch((err) => {
+      logger.warn({ error: String(err) }, "Failed to write payment settings audit log");
+    });
 
     const settings = getPaymentSettings();
 
@@ -193,6 +199,7 @@ export async function POST(req: NextRequest) {
         minimumAmount: settings.minimumAmount,
         allowPartialPayment: settings.allowPartialPayment,
         customization: settings.customization,
+        squareApplicationId: settings.squareApplicationId,
         squareLocationId: settings.squareLocationId,
         squareEnvironment: settings.squareEnvironment,
         paypalClientId: settings.paypalClientId,

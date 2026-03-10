@@ -32,9 +32,9 @@ function verifyStripeSignature(payload: string, sigHeader: string, secret: strin
   const signatures = parts.v1 || [];
   if (!timestamp || signatures.length === 0) return false;
 
-  // Reject events older than 5 minutes (replay protection)
+  // Reject events older than 5 minutes or more than 30s in the future (replay protection)
   const age = Math.floor(Date.now() / 1000) - parseInt(timestamp, 10);
-  if (!Number.isFinite(age) || age > 300) return false;
+  if (!Number.isFinite(age) || age > 300 || age < -30) return false;
 
   // Compute expected signature
   const signedPayload = `${timestamp}.${payload}`;

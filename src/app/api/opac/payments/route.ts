@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
         responseData.publishableKey = config.publicKey;
         break;
       case "square":
-        responseData.applicationId = config.publicKey;
+        responseData.applicationId = config.squareApplicationId;
         responseData.locationId = config.squareLocationId;
         break;
       case "paypal":
@@ -197,6 +197,10 @@ export async function GET(req: NextRequest) {
     return successResponse({
       provider: config.provider,
       publicKey: config.publicKey,
+      squareApplicationId: config.squareApplicationId,
+      squareLocationId: config.squareLocationId,
+      paypalClientId: config.paypalClientId,
+      paypalEnvironment: config.paypalEnvironment,
       currency: config.currency,
       minimumAmount: config.minimumAmount,
       allowPartialPayment: config.allowPartialPayment,

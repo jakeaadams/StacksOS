@@ -127,7 +127,7 @@ Secrets stay in env vars (examples):
 Non-secret payment and patron-MFA behavior can live in tenant config:
 
 - `payment.provider`, currency, minimum amount, partial-payment policy, receipt customization
-- Stripe publishable key, Square location/environment, PayPal client ID/environment
+- Stripe publishable key, Square application/location/environment, PayPal client ID/environment
 - `security.mfa.enabled`, `security.mfa.required`, `security.mfa.issuer`
 
 Recommended AI defaults for Grok operations assistant:

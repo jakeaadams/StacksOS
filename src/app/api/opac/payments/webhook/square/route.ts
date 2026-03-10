@@ -117,7 +117,7 @@ function parsePaymentNote(note: string | undefined): {
 
     if (key === "patronId") {
       patronId = parseInt(value, 10);
-      if (!Number.isFinite(patronId)) patronId = 0;
+      if (!Number.isFinite(patronId) || patronId <= 0) patronId = 0;
     } else if (key === "fineIds") {
       fineIds = value
         .split(",")
@@ -193,6 +193,18 @@ export async function POST(req: NextRequest) {
     { eventId: event.event_id, type: event.type, merchantId: event.merchant_id },
     "Square webhook event received"
   );
+
+  // Reject events older than 10 minutes (replay protection)
+  if (event.created_at) {
+    const eventAge = Date.now() - new Date(event.created_at).getTime();
+    if (eventAge > 10 * 60 * 1000 || eventAge < -60_000) {
+      logger.warn(
+        { eventId: event.event_id, age: eventAge },
+        "Square webhook: event too old or future-dated, ignoring"
+      );
+      return NextResponse.json({ received: true }, { status: 200 });
+    }
+  }
 
   // Always return 200 to prevent Square from retrying and creating duplicates.
   // Errors in processing are logged for manual reconciliation via the audit trail.

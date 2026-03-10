@@ -72,7 +72,7 @@ Use official sources first. Current baseline set:
 - Latest VM runtime gates are green:
   - `npm run lint -- --quiet`
   - `npm run type-check`
-  - `npm run test:run` (404/404)
+  - `npm run test:run` (440/440)
   - `npm run test:e2e` (81 passed, 5 skipped)
   - `BASE_URL=http://127.0.0.1:3000 bash audit/run_all.sh`
 - External comparative user study remains open (requires live participants).

@@ -67,8 +67,8 @@ describe("recordPaymentInEvergreen", () => {
       currency: "USD",
     });
 
-    // Verify call order: auth.init -> auth.complete -> money.payment
-    expect(mockCallOpenSRF).toHaveBeenCalledTimes(3);
+    // Verify call order: auth.init -> auth.complete -> money.payment -> session.delete
+    expect(mockCallOpenSRF).toHaveBeenCalledTimes(4);
 
     const initCall = mockCallOpenSRF.mock.calls[0]!;
     expect(initCall[0]).toBe("open-ils.auth");
@@ -88,6 +88,12 @@ describe("recordPaymentInEvergreen", () => {
       payment_type: "credit_card_payment",
     });
     expect(payCall[2]![2]).toBe(42);
+
+    // Verify session cleanup
+    const deleteCall = mockCallOpenSRF.mock.calls[3]!;
+    expect(deleteCall[0]).toBe("open-ils.auth");
+    expect(deleteCall[1]).toBe("open-ils.auth.session.delete");
+    expect(deleteCall[2]).toEqual(["auth-token-abc"]);
   });
 
   it("should return early without calling OpenSRF when patronId is 0", async () => {

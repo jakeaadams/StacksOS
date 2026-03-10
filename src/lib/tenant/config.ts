@@ -152,6 +152,7 @@ function buildEnvTenantFallback(tenantId: string): TenantConfig {
         publicKey: process.env.STACKSOS_PAYMENT_PUBLIC_KEY || undefined,
       },
       square: {
+        applicationId: process.env.STACKSOS_SQUARE_APPLICATION_ID || undefined,
         locationId: process.env.STACKSOS_SQUARE_LOCATION_ID || undefined,
         environment:
           process.env.STACKSOS_SQUARE_ENVIRONMENT === "production"

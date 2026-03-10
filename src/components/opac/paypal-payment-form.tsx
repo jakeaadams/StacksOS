@@ -110,6 +110,12 @@ export function PayPalPaymentForm({
   const buttonsRef = useRef<PayPalButtonsComponent | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Use refs for callbacks to avoid re-initializing PayPal buttons on every render
+  const onSuccessRef = useRef(onSuccess);
+  onSuccessRef.current = onSuccess;
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
+
   const formattedAmount = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency.toUpperCase(),
@@ -151,7 +157,7 @@ export function PayPalPaymentForm({
                 throw new Error(responseData?.error || "Payment capture failed.");
               }
 
-              onSuccess();
+              onSuccessRef.current();
             } catch (err) {
               setError(err instanceof Error ? err.message : "Payment failed. Please try again.");
             } finally {
@@ -159,7 +165,7 @@ export function PayPalPaymentForm({
             }
           },
           onCancel: () => {
-            onCancel();
+            onCancelRef.current();
           },
           onError: (err: unknown) => {
             const message =
@@ -200,7 +206,7 @@ export function PayPalPaymentForm({
         buttonsRef.current = null;
       }
     };
-  }, [clientId, currency, intentId, onCancel, onSuccess]);
+  }, [clientId, currency, intentId]);
 
   return (
     <div className="w-full max-w-md mx-auto">

@@ -6,6 +6,7 @@
  * service account.
  */
 
+import { createHash } from "node:crypto";
 import { callOpenSRF } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
@@ -42,7 +43,7 @@ export interface RecordPaymentParams {
 export async function recordPaymentInEvergreen(params: RecordPaymentParams): Promise<void> {
   const { provider, paymentId, patronId, fineIds, amount, currency, receiptUrl } = params;
 
-  if (!patronId || fineIds.length === 0) {
+  if (!patronId || patronId <= 0 || fineIds.length === 0) {
     logger.warn(
       { paymentId, patronId, fineIds, provider },
       "Webhook: payment succeeded but missing patron/fine metadata"
@@ -82,7 +83,6 @@ export async function recordPaymentInEvergreen(params: RecordPaymentParams): Pro
     const nonce = initRes?.payload?.[0];
     if (!nonce) throw new Error("Auth init returned no nonce");
 
-    const { createHash } = await import("node:crypto");
     const hashedPin = createHash("md5")
       .update(nonce + createHash("md5").update(servicePin).digest("hex"))
       .digest("hex");
@@ -94,33 +94,40 @@ export async function recordPaymentInEvergreen(params: RecordPaymentParams): Pro
     const serviceToken = authPayload?.payload?.authtoken;
     if (!serviceToken) throw new Error("Service account auth failed");
 
-    // Distribute amount evenly across fines, giving any remainder (from rounding)
-    // to the first fine to ensure the total equals the charged amount exactly.
-    const perFine = Math.floor(amount / fineIds.length);
-    const remainder = amount - perFine * fineIds.length;
-    const payments = fineIds.map((id, idx) => [id, idx === 0 ? perFine + remainder : perFine]);
+    try {
+      // Distribute amount evenly across fines, giving any remainder (from rounding)
+      // to the first fine to ensure the total equals the charged amount exactly.
+      const perFine = Math.floor(amount / fineIds.length);
+      const remainder = amount - perFine * fineIds.length;
+      const payments = fineIds.map((id, idx) => [id, idx === 0 ? perFine + remainder : perFine]);
 
-    const payResult = await callOpenSRF("open-ils.circ", "open-ils.circ.money.payment", [
-      serviceToken,
-      {
-        userid: patronId,
-        payments,
-        payment_type: "credit_card_payment",
-        note: `${provider} payment ${paymentId}`.trim(),
-      },
-      patronId,
-    ]);
+      const payResult = await callOpenSRF("open-ils.circ", "open-ils.circ.money.payment", [
+        serviceToken,
+        {
+          userid: patronId,
+          payments,
+          payment_type: "credit_card_payment",
+          note: `${provider} payment ${paymentId}`.trim(),
+        },
+        patronId,
+      ]);
 
-    const payPayload = payResult?.payload?.[0];
-    if (payPayload && typeof payPayload === "object" && "ilsevent" in payPayload) {
-      logger.error(
-        { paymentId, ilsevent: payPayload, provider },
-        "Webhook: Evergreen payment recording returned an event error"
-      );
-    } else {
-      logger.info(
-        { paymentId, patronId, fineIds, provider },
-        "Webhook: payment recorded in Evergreen"
+      const payPayload = payResult?.payload?.[0];
+      if (payPayload && typeof payPayload === "object" && "ilsevent" in payPayload) {
+        logger.error(
+          { paymentId, ilsevent: payPayload, provider },
+          "Webhook: Evergreen payment recording returned an event error"
+        );
+      } else {
+        logger.info(
+          { paymentId, patronId, fineIds, provider },
+          "Webhook: payment recorded in Evergreen"
+        );
+      }
+    } finally {
+      // Clean up Evergreen auth session to prevent stale session accumulation
+      await callOpenSRF("open-ils.auth", "open-ils.auth.session.delete", [serviceToken]).catch(
+        () => {}
       );
     }
   } catch (error) {

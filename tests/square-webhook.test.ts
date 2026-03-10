@@ -48,7 +48,7 @@ function makeSquareEvent(overrides: Record<string, unknown> = {}) {
     merchant_id: "M-TEST",
     type: "payment.completed",
     event_id: "evt-123",
-    created_at: "2026-03-01T00:00:00Z",
+    created_at: new Date().toISOString(),
     data: {
       type: "payment",
       id: "data-id-1",

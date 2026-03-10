@@ -84,7 +84,7 @@ describe("admin payment settings route", () => {
           receiptMessage: "",
         },
         stripe: { publicKey: "pk_test_existing" },
-        square: { environment: "sandbox" },
+        square: { applicationId: "sandbox-sq0idb-existing", environment: "sandbox" },
         paypal: { environment: "sandbox" },
       },
       integrations: { paymentProvider: "stripe" },
@@ -105,6 +105,7 @@ describe("admin payment settings route", () => {
         supportEmail: "billing@example.org",
         receiptMessage: "Thanks",
       },
+      squareApplicationId: "sandbox-sq0idb-existing",
       squareLocationId: "",
       squareEnvironment: "sandbox",
       paypalClientId: "paypal-client-id",
@@ -119,6 +120,7 @@ describe("admin payment settings route", () => {
 
     expect(response.status).toBe(200);
     expect(data.provider).toBe("paypal");
+    expect(data.squareApplicationId).toBe("sandbox-sq0idb-existing");
     expect(data.paypalClientId).toBe("paypal-client-id");
     expect(data.paypalEnvironment).toBe("live");
   });
@@ -159,5 +161,53 @@ describe("admin payment settings route", () => {
     expect(clearTenantConfigCache).toHaveBeenCalledTimes(1);
     expect(data.saved).toBe(true);
     expect(data.settings.provider).toBe("paypal");
+  });
+
+  it("persists Square application and location IDs in tenant config", async () => {
+    getPaymentSettings.mockReturnValue({
+      provider: "square",
+      publicKey: "",
+      secretKeyConfigured: true,
+      secretKeyLast4: "5678",
+      webhookSecretConfigured: false,
+      mode: "test",
+      currency: "usd",
+      minimumAmount: 100,
+      allowPartialPayment: true,
+      customization: {
+        statementDescriptor: "Library Payment",
+        supportEmail: "",
+        receiptMessage: "",
+      },
+      squareApplicationId: "sandbox-sq0idb-new",
+      squareLocationId: "L-NEW",
+      squareEnvironment: "sandbox",
+      paypalClientId: "",
+      paypalEnvironment: "sandbox",
+    });
+
+    const { POST } = await import("@/app/api/admin/payment-settings/route");
+    const response = await POST(
+      new Request("http://localhost/api/admin/payment-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "square",
+          square: {
+            applicationId: "sandbox-sq0idb-new",
+            locationId: "L-NEW",
+            environment: "sandbox",
+          },
+        }),
+      }) as any
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    const savedConfig = saveTenantConfigToDisk.mock.calls[0]![0];
+    expect(savedConfig.payment.provider).toBe("square");
+    expect(savedConfig.payment.square.applicationId).toBe("sandbox-sq0idb-new");
+    expect(savedConfig.payment.square.locationId).toBe("L-NEW");
+    expect(data.settings.squareApplicationId).toBe("sandbox-sq0idb-new");
   });
 });

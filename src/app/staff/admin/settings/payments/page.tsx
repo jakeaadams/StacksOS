@@ -49,6 +49,7 @@ interface PaymentSettingsResponse {
   currency: string;
   minimumAmount: number;
   allowPartialPayment: boolean;
+  squareApplicationId: string;
   squareLocationId: string;
   squareEnvironment: "sandbox" | "production";
   paypalClientId: string;
@@ -67,6 +68,7 @@ interface FormState {
   secretKey: string;
   webhookSecret: string;
   // Square fields
+  squareApplicationId: string;
   squareAccessToken: string;
   squareLocationId: string;
   squareEnvironment: "sandbox" | "production";
@@ -110,6 +112,7 @@ function initialForm(data: PaymentSettingsResponse | null): FormState {
     publicKey: data?.publicKey || "",
     secretKey: "",
     webhookSecret: "",
+    squareApplicationId: data?.squareApplicationId || "",
     squareAccessToken: "",
     squareLocationId: data?.squareLocationId || "",
     squareEnvironment: data?.squareEnvironment || "sandbox",
@@ -237,6 +240,7 @@ export default function PaymentSettingsPage() {
           square:
             form.gateway === "square"
               ? {
+                  applicationId: form.squareApplicationId.trim() || undefined,
                   locationId: form.squareLocationId.trim() || undefined,
                   environment: form.squareEnvironment,
                 }
@@ -305,9 +309,9 @@ export default function PaymentSettingsPage() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             StacksOS handles payment state independently and writes back to Evergreen when
-            transactions settle. No Evergreen schema changes required. Patron web checkout is fully
-            wired for Stripe; other gateways can be pre-configured here while their settlement
-            automation is finalized per deployment.
+            transactions settle. No Evergreen schema changes required. Stripe, Square, and PayPal
+            patron checkout all run through the OPAC while provider secrets remain deploy-time
+            configuration outside tenant JSON.
           </CardContent>
         </Card>
 
@@ -543,6 +547,22 @@ export default function PaymentSettingsPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                      {/* Application ID */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="square-application-id">Application ID</Label>
+                        <Input
+                          id="square-application-id"
+                          value={form.squareApplicationId}
+                          onChange={(e) => patch({ squareApplicationId: e.target.value })}
+                          placeholder="sandbox-sq0idb-..."
+                          className="font-mono text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Required by the Square Web Payments SDK in the patron checkout flow. This
+                          value is safe to persist in tenant config.
+                        </p>
+                      </div>
+
                       {/* Access Token */}
                       <div className="space-y-1.5">
                         <Label htmlFor="square-access-token">Access Token</Label>
@@ -580,6 +600,10 @@ export default function PaymentSettingsPage() {
                           </a>
                           .
                         </p>
+                        <p className="text-xs text-muted-foreground">
+                          Keep this in your deploy secret store. It is used server-side when the
+                          patron submits card details.
+                        </p>
                       </div>
 
                       {/* Location ID */}
@@ -593,7 +617,7 @@ export default function PaymentSettingsPage() {
                           className="font-mono text-sm"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Saved in tenant config for runtime use.
+                          Saved in tenant config for runtime use by both checkout and settlement.
                         </p>
                       </div>
 

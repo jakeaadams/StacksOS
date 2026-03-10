@@ -1,10 +1,14 @@
 /**
  * Square payment gateway implementation using the Square REST API directly.
- * No Square SDK dependency — all calls use `fetch`.
+ * Browser tokenization uses the Web Payments SDK, so createPaymentIntent()
+ * creates a StacksOS checkout session and the actual provider charge happens
+ * in /api/opac/payments/complete.
  */
 
 import { randomUUID } from "node:crypto";
+
 import { logger } from "@/lib/logger";
+import { createOpacPaymentSession } from "@/lib/db/opac-payment-sessions";
 import type { PaymentGateway, PaymentIntent, PaymentResult } from "./types";
 import { getPaymentConfig } from "./types";
 
@@ -23,7 +27,13 @@ function getAccessToken(): string {
 
 function getLocationId(): string {
   const id = getPaymentConfig().squareLocationId;
-  if (!id) throw new Error("STACKSOS_SQUARE_LOCATION_ID is not configured");
+  if (!id) throw new Error("Square location ID is not configured");
+  return id;
+}
+
+function getApplicationId(): string {
+  const id = getPaymentConfig().squareApplicationId;
+  if (!id) throw new Error("Square application ID is not configured");
   return id;
 }
 
@@ -96,44 +106,31 @@ export class SquareGateway implements PaymentGateway {
     fineIds: number[];
     description: string;
   }): Promise<PaymentIntent> {
-    const baseUrl = getBaseUrl();
-    const idempotencyKey = randomUUID();
-    const note = `patronId:${params.patronId}|fineIds:${params.fineIds.join(",")}`;
+    getAccessToken();
+    getApplicationId();
+    getLocationId();
 
-    const body = {
-      idempotency_key: idempotencyKey,
-      amount_money: {
-        amount: params.amount,
-        currency: this.currency,
+    const session = await createOpacPaymentSession({
+      provider: "square",
+      patronId: params.patronId,
+      amountCents: params.amount,
+      currency: this.currency,
+      fineIds: params.fineIds,
+      description: params.description,
+      metadata: {
+        source: "square-web-payments-sdk",
       },
-      location_id: getLocationId(),
-      autocomplete: false,
-      note,
-      source_id: "EXTERNAL", // Placeholder — actual card nonce comes from client
-    };
-
-    const response = await fetch(`${baseUrl}/v2/payments`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify(body),
     });
 
-    const data = await response.json();
-    if (!response.ok) {
-      logger.error({ squareError: data }, "Square createPaymentIntent failed");
-      throw new Error(extractSquareError(data as SquareErrorResponse));
-    }
-
-    const payment: SquarePayment = data.payment;
     return {
-      id: payment.id,
+      id: session.id,
       provider: "square",
-      amount: payment.amount_money?.amount ?? params.amount,
-      currency: (payment.amount_money?.currency ?? this.currency).toLowerCase(),
-      status: mapSquareStatus(payment.status),
+      amount: session.amountCents,
+      currency: session.currency,
+      status: "pending",
       patronId: params.patronId,
       fineIds: params.fineIds,
-      createdAt: payment.created_at || new Date().toISOString(),
+      createdAt: session.createdAt,
     };
   }
 

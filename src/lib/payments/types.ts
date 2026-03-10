@@ -16,6 +16,7 @@ export interface PaymentConfig {
   minimumAmount: number;
   /** Whether to allow partial payments */
   allowPartialPayment: boolean;
+  squareApplicationId?: string;
   squareLocationId?: string;
   squareEnvironment?: "sandbox" | "production";
   paypalClientId?: string;
@@ -79,6 +80,7 @@ export interface PaymentSettings {
   minimumAmount: number;
   allowPartialPayment: boolean;
   customization: PaymentCustomization;
+  squareApplicationId: string;
   squareLocationId: string;
   squareEnvironment: "sandbox" | "production";
   paypalClientId: string;
@@ -99,6 +101,11 @@ function getStripePublicKey(): string {
 function getSquareLocationId(): string {
   const tenant = getTenantConfig();
   return tenant.payment?.square?.locationId || "";
+}
+
+function getSquareApplicationId(): string {
+  const tenant = getTenantConfig();
+  return tenant.payment?.square?.applicationId || "";
 }
 
 function getSquareEnvironment(): "sandbox" | "production" {
@@ -127,6 +134,7 @@ export function getPaymentConfig(): PaymentConfig {
     currency: payment?.currency || "usd",
     minimumAmount: payment?.minimumAmount ?? 100,
     allowPartialPayment: payment?.allowPartialPayment ?? true,
+    squareApplicationId: getSquareApplicationId(),
     squareLocationId: getSquareLocationId(),
     squareEnvironment: getSquareEnvironment(),
     paypalClientId: getPayPalClientId(),
@@ -197,6 +205,7 @@ export function getPaymentSettings(): PaymentSettings {
     minimumAmount: config.minimumAmount,
     allowPartialPayment: config.allowPartialPayment,
     customization,
+    squareApplicationId: config.squareApplicationId || "",
     squareLocationId: config.squareLocationId || "",
     squareEnvironment: config.squareEnvironment || "sandbox",
     paypalClientId: config.paypalClientId || "",

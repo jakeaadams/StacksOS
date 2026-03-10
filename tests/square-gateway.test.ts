@@ -16,16 +16,39 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
+const { createOpacPaymentSession } = vi.hoisted(() => ({
+  createOpacPaymentSession: vi.fn(),
+}));
+
+vi.mock("@/lib/db/opac-payment-sessions", () => ({
+  createOpacPaymentSession,
+}));
+
 import { SquareGateway } from "@/lib/payments/square-gateway";
 
 const originalEnv = { ...process.env };
 
 beforeEach(() => {
   process.env.STACKSOS_SQUARE_ACCESS_TOKEN = "test-square-token";
+  process.env.STACKSOS_SQUARE_APPLICATION_ID = "sandbox-sq0idb-test";
   process.env.STACKSOS_SQUARE_LOCATION_ID = "test-location-id";
   process.env.STACKSOS_SQUARE_ENVIRONMENT = "sandbox";
   process.env.STACKSOS_PAYMENT_PROVIDER = "square";
   vi.stubGlobal("fetch", vi.fn());
+  createOpacPaymentSession.mockResolvedValue({
+    id: "sq-session-123",
+    provider: "square",
+    patronId: 42,
+    amountCents: 500,
+    currency: "usd",
+    fineIds: [10, 20],
+    description: "Fine payment",
+    metadata: { source: "square-web-payments-sdk" },
+    createdAt: "2026-01-01T00:00:00Z",
+    expiresAt: "2026-01-01T00:30:00Z",
+    consumedAt: null,
+    providerPaymentId: null,
+  });
   clearTenantConfigCache();
 });
 
@@ -37,22 +60,8 @@ afterEach(() => {
 
 describe("SquareGateway", () => {
   describe("createPaymentIntent", () => {
-    it("should make correct API call to Square and return correct shape", async () => {
+    it("should create a StacksOS payment session for browser tokenization", async () => {
       const gateway = new SquareGateway("USD");
-      const mockResponse = {
-        payment: {
-          id: "sq-pay-123",
-          amount_money: { amount: 500, currency: "USD" },
-          status: "PENDING",
-          created_at: "2026-01-01T00:00:00Z",
-          note: "patronId:42|fineIds:10,20",
-        },
-      };
-
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
-      } as Response);
 
       const result = await gateway.createPaymentIntent({
         amount: 500,
@@ -61,22 +70,18 @@ describe("SquareGateway", () => {
         description: "Fine payment",
       });
 
-      expect(fetch).toHaveBeenCalledTimes(1);
-      const [url, options] = vi.mocked(fetch).mock.calls[0]!;
-      expect(url).toBe("https://connect.squareupsandbox.com/v2/payments");
-      expect(options?.method).toBe("POST");
-      expect((options?.headers as Record<string, string>)["Authorization"]).toBe(
-        "Bearer test-square-token"
-      );
-
-      const body = JSON.parse(options?.body as string);
-      expect(body.amount_money.amount).toBe(500);
-      expect(body.amount_money.currency).toBe("USD");
-      expect(body.location_id).toBe("test-location-id");
-      expect(body.note).toBe("patronId:42|fineIds:10,20");
+      expect(fetch).not.toHaveBeenCalled();
+      expect(createOpacPaymentSession).toHaveBeenCalledTimes(1);
+      expect(createOpacPaymentSession.mock.calls[0]![0]).toMatchObject({
+        provider: "square",
+        patronId: 42,
+        amountCents: 500,
+        currency: "USD",
+        fineIds: [10, 20],
+      });
 
       expect(result).toMatchObject({
-        id: "sq-pay-123",
+        id: "sq-session-123",
         provider: "square",
         amount: 500,
         currency: "usd",
@@ -88,12 +93,7 @@ describe("SquareGateway", () => {
 
     it("should throw when Square returns non-ok response", async () => {
       const gateway = new SquareGateway();
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({
-          errors: [{ detail: "Insufficient funds", code: "INSUFFICIENT_FUNDS" }],
-        }),
-      } as Response);
+      createOpacPaymentSession.mockRejectedValueOnce(new Error("Square session bootstrap failed"));
 
       await expect(
         gateway.createPaymentIntent({
@@ -102,7 +102,7 @@ describe("SquareGateway", () => {
           fineIds: [1],
           description: "test",
         })
-      ).rejects.toThrow("Insufficient funds");
+      ).rejects.toThrow("Square session bootstrap failed");
     });
   });
 

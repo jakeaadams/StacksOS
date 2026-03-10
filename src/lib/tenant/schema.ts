@@ -129,6 +129,7 @@ export const TenantPaymentConfigSchema = z
       .default({}),
     square: z
       .object({
+        applicationId: z.string().trim().max(256).optional(),
         locationId: z.string().trim().max(128).optional(),
         environment: z.enum(["sandbox", "production"]).default("sandbox"),
       })

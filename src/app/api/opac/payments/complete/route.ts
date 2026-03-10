@@ -5,6 +5,10 @@ import { z } from "zod";
 import { getPaymentConfig } from "@/lib/payments/types";
 import { PatronAuthError, requirePatronSession } from "@/lib/opac-auth";
 import { errorResponse, successResponse, serverErrorResponse, getRequestMeta } from "@/lib/api";
+import {
+  getActiveOpacPaymentSession,
+  markOpacPaymentSessionConsumed,
+} from "@/lib/db/opac-payment-sessions";
 import { logger } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
@@ -18,13 +22,23 @@ const completePaymentSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Square: update payment source with card nonce, then complete
+// Square: create provider payment from a StacksOS checkout session
 // ---------------------------------------------------------------------------
 
 async function completeSquarePayment(
+  patronId: number,
   intentId: string,
   token: string | undefined
 ): Promise<{ success: boolean; receiptUrl?: string; error?: string }> {
+  if (!token) {
+    return { success: false, error: "Card token is required for Square payments" };
+  }
+
+  const session = await getActiveOpacPaymentSession(intentId, patronId, "square");
+  if (!session) {
+    return { success: false, error: "Payment session is missing, expired, or already used" };
+  }
+
   const config = getPaymentConfig();
   const baseUrl =
     config.squareEnvironment === "production"
@@ -36,52 +50,22 @@ async function completeSquarePayment(
     throw new Error("STACKSOS_SQUARE_ACCESS_TOKEN is not configured");
   }
 
-  if (!token) {
-    return { success: false, error: "Card token is required for Square payments" };
-  }
-
   const headers: HeadersInit = {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
     "Square-Version": "2024-01-18",
   };
 
-  // The payment was created with source_id "EXTERNAL" as a placeholder.
-  // We need to update it with the real card nonce, then complete it.
-  // Square's Payments API doesn't support updating the source after creation,
-  // so we cancel the placeholder and create a new payment with the real nonce.
-
-  // Step 1: Retrieve original payment details
-  const getRes = await fetch(`${baseUrl}/v2/payments/${intentId}`, {
-    method: "GET",
-    headers,
-  });
-
-  if (!getRes.ok) {
-    const errData = await getRes.json();
-    const errMsg = errData?.errors?.[0]?.detail || "Failed to retrieve payment";
-    return { success: false, error: errMsg };
-  }
-
-  const paymentData = await getRes.json();
-  const originalPayment = paymentData.payment;
-
-  // Step 2: Cancel the placeholder payment
-  await fetch(`${baseUrl}/v2/payments/${intentId}/cancel`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({}),
-  });
-
-  // Step 3: Create a new payment with the real card nonce
-  const { randomUUID } = await import("node:crypto");
   const createBody = {
-    idempotency_key: randomUUID(),
+    idempotency_key: session.id,
     source_id: token,
-    amount_money: originalPayment.amount_money,
-    location_id: originalPayment.location_id || config.squareLocationId,
+    amount_money: {
+      amount: session.amountCents,
+      currency: session.currency.toUpperCase(),
+    },
+    location_id: config.squareLocationId,
     autocomplete: true,
-    note: originalPayment.note,
+    note: `patronId:${session.patronId}|fineIds:${session.fineIds.join(",")}`,
   };
 
   const createRes = await fetch(`${baseUrl}/v2/payments`, {
@@ -96,6 +80,19 @@ async function completeSquarePayment(
     const errMsg = createData?.errors?.[0]?.detail || "Square payment failed";
     return { success: false, error: errMsg };
   }
+
+  const status = String(createData.payment?.status || "");
+  if (status === "FAILED" || status === "CANCELED") {
+    return {
+      success: false,
+      error: createData?.errors?.[0]?.detail || `Square payment status: ${status}`,
+    };
+  }
+
+  await markOpacPaymentSessionConsumed({
+    sessionId: session.id,
+    providerPaymentId: createData.payment?.id,
+  });
 
   return {
     success: true,
@@ -213,7 +210,7 @@ export async function POST(req: NextRequest) {
 
     switch (provider) {
       case "square":
-        result = await completeSquarePayment(intentId, token);
+        result = await completeSquarePayment(patronId, intentId, token);
         break;
       case "paypal":
         result = await completePayPalPayment(intentId);

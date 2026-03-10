@@ -11,6 +11,7 @@ const logger = {
   debug: vi.fn(),
 };
 const createPaymentIntent = vi.fn();
+const createSquareIntent = vi.fn();
 
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit }));
 vi.mock("@/lib/audit", () => ({ logAuditEvent }));
@@ -24,6 +25,11 @@ const createPayPalIntent = vi.fn();
 vi.mock("@/lib/payments/stripe-gateway", () => ({
   StripeGateway: class StripeGateway {
     createPaymentIntent = createPaymentIntent;
+  },
+}));
+vi.mock("@/lib/payments/square-gateway", () => ({
+  SquareGateway: class SquareGateway {
+    createPaymentIntent = createSquareIntent;
   },
 }));
 vi.mock("@/lib/payments/paypal-gateway", () => ({
@@ -104,5 +110,41 @@ describe("opac payments route", () => {
     expect(data.intentId).toBe("order_abc");
     expect(createPaymentIntent).not.toHaveBeenCalled();
     expect(createPayPalIntent).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes Square checkout and returns application + location IDs", async () => {
+    getPaymentConfig.mockReturnValue({
+      provider: "square",
+      publicKey: "",
+      squareApplicationId: "sandbox-sq0idb-123",
+      squareLocationId: "L8899",
+      currency: "usd",
+      minimumAmount: 100,
+      allowPartialPayment: true,
+    });
+    createSquareIntent.mockResolvedValue({
+      id: "sq-session-abc",
+      amount: 500,
+      currency: "usd",
+      status: "pending",
+    });
+
+    const { POST } = await import("@/app/api/opac/payments/route");
+    const response = await POST(
+      new Request("http://localhost/api/opac/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fineIds: [1], amount: 500 }),
+      }) as any
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.provider).toBe("square");
+    expect(data.intentId).toBe("sq-session-abc");
+    expect(data.applicationId).toBe("sandbox-sq0idb-123");
+    expect(data.locationId).toBe("L8899");
+    expect(createSquareIntent).toHaveBeenCalledTimes(1);
+    expect(createPaymentIntent).not.toHaveBeenCalled();
   });
 });
