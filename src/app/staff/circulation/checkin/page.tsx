@@ -4,21 +4,17 @@
 
 "use client";
 
+import dynamic from "next/dynamic";
 import * as React from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
   BarcodeInput,
-  StatusBadge,
-  HoldStatusBadge,
   ConfirmDialog,
   PageContainer,
   PageHeader,
   PageContent,
-  DataTable,
-  DataTableColumnHeader,
-  EmptyState,
 } from "@/components/shared";
 
 import { ApiError, useMutation, useKeyboardShortcuts } from "@/hooks";
@@ -40,27 +36,12 @@ import {
   ThumbsUp,
   HelpCircle,
 } from "lucide-react";
-import type { ColumnDef } from "@tanstack/react-table";
 
 import { escapeHtml, printHtml } from "@/lib/print";
 import { featureFlags } from "@/lib/feature-flags";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { useCirculationSound } from "@/hooks/use-circulation-sound";
-
-interface CheckinItem {
-  id: string;
-  barcode: string;
-  title: string;
-  author: string;
-  callNumber: string;
-  status: "checkedin" | "hold" | "transit" | "alert" | "error";
-  message?: string;
-  holdFor?: { name: string; barcode: string };
-  transitTo?: string;
-  timestamp: Date;
-  wasOverdue?: boolean;
-  fineAmount?: number;
-}
+import type { CheckinItem } from "./types";
 
 type CheckinBlockDetails = {
   code?: string;
@@ -104,6 +85,18 @@ function buildSlipHtml(item: CheckinItem) {
     "</div>",
   ].join("\n");
 }
+
+const CheckinActivityTable = dynamic(
+  () => import("./checkin-activity-table").then((mod) => mod.CheckinActivityTable),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-2xl border border-border/70 bg-card px-6 py-10 text-center text-sm text-muted-foreground">
+        Loading check-in activity…
+      </div>
+    ),
+  }
+);
 
 export default function CheckinPage() {
   const canAi = featureFlags.ai;
@@ -394,70 +387,6 @@ export default function CheckinPage() {
     errors: checkedInItems.filter((i) => i.status === "error").length,
   };
 
-  const columns = useMemo<ColumnDef<CheckinItem>[]>(
-    () => [
-      {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ row }) => {
-          const status = row.original.status;
-          if (status === "hold") {
-            return <HoldStatusBadge status="available" />;
-          }
-          if (status === "transit") {
-            return <StatusBadge label="In Transit" status="info" showIcon />;
-          }
-          if (status === "error") {
-            return <StatusBadge label="Error" status="error" showIcon />;
-          }
-          if (status === "alert") {
-            return <StatusBadge label="Alert" status="warning" showIcon />;
-          }
-          return <StatusBadge label="Checked In" status="success" showIcon />;
-        },
-      },
-      {
-        accessorKey: "title",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
-        cell: ({ row }) => (
-          <div className="space-y-0.5">
-            <div className="font-medium">{row.original.title}</div>
-            {row.original.author && (
-              <div className="text-xs text-muted-foreground">{row.original.author}</div>
-            )}
-            {row.original.message && (
-              <div
-                className={`text-xs ${row.original.status === "error" ? "text-destructive" : "text-muted-foreground"}`}
-              >
-                {row.original.message}
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "barcode",
-        header: "Barcode",
-        cell: ({ row }) => <span className="font-mono text-xs">{row.original.barcode}</span>,
-      },
-      {
-        accessorKey: "callNumber",
-        header: "Call Number",
-        cell: ({ row }) => <span className="text-xs">{row.original.callNumber}</span>,
-      },
-      {
-        accessorKey: "timestamp",
-        header: "Time",
-        cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground">
-            {row.original.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </span>
-        ),
-      },
-    ],
-    []
-  );
-
   const tableData = attentionOnly ? attentionItems : checkedInItems;
 
   return (
@@ -676,20 +605,7 @@ export default function CheckinPage() {
             </div>
           )}
 
-          <DataTable
-            columns={columns}
-            data={tableData}
-            searchable
-            searchPlaceholder="Search by title, barcode, call number..."
-            emptyState={
-              <EmptyState
-                title="No items checked in yet"
-                description="Scan an item barcode to begin processing returns."
-              />
-            }
-            selectable
-            onSelectionChange={setSelectedItems}
-          />
+          <CheckinActivityTable data={tableData} onSelectionChange={setSelectedItems} />
         </div>
       </PageContent>
 
