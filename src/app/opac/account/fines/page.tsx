@@ -138,7 +138,7 @@ export default function FinesPage() {
         setSelectedFines([]);
         await fetchFines();
       } else {
-        throw new Error("Online payments are not configured.");
+        throw new Error(t("onlinePaymentsUnavailable"));
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("paymentErrorToast"));
@@ -169,13 +169,13 @@ export default function FinesPage() {
       <div className="min-h-screen bg-muted/30 py-8">
         <div className="max-w-lg mx-auto px-4">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-xl font-bold text-foreground">Complete Payment</h1>
+            <h1 className="text-xl font-bold text-foreground">{t("completePayment")}</h1>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               onClick={handlePaymentCancel}
-              aria-label="Cancel payment"
+              aria-label={t("cancelPayment")}
             >
               <X className="h-5 w-5" />
             </Button>

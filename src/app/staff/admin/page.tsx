@@ -64,6 +64,17 @@ export default function AdminHubPage() {
     .trim()
     .toLowerCase();
 
+  // Card tones by functional category:
+  //   blue   — policy & inspection
+  //   emerald — people & access
+  //   indigo  — configuration & setup
+  //   violet  — patron experience
+  //   amber   — financial
+  //   rose    — communication & ops
+  //   sky     — deployment & launch
+  //   cyan    — security
+  //   purple  — platform & developer
+  //   teal    — AI & experimental
   const cards = useMemo<AdminCard[]>(
     () => [
       {
@@ -71,14 +82,14 @@ export default function AdminHubPage() {
         description: "Understand why checkout/holds/statuses behave the way they do.",
         href: "/staff/admin/policy-inspector",
         icon: ShieldCheck,
-        tone: "bg-primary/10 text-primary",
+        tone: "bg-blue-500/10 text-blue-600",
       },
       {
         title: "Users",
         description: "View staff accounts and permission profiles from Evergreen.",
         href: "/staff/admin/users",
         icon: Users,
-        tone: "bg-accent text-accent-foreground",
+        tone: "bg-emerald-500/10 text-emerald-600",
         enabled: featureFlags.userManagement,
       },
       {
@@ -86,14 +97,14 @@ export default function AdminHubPage() {
         description: "See what your account can do (and why).",
         href: "/staff/admin/permissions",
         icon: KeyRound,
-        tone: "bg-muted text-foreground",
+        tone: "bg-emerald-500/10 text-emerald-600",
       },
       {
         title: "Workstations",
         description: "Register circulation workstations per branch.",
         href: "/staff/admin/workstations",
         icon: Monitor,
-        tone: "bg-secondary text-secondary-foreground",
+        tone: "bg-indigo-500/10 text-indigo-600",
         enabled: featureFlags.adminWorkstations,
       },
       {
@@ -102,7 +113,7 @@ export default function AdminHubPage() {
           "Start from a clear settings hub for setup order, policy review, and UX tuning.",
         href: "/staff/admin/settings",
         icon: Settings2,
-        tone: "bg-muted text-foreground",
+        tone: "bg-indigo-500/10 text-indigo-600",
       },
       {
         title: "OPAC Experience",
@@ -110,35 +121,35 @@ export default function AdminHubPage() {
           "Shape homepage hierarchy, chips, and discovery copy without touching Evergreen.",
         href: "/staff/admin/settings/opac",
         icon: Palette,
-        tone: "bg-primary/10 text-primary",
+        tone: "bg-violet-500/10 text-violet-600",
       },
       {
         title: "Digital App Library",
         description: "Configure Libby/OverDrive, Hoopla, cloudLibrary, and Kanopy connectors.",
         href: "/staff/admin/settings/econtent",
         icon: Smartphone,
-        tone: "bg-primary/10 text-primary",
+        tone: "bg-violet-500/10 text-violet-600",
       },
       {
         title: "Payment Processing",
         description: "Configure patron fine payments and test provider checkout flows.",
         href: "/staff/admin/settings/payments",
         icon: CreditCard,
-        tone: "bg-secondary text-secondary-foreground",
+        tone: "bg-amber-500/10 text-amber-600",
       },
       {
         title: "Security",
         description: "Control patron MFA availability and review session policy expectations.",
         href: "/staff/admin/settings/security",
         icon: ShieldCheck,
-        tone: "bg-accent text-accent-foreground",
+        tone: "bg-cyan-500/10 text-cyan-600",
       },
       {
         title: "Tenants",
         description: "Profile-based tenant onboarding and SaaS readiness checks.",
         href: "/staff/admin/tenants",
         icon: Globe,
-        tone: "bg-primary/10 text-primary",
+        tone: "bg-purple-500/10 text-purple-600",
         enabled: featureFlags.tenantConsole && Boolean(user?.isPlatformAdmin),
       },
       {
@@ -146,7 +157,7 @@ export default function AdminHubPage() {
         description: "Webhook contracts, delivery telemetry, and extension integrations.",
         href: "/staff/admin/developer-platform",
         icon: Cable,
-        tone: "bg-accent text-accent-foreground",
+        tone: "bg-purple-500/10 text-purple-600",
         enabled: featureFlags.developerPlatform && Boolean(user?.isPlatformAdmin),
       },
       {
@@ -154,7 +165,7 @@ export default function AdminHubPage() {
         description: "Advanced Evergreen-backed policy views (experimental).",
         href: "/staff/admin/policies",
         icon: SlidersHorizontal,
-        tone: "bg-secondary text-secondary-foreground",
+        tone: "bg-blue-500/10 text-blue-600",
         badge: "Experimental",
         enabled: featureFlags.policyEditors,
       },
@@ -163,35 +174,35 @@ export default function AdminHubPage() {
         description: "Edit notice templates and review delivery logs.",
         href: "/staff/admin/notifications",
         icon: Mail,
-        tone: "bg-accent text-accent-foreground",
+        tone: "bg-rose-500/10 text-rose-600",
       },
       {
         title: "Ops",
         description: "Incident banners, release notes, and support workflows.",
         href: "/staff/admin/ops",
         icon: ShieldAlert,
-        tone: "bg-muted text-foreground",
+        tone: "bg-rose-500/10 text-rose-600",
       },
       {
         title: "Go-Live Checklist",
         description: "Operational checklist for pilot readiness.",
         href: "/staff/admin/go-live",
         icon: ClipboardCheck,
-        tone: "bg-secondary text-secondary-foreground",
+        tone: "bg-sky-500/10 text-sky-600",
       },
       {
         title: "Onboarding Wizard",
         description: "Profile-guided onboarding with phased task execution and probes.",
         href: "/staff/admin/onboarding",
         icon: Rocket,
-        tone: "bg-primary/10 text-primary",
+        tone: "bg-sky-500/10 text-sky-600",
       },
       {
         title: "AI Audit Trail",
         description: "Review AI-generated drafts, decisions, and provider telemetry.",
         href: "/staff/admin/ai-audit",
         icon: Sparkles,
-        tone: "bg-accent text-accent-foreground",
+        tone: "bg-teal-500/10 text-teal-600",
         enabled: featureFlags.ai,
       },
       {
@@ -199,14 +210,14 @@ export default function AdminHubPage() {
         description: "Configure copy statuses (holdable, OPAC visibility, availability).",
         href: "/staff/admin/item-statuses",
         icon: Tag,
-        tone: "bg-secondary text-secondary-foreground",
+        tone: "bg-indigo-500/10 text-indigo-600",
       },
       {
         title: "Server Health",
         description: "Read-only Evergreen gateway + OpenSRF service status.",
         href: "/staff/admin/server",
         icon: Server,
-        tone: "bg-muted text-foreground",
+        tone: "bg-rose-500/10 text-rose-600",
         badge: "Read-only",
         enabled: featureFlags.serverAdmin,
       },

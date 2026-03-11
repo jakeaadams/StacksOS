@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, notFound } from "next/navigation";
 import { featureFlags } from "@/lib/feature-flags";
@@ -25,13 +25,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getEContentProviders, type EContentProvider } from "@/lib/econtent-providers";
 import { fetchWithAuth } from "@/lib/client-fetch";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
-const TYPE_LABELS: Record<string, { label: string; icon: React.ElementType }> = {
-  ebook: { label: "eBooks", icon: BookOpen },
-  eaudiobook: { label: "eAudiobooks", icon: Headphones },
-  streaming: { label: "Streaming", icon: MonitorPlay },
-  emagazine: { label: "eMagazines", icon: Tablet },
+const TYPE_LABELS: Record<string, { labelKey: string; icon: React.ElementType }> = {
+  ebook: { labelKey: "ebooks", icon: BookOpen },
+  eaudiobook: { labelKey: "eaudiobooks", icon: Headphones },
+  streaming: { labelKey: "streamingShort", icon: MonitorPlay },
+  emagazine: { labelKey: "eMagazines", icon: Tablet },
 };
 
 const PROVIDER_THEME: Record<string, { shell: string; icon: string }> = {
@@ -53,6 +53,8 @@ type EContentProviderView = EContentProvider & {
 };
 
 function ProviderCard({ provider }: { provider: EContentProviderView }) {
+  const t = useTranslations("digitalPage");
+  const locale = useLocale();
   const theme = PROVIDER_THEME[provider.id] ?? { shell: "bg-muted", icon: "text-muted-foreground" };
 
   return (
@@ -72,7 +74,7 @@ function ProviderCard({ provider }: { provider: EContentProviderView }) {
               return info ? (
                 <Badge key={type} variant="secondary" className="text-xs gap-1">
                   <info.icon className="h-3 w-3" />
-                  {info.label}
+                  {t(info.labelKey)}
                 </Badge>
               ) : null;
             })}
@@ -85,78 +87,41 @@ function ProviderCard({ provider }: { provider: EContentProviderView }) {
       {provider.alwaysAvailableTitles && (
         <p className="text-sm text-green-600 dark:text-green-400 font-medium mb-4 flex items-center gap-1.5">
           <CheckCircle2 className="h-4 w-4" />
-          {provider.alwaysAvailableTitles.toLocaleString()}+ always available titles
+          {t("alwaysAvailableTitles", {
+            count: provider.alwaysAvailableTitles.toLocaleString(locale),
+          })}
         </p>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild>
           <a href={provider.browseUrl} target="_blank" rel="noopener noreferrer">
-            Browse Collection
+            {t("browseCollection")}
             <ExternalLink className="h-4 w-4 ml-2" />
           </a>
         </Button>
         {provider.appUrl ? (
           <Button asChild variant="outline">
             <a href={provider.appUrl} target="_blank" rel="noopener noreferrer">
-              Open App
+              {t("openApp")}
               <ExternalLink className="h-4 w-4 ml-2" />
             </a>
           </Button>
         ) : null}
       </div>
 
+      {/* Patron-friendly capability hints */}
       <div className="mt-4 flex flex-wrap gap-2 text-xs">
-        {provider.mode ? (
-          <Badge variant="outline">Mode: {provider.mode.replace("_", " ")}</Badge>
-        ) : null}
-        {provider.supportsPatronTransactions?.checkout ? (
-          <Badge variant="secondary">Checkout in provider app</Badge>
-        ) : null}
-        {provider.supportsPatronTransactions?.hold ? (
-          <Badge variant="secondary">Holds in provider app</Badge>
+        {provider.supportsPatronTransactions?.checkout &&
+        provider.supportsPatronTransactions?.hold ? (
+          <Badge variant="secondary">{t("borrowAndHoldInApp")}</Badge>
+        ) : provider.supportsPatronTransactions?.checkout ? (
+          <Badge variant="secondary">{t("borrowInApp")}</Badge>
         ) : null}
       </div>
     </div>
   );
 }
-
-const GETTING_STARTED_STEPS = [
-  {
-    step: 1,
-    title: "Get a Library Card",
-    description: "If you do not have one, sign up for a free library card online or at any branch.",
-    icon: Library,
-  },
-  {
-    step: 2,
-    title: "Choose a Platform",
-    description:
-      "Pick a digital service above. Each offers a different selection of eBooks, audiobooks, and streaming content.",
-    icon: Smartphone,
-  },
-  {
-    step: 3,
-    title: "Download the App",
-    description:
-      "Install the provider app on your phone, tablet, or computer. Most are available on iOS, Android, and desktop.",
-    icon: Download,
-  },
-  {
-    step: 4,
-    title: "Sign In with Your Card",
-    description:
-      "Open the app, search for your library, and sign in with your library card number and PIN.",
-    icon: CheckCircle2,
-  },
-  {
-    step: 5,
-    title: "Browse & Borrow",
-    description:
-      "Search or browse the collection, borrow titles instantly, and enjoy on any device. Items return automatically!",
-    icon: BookOpen,
-  },
-];
 
 export default function DigitalLibraryPage() {
   if (!featureFlags.opacDigitalLibrary) {
@@ -170,6 +135,42 @@ export default function DigitalLibraryPage() {
   const [providersLoading, setProvidersLoading] = useState(true);
   const [providersError, setProvidersError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const gettingStartedSteps = useMemo(
+    () => [
+      {
+        step: 1,
+        title: t("getStartedStep1Title"),
+        description: t("getStartedStep1Description"),
+        icon: Library,
+      },
+      {
+        step: 2,
+        title: t("getStartedStep2Title"),
+        description: t("getStartedStep2Description"),
+        icon: Smartphone,
+      },
+      {
+        step: 3,
+        title: t("getStartedStep3Title"),
+        description: t("getStartedStep3Description"),
+        icon: Download,
+      },
+      {
+        step: 4,
+        title: t("getStartedStep4Title"),
+        description: t("getStartedStep4Description"),
+        icon: CheckCircle2,
+      },
+      {
+        step: 5,
+        title: t("getStartedStep5Title"),
+        description: t("getStartedStep5Description"),
+        icon: BookOpen,
+      },
+    ],
+    [t]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -190,9 +191,7 @@ export default function DigitalLibraryPage() {
         }
       } catch (error) {
         if (!cancelled) {
-          setProvidersError(
-            error instanceof Error ? error.message : "Unable to load provider connections."
-          );
+          setProvidersError("unavailable");
           setProviders(getEContentProviders());
         }
       } finally {
@@ -233,8 +232,7 @@ export default function DigitalLibraryPage() {
             <h1 className="text-3xl md:text-4xl font-bold">{t("title")}</h1>
           </div>
           <p className="text-white/90 text-lg max-w-2xl mb-6">
-            Free eBooks, audiobooks, movies, and more -- all you need is your{" "}
-            {library?.name || "library"} card.
+            {t("heroSubtitle", { libraryName: library?.name || t("libraryCardFallback") })}
           </p>
 
           {/* Search bar */}
@@ -265,20 +263,16 @@ export default function DigitalLibraryPage() {
         {/* Provider cards */}
         <section className="mb-16">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
-            Digital Content Providers
+            {t("digitalProviders")}
           </h2>
-          <p className="text-muted-foreground mb-8">
-            Browse thousands of free digital titles through these partner platforms.
-          </p>
+          <p className="text-muted-foreground mb-8">{t("digitalProvidersDesc")}</p>
 
           {providersLoading ? (
-            <p className="text-sm text-muted-foreground">
-              Loading configured provider connections...
-            </p>
+            <p className="text-sm text-muted-foreground">{t("loadingServices")}</p>
           ) : null}
           {providersError ? (
             <p className="text-sm text-amber-700 dark:text-amber-400">
-              {providersError} Showing default provider links.
+              {t("servicesTemporarilyUnavailable")}
             </p>
           ) : null}
           <div className="grid md:grid-cols-2 gap-6">
@@ -300,32 +294,24 @@ export default function DigitalLibraryPage() {
               </h2>
             </div>
             <p className="text-muted-foreground mb-6 max-w-2xl">
-              No waiting, no holds. These titles are available to borrow instantly, anytime. Many
-              providers offer large collections of always-available content including self-published
-              titles, classics, and indie films.
+              {t("alwaysAvailableDescription")}
             </p>
 
             <div className="grid sm:grid-cols-3 gap-4 mb-6">
               <div className="bg-white dark:bg-card rounded-lg p-4 border border-green-200 dark:border-green-800/50">
                 <BookOpen className="h-6 w-6 text-green-600 dark:text-green-400 mb-2" />
                 <h3 className="font-semibold text-foreground">{t("ebooks")}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Thousands of titles across fiction, nonfiction, romance, mystery, and more.
-                </p>
+                <p className="text-sm text-muted-foreground">{t("ebooksDescription")}</p>
               </div>
               <div className="bg-white dark:bg-card rounded-lg p-4 border border-green-200 dark:border-green-800/50">
                 <Headphones className="h-6 w-6 text-green-600 dark:text-green-400 mb-2" />
                 <h3 className="font-semibold text-foreground">{t("eaudiobooks")}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Listen on the go with instantly available audiobooks on any device.
-                </p>
+                <p className="text-sm text-muted-foreground">{t("eaudiobooksDescription")}</p>
               </div>
               <div className="bg-white dark:bg-card rounded-lg p-4 border border-green-200 dark:border-green-800/50">
                 <MonitorPlay className="h-6 w-6 text-green-600 dark:text-green-400 mb-2" />
                 <h3 className="font-semibold text-foreground">{t("streamingVideo")}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Documentaries, indie films, and educational content available to stream now.
-                </p>
+                <p className="text-sm text-muted-foreground">{t("streamingVideoDescription")}</p>
               </div>
             </div>
 
@@ -342,14 +328,12 @@ export default function DigitalLibraryPage() {
         {/* How to Get Started */}
         <section>
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
-            How to Get Started with eBooks
+            {t("howToGetStarted")}
           </h2>
-          <p className="text-muted-foreground mb-8">
-            New to digital borrowing? Follow these simple steps to start reading today.
-          </p>
+          <p className="text-muted-foreground mb-8">{t("howToGetStartedDesc")}</p>
 
           <div className="grid md:grid-cols-5 gap-4">
-            {GETTING_STARTED_STEPS.map(({ step, title, description, icon: Icon }) => (
+            {gettingStartedSteps.map(({ step, title, description, icon: Icon }) => (
               <div key={step} className="relative">
                 <div className="bg-card rounded-xl border border-border p-5 h-full">
                   <div className="flex items-center gap-3 mb-3">
@@ -372,9 +356,7 @@ export default function DigitalLibraryPage() {
 
           {/* CTA */}
           <div className="mt-10 text-center">
-            <p className="text-muted-foreground mb-4">
-              Need help getting started? Visit any branch or contact us for one-on-one assistance.
-            </p>
+            <p className="text-muted-foreground mb-4">{t("needHelp")}</p>
             <div className="flex flex-wrap justify-center gap-3">
               <Button asChild>
                 <Link href="/opac/register">

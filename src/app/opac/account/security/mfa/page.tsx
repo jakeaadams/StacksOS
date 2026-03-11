@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { fetchWithAuth } from "@/lib/client-fetch";
@@ -34,6 +35,7 @@ type SetupState = "idle" | "qr" | "verify" | "recovery";
 export default function MfaPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations("mfaPage");
   const { isLoggedIn, isLoading: sessionLoading } = usePatronSession();
   const returnTab = searchParams.get("returnTab") === "privacy" ? "privacy" : "profile";
   const settingsHref =
@@ -86,13 +88,13 @@ export default function MfaPage() {
       const res = await fetchWithAuth("/api/opac/mfa/setup", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Failed to start MFA setup.");
+        toast.error(data.error || t("setupFailed"));
         return;
       }
       setSetupData(data);
       setSetupState("qr");
     } catch {
-      toast.error("Failed to start MFA setup.");
+      toast.error(t("setupFailed"));
     }
   };
 
@@ -107,15 +109,15 @@ export default function MfaPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Verification failed.");
+        toast.error(data.error || t("verificationFailed"));
         return;
       }
       setRecoveryCodes(data.recoveryCodes || []);
       setSetupState("recovery");
-      toast.success("Authenticator app enrolled successfully!");
+      toast.success(t("enrolledSuccess"));
       fetchMethods();
     } catch {
-      toast.error("Verification failed.");
+      toast.error(t("verificationFailed"));
     } finally {
       setIsVerifying(false);
     }
@@ -130,14 +132,14 @@ export default function MfaPage() {
         body: JSON.stringify({ methodId }),
       });
       if (res.ok) {
-        toast.success("MFA method removed.");
+        toast.success(t("methodRemoved"));
         fetchMethods();
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to remove MFA method.");
+        toast.error(data.error || t("removeFailed"));
       }
     } catch {
-      toast.error("Failed to remove MFA method.");
+      toast.error(t("removeFailed"));
     } finally {
       setIsRevoking(null);
     }
@@ -153,7 +155,7 @@ export default function MfaPage() {
   const handleDownloadRecoveryCodes = () => {
     const blob = new Blob(
       [
-        `StacksOS Library - MFA Recovery Codes\n${"=".repeat(40)}\n\n${recoveryCodes.join("\n")}\n\nKeep these codes in a safe place.\nEach code can only be used once.\n`,
+        `${t("recoveryFileTitle")}\n${"=".repeat(40)}\n\n${recoveryCodes.join("\n")}\n\n${t("recoveryFileKeepSafe")}\n${t("recoveryFileOneUse")}\n`,
       ],
       { type: "text/plain" }
     );
@@ -184,11 +186,9 @@ export default function MfaPage() {
           <div className="stx-surface rounded-2xl p-8 space-y-6">
             <div className="text-center">
               <ShieldCheck className="h-12 w-12 text-green-600 mx-auto mb-3" />
-              <h2 className="text-xl font-bold text-foreground">Save Your Recovery Codes</h2>
+              <h2 className="text-xl font-bold text-foreground">{t("recoveryTitle")}</h2>
               <p className="text-sm text-muted-foreground mt-2">
-                These codes can be used to access your account if you lose your authenticator app.
-                Each code can only be used once.{" "}
-                <strong>Save them now — they won&apos;t be shown again.</strong>
+                {t("recoveryDescription")} <strong>{t("recoveryWarning")}</strong>
               </p>
             </div>
 
@@ -208,7 +208,7 @@ export default function MfaPage() {
                 className="flex-1 gap-2"
               >
                 {copiedCodes ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                {copiedCodes ? "Copied!" : "Copy"}
+                {copiedCodes ? t("copied") : t("copy")}
               </Button>
               <Button
                 type="button"
@@ -217,7 +217,7 @@ export default function MfaPage() {
                 className="flex-1 gap-2"
               >
                 <Download className="h-4 w-4" />
-                Download
+                {t("download")}
               </Button>
             </div>
 
@@ -231,7 +231,7 @@ export default function MfaPage() {
               }}
               className="w-full"
             >
-              Done
+              {t("done")}
             </Button>
           </div>
         </div>
@@ -250,10 +250,8 @@ export default function MfaPage() {
           <div className="stx-surface rounded-2xl p-8 space-y-6">
             <div className="text-center">
               <Shield className="h-10 w-10 text-primary-600 mx-auto mb-3" />
-              <h2 className="text-xl font-bold text-foreground">Set Up Authenticator App</h2>
-              <p className="text-sm text-muted-foreground mt-2">
-                Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
-              </p>
+              <h2 className="text-xl font-bold text-foreground">{t("setupTitle")}</h2>
+              <p className="text-sm text-muted-foreground mt-2">{t("setupDescription")}</p>
             </div>
 
             {/* QR Code */}
@@ -264,10 +262,10 @@ export default function MfaPage() {
             {/* Manual entry option */}
             <details className="text-sm">
               <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                Can&apos;t scan? Enter code manually
+                {t("cantScan")}
               </summary>
               <div className="mt-3 p-3 bg-muted/50 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">Secret key:</p>
+                <p className="text-xs text-muted-foreground mb-1">{t("secretKey")}</p>
                 <code className="text-sm font-mono break-all select-all">{setupData.secret}</code>
               </div>
             </details>
@@ -275,14 +273,14 @@ export default function MfaPage() {
             {/* Verification input */}
             <div className="space-y-3">
               <label htmlFor="mfa-verify-code" className="text-sm font-medium text-foreground">
-                Enter the 6-digit code from your app:
+                {t("enterCode")}
               </label>
               <Input
                 id="mfa-verify-code"
                 type="text"
                 inputMode="numeric"
                 maxLength={6}
-                placeholder="000000"
+                placeholder={t("codePlaceholder")}
                 value={verifyCode}
                 onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 className="text-center text-2xl tracking-[0.5em] h-14 font-mono"
@@ -301,7 +299,7 @@ export default function MfaPage() {
                 }}
                 className="flex-1"
               >
-                Cancel
+                {t("cancel")}
               </Button>
               <Button
                 type="button"
@@ -314,7 +312,7 @@ export default function MfaPage() {
                 ) : (
                   <Check className="h-4 w-4" />
                 )}
-                Verify
+                {t("verify")}
               </Button>
             </div>
           </div>
@@ -335,26 +333,22 @@ export default function MfaPage() {
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Settings
+          {t("backToSettings")}
         </Link>
 
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
             <Shield className="h-7 w-7 text-primary-600" />
-            Two-Factor Authentication
+            {t("title")}
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Add an extra layer of security to your library account.
-          </p>
+          <p className="text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
 
         {!mfaEnabled ? (
           <div className="stx-surface rounded-xl p-8 text-center">
             <Shield className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">MFA Not Available</h2>
-            <p className="text-muted-foreground">
-              Two-factor authentication is not currently configured for this library.
-            </p>
+            <h2 className="text-lg font-semibold mb-2">{t("notAvailableTitle")}</h2>
+            <p className="text-muted-foreground">{t("notAvailableDescription")}</p>
           </div>
         ) : isLoading ? (
           <div className="flex items-center justify-center py-12">
@@ -366,7 +360,7 @@ export default function MfaPage() {
             {methods.length > 0 && (
               <div className="stx-surface rounded-xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-border">
-                  <h2 className="font-semibold text-foreground">Active Methods</h2>
+                  <h2 className="font-semibold text-foreground">{t("activeMethods")}</h2>
                 </div>
                 <div className="divide-y divide-border/50">
                   {methods.map((method) => (
@@ -377,11 +371,14 @@ export default function MfaPage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-foreground">{method.friendlyName}</p>
                         <p className="text-sm text-muted-foreground">
-                          Added {new Date(method.createdAt).toLocaleDateString()}
+                          {t("added", { date: new Date(method.createdAt).toLocaleDateString() })}
                           {method.lastUsedAt && (
                             <>
                               {" "}
-                              &middot; Last used {new Date(method.lastUsedAt).toLocaleDateString()}
+                              &middot;{" "}
+                              {t("lastUsed", {
+                                date: new Date(method.lastUsedAt).toLocaleDateString(),
+                              })}
                             </>
                           )}
                         </p>
@@ -399,7 +396,7 @@ export default function MfaPage() {
                         ) : (
                           <Trash2 className="h-4 w-4" />
                         )}
-                        Remove
+                        {t("remove")}
                       </Button>
                     </div>
                   ))}
@@ -414,28 +411,25 @@ export default function MfaPage() {
                   <Shield className="h-6 w-6 text-primary-700" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-foreground">Authenticator App</h3>
+                  <h3 className="font-semibold text-foreground">{t("authenticatorApp")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    Use Google Authenticator, Authy, or any TOTP-compatible app.
+                    {t("authenticatorAppDescription")}
                   </p>
                 </div>
               </div>
               <Button type="button" onClick={handleStartSetup} className="gap-2">
                 <Shield className="h-4 w-4" />
-                {methods.length > 0 ? "Set Up Another" : "Set Up Authenticator App"}
+                {methods.length > 0 ? t("setupAnother") : t("setupAuthenticatorApp")}
               </Button>
             </div>
 
             {/* Info */}
             <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 rounded-xl">
-              <h3 className="font-semibold text-blue-900 text-sm mb-1">How it works</h3>
+              <h3 className="font-semibold text-blue-900 text-sm mb-1">{t("howItWorksTitle")}</h3>
               <ul className="text-sm text-blue-800 space-y-1">
-                <li>
-                  &bull; After entering your card number and PIN, you&apos;ll be asked for a 6-digit
-                  code
-                </li>
-                <li>&bull; Open your authenticator app to get the code</li>
-                <li>&bull; If you lose your device, use a recovery code to sign in</li>
+                <li>&bull; {t("howItWorksStep1")}</li>
+                <li>&bull; {t("howItWorksStep2")}</li>
+                <li>&bull; {t("howItWorksStep3")}</li>
               </ul>
             </div>
           </div>

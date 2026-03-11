@@ -160,11 +160,11 @@ function deterministicFallback(input: StaffCopilotRequest): StaffCopilotResponse
   }
 
   return {
-    summary: `Fallback staff copilot brief for org ${input.orgId}: ${activeHolds} active holds, ${overdueItems} overdue items, ${checkouts}/${checkins} checkout-checkin flow.`,
+    summary: `Your branch has ${activeHolds} active holds and ${overdueItems} overdue items today. Here are recommended actions based on current circulation data.`,
     highlights: highlights.slice(0, 8),
     actions: actions.slice(0, 6),
     caveats: [
-      "AI provider was unavailable; this recommendation set was generated deterministically from live metrics.",
+      "These suggestions were generated automatically from current metrics, not by AI analysis.",
     ],
     drilldowns: [
       { label: "Staff Workbench", url: "/staff" },

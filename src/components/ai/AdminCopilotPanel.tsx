@@ -160,7 +160,8 @@ export function AdminCopilotPanel({ orgId, metrics, alerts, className }: AdminCo
 
             {degraded && response && (
               <div className="rounded-lg bg-[hsl(var(--status-warning-bg))] p-2 text-xs text-[hsl(var(--status-warning-text))]">
-                AI provider unavailable. Showing threshold-based fallback analysis.
+                AI assistant is temporarily unavailable. Showing automated analysis based on current
+                metrics.
               </div>
             )}
 

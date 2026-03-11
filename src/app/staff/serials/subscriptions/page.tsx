@@ -15,13 +15,7 @@ import {
   SETUP_CONFIGS,
 } from "@/components/shared";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { useApi } from "@/hooks";
 import { Newspaper } from "lucide-react";
@@ -37,10 +31,9 @@ interface SubscriptionRow {
 export default function SubscriptionsPage() {
   const router = useRouter();
 
-  const { data, error, isLoading } = useApi<any>(
-    "/api/evergreen/serials?action=subscriptions",
-    { immediate: true }
-  );
+  const { data, error, isLoading } = useApi<any>("/api/evergreen/serials?action=subscriptions", {
+    immediate: true,
+  });
 
   const subscriptions: SubscriptionRow[] = data?.subscriptions || [];
   const message = typeof data?.message === "string" ? data.message : "";
@@ -54,17 +47,13 @@ export default function SubscriptionsPage() {
         accessorKey: "start_date",
         header: "Start",
         cell: ({ row }) =>
-          row.original.start_date
-            ? new Date(row.original.start_date).toLocaleDateString()
-            : "—",
+          row.original.start_date ? new Date(row.original.start_date).toLocaleDateString() : "—",
       },
       {
         accessorKey: "end_date",
         header: "End",
         cell: ({ row }) =>
-          row.original.end_date
-            ? new Date(row.original.end_date).toLocaleDateString()
-            : "—",
+          row.original.end_date ? new Date(row.original.end_date).toLocaleDateString() : "—",
       },
     ],
     []
@@ -77,16 +66,10 @@ export default function SubscriptionsPage() {
         <PageHeader
           title="Subscriptions"
           subtitle="Serial subscriptions managed by Evergreen."
-          breadcrumbs={[
-            { label: "Serials", href: "/staff/serials" },
-            { label: "Subscriptions" },
-          ]}
+          breadcrumbs={[{ label: "Serials", href: "/staff/serials" }, { label: "Subscriptions" }]}
         />
         <PageContent>
-          <SetupRequired
-            {...SETUP_CONFIGS.serials}
-            docsUrl="/staff/help#serials"
-          />
+          <SetupRequired {...SETUP_CONFIGS.serials} docsUrl="/staff/help#serials" />
         </PageContent>
       </PageContainer>
     );
@@ -97,18 +80,12 @@ export default function SubscriptionsPage() {
       <PageHeader
         title="Subscriptions"
         subtitle="Serial subscriptions managed by Evergreen."
-        breadcrumbs={[
-          { label: "Serials", href: "/staff/serials" },
-          { label: "Subscriptions" },
-        ]}
+        breadcrumbs={[{ label: "Serials", href: "/staff/serials" }, { label: "Subscriptions" }]}
       />
       <PageContent>
         {error && (
           <div className="mb-4">
-            <ErrorMessage
-              message={error.message}
-              onRetry={() => void router.refresh()}
-            />
+            <ErrorMessage message={error.message} onRetry={() => void router.refresh()} />
           </div>
         )}
 
@@ -133,7 +110,7 @@ export default function SubscriptionsPage() {
                   title="No subscriptions"
                   description={
                     message ||
-                    "Subscriptions listing is not configured or no data is available."
+                    "No serial subscriptions found. Create a subscription to get started."
                   }
                 />
               }

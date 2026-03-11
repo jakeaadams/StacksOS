@@ -482,11 +482,9 @@ function OpsAssistantWidget({
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
-              Ops Assistant (Grok)
+              Ops Assistant
             </CardTitle>
-            <CardDescription>
-              Cross-module shift guidance from live Evergreen metrics.
-            </CardDescription>
+            <CardDescription>Shift priorities based on live circulation data.</CardDescription>
           </div>
           <div className="flex items-center gap-1">
             <Button
@@ -527,7 +525,9 @@ function OpsAssistantWidget({
           </div>
         )}
         {aiError && (
-          <div className="text-sm text-muted-foreground">Assistant unavailable: {aiError}</div>
+          <div className="text-sm text-muted-foreground">
+            Unable to load assistant. Try refreshing later.
+          </div>
         )}
         {!aiLoading && !aiError && !aiSummary && (
           <div className="text-sm text-muted-foreground">
@@ -829,9 +829,7 @@ export default function StaffDashboard() {
                 })}
               </div>
             )}
-            {typeof dashboardData?.message === "string" && (
-              <div className="text-xs text-muted-foreground">{dashboardData.message}</div>
-            )}
+            {/* Dashboard data source info hidden from UI */}
           </div>
         </div>
       </PageHeader>

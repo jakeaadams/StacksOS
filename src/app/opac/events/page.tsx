@@ -31,7 +31,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import type { LibraryEvent } from "@/lib/events-data";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 type ViewMode = "list" | "week" | "month";
 type ReminderChannel = "none" | "email" | "sms" | "both";
@@ -70,22 +70,25 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   Adult: "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300",
 };
 
-function formatEventDate(dateStr: string): {
+function formatEventDate(
+  dateStr: string,
+  locale: string
+): {
   monthAbbr: string;
   day: string;
 } {
   const date = new Date(dateStr + "T12:00:00");
   return {
-    monthAbbr: date.toLocaleDateString("en-US", { month: "short" }).toUpperCase(),
+    monthAbbr: date.toLocaleDateString(locale, { month: "short" }).toUpperCase(),
     day: date.getDate().toString(),
   };
 }
 
-function formatReminderTime(value: string | null): string | null {
+function formatReminderTime(value: string | null, locale: string): string | null {
   if (!value) return null;
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString(locale, {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -111,7 +114,8 @@ function EventCard({
   onReminderChange: (eventId: string, channel: ReminderChannel) => void;
 }) {
   const t = useTranslations("eventsPage");
-  const dateInfo = formatEventDate(event.date);
+  const locale = useLocale();
+  const dateInfo = formatEventDate(event.date, locale);
 
   const registration = event.registration;
   const viewerStatus = registration?.viewerStatus || null;
@@ -123,7 +127,7 @@ function EventCard({
     typeof capacity === "number" ? registration!.registeredCount >= capacity : false;
 
   const reminderValue = (registration?.viewerReminderChannel || "email") as ReminderChannel;
-  const reminderTime = formatReminderTime(registration?.viewerReminderScheduledFor || null);
+  const reminderTime = formatReminderTime(registration?.viewerReminderScheduledFor || null, locale);
 
   return (
     <div className="flex gap-4 md:gap-6 p-4 md:p-6 bg-card rounded-xl border border-border hover:shadow-md transition-shadow">
@@ -153,12 +157,12 @@ function EventCard({
           </Badge>
           {isRegistered ? (
             <Badge className="text-xs bg-emerald-100 text-emerald-800" variant="secondary">
-              Registered
+              {t("registered")}
             </Badge>
           ) : null}
           {isWaitlisted ? (
             <Badge className="text-xs bg-amber-100 text-amber-800" variant="secondary">
-              Waitlist #{registration?.viewerWaitlistPosition ?? "-"}
+              {t("waitlistPosition", { position: registration?.viewerWaitlistPosition ?? "-" })}
             </Badge>
           ) : null}
         </div>
@@ -193,7 +197,7 @@ function EventCard({
           ) : null}
           {registration?.waitlistedCount ? (
             <span className="inline-flex items-center gap-1 text-amber-700">
-              Waitlist: {registration.waitlistedCount}
+              {t("waitlistCount", { count: registration.waitlistedCount })}
             </span>
           ) : null}
         </div>
@@ -203,7 +207,9 @@ function EventCard({
         {isRegistered || isWaitlisted ? (
           <>
             <div className="w-[170px]">
-              <label className="text-[11px] text-muted-foreground mb-1 block">Reminder</label>
+              <label className="text-[11px] text-muted-foreground mb-1 block">
+                {t("reminder")}
+              </label>
               <Select
                 value={reminderValue}
                 onValueChange={(value) => onReminderChange(event.id, value as ReminderChannel)}
@@ -213,14 +219,16 @@ function EventCard({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Off</SelectItem>
-                  <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="sms">SMS</SelectItem>
-                  <SelectItem value="both">Email + SMS</SelectItem>
+                  <SelectItem value="none">{t("reminderOff")}</SelectItem>
+                  <SelectItem value="email">{t("reminderEmail")}</SelectItem>
+                  <SelectItem value="sms">{t("reminderSms")}</SelectItem>
+                  <SelectItem value="both">{t("reminderBoth")}</SelectItem>
                 </SelectContent>
               </Select>
               {reminderTime ? (
-                <p className="mt-1 text-[11px] text-muted-foreground">Next: {reminderTime}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {t("nextReminder", { time: reminderTime })}
+                </p>
               ) : null}
             </div>
             <Button
@@ -233,9 +241,9 @@ function EventCard({
               {isBusy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : isWaitlisted ? (
-                "Leave Waitlist"
+                t("leaveWaitlist")
               ) : (
-                "Cancel"
+                t("cancelRegistration")
               )}
             </Button>
           </>
@@ -250,9 +258,9 @@ function EventCard({
               {isBusy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : isAtCapacity ? (
-                "Join Waitlist"
+                t("joinWaitlist")
               ) : (
-                "Register"
+                t("register")
               )}
             </Button>
           ) : (
@@ -262,13 +270,13 @@ function EventCard({
               variant="secondary"
               className="whitespace-nowrap"
             >
-              Log in to register
+              {t("logInToRegister")}
             </Button>
           )
         ) : (
           <>
             <span className="px-3 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs font-medium rounded-full">
-              Drop-in
+              {t("dropIn")}
             </span>
             {isLoggedIn ? (
               <Button
@@ -279,7 +287,7 @@ function EventCard({
                 className="whitespace-nowrap disabled:opacity-60"
                 disabled={isBusy}
               >
-                {isBusy ? "Saving..." : "Save to My Events"}
+                {isBusy ? t("saving") : t("saveToMyEvents")}
               </Button>
             ) : null}
           </>
@@ -290,7 +298,9 @@ function EventCard({
         !isRegistered &&
         !isWaitlisted &&
         isAtCapacity ? (
-          <span className="text-xs text-red-600 dark:text-red-400 font-medium">At capacity</span>
+          <span className="text-xs text-red-600 dark:text-red-400 font-medium">
+            {t("atCapacity")}
+          </span>
         ) : null}
       </div>
     </div>
@@ -314,6 +324,8 @@ function WeekView({
   onCancel: (eventId: string) => void;
   onReminderChange: (eventId: string, channel: ReminderChannel) => void;
 }) {
+  const t = useTranslations("eventsPage");
+  const locale = useLocale();
   const today = new Date();
   const days: { date: string; label: string; events: EventWithLifecycle[] }[] = [];
 
@@ -321,7 +333,7 @@ function WeekView({
     const d = new Date(today);
     d.setDate(d.getDate() + i);
     const dateStr = d.toISOString().split("T")[0];
-    const label = d.toLocaleDateString("en-US", {
+    const label = d.toLocaleDateString(locale, {
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -357,7 +369,7 @@ function WeekView({
             </div>
           ) : (
             <p className="text-sm text-muted-foreground/60 py-3 pl-4 border-l-2 border-border">
-              No events scheduled
+              {t("noEventsScheduled")}
             </p>
           )}
         </div>
@@ -367,6 +379,8 @@ function WeekView({
 }
 
 function MonthView({ events }: { events: EventWithLifecycle[] }) {
+  const t = useTranslations("eventsPage");
+  const locale = useLocale();
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
@@ -374,7 +388,11 @@ function MonthView({ events }: { events: EventWithLifecycle[] }) {
   const lastDay = new Date(currentYear, currentMonth + 1, 0);
   const startPadding = firstDay.getDay();
 
-  const monthLabel = firstDay.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const monthLabel = firstDay.toLocaleDateString(locale, { month: "long", year: "numeric" });
+  const weekdayLabels = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(2026, 0, 4 + index);
+    return date.toLocaleDateString(locale, { weekday: "short" });
+  });
 
   const eventsByDate = new Map<string, EventWithLifecycle[]>();
   events.forEach((event) => {
@@ -402,7 +420,7 @@ function MonthView({ events }: { events: EventWithLifecycle[] }) {
     <div>
       <h3 className="text-lg font-semibold text-foreground mb-4 text-center">{monthLabel}</h3>
       <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+        {weekdayLabels.map((day) => (
           <div
             key={day}
             className="bg-muted p-2 text-center text-xs font-semibold text-muted-foreground"
@@ -434,7 +452,7 @@ function MonthView({ events }: { events: EventWithLifecycle[] }) {
                   ))}
                   {cell.events.length > 2 ? (
                     <span className="text-xs text-muted-foreground">
-                      +{cell.events.length - 2} more
+                      {t("moreEvents", { count: cell.events.length - 2 })}
                     </span>
                   ) : null}
                 </div>
@@ -541,10 +559,10 @@ export default function EventsPage() {
           return;
         }
 
-        toast.success(String(data?.message || "Event registration updated."));
+        toast.success(String(data?.message || t("registrationUpdated")));
         await fetchEvents();
       } catch {
-        toast.error("Unable to update event registration right now.");
+        toast.error(t("updateRegistrationError"));
       } finally {
         setBusyEventId(null);
       }
@@ -594,14 +612,14 @@ export default function EventsPage() {
               className="text-primary-200 hover:text-white transition-colors text-sm inline-flex items-center gap-1"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Catalog
+              {t("backToCatalog")}
             </Link>
             {isLoggedIn ? (
               <Link
                 href="/opac/account/events"
                 className="text-xs md:text-sm rounded-full border border-white/30 px-3 py-1.5 bg-white/10 hover:bg-white/20"
               >
-                My Event Registrations
+                {t("myEventRegistrations")}
               </Link>
             ) : null}
           </div>
@@ -612,155 +630,160 @@ export default function EventsPage() {
             <h1 className="text-3xl md:text-4xl font-bold">{t("title")}</h1>
           </div>
           <p className="text-primary-100 text-lg max-w-2xl">
-            {t("discoverEvents")} {library?.name || "your library"}.
+            {t("discoverEvents")} {library?.name || t("yourLibrary")}.
           </p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {!isLoading && eventsSource === "none" ? (
-          <div className="mb-4 rounded-lg border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-sm text-amber-900 dark:text-amber-300">
-            Events are not configured for this library yet. Ask staff to connect a real events
-            source.
+          <div className="text-center py-16">
+            <CalendarDays className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">{t("noUpcomingEvents")}</h2>
+            <p className="text-muted-foreground max-w-md mx-auto">{t("noUpcomingEventsDesc")}</p>
           </div>
         ) : null}
 
-        <div className="flex flex-col md:flex-row gap-4 mb-8">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder={t("searchPlaceholder")}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              aria-label={t("searchEvents")}
-              className="pl-10"
-            />
-          </div>
+        {eventsSource === "none" ? null : (
+          <>
+            <div className="flex flex-col md:flex-row gap-4 mb-8">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder={t("searchPlaceholder")}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  aria-label={t("searchEvents")}
+                  className="pl-10"
+                />
+              </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground font-medium">{t("filters")}:</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground font-medium">{t("filters")}:</span>
+                </div>
+
+                <Select value={filterBranch} onValueChange={setFilterBranch}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder={t("allBranches")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("allBranches")}</SelectItem>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch} value={branch}>
+                        {branch}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder={t("allTypes")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("allTypes")}</SelectItem>
+                    {types.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Tabs
+                value={viewMode}
+                onValueChange={(value) => setViewMode(value as ViewMode)}
+                className="ml-auto"
+              >
+                <TabsList>
+                  <TabsTrigger value="list" className="gap-1.5">
+                    <List className="h-4 w-4" />
+                    <span className="hidden sm:inline">{t("list")}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="week" className="gap-1.5">
+                    <CalendarDays className="h-4 w-4" />
+                    <span className="hidden sm:inline">{t("week")}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="month" className="gap-1.5">
+                    <Calendar className="h-4 w-4" />
+                    <span className="hidden sm:inline">{t("month")}</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
 
-            <Select value={filterBranch} onValueChange={setFilterBranch}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder={t("allBranches")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allBranches")}</SelectItem>
-                {branches.map((branch) => (
-                  <SelectItem key={branch} value={branch}>
-                    {branch}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder={t("allTypes")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allTypes")}</SelectItem>
-                {types.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Tabs
-            value={viewMode}
-            onValueChange={(value) => setViewMode(value as ViewMode)}
-            className="ml-auto"
-          >
-            <TabsList>
-              <TabsTrigger value="list" className="gap-1.5">
-                <List className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("list")}</span>
-              </TabsTrigger>
-              <TabsTrigger value="week" className="gap-1.5">
-                <CalendarDays className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("week")}</span>
-              </TabsTrigger>
-              <TabsTrigger value="month" className="gap-1.5">
-                <Calendar className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("month")}</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
-        {isLoading ? (
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div
-                key={i}
-                className="animate-pulse flex gap-6 p-6 bg-card rounded-xl border border-border"
-              >
-                <div className="w-20 h-20 bg-muted rounded-lg" />
-                <div className="flex-1 space-y-3">
-                  <div className="h-5 bg-muted rounded w-1/3" />
-                  <div className="h-4 bg-muted rounded w-2/3" />
-                  <div className="h-3 bg-muted rounded w-1/2" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filteredEvents.length === 0 ? (
-          <div className="text-center py-16">
-            <CalendarDays className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">{t("noEventsFound")}</h2>
-            <p className="text-muted-foreground">
-              {searchTerm || filterBranch !== "all" || filterType !== "all"
-                ? t("tryAdjustingFilters")
-                : t("checkBackSoon")}
-            </p>
-          </div>
-        ) : (
-          <>
-            {viewMode === "list" ? (
+            {isLoading ? (
               <div className="space-y-4">
-                {filteredEvents.map((event) => (
-                  <EventCard
-                    key={event.id}
-                    event={event}
+                {[...Array(5)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="animate-pulse flex gap-6 p-6 bg-card rounded-xl border border-border"
+                  >
+                    <div className="w-20 h-20 bg-muted rounded-lg" />
+                    <div className="flex-1 space-y-3">
+                      <div className="h-5 bg-muted rounded w-1/3" />
+                      <div className="h-4 bg-muted rounded w-2/3" />
+                      <div className="h-3 bg-muted rounded w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredEvents.length === 0 ? (
+              <div className="text-center py-16">
+                <CalendarDays className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-foreground mb-2">{t("noEventsFound")}</h2>
+                <p className="text-muted-foreground">
+                  {searchTerm || filterBranch !== "all" || filterType !== "all"
+                    ? t("tryAdjustingFilters")
+                    : t("checkBackSoon")}
+                </p>
+              </div>
+            ) : (
+              <>
+                {viewMode === "list" ? (
+                  <div className="space-y-4">
+                    {filteredEvents.map((event) => (
+                      <EventCard
+                        key={event.id}
+                        event={event}
+                        isLoggedIn={isLoggedIn}
+                        isBusy={busyEventId === event.id}
+                        onRequireLogin={requireLogin}
+                        onRegister={handleRegister}
+                        onCancel={handleCancel}
+                        onReminderChange={handleReminderChange}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+
+                {viewMode === "week" ? (
+                  <WeekView
+                    events={filteredEvents}
                     isLoggedIn={isLoggedIn}
-                    isBusy={busyEventId === event.id}
+                    busyEventId={busyEventId}
                     onRequireLogin={requireLogin}
                     onRegister={handleRegister}
                     onCancel={handleCancel}
                     onReminderChange={handleReminderChange}
                   />
-                ))}
-              </div>
-            ) : null}
+                ) : null}
 
-            {viewMode === "week" ? (
-              <WeekView
-                events={filteredEvents}
-                isLoggedIn={isLoggedIn}
-                busyEventId={busyEventId}
-                onRequireLogin={requireLogin}
-                onRegister={handleRegister}
-                onCancel={handleCancel}
-                onReminderChange={handleReminderChange}
-              />
-            ) : null}
+                {viewMode === "month" ? <MonthView events={filteredEvents} /> : null}
+              </>
+            )}
 
-            {viewMode === "month" ? <MonthView events={filteredEvents} /> : null}
+            {!isLoading && filteredEvents.length > 0 ? (
+              <p className="mt-6 text-sm text-muted-foreground text-center">
+                {t("showingEvents", { count: filteredEvents.length })}
+              </p>
+            ) : null}
           </>
         )}
-
-        {!isLoading && filteredEvents.length > 0 ? (
-          <p className="mt-6 text-sm text-muted-foreground text-center">
-            {t("showingEvents", { count: filteredEvents.length })}
-          </p>
-        ) : null}
       </div>
     </div>
   );

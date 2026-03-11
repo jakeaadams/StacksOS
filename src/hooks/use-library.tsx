@@ -61,6 +61,26 @@ interface LibraryContextValue {
 
 const LibraryContext = createContext<LibraryContextValue | undefined>(undefined);
 
+function deriveShortName(name: string | null | undefined): string {
+  const trimmed = String(name || "").trim();
+  if (!trimmed) return "LIB";
+
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length > 1) {
+    return parts
+      .slice(0, 3)
+      .map((part) => part[0]?.toUpperCase() || "")
+      .join("");
+  }
+
+  return (
+    trimmed
+      .replace(/[^A-Za-z0-9]/g, "")
+      .slice(0, 3)
+      .toUpperCase() || "LIB"
+  );
+}
+
 export function LibraryProvider({ children }: { children: ReactNode }) {
   const [library, setLibrary] = useState<LibraryInfo | null>(null);
   const [currentLocation, setCurrentLocation] = useState<LibraryLocation | null>(null);
@@ -72,18 +92,29 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      // Fetch organization tree from Evergreen
-      const response = await fetch("/api/evergreen/orgs", { credentials: "include" });
+      // Use the public OPAC endpoint — works for patrons and anonymous visitors
+      const response = await fetch("/api/opac/library-info");
 
       if (!response.ok) {
         throw new Error("Failed to fetch library information");
       }
 
       const data = await response.json();
+      const tenantName: string = data.tenantDisplayName || "";
 
       // Transform Evergreen org data to LibraryInfo format
-      // API returns { payload: [orgTree] } so we need to access payload[0]
-      const orgTree = data.orgTree || data.payload?.[0] || data;
+      const orgTree = data.orgTree?.payload?.[0] || data.orgTree || null;
+
+      if (!orgTree) {
+        // Evergreen unreachable — use tenant display name as graceful fallback
+        setLibrary({
+          id: 0,
+          name: tenantName || "Library",
+          shortName: deriveShortName(tenantName || "Library"),
+          locations: [],
+        });
+        return;
+      }
 
       // Find the root organization or consortium
       const rootOrg = findRootOrg(orgTree);
@@ -135,11 +166,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       clientLogger.error("Error fetching library info:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
 
-      // Set fallback library info
+      // Set graceful fallback — never show "Library data unavailable" to patrons
       setLibrary({
         id: 0,
-        name: "Library data unavailable",
-        shortName: "N/A",
+        name: "Library",
+        shortName: deriveShortName("Library"),
         locations: [],
       });
     } finally {

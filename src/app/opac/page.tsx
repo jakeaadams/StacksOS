@@ -30,36 +30,36 @@ import {
 
 import type { LibraryEvent } from "@/lib/events-data";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 // ---------------------------------------------------------------------------
 // Profile-specific browse categories (hero uses i18n, chips are contextual)
 // ---------------------------------------------------------------------------
 
-const PROFILE_CHIPS: Record<string, { label: string; href: string }[]> = {
+const PROFILE_CHIPS: Record<string, { labelKey: string; href: string }[]> = {
   public: [
-    { label: "New Arrivals", href: "/opac/new-titles" },
-    { label: "Popular Now", href: "/opac/search?sort=popularity" },
-    { label: "Staff Picks", href: "/opac/lists" },
-    { label: "Browse Subjects", href: "/opac/browse" },
+    { labelKey: "chipPublicNewArrivals", href: "/opac/new-titles" },
+    { labelKey: "chipPublicPopularNow", href: "/opac/search?sort=popularity" },
+    { labelKey: "chipPublicStaffPicks", href: "/opac/lists" },
+    { labelKey: "chipPublicBrowseSubjects", href: "/opac/browse" },
   ],
   school: [
-    { label: "Kids Search", href: "/opac/kids/search" },
-    { label: "Graphic Novels", href: "/opac/search?q=graphic+novel" },
-    { label: "STEM Explorer", href: "/opac/search?q=science" },
-    { label: "Homework Help", href: "/opac/events" },
+    { labelKey: "chipSchoolKidsSearch", href: "/opac/kids/search" },
+    { labelKey: "chipSchoolGraphicNovels", href: "/opac/search?q=graphic+novel" },
+    { labelKey: "chipSchoolStemExplorer", href: "/opac/search?q=science" },
+    { labelKey: "chipSchoolHomeworkHelp", href: "/opac/events" },
   ],
   church: [
-    { label: "Community Reads", href: "/opac/search?q=community" },
-    { label: "Family Collection", href: "/opac/search?q=family" },
-    { label: "Programs & Events", href: "/opac/events" },
-    { label: "Kids Corner", href: "/opac/kids" },
+    { labelKey: "chipChurchCommunityReads", href: "/opac/search?q=community" },
+    { labelKey: "chipChurchFamilyCollection", href: "/opac/search?q=family" },
+    { labelKey: "chipChurchProgramsEvents", href: "/opac/events" },
+    { labelKey: "chipChurchKidsCorner", href: "/opac/kids" },
   ],
   academic: [
-    { label: "Advanced Search", href: "/opac/advanced-search" },
-    { label: "New Acquisitions", href: "/opac/new-titles" },
-    { label: "Digital Library", href: "/opac/digital" },
-    { label: "Subject Browse", href: "/opac/browse" },
+    { labelKey: "chipAcademicAdvancedSearch", href: "/opac/advanced-search" },
+    { labelKey: "chipAcademicNewAcquisitions", href: "/opac/new-titles" },
+    { labelKey: "chipAcademicDigitalLibrary", href: "/opac/digital" },
+    { labelKey: "chipAcademicSubjectBrowse", href: "/opac/browse" },
   ],
 };
 
@@ -117,8 +117,12 @@ const HERO_OVERLAY_CLASSES: Record<OpacStyleVariant, string> = {
     "bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary-foreground)/0.1)_0%,transparent_45%),radial-gradient(circle_at_75%_75%,hsl(var(--primary-foreground)/0.08)_0%,transparent_46%)]",
 };
 
-function getProfileChips(profile: string): Array<{ label: string; href: string }> {
-  return PROFILE_CHIPS[profile] || PROFILE_CHIPS.public || [];
+function getProfileChips(
+  profile: string,
+  t: (key: string) => string
+): Array<{ label: string; href: string }> {
+  const chips = PROFILE_CHIPS[profile] || PROFILE_CHIPS.public || [];
+  return chips.map((chip) => ({ label: t(chip.labelKey), href: chip.href }));
 }
 
 interface FeaturedBook {
@@ -162,10 +166,12 @@ function transformCatalogResults(records: any[]): FeaturedBook[] {
 }
 
 function buildStartHereActions(options: {
+  t: (key: string) => string;
   isLoggedIn: boolean;
   hasDigital: boolean;
   hasEvents: boolean;
 }): Array<{ label: string; description: string; href: string; icon: React.ElementType }> {
+  const { t } = options;
   const actions: Array<{
     label: string;
     description: string;
@@ -173,16 +179,16 @@ function buildStartHereActions(options: {
     icon: React.ElementType;
   }> = [
     {
-      label: "Search the catalog",
-      description: "Start with books, media, and live availability at your current scope.",
+      label: t("startHereSearchLabel"),
+      description: t("startHereSearchDescription"),
       href: "/opac/search",
       icon: Search,
     },
     {
-      label: options.isLoggedIn ? "Open my account" : "Sign in to my account",
+      label: options.isLoggedIn ? t("startHereAccountOpenLabel") : t("startHereAccountSignInLabel"),
       description: options.isLoggedIn
-        ? "Renew items, review holds, and keep your card details in one place."
-        : "Checkouts, holds, lists, and saved account settings live here.",
+        ? t("startHereAccountOpenDescription")
+        : t("startHereAccountSignInDescription"),
       href: options.isLoggedIn ? "/opac/account" : "/opac/login?redirect=/opac/account",
       icon: Library,
     },
@@ -190,15 +196,15 @@ function buildStartHereActions(options: {
 
   if (options.hasDigital) {
     actions.push({
-      label: "Open the digital library",
-      description: "Jump to Libby, Hoopla, cloudLibrary, Kanopy, and other configured services.",
+      label: t("startHereDigitalLabel"),
+      description: t("startHereDigitalDescription"),
       href: "/opac/digital",
       icon: Smartphone,
     });
   } else {
     actions.push({
-      label: "Use advanced search",
-      description: "Narrow by format, subject, language, audience, and publication details.",
+      label: t("startHereAdvancedLabel"),
+      description: t("startHereAdvancedDescription"),
       href: "/opac/advanced-search",
       icon: BookOpen,
     });
@@ -206,15 +212,15 @@ function buildStartHereActions(options: {
 
   if (options.hasEvents) {
     actions.push({
-      label: "Browse programs and events",
-      description: "Find storytimes, workshops, clubs, and featured events at your library.",
+      label: t("startHereEventsLabel"),
+      description: t("startHereEventsDescription"),
       href: "/opac/events",
       icon: CalendarDays,
     });
   } else {
     actions.push({
-      label: "Browse subjects",
-      description: "Explore new arrivals, staff picks, and subject-driven discovery paths.",
+      label: t("startHereSubjectsLabel"),
+      description: t("startHereSubjectsDescription"),
       href: "/opac/browse",
       icon: Star,
     });
@@ -225,6 +231,7 @@ function buildStartHereActions(options: {
 
 export default function OPACHomePage() {
   const t = useTranslations("home");
+  const locale = useLocale();
   const { library, currentLocation } = useLibrary();
   const { patron, isLoggedIn, holds } = usePatronSession();
   const browseEnabled = featureFlags.opacBrowseV2;
@@ -235,7 +242,7 @@ export default function OPACHomePage() {
   const [searchPlaceholderOverride, setSearchPlaceholderOverride] = useState<string>("");
   const [opacStyleVariant, setOpacStyleVariant] = useState<OpacStyleVariant>("classic");
   const [quickChips, setQuickChips] = useState<Array<{ label: string; href: string }>>(
-    getProfileChips(defaultTenantProfile)
+    getProfileChips(defaultTenantProfile, t)
   );
   const [sectionVisibility, setSectionVisibility] =
     useState<OpacSectionVisibility>(DEFAULT_OPAC_SECTIONS);
@@ -281,7 +288,7 @@ export default function OPACHomePage() {
       setHeroSubtitleOverride(String(opac.heroSubtitle || "").trim());
       setSearchPlaceholderOverride(String(opac.searchPlaceholder || "").trim());
       setOpacStyleVariant(styleVariant);
-      setQuickChips(configuredChips.length > 0 ? configuredChips : getProfileChips(profile));
+      setQuickChips(configuredChips.length > 0 ? configuredChips : getProfileChips(profile, t));
       setSectionVisibility({
         ...DEFAULT_OPAC_SECTIONS,
         ...(opac.sections || {}),
@@ -289,7 +296,7 @@ export default function OPACHomePage() {
     } catch (error) {
       clientLogger.warn("Failed to load OPAC discovery configuration", { error });
     }
-  }, []);
+  }, [t]);
 
   const fetchFeaturedContent = useCallback(async () => {
     if (!browseEnabled) {
@@ -486,11 +493,9 @@ export default function OPACHomePage() {
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Start here
+                {t("startHereEyebrow")}
               </p>
-              <h2 className="mt-1 text-2xl font-bold text-foreground">
-                Move from discovery to action without hunting through the catalog
-              </h2>
+              <h2 className="mt-1 text-2xl font-bold text-foreground">{t("startHereTitle")}</h2>
             </div>
             {currentLocation ? (
               <div className="hidden items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-sm text-muted-foreground md:flex">
@@ -501,6 +506,7 @@ export default function OPACHomePage() {
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {buildStartHereActions({
+              t,
               isLoggedIn,
               hasDigital: featureFlags.opacDigitalLibrary,
               hasEvents: featureFlags.opacEvents,
@@ -587,7 +593,7 @@ export default function OPACHomePage() {
               {featuredEvents.slice(0, 4).map((event) => {
                 const eventDate = new Date(event.date + "T12:00:00");
                 const monthAbbr = eventDate
-                  .toLocaleDateString("en-US", { month: "short" })
+                  .toLocaleDateString(locale, { month: "short" })
                   .toUpperCase();
                 const day = eventDate.getDate().toString();
                 return (

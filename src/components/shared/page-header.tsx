@@ -148,7 +148,7 @@ export function PageHeader({
 
           {/* Actions */}
           {actions && actions.length > 0 && (
-            <div className="flex flex-shrink-0 items-center gap-2">
+            <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
               {actions.map((action, index) => {
                 const Icon = action.icon;
                 return (

@@ -23,6 +23,18 @@ import { loadTenantConfigFromDisk, saveTenantConfigToDisk } from "@/lib/tenant/s
 // ---------------------------------------------------------------------------
 
 export async function GET(req: NextRequest) {
+  const { ip } = getRequestMeta(req);
+  const rate = await checkRateLimit(ip || "unknown", {
+    maxAttempts: 30,
+    windowMs: 5 * 60 * 1000,
+    endpoint: "admin-security-settings-read",
+  });
+  if (!rate.allowed) {
+    return errorResponse("Too many requests. Please try again later.", 429, {
+      retryAfter: Math.ceil(rate.resetIn / 1000),
+    });
+  }
+
   try {
     await requireSaaSAccess({
       target: "tenant",

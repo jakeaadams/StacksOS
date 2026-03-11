@@ -206,7 +206,8 @@ export function CatalogingCopilotPanel({
 
           {degraded && response && (
             <div className="rounded-lg bg-[hsl(var(--status-warning-bg))] p-2 text-xs text-[hsl(var(--status-warning-text))]">
-              AI provider unavailable. Showing deterministic fallback suggestions.
+              AI assistant is temporarily unavailable. Showing automated suggestions based on
+              catalog data.
             </div>
           )}
 

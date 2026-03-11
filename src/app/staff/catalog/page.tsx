@@ -43,7 +43,14 @@ import {
   Search,
   RefreshCw,
   Eye,
+  MoreHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface BibRecord {
   id: number;
@@ -235,32 +242,6 @@ function CatalogSearchContent() {
             icon: Plus,
           },
           {
-            label: "Z39.50",
-            onClick: () => router.push("/staff/cataloging/z3950"),
-            icon: Globe,
-            variant: "outline",
-          },
-          {
-            label: "MARC Editor",
-            onClick: () =>
-              selectedRecord
-                ? router.push(`/staff/cataloging/marc-editor?id=${selectedRecord.id}`)
-                : toast.message("Select a record first"),
-            icon: FileText,
-            variant: "outline",
-            disabled: !selectedRecord,
-          },
-          {
-            label: "Holdings",
-            onClick: () =>
-              selectedRecord
-                ? router.push(`/staff/cataloging/holdings?id=${selectedRecord.id}`)
-                : toast.message("Select a record first"),
-            icon: Package,
-            variant: "outline",
-            disabled: !selectedRecord,
-          },
-          {
             label: "Place Hold",
             onClick: () => setPlaceHoldOpen(true),
             icon: Bookmark,
@@ -305,6 +286,42 @@ function CatalogSearchContent() {
               Hold for patron: {patronContextBarcode} (clear)
             </button>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 rounded-full">
+                <MoreHorizontal className="h-4 w-4" />
+                <span>Cataloging Tools</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => router.push("/staff/cataloging/z3950")}>
+                <Globe className="h-4 w-4 mr-2" />
+                Z39.50 Search
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!selectedRecord}
+                onClick={() =>
+                  selectedRecord
+                    ? router.push(`/staff/cataloging/marc-editor?id=${selectedRecord.id}`)
+                    : toast.message("Select a record first")
+                }
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                MARC Editor
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!selectedRecord}
+                onClick={() =>
+                  selectedRecord
+                    ? router.push(`/staff/cataloging/holdings?id=${selectedRecord.id}`)
+                    : toast.message("Select a record first")
+                }
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Holdings
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </PageHeader>
 
