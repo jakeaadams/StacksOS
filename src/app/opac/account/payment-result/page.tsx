@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle, XCircle, Loader2, ArrowLeft, Receipt, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,8 @@ type PaymentStatus = "loading" | "succeeded" | "processing" | "failed";
 
 function PaymentResultContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [status, setStatus] = useState<PaymentStatus>("loading");
   const [error, setError] = useState<string | null>(null);
-  const [amount, setAmount] = useState<number>(0);
-  const [currency, setCurrency] = useState("usd");
 
   const redirectStatus = searchParams.get("redirect_status");
   const paymentIntentId = searchParams.get("payment_intent");

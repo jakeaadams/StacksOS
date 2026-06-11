@@ -453,6 +453,7 @@ export default function SettingsPage() {
 
             <SettingRow label="Auto-Suggest" description="Show suggestions while typing">
               <Switch
+                aria-label="Toggle auto-suggest"
                 checked={settings.autoSuggest}
                 onCheckedChange={(checked) => updateSetting("autoSuggest", checked)}
               />
@@ -472,6 +473,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-2">
                 <Volume2 className="h-4 w-4 text-muted-foreground" />
                 <Switch
+                  aria-label="Toggle sound alerts"
                   checked={settings.soundAlerts}
                   onCheckedChange={(checked) => updateSetting("soundAlerts", checked)}
                 />
@@ -488,6 +490,7 @@ export default function SettingsPage() {
                 <BellRing className="h-4 w-4 text-muted-foreground" />
                 {settings.desktopNotifications ? (
                   <Switch
+                    aria-label="Toggle desktop notifications"
                     checked={settings.desktopNotifications}
                     onCheckedChange={(checked) => updateSetting("desktopNotifications", checked)}
                   />

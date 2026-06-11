@@ -77,6 +77,7 @@ export default function FundingSourcesPage() {
   const { orgs } = useAuth();
   const [fundingSources, setFundingSources] = useState<FundingSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [unsupportedMessage, setUnsupportedMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrgId, setSelectedOrgId] = useState<number | "all">("all");
 
@@ -103,6 +104,7 @@ export default function FundingSourcesPage() {
       const data = await response.json();
       if (data.ok) {
         setFundingSources(data.fundingSources || []);
+        setUnsupportedMessage(data.unsupported ? data.message || null : null);
       } else {
         toast.error(data.error || "Failed to load funding sources");
       }
@@ -412,11 +414,24 @@ export default function FundingSourcesPage() {
         ]}
         actions={[
           { label: "Refresh", onClick: loadFundingSources, icon: RefreshCw, variant: "outline" },
-          { label: "Add Funding Source", onClick: handleOpenCreate, icon: Plus },
+          {
+            label: "Add Funding Source",
+            onClick: handleOpenCreate,
+            icon: Plus,
+            disabled: Boolean(unsupportedMessage),
+          },
         ]}
       />
 
       <PageContent className="space-y-6">
+        {unsupportedMessage ? (
+          <Card className="rounded-2xl border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20">
+            <CardContent className="p-4 text-sm text-amber-900 dark:text-amber-100">
+              {unsupportedMessage}
+            </CardContent>
+          </Card>
+        ) : null}
+
         <div className="grid gap-4 sm:grid-cols-3">
           <Card className="rounded-2xl">
             <CardContent className="p-5">
@@ -521,11 +536,17 @@ export default function FundingSourcesPage() {
                 <EmptyState
                   title="No funding sources found"
                   description={
-                    searchQuery
-                      ? "No funding sources match your search criteria."
-                      : "No funding sources have been configured."
+                    unsupportedMessage
+                      ? unsupportedMessage
+                      : searchQuery
+                        ? "No funding sources match your search criteria."
+                        : "No funding sources have been configured."
                   }
-                  action={{ label: "Add Funding Source", onClick: handleOpenCreate }}
+                  action={
+                    unsupportedMessage
+                      ? undefined
+                      : { label: "Add Funding Source", onClick: handleOpenCreate }
+                  }
                 />
               }
             />

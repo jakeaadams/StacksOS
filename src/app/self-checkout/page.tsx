@@ -125,7 +125,7 @@ export default function SelfCheckoutPage() {
 
   // Handle patron login
   const handlePatronLogin = async () => {
-    if (!barcodeInput.trim()) return;
+    if (!barcodeInput.trim() || !pinInput.trim()) return;
 
     setIsProcessing(true);
     setLastError(null);
@@ -319,8 +319,17 @@ export default function SelfCheckoutPage() {
           {/* Idle State - Touch to Start */}
           {state === "idle" && (
             <div
+              role="button"
+              tabIndex={0}
+              aria-label="Start self-checkout"
               className="h-[70vh] flex flex-col items-center justify-center cursor-pointer"
               onClick={() => setState("patron-login")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setState("patron-login");
+                }
+              }}
             >
               <div className="text-center space-y-6 animate-pulse">
                 <div className="h-32 w-32 rounded-full bg-primary/20 flex items-center justify-center mx-auto">
@@ -365,6 +374,7 @@ export default function SelfCheckoutPage() {
                     id="pin-input"
                     type="password"
                     placeholder="PIN"
+                    aria-label="PIN"
                     value={pinInput}
                     onChange={(e) => setPinInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handlePatronLogin()}
@@ -383,7 +393,7 @@ export default function SelfCheckoutPage() {
                 <Button
                   className="w-full h-14 text-lg"
                   onClick={handlePatronLogin}
-                  disabled={isProcessing || !barcodeInput}
+                  disabled={isProcessing || !barcodeInput.trim() || !pinInput.trim()}
                 >
                   {isProcessing ? (
                     <Loader2 className="h-5 w-5 animate-spin" />

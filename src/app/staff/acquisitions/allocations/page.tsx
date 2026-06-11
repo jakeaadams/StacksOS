@@ -78,6 +78,7 @@ export default function AllocationsPage() {
   const [fundingSources, setFundingSources] = useState<FundingSource[]>([]);
   const [allocations, setAllocations] = useState<Allocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [unsupportedMessage, setUnsupportedMessage] = useState<string | null>(null);
 
   const [isAllocateOpen, setIsAllocateOpen] = useState(false);
   const [isTransferOpen, setIsTransferOpen] = useState(false);
@@ -106,7 +107,10 @@ export default function AllocationsPage() {
       const allocData = await allocRes.json();
       if (fundsData.ok) setFunds(fundsData.funds || []);
       if (sourcesData.ok) setFundingSources(sourcesData.fundingSources || []);
-      if (allocData.ok) setAllocations(allocData.allocations || []);
+      if (allocData.ok) {
+        setAllocations(allocData.allocations || []);
+        setUnsupportedMessage(allocData.unsupported ? allocData.message || null : null);
+      }
     } catch {
       toast.error("Failed to load data");
     } finally {
@@ -328,12 +332,26 @@ export default function AllocationsPage() {
             onClick: () => setIsTransferOpen(true),
             icon: ArrowRightLeft,
             variant: "outline",
+            disabled: Boolean(unsupportedMessage),
           },
-          { label: "Allocate", onClick: () => setIsAllocateOpen(true), icon: Plus },
+          {
+            label: "Allocate",
+            onClick: () => setIsAllocateOpen(true),
+            icon: Plus,
+            disabled: Boolean(unsupportedMessage),
+          },
         ]}
       />
 
       <PageContent className="space-y-6">
+        {unsupportedMessage ? (
+          <Card className="rounded-2xl border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20">
+            <CardContent className="p-4 text-sm text-amber-900 dark:text-amber-100">
+              {unsupportedMessage}
+            </CardContent>
+          </Card>
+        ) : null}
+
         <div className="grid gap-4 sm:grid-cols-3">
           <Card className="rounded-2xl">
             <CardContent className="p-5">
@@ -396,7 +414,11 @@ export default function AllocationsPage() {
                 <EmptyState
                   title="No allocations found"
                   description="No fund allocations have been made yet."
-                  action={{ label: "Create Allocation", onClick: () => setIsAllocateOpen(true) }}
+                  action={
+                    unsupportedMessage
+                      ? undefined
+                      : { label: "Create Allocation", onClick: () => setIsAllocateOpen(true) }
+                  }
                 />
               }
             />

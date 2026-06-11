@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
-export default function Home() {
-  redirect("/staff/catalog");
+export default async function Home() {
+  const cookieStore = await cookies();
+  redirect(cookieStore.has("authtoken") ? "/staff/catalog" : "/login");
 }

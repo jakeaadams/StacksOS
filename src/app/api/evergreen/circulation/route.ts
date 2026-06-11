@@ -20,6 +20,7 @@ import { requirePermissions } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { normalizeCheckoutDueDate } from "@/lib/circulation/due-date";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { withIdempotency } from "@/lib/idempotency";
 import { z } from "zod";
 
 const ACTION_PERMS: Record<string, string[]> = {
@@ -101,11 +102,16 @@ const circulationBodySchema = z.discriminatedUnion("action", [
       payment_type: z.string().trim().min(1).optional(),
       payments: z
         .array(
-          z
-            .object({
-              amount: z.union([z.number(), z.string()]),
-            })
-            .passthrough()
+          z.union([
+            z.tuple([z.union([z.number(), z.string()]), z.union([z.number(), z.string()])]),
+            z
+              .object({
+                amount: z.union([z.number(), z.string()]),
+                xact: z.union([z.number(), z.string()]).optional(),
+                xactId: z.union([z.number(), z.string()]).optional(),
+              })
+              .passthrough(),
+          ])
         )
         .min(1),
     })
@@ -129,13 +135,14 @@ function resolvePerms(action: string, body: Record<string, unknown>) {
 
 // POST - Checkout, Checkin, Renew, Hold operations
 export async function POST(req: NextRequest) {
-  const { ip, userAgent, requestId } = getRequestMeta(req);
+  return withIdempotency(req, "api.evergreen.circulation.POST", async () => {
+    const { ip, userAgent, requestId } = getRequestMeta(req);
 
-  try {
-    const bodyParsed = await parseJsonBodyWithSchema(req, circulationBodySchema);
-    if (bodyParsed instanceof Response) return bodyParsed;
-    const body = bodyParsed;
-    const { action } = body;
+    try {
+      const bodyParsed = await parseJsonBodyWithSchema(req, circulationBodySchema);
+      if (bodyParsed instanceof Response) return bodyParsed;
+      const body = bodyParsed;
+      const { action } = body;
 
     const { authtoken, actor } = await requirePermissions(resolvePerms(action, body));
 
@@ -489,17 +496,44 @@ export async function POST(req: NextRequest) {
           return errorResponse("patron_id and payments required", 400);
         }
 
+        const normalizedPayments = payments.map((payment: any) => {
+          if (Array.isArray(payment)) {
+            return { xact: Number(payment[0]), amount: Number(payment[1]) };
+          }
+          return {
+            ...payment,
+            xact: Number(payment.xact ?? payment.xactId),
+            amount: Number(payment.amount),
+          };
+        });
+
+        const invalidPayment = normalizedPayments.find(
+          (payment) =>
+            !Number.isFinite(payment.amount) ||
+            payment.amount <= 0 ||
+            !Number.isFinite(payment.xact) ||
+            payment.xact <= 0
+        );
+        if (invalidPayment) {
+          return errorResponse("Each payment must include a transaction id and positive amount", 400);
+        }
+
         const payResponse = await callOpenSRF("open-ils.circ", "open-ils.circ.money.payment", [
           authtoken,
-          { userid: patron_id, payments, payment_type: payment_type || "cash_payment" },
+          {
+            userid: patron_id,
+            payments: normalizedPayments,
+            payment_type: payment_type || "cash_payment",
+          },
           patron_id,
         ]);
 
         const result = payloadFirst(payResponse);
         if (result && !result.ilsevent) {
-          const total = Array.isArray(payments)
-            ? payments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
-            : 0;
+          const total = normalizedPayments.reduce(
+            (sum: number, payment: any) => sum + Number(payment.amount || 0),
+            0
+          );
           await audit("success", {
             patron_id,
             payment_type: payment_type || "cash_payment",
@@ -562,9 +596,10 @@ export async function POST(req: NextRequest) {
       default:
         return errorResponse("Invalid action", 400);
     }
-  } catch (error: unknown) {
-    return serverErrorResponse(error, "Circulation POST", req);
-  }
+    } catch (error: unknown) {
+      return serverErrorResponse(error, "Circulation POST", req);
+    }
+  });
 }
 
 // GET - Retrieve patron checkouts, holds, bills, or item status

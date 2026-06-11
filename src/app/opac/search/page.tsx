@@ -684,6 +684,9 @@ function SearchContent() {
       {/* Search header */}
       <div className="sticky top-[73px] z-40 border-b border-border/70 bg-card/84 supports-[backdrop-filter]:bg-card/72 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:py-5">
+          <h1 className="mb-3 text-2xl font-semibold tracking-normal text-foreground sm:text-3xl">
+            Search the catalog
+          </h1>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -715,6 +718,8 @@ function SearchContent() {
               type="button"
               onClick={handleToggleAiSearch}
               variant="outline"
+              aria-label={aiSmartSearchOn ? "Disable AI Smart Search" : "Enable AI Smart Search"}
+              aria-pressed={aiSmartSearchOn}
               className={`whitespace-nowrap rounded-xl border px-4 py-3 text-sm font-medium tracking-[-0.01em] transition-colors flex items-center gap-2 ${aiSmartSearchOn ? "border-[hsl(var(--brand-1))/0.44] bg-[hsl(var(--brand-1))/0.11] text-[hsl(var(--brand-1))]" : "border-border/80 bg-card/80 text-foreground/85 hover:bg-muted/45"}`}
               title={aiSmartSearchOn ? "AI Smart Search is ON" : "Enable AI Smart Search"}
             >
@@ -725,6 +730,8 @@ function SearchContent() {
               type="button"
               onClick={() => setShowFilters(!showFilters)}
               variant="outline"
+              aria-label={showFilters ? "Hide filters" : "Show filters"}
+              aria-expanded={showFilters}
               className={`rounded-xl border px-4 py-3 text-sm font-medium tracking-[-0.01em] transition-colors flex items-center gap-2 ${showFilters ? "border-[hsl(var(--brand-1))/0.45] bg-[hsl(var(--brand-1))/0.11] text-[hsl(var(--brand-1))]" : "border-border/80 bg-card/80 text-foreground/85 hover:bg-muted/45"}`}
             >
               <SlidersHorizontal className="h-5 w-5" />

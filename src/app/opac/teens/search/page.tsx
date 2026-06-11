@@ -165,6 +165,9 @@ function TeensSearchContent() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      <h1 className="mb-5 text-2xl font-semibold tracking-normal text-foreground sm:text-3xl">
+        Teen catalog search
+      </h1>
       {/* Search Header */}
       <div className="mb-8">
         <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-6">

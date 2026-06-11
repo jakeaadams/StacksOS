@@ -59,7 +59,6 @@ function BillsContent() {
   type MutationResponse = { ok?: boolean; error?: string; [key: string]: unknown };
   type MutationPayload = Record<string, unknown>;
   const payBillsMutation = useMutation<MutationResponse, MutationPayload>();
-  const refundMutation = useMutation<MutationResponse, MutationPayload>();
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -227,14 +226,14 @@ function BillsContent() {
       return;
     }
     let remaining = amount;
-    const payments: [number, number][] = [];
+    const payments: Array<{ xact: number; amount: number }> = [];
     const receiptLines: Array<{ xactId: number; title: string; barcode: string; amount: number }> =
       [];
     for (const row of targets) {
       if (remaining <= 0) break;
       const payAmount = Math.min(remaining, row.balance);
       if (payAmount <= 0) continue;
-      payments.push([row.xactId, payAmount]);
+      payments.push({ xact: row.xactId, amount: payAmount });
       receiptLines.push({
         xactId: row.xactId,
         title: row.title,
@@ -336,13 +335,28 @@ function BillsContent() {
     }
     setIsLoading(true);
     try {
-      const data = await refundMutation.mutateAsync("/api/evergreen/circulation", {
+      const res = await fetchWithAuth("/api/evergreen/lost", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
         action: "process_refund",
-        patron_id: patron.id,
-        xactId: refundTarget.xactId,
+          patronId: patron.id,
+          circId: refundTarget.xactId,
         refundAmount: amount,
-        refund_note: refundNote || undefined,
+          note: refundNote || undefined,
+        }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        window.dispatchEvent(new Event("stacksos:auth-expired"));
+        throw new ApiError("Session expired", 401, data?.details);
+      }
+      if (res.status === 403) {
+        throw new ApiError(data?.error || "Permission denied", 403, data?.details);
+      }
+      if (!res.ok) {
+        throw new ApiError(data?.error || "Refund failed", res.status, data?.details);
+      }
       if (!data?.ok) {
         toast.error(data?.error || "Refund failed");
         return;
@@ -394,7 +408,6 @@ function BillsContent() {
     loadTransactions,
     patron,
     refundAmount,
-    refundMutation,
     refundNote,
     refundTarget,
     user,

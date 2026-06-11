@@ -122,7 +122,7 @@ export default function CheckinPage() {
   const [itemError, setItemError] = useState<string | undefined>(undefined);
   const [itemSuccess, setItemSuccess] = useState(false);
   const [attentionOnly, setAttentionOnly] = useState(false);
-  const [bookdropMode, setBookdropMode] = useState(false);
+  const [quietMode, setQuietMode] = useState(false);
   const [lastErrorDetails, setLastErrorDetails] = useState<CheckinBlockDetails | null>(null);
   const [aiExplainLoading, setAiExplainLoading] = useState(false);
   const [aiExplainError, setAiExplainError] = useState<string | null>(null);
@@ -194,7 +194,7 @@ export default function CheckinPage() {
 
       playSound(status === "hold" || status === "transit" ? "info" : "success");
 
-      if (!bookdropMode) {
+      if (!quietMode) {
         toast.success(status === "checkedin" ? "Ready to shelve" : "Routing required", {
           description:
             status === "hold" ? "Send to hold shelf" : status === "transit" ? message : "Processed",
@@ -453,7 +453,7 @@ export default function CheckinPage() {
   useKeyboardShortcuts([
     { key: "Escape", handler: requestClearSession },
     { key: "p", ctrl: true, handler: handlePrintAllSlips, preventDefault: true },
-    { key: "b", ctrl: true, handler: () => setBookdropMode((v) => !v), preventDefault: true },
+    { key: "b", ctrl: true, handler: () => setQuietMode((v) => !v), preventDefault: true },
   ]);
 
   const stats = useMemo(
@@ -487,13 +487,17 @@ export default function CheckinPage() {
                   <StepHeader
                     index={1}
                     title="Scan returns"
-                    hint={bookdropMode ? "Bookdrop mode active" : "Ready for item barcodes"}
+                    hint={
+                      quietMode
+                        ? "Toast notifications are muted. Evergreen check-in behavior is unchanged."
+                        : "Ready for item barcodes"
+                    }
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge
-                      label={bookdropMode ? "Bookdrop" : "Desk return"}
-                      status={bookdropMode ? "warning" : "success"}
-                      icon={bookdropMode ? Package : ScanLine}
+                      label={quietMode ? "Quiet mode" : "Desk return"}
+                      status={quietMode ? "warning" : "success"}
+                      icon={quietMode ? Package : ScanLine}
                       showIcon
                       size="sm"
                     />
@@ -675,7 +679,7 @@ export default function CheckinPage() {
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold">Check-in session</h3>
                   <Badge variant="outline" className="rounded-full text-[11px]">
-                    {bookdropMode ? "Bookdrop" : "Desk"}
+                    {quietMode ? "Quiet" : "Desk"}
                   </Badge>
                 </div>
 
@@ -731,11 +735,11 @@ export default function CheckinPage() {
                 <div className="space-y-2">
                   <Button
                     type="button"
-                    variant={bookdropMode ? "default" : "outline"}
+                    variant={quietMode ? "default" : "outline"}
                     className="w-full justify-between"
-                    onClick={() => setBookdropMode((v) => !v)}
+                    onClick={() => setQuietMode((v) => !v)}
                   >
-                    Bookdrop mode
+                    Quiet scan mode
                     <Package className="h-4 w-4" />
                   </Button>
                   <Button

@@ -5,6 +5,7 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 import { useState } from "react";
 import Link from "next/link";
 import { useLibrary } from "@/hooks/use-library";
+import { featureFlags } from "@/lib/feature-flags";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -75,6 +76,47 @@ export default function RegisterPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [tempCardNumber, setTempCardNumber] = useState<string | null>(null);
+
+  if (!featureFlags.opacSelfRegistration) {
+    return (
+      <div className="min-h-screen bg-muted/30 py-12">
+        <div className="mx-auto max-w-2xl px-4">
+          <Link
+            href="/opac/login"
+            className="mb-6 inline-flex items-center gap-2 text-sm text-primary-600 hover:underline"
+          >
+            <ChevronRight className="h-4 w-4 rotate-180" />
+            Back to sign in
+          </Link>
+          <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-lg">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-100">
+              <CreditCard className="h-8 w-8 text-primary-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">Library card applications</h1>
+            <p className="mt-3 text-muted-foreground">
+              Online self-registration is not enabled for this library. To get a card, visit a
+              branch or contact the library so staff can verify your eligibility and create the
+              account in Evergreen.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Button asChild>
+                <Link href="/opac/locations">Find a Branch</Link>
+              </Button>
+              {library?.phone ? (
+                <Button variant="outline" asChild>
+                  <a href={`tel:${library.phone}`}>Call {library.phone}</a>
+                </Button>
+              ) : (
+                <Button variant="outline" asChild>
+                  <Link href="/opac/help">Contact the Library</Link>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const updateField = (field: keyof FormData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

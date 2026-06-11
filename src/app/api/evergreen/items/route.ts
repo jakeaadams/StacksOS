@@ -445,7 +445,7 @@ export async function POST(req: NextRequest) {
           callNumber: z.string().trim().min(1),
           circLib: z.coerce.number().int().positive(),
           owningLib: z.coerce.number().int().positive().optional(),
-          locationId: z.coerce.number().int().positive().optional(),
+          locationId: z.coerce.number().int().positive(),
           status: z.coerce.number().int().optional().default(0),
           price: z.union([z.number(), z.string()]).optional(),
           holdable: z.boolean().optional().default(true),
@@ -479,6 +479,10 @@ export async function POST(req: NextRequest) {
       return errorResponse("Unable to resolve staff user id for item creation", 500);
     }
     actorIdForAudit = actorId;
+
+    if (!locationId) {
+      return errorResponse("Shelving location is required to create an item", 400);
+    }
 
     // Verify bib exists (via OpenSRF, not direct DB; the StacksOS DB user is intentionally least-privileged).
     const bibRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.retrieve.bre", [
@@ -594,7 +598,7 @@ export async function POST(req: NextRequest) {
       creator: actorId,
       editor: actorId,
       status,
-      location: locationId || 1,
+      location: locationId,
       holdable: boolToEg(Boolean(holdable)),
       circulate: boolToEg(Boolean(circulate)),
       opac_visible: boolToEg(Boolean(opacVisible)),

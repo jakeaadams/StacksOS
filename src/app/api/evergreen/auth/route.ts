@@ -60,7 +60,6 @@ async function resolveProfileName(authtoken: string, user: any): Promise<string 
 
 async function enrichUserWithPhotoUrl(user: any): Promise<any> {
   if (!user || typeof user !== "object") return user;
-  if (user.photo_url || user.photoUrl) return user;
 
   const rawId = user.id ?? user.usr ?? user.user_id;
   const userId = typeof rawId === "number" ? rawId : parseInt(String(rawId ?? ""), 10);
@@ -72,6 +71,12 @@ async function enrichUserWithPhotoUrl(user: any): Promise<any> {
       // Evergreen-style + JS-style keys for client convenience.
       (user as Record<string, any>).photo_url = url;
       (user as Record<string, any>).photoUrl = url;
+    } else {
+      const existingPhotoUrl = String(user.photo_url || user.photoUrl || "").trim();
+      if (existingPhotoUrl.startsWith("/uploads/patron-photos/")) {
+        (user as Record<string, any>).photo_url = null;
+        (user as Record<string, any>).photoUrl = null;
+      }
     }
   } catch (error) {
     logger.warn({ error: String(error), userId }, "Failed to resolve user photo URL");

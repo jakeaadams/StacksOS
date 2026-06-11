@@ -230,6 +230,7 @@ export default function TeensHomePage() {
                 />
                 <button
                   type="submit"
+                  aria-label={t("searchTeenBooks")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-4 teens-gradient-button text-white rounded-full transition-colors shadow-lg"
                 >
                   <Search className="h-6 w-6" />

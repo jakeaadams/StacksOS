@@ -70,6 +70,7 @@ export default function HoldingsTemplatesPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [unsupportedMessage, setUnsupportedMessage] = useState<string | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -98,6 +99,7 @@ export default function HoldingsTemplatesPage() {
       setClassifications(Array.isArray(json.classifications) ? json.classifications : []);
       setPrefixes(Array.isArray(json.prefixes) ? json.prefixes : []);
       setSuffixes(Array.isArray(json.suffixes) ? json.suffixes : []);
+      setUnsupportedMessage(json.unsupported ? json.message || null : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load holdings templates");
       setTemplates([]);
@@ -311,12 +313,24 @@ export default function HoldingsTemplatesPage() {
             variant: "outline" as const,
           },
           { label: "Refresh", onClick: load, icon: RefreshCw, variant: "outline" as const },
-          { label: "New Template", onClick: openCreate, icon: Plus },
+          {
+            label: "New Template",
+            onClick: openCreate,
+            icon: Plus,
+            disabled: Boolean(unsupportedMessage),
+          },
         ]}
       />
 
       <PageContent className="space-y-6">
         {error ? <ErrorMessage message={error} onRetry={load} /> : null}
+        {unsupportedMessage ? (
+          <Card className="rounded-2xl border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20">
+            <CardContent className="p-4 text-sm text-amber-900 dark:text-amber-100">
+              {unsupportedMessage}
+            </CardContent>
+          </Card>
+        ) : null}
 
         <Card className="rounded-2xl">
           <CardHeader>
@@ -376,8 +390,15 @@ export default function HoldingsTemplatesPage() {
                 <EmptyState
                   icon={Layers}
                   title="No holdings templates"
-                  description="Create your first holdings template to standardize call number entry."
-                  action={{ label: "Create template", onClick: openCreate, icon: Plus }}
+                  description={
+                    unsupportedMessage ||
+                    "Create your first holdings template to standardize call number entry."
+                  }
+                  action={
+                    unsupportedMessage
+                      ? undefined
+                      : { label: "Create template", onClick: openCreate, icon: Plus }
+                  }
                   secondaryAction={{
                     label: "Evergreen setup checklist",
                     onClick: () => router.push("/staff/help#evergreen-setup"),
@@ -435,14 +456,16 @@ export default function HoldingsTemplatesPage() {
               <Label htmlFor="classification">Classification</Label>
               <Select
                 id="classification"
-                value={form.classification}
-                onValueChange={(v) => setForm((p) => ({ ...p, classification: v }))}
+                value={form.classification || "none"}
+                onValueChange={(v) =>
+                  setForm((p) => ({ ...p, classification: v === "none" ? "" : v }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Optional" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">(None)</SelectItem>
+                  <SelectItem value="none">(None)</SelectItem>
                   {classifications.map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>
                       {c.name}
@@ -456,14 +479,16 @@ export default function HoldingsTemplatesPage() {
               <Label htmlFor="prefix">Prefix</Label>
               <Select
                 id="prefix"
-                value={form.callNumberPrefix}
-                onValueChange={(v) => setForm((p) => ({ ...p, callNumberPrefix: v }))}
+                value={form.callNumberPrefix || "none"}
+                onValueChange={(v) =>
+                  setForm((p) => ({ ...p, callNumberPrefix: v === "none" ? "" : v }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Optional" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">(None)</SelectItem>
+                  <SelectItem value="none">(None)</SelectItem>
                   {prefixes.map((p) => (
                     <SelectItem key={p.id} value={String(p.id)}>
                       {p.label}
@@ -477,14 +502,16 @@ export default function HoldingsTemplatesPage() {
               <Label htmlFor="suffix">Suffix</Label>
               <Select
                 id="suffix"
-                value={form.callNumberSuffix}
-                onValueChange={(v) => setForm((p) => ({ ...p, callNumberSuffix: v }))}
+                value={form.callNumberSuffix || "none"}
+                onValueChange={(v) =>
+                  setForm((p) => ({ ...p, callNumberSuffix: v === "none" ? "" : v }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Optional" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">(None)</SelectItem>
+                  <SelectItem value="none">(None)</SelectItem>
                   {suffixes.map((s) => (
                     <SelectItem key={s.id} value={String(s.id)}>
                       {s.label}

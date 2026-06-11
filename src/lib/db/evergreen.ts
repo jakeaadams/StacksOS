@@ -1,5 +1,7 @@
 import "server-only";
 
+import fs from "node:fs";
+import path from "node:path";
 import { Pool, PoolClient } from "pg";
 import { logger } from "@/lib/logger";
 import { ensureLibrarySchemaExists } from "./library-schema";
@@ -16,6 +18,24 @@ function envEnabled(value: string | undefined): boolean {
 const SYNC_PATRON_PHOTO_TO_EVERGREEN = envEnabled(
   process.env.STACKSOS_SYNC_PATRON_PHOTO_TO_EVERGREEN
 );
+const PATRON_PHOTO_UPLOAD_PREFIX = "/uploads/patron-photos/";
+
+function uploadedPatronPhotoExists(photoUrl: string): boolean {
+  if (!photoUrl.startsWith(PATRON_PHOTO_UPLOAD_PREFIX)) return true;
+  const uploadDir = path.join(process.cwd(), "public", "uploads", "patron-photos");
+  const filename = path.basename(photoUrl);
+  const filePath = path.join(uploadDir, filename);
+  if (!filePath.startsWith(uploadDir + path.sep)) return false;
+  return fs.existsSync(filePath);
+}
+
+function usablePatronPhotoUrl(photoUrl: string | null | undefined, patronId: number): string | null {
+  const trimmed = String(photoUrl || "").trim();
+  if (!trimmed) return null;
+  if (uploadedPatronPhotoExists(trimmed)) return trimmed;
+  logger.warn({ patronId, photoUrl: trimmed }, "Ignoring missing patron photo upload");
+  return null;
+}
 
 export function getEvergreenPool(): Pool {
   if (!pool) {
@@ -196,7 +216,8 @@ export async function getPatronPhotoUrl(patronId: number): Promise<string | null
     [patronId]
   );
 
-  if (result?.photo_url) return result.photo_url;
+  const customPhotoUrl = usablePatronPhotoUrl(result?.photo_url, patronId);
+  if (customPhotoUrl) return customPhotoUrl;
 
   // Fallback: Evergreen core field (supports photos uploaded outside StacksOS).
   const evergreen = await querySingle<{ photo_url: string | null }>(
@@ -208,7 +229,7 @@ export async function getPatronPhotoUrl(patronId: number): Promise<string | null
     [patronId]
   );
 
-  return evergreen?.photo_url || null;
+  return usablePatronPhotoUrl(evergreen?.photo_url, patronId);
 }
 
 export async function clearPatronPhotoUrl(patronId: number, _clearedBy?: number): Promise<void> {

@@ -49,7 +49,7 @@ type AiDraftDecisionRow = {
 };
 
 const AI_DRAFT_TYPES = [
-  { value: "", label: "All Types" },
+  { value: "all", label: "All Types" },
   { value: "policy_explain", label: "Policy Explain" },
   { value: "cataloging_suggest", label: "Cataloging Suggest" },
   { value: "analytics_summary", label: "Analytics Summary" },
@@ -220,7 +220,7 @@ export default function AiAuditPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Filters
-  const [typeFilter, setTypeFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(0);
@@ -246,7 +246,7 @@ export default function AiAuditPage() {
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (typeFilter) params.set("type", typeFilter);
+      if (typeFilter !== "all") params.set("type", typeFilter);
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
       params.set("limit", String(pageSize));
@@ -281,6 +281,11 @@ export default function AiAuditPage() {
             variant="ghost"
             size="sm"
             className="h-7 w-7 p-0"
+            aria-label={
+              expandedIds.has(row.original.id)
+                ? `Collapse AI draft ${row.original.id}`
+                : `Expand AI draft ${row.original.id}`
+            }
             onClick={(e) => {
               e.stopPropagation();
               toggleExpanded(row.original.id);
@@ -372,7 +377,9 @@ export default function AiAuditPage() {
           <CardContent>
             <div className="flex flex-wrap gap-3 items-end">
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Type</label>
+                <label htmlFor="ai-audit-type" className="text-xs text-muted-foreground">
+                  Type
+                </label>
                 <Select
                   value={typeFilter}
                   onValueChange={(v) => {
@@ -380,7 +387,7 @@ export default function AiAuditPage() {
                     setPage(0);
                   }}
                 >
-                  <SelectTrigger className="w-48 h-8">
+                  <SelectTrigger id="ai-audit-type" className="w-48 h-8">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent>
@@ -393,8 +400,11 @@ export default function AiAuditPage() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">From</label>
+                <label htmlFor="ai-audit-date-from" className="text-xs text-muted-foreground">
+                  From
+                </label>
                 <Input
+                  id="ai-audit-date-from"
                   type="date"
                   value={dateFrom}
                   onChange={(e) => {
@@ -405,8 +415,11 @@ export default function AiAuditPage() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">To</label>
+                <label htmlFor="ai-audit-date-to" className="text-xs text-muted-foreground">
+                  To
+                </label>
                 <Input
+                  id="ai-audit-date-to"
                   type="date"
                   value={dateTo}
                   onChange={(e) => {
@@ -420,7 +433,7 @@ export default function AiAuditPage() {
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  setTypeFilter("");
+                  setTypeFilter("all");
                   setDateFrom("");
                   setDateTo("");
                   setPage(0);

@@ -21,6 +21,19 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+function coercePositiveId(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, any>;
+    return coercePositiveId(obj.id ?? obj.__p?.[0]);
+  }
+  return null;
+}
+
 /**
  * PATCH /api/evergreen/items/[id]
  * Update a copy (asset.copy / acp)
@@ -28,6 +41,9 @@ interface RouteParams {
 const itemPatchSchema = z
   .object({
     barcode: z.string().trim().optional().nullable(),
+    callNumber: z.string().trim().optional(),
+    locationId: z.union([z.coerce.number().int().positive(), z.string().trim()]).optional(),
+    statusId: z.union([z.coerce.number().int(), z.string().trim()]).optional(),
     alert_message: z.string().max(4096).optional().nullable(),
     alertMessage: z.string().max(4096).optional().nullable(),
     price: z.union([z.number(), z.string(), z.null()]).optional(),
@@ -85,6 +101,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
           : undefined;
 
     const priceRaw = body.price;
+    const callNumberRaw = body.callNumber;
+    const locationIdRaw = body.locationId;
+    const statusIdRaw = body.statusId;
     const holdableRaw = body.holdable;
     const circulateRaw = body.circulate;
     const opacVisibleRaw =
@@ -128,6 +147,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return errorResponse("Barcode cannot be empty", 400);
     }
 
+    const callNumber =
+      callNumberRaw !== undefined && callNumberRaw !== null
+        ? String(callNumberRaw).trim()
+        : undefined;
+    if (callNumber !== undefined && !callNumber) {
+      return errorResponse("Call number cannot be empty", 400);
+    }
+
     const parseIntOrNull = (value: unknown): number | null => {
       if (value === null || value === undefined || value === "") return null;
       const parsed = typeof value === "number" ? value : parseInt(String(value), 10);
@@ -161,6 +188,21 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
           : String(circModifierRaw).trim()
         : undefined;
 
+    const parsedLocationId =
+      locationIdRaw !== undefined ? coercePositiveId(locationIdRaw) : undefined;
+    if (locationIdRaw !== undefined && !parsedLocationId) {
+      return errorResponse("locationId must be a positive integer", 400);
+    }
+
+    const parsedStatusId =
+      statusIdRaw !== undefined ? parseIntOrNull(statusIdRaw) : undefined;
+    if (
+      statusIdRaw !== undefined &&
+      (parsedStatusId === null || parsedStatusId === undefined || parsedStatusId < 0)
+    ) {
+      return errorResponse("statusId must be zero or a positive integer", 400);
+    }
+
     let parsedStatCatEntryIds: number[] | undefined = undefined;
     if (statCatEntryIdsRaw !== undefined) {
       if (!Array.isArray(statCatEntryIdsRaw)) {
@@ -189,6 +231,69 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const updateData: Record<string, any> = { ...(existing as Record<string, any>) };
 
     if (barcode !== undefined) updateData.barcode = barcode;
+    if (parsedLocationId !== undefined) updateData.location = parsedLocationId;
+    if (parsedStatusId !== undefined) updateData.status = parsedStatusId;
+
+    if (callNumber !== undefined) {
+      const currentCallNumberId = coercePositiveId((existing as Record<string, any>).call_number);
+      if (!currentCallNumberId) {
+        return errorResponse("Unable to resolve current call number for this item", 400);
+      }
+
+      const currentVolResponse = await callOpenSRF(
+        "open-ils.pcrud",
+        "open-ils.pcrud.retrieve.acn",
+        [authtoken, currentCallNumberId]
+      );
+      const currentVol = currentVolResponse?.payload?.[0] as Record<string, any> | undefined;
+      if (!currentVol || isOpenSRFEvent(currentVol) || currentVol.ilsevent) {
+        return errorResponse("Unable to resolve current call number for this item", 400, currentVol);
+      }
+
+      const recordId = coercePositiveId(currentVol.record);
+      const owningLib = coercePositiveId(currentVol.owning_lib);
+      if (!recordId || !owningLib) {
+        return errorResponse("Current call number is missing record or owning library", 400);
+      }
+
+      const volSearchRes = await callOpenSRF(
+        "open-ils.pcrud",
+        "open-ils.pcrud.search.acn.atomic",
+        [authtoken, { record: recordId, owning_lib: owningLib, label: callNumber, deleted: "f" }, { limit: 1 }]
+      );
+      const volRows = Array.isArray(volSearchRes?.payload?.[0])
+        ? (volSearchRes.payload[0] as Record<string, any>[])
+        : [];
+      let resolvedCallNumberId = coercePositiveId(volRows[0]?.id);
+
+      if (!resolvedCallNumberId) {
+        const actorId = coercePositiveId((actor as Record<string, any>)?.id);
+        if (!actorId) return errorResponse("Unable to resolve staff user id", 500);
+
+        const createVolPayload = encodeFieldmapper("acn", {
+          creator: actorId,
+          editor: actorId,
+          record: recordId,
+          owning_lib: owningLib,
+          label: callNumber,
+          label_class: coercePositiveId(currentVol.label_class) || 1,
+          deleted: "f",
+          isnew: 1,
+          ischanged: 1,
+        });
+        const createVolRes = await callOpenSRF("open-ils.pcrud", "open-ils.pcrud.create.acn", [
+          authtoken,
+          createVolPayload,
+        ]);
+        const volResult = createVolRes?.payload?.[0];
+        resolvedCallNumberId = coercePositiveId(volResult);
+        if (!resolvedCallNumberId) {
+          return errorResponse(getErrorMessage(volResult, "Failed to create call number"), 400, volResult);
+        }
+      }
+
+      updateData.call_number = resolvedCallNumberId;
+    }
 
     if (priceRaw !== undefined) {
       if (priceRaw === null || priceRaw === "") {

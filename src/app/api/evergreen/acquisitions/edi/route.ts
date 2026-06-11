@@ -97,6 +97,11 @@ export async function GET(req: NextRequest) {
             { route: "api.evergreen.acquisitions.edi", action, err: String(error) },
             "EDI accounts lookup failed"
           );
+          return successResponse({
+            accounts: [],
+            unsupported: true,
+            message: "Evergreen EDI account lookup is unavailable for this server.",
+          });
         }
         return successResponse({ accounts });
       }
@@ -167,6 +172,12 @@ export async function GET(req: NextRequest) {
             { route: "api.evergreen.acquisitions.edi", action, err: String(error) },
             "EDI messages lookup failed"
           );
+          return successResponse({
+            messages: [],
+            total: 0,
+            unsupported: true,
+            message: "Evergreen EDI message lookup is unavailable for this server.",
+          });
         }
         return successResponse({ messages, total: messages.length });
       }

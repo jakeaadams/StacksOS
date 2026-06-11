@@ -720,7 +720,12 @@ function MarcEditorContent() {
                 Diff only
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={() => setShowHelp(!showHelp)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={showHelp ? "Hide MARC editor help" : "Show MARC editor help"}
+              onClick={() => setShowHelp(!showHelp)}
+            >
               <HelpCircle className="h-4 w-4" />
             </Button>
             <Button asChild size="sm" variant="outline">

@@ -136,8 +136,8 @@ export function StaffLayout({ children }: StaffLayoutProps) {
     <KeyboardProvider>
       <WorkformsProvider>
         <CirculationPatronProvider>
-          <div className="app-shell min-h-screen flex flex-col text-foreground">
-            <div className="flex items-center">
+          <div className="app-shell min-h-screen flex flex-col overflow-x-hidden text-foreground">
+            <div className="flex min-w-0 items-center">
               <Button
                 variant="ghost"
                 size="icon"
@@ -188,14 +188,14 @@ export function StaffLayout({ children }: StaffLayoutProps) {
                 </div>
               </SheetContent>
             </Sheet>
-            <div className="flex flex-1 min-h-0">
+            <div className="flex min-h-0 min-w-0 flex-1">
               <Sidebar
                 collapsed={sidebarCollapsed}
                 onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
                 evergreenOk={evergreenOk}
                 evergreenStatus={evergreenStatus}
               />
-              <main id="main-content" className="flex-1 min-h-0 overflow-auto pb-10">
+              <main id="main-content" className="min-h-0 min-w-0 flex-1 overflow-auto pb-10">
                 <div className="mx-auto w-full max-w-[1620px] px-5 py-6 sm:px-6 lg:px-8">
                   {evergreenOk ? null : (
                     <div className="stx-surface mb-6 rounded-2xl border-amber-200/70 bg-amber-50/86 px-4 py-3 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">

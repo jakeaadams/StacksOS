@@ -44,6 +44,7 @@ export default function ForgotPinPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          barcode: identifier.trim(),
           identifier: identifier.trim(),
         }),
       });

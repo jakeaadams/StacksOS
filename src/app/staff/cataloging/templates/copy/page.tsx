@@ -491,14 +491,14 @@ export default function CopyTemplatesPage() {
               <Label htmlFor="status">Status</Label>
               <Select
                 id="status"
-                value={form.status}
-                onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}
+                value={form.status || "none"}
+                onValueChange={(v) => setForm((p) => ({ ...p, status: v === "none" ? "" : v }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Optional" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">(None)</SelectItem>
+                  <SelectItem value="none">(None)</SelectItem>
                   {statuses.map((s) => (
                     <SelectItem key={s.id} value={String(s.id)}>
                       {s.name}
@@ -512,14 +512,16 @@ export default function CopyTemplatesPage() {
               <Label htmlFor="location">Location</Label>
               <Select
                 id="location"
-                value={form.location}
-                onValueChange={(v) => setForm((p) => ({ ...p, location: v }))}
+                value={form.location || "none"}
+                onValueChange={(v) =>
+                  setForm((p) => ({ ...p, location: v === "none" ? "" : v }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Optional" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">(None)</SelectItem>
+                  <SelectItem value="none">(None)</SelectItem>
                   {filteredLocations.map((l) => (
                     <SelectItem key={l.id} value={String(l.id)}>
                       {l.name}
@@ -533,14 +535,16 @@ export default function CopyTemplatesPage() {
               <Label htmlFor="circ-modifier">Circ modifier</Label>
               <Select
                 id="circ-modifier"
-                value={form.circModifier}
-                onValueChange={(v) => setForm((p) => ({ ...p, circModifier: v }))}
+                value={form.circModifier || "none"}
+                onValueChange={(v) =>
+                  setForm((p) => ({ ...p, circModifier: v === "none" ? "" : v }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Optional" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">(None)</SelectItem>
+                  <SelectItem value="none">(None)</SelectItem>
                   {circModifiers.map((c) => (
                     <SelectItem key={c.code} value={c.code}>
                       {c.code} — {c.name}

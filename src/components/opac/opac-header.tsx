@@ -231,6 +231,7 @@ export function OPACHeader() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => searchResults.length > 0 && setShowResults(true)}
                   placeholder="Search books, movies, music..."
+                  aria-label="Search the catalog"
                   className="w-full rounded-full border-border/80 bg-card/78 py-3 pl-4 pr-12 backdrop-blur-sm focus-visible:border-primary/40 focus-visible:ring-[3px] focus-visible:ring-primary-500/30"
                   autoComplete="off"
                 />
@@ -354,11 +355,13 @@ export function OPACHeader() {
                       )}
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/opac/account/lists" className="flex items-center gap-3">
-                      <Heart className="h-4 w-4" /> My Lists
-                    </Link>
-                  </DropdownMenuItem>
+                  {featureFlags.opacLists ? (
+                    <DropdownMenuItem asChild>
+                      <Link href="/opac/account/lists" className="flex items-center gap-3">
+                        <Heart className="h-4 w-4" /> My Lists
+                      </Link>
+                    </DropdownMenuItem>
+                  ) : null}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onClick={() => logout()}>
                     <LogOut className="h-4 w-4" /> Sign Out
@@ -398,6 +401,7 @@ export function OPACHeader() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchResults.length > 0 && setShowResults(true)}
                 placeholder="Search books, movies, music..."
+                aria-label="Search the catalog"
                 className="w-full rounded-full border-border/80 bg-card/78 py-3 pl-4 pr-12 backdrop-blur-sm focus-visible:border-primary/40 focus-visible:ring-[3px] focus-visible:ring-primary-500/30"
                 autoComplete="off"
               />
@@ -538,6 +542,15 @@ export function OPACHeader() {
                 >
                   My Holds
                 </Link>
+                {featureFlags.opacLists ? (
+                  <Link
+                    href="/opac/account/lists"
+                    className="block px-4 py-2 text-foreground/80 hover:bg-muted/30 rounded-lg stx-surface-hover"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    My Lists
+                  </Link>
+                ) : null}
               </>
             )}
           </nav>

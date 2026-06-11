@@ -80,8 +80,8 @@ interface CheckoutItem {
   author: string;
   callNumber: string;
   dueDate: string;
-  renewals: number;
-  maxRenewals: number;
+  renewals?: number;
+  maxRenewals?: number;
   isOverdue: boolean;
   selected: boolean;
   renewStatus?: "success" | "error" | "pending";
@@ -106,7 +106,14 @@ function formatLibraryDate(value?: string): string {
 function canRenewItem(item: CheckoutItem): boolean {
   if (!item.barcode) return false;
   if (item.renewStatus === "pending" || item.renewStatus === "success") return false;
-  return item.renewals < item.maxRenewals;
+  if (typeof item.renewals === "number" && typeof item.maxRenewals === "number") {
+    return item.renewals < item.maxRenewals;
+  }
+  return true;
+}
+
+function hasKnownRenewalLimit(item: CheckoutItem): boolean {
+  return typeof item.renewals === "number" && typeof item.maxRenewals === "number";
 }
 
 function buildRenewalReceiptHtml(params: {
@@ -199,8 +206,8 @@ export default function RenewPage() {
             author: item.author || "",
             callNumber: item.callNumber || "",
             dueDate: formatLibraryDate(item.dueDate),
-            renewals: item.renewals || 0,
-            maxRenewals: item.maxRenewals ?? 3,
+            renewals: typeof item.renewals === "number" ? item.renewals : undefined,
+            maxRenewals: typeof item.maxRenewals === "number" ? item.maxRenewals : undefined,
             isOverdue: item.isOverdue || false,
             selected: false,
           };
@@ -271,11 +278,13 @@ export default function RenewPage() {
         return;
       }
       if (!canRenewItem(match)) {
-        toast.message("Item is not eligible to renew", {
+        toast.message("Item is not ready to renew", {
           description:
             match.renewStatus === "success"
               ? "Already renewed in this session"
-              : `${match.renewals} of ${match.maxRenewals} renewals used`,
+              : hasKnownRenewalLimit(match)
+                ? `${match.renewals} of ${match.maxRenewals} renewals used`
+                : "Evergreen blocked this renewal",
         });
         setItemBarcode("");
         itemInputRef.current?.focus();
@@ -301,7 +310,7 @@ export default function RenewPage() {
 
       const selected = (overrideItems || checkouts).filter((i) => i.selected && canRenewItem(i));
       if (selected.length === 0) {
-        toast.message("Select renewable items first");
+        toast.message("Select items to renew first");
         return;
       }
 
@@ -349,7 +358,8 @@ export default function RenewPage() {
                       : data.error || data.message || "Renewal failed",
                     newDueDate: data.ok ? newDueDate || i.newDueDate : i.newDueDate,
                     dueDate: data.ok ? newDueDate || i.dueDate : i.dueDate,
-                    renewals: data.ok ? i.renewals + 1 : i.renewals,
+                    renewals:
+                      data.ok && typeof i.renewals === "number" ? i.renewals + 1 : i.renewals,
                     isOverdue: data.ok ? false : i.isOverdue,
                     selected: false,
                   }
@@ -390,7 +400,7 @@ export default function RenewPage() {
 
   const renewAllEligible = useCallback(async () => {
     if (eligibleCount === 0) {
-      toast.message("No renewable items");
+      toast.message("No items ready for renewal");
       return;
     }
     const allEligible = checkouts.map((item) => ({
@@ -448,7 +458,7 @@ export default function RenewPage() {
           <Checkbox
             checked={eligibleCount > 0 && checkouts.filter(canRenewItem).every((i) => i.selected)}
             onCheckedChange={selectAllEligible}
-            aria-label="Select all renewable items"
+            aria-label="Select all items ready for renewal"
           />
         ),
         cell: ({ row }) => (
@@ -515,7 +525,9 @@ export default function RenewPage() {
                 "text-muted-foreground"
             )}
           >
-            {row.original.renewals} / {row.original.maxRenewals}
+            {hasKnownRenewalLimit(row.original)
+              ? `${row.original.renewals} / ${row.original.maxRenewals}`
+              : "Evergreen decides"}
           </span>
         ),
       },
@@ -535,7 +547,13 @@ export default function RenewPage() {
           if (canRenewItem(row.original)) {
             return <StatusBadge label="Eligible" status="success" showIcon />;
           }
-          return <StatusBadge label="Limit reached" status="warning" showIcon />;
+          return (
+            <StatusBadge
+              label={hasKnownRenewalLimit(row.original) ? "Limit reached" : "Blocked"}
+              status="warning"
+              showIcon
+            />
+          );
         },
       },
     ],
@@ -546,7 +564,7 @@ export default function RenewPage() {
     <PageContainer>
       <PageHeader
         title="Renewal Desk"
-        subtitle="Review checkouts, select eligible items, and renew through Evergreen."
+        subtitle="Review active checkouts, select items, and let Evergreen apply renewal policy."
         breadcrumbs={[{ label: "Circulation" }, { label: "Renew Items" }]}
       >
         <div className="flex flex-wrap gap-2">
@@ -555,7 +573,7 @@ export default function RenewPage() {
           </Badge>
           {eligibleCount > 0 && (
             <Badge variant="secondary" className="rounded-full">
-              {eligibleCount} renewable
+              {eligibleCount} ready
             </Badge>
           )}
           {overdueCount > 0 && (
@@ -664,8 +682,8 @@ export default function RenewPage() {
                       title={patron ? "No active checkouts" : "Load a patron"}
                       description={
                         patron
-                          ? "This patron has no items available for renewal."
-                          : "Scan a patron card to view renewable checkouts."
+                          ? "This patron has no active checkouts ready to send to Evergreen."
+                          : "Scan a patron card to view active checkouts."
                       }
                     />
                   }
@@ -701,10 +719,10 @@ export default function RenewPage() {
                     tone="warning"
                     icon={AlertTriangle}
                     count={eligibleCount}
-                    label="Eligible"
+                    label="Ready"
                   />
                   <SessionPill tone="error" icon={XCircle} count={failedCount} label="Failed" />
-                  <SessionPill tone="neutral" icon={Ban} count={blockedCount} label="At limit" />
+                  <SessionPill tone="neutral" icon={Ban} count={blockedCount} label="Blocked" />
                 </div>
 
                 <div className="space-y-2">
@@ -723,7 +741,7 @@ export default function RenewPage() {
                     disabled={!patron || eligibleCount === 0 || isRenewing}
                   >
                     <ListChecks className="h-4 w-4" />
-                    Renew all eligible
+                    Renew all ready items
                   </Button>
                   <Button
                     variant="outline"

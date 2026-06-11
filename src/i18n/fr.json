@@ -1000,7 +1000,7 @@
     "month": "Mois",
     "noEventsFound": "Aucun événement trouvé",
     "tryAdjustingFilters": "Essayez de modifier vos filtres ou votre terme de recherche.",
-    "checkBackSoon": "Revenez bientôt pour les prochains événements et programmes.",
+    "checkBackSoon": "Aucun événement ne correspond à ces filtres. Effacez les filtres ou contactez la bibliothèque pour les programmes.",
     "registrationComingSoon": "Inscription bientôt disponible",
     "registrationComingSoonDesc": "L'inscription en ligne pour cet événement sera bientôt disponible.",
     "register": "S'inscrire",
@@ -1030,7 +1030,7 @@
     "showingEvents": "{count} événement(s) affiché(s)",
     "spotsLeft": "{available} sur {capacity} places restantes",
     "noUpcomingEvents": "Aucun événement à venir",
-    "noUpcomingEventsDesc": "Des événements et programmes arrivent bientôt. Revenez plus tard ou renseignez-vous à l'accueil pour obtenir des informations sur les prochains événements."
+    "noUpcomingEventsDesc": "Aucune source publique d'événements n'est configurée pour ce catalogue. Contactez la bibliothèque pour les programmes actuels."
   },
   "recommendationsPage": {
     "backToCatalog": "Retour au catalogue",

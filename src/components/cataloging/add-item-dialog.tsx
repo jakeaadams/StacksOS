@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Package, Barcode, BookOpen, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, Loader2, Plus, Package, Barcode, BookOpen, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { clientLogger } from "@/lib/client-logger";
@@ -82,7 +82,7 @@ export function AddItemDialog({
         // Load copy locations
         const locRes = await fetchWithAuth("/api/evergreen/catalog?action=copy_locations");
         const locData = await locRes.json();
-        if (locData.ok && locData.locations) {
+        if (locData.ok && Array.isArray(locData.locations) && locData.locations.length > 0) {
           setLocations(locData.locations);
           // Default to first location or "Stacks"
           const stacks = locData.locations.find(
@@ -91,6 +91,9 @@ export function AddItemDialog({
           );
           if (stacks) setLocationId(stacks.id.toString());
           else if (locData.locations.length > 0) setLocationId(locData.locations[0].id.toString());
+        } else {
+          setLocations([]);
+          setLocationId("");
         }
 
         // Load copy statuses
@@ -131,6 +134,10 @@ export function AddItemDialog({
     }
     if (!circLibId) {
       toast.error("Library is required");
+      return;
+    }
+    if (!locationId) {
+      toast.error("Shelving location is required");
       return;
     }
 
@@ -279,6 +286,16 @@ export function AddItemDialog({
               </div>
             </div>
 
+            {locations.length === 0 && (
+              <div className="flex gap-2 rounded-lg border border-[hsl(var(--status-warning))/0.35] bg-[hsl(var(--status-warning-bg))] p-3 text-sm text-[hsl(var(--status-warning-text))]">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  Evergreen did not return any shelving locations. Item creation is paused so a
+                  copy is not created in the wrong location.
+                </div>
+              </div>
+            )}
+
             {/* Status and Price Row */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
@@ -334,7 +351,7 @@ export function AddItemDialog({
           </Button>
           <Button
             onClick={handleCreateItem}
-            disabled={isCreating || loadingMeta || !barcode.trim()}
+            disabled={isCreating || loadingMeta || !barcode.trim() || !locationId}
           >
             {isCreating ? (
               <>

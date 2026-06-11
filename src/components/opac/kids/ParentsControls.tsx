@@ -231,6 +231,7 @@ export function ParentsControls() {
           <Switch
             checked={dyslexiaFriendly}
             onCheckedChange={(checked) => setDyslexiaFriendly(Boolean(checked))}
+            aria-label="Toggle dyslexia-friendly typography"
           />
         </div>
       </div>

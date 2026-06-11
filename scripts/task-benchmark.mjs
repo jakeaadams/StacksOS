@@ -190,7 +190,10 @@ async function run() {
 
           const checkoutStart = performance.now();
           await page.goto(`${BASE_URL}/staff/circulation/checkout`, { waitUntil: "domcontentloaded", timeout: 30000 });
-          await page.getByRole("heading", { name: /check out/i }).first().waitFor({ timeout: 15000 });
+          await page
+            .getByRole("heading", { name: /check(?:out|[-\s]+out)/i })
+            .first()
+            .waitFor({ timeout: 15000 });
           const checkoutMs = performance.now() - checkoutStart;
           runRows.push({ task: "staff_checkout_open", iteration: i, ok: true, skipped: false, ms: checkoutMs, note: "" });
         } catch (error) {

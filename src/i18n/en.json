@@ -1000,7 +1000,7 @@
     "month": "Month",
     "noEventsFound": "No events found",
     "tryAdjustingFilters": "Try adjusting your filters or search term.",
-    "checkBackSoon": "Check back soon for upcoming events and programs.",
+    "checkBackSoon": "No events match these filters. Clear the filters or contact the library for program information.",
     "registrationComingSoon": "Registration coming soon",
     "registrationComingSoonDesc": "Online registration for this event will be available shortly.",
     "register": "Register",
@@ -1030,7 +1030,7 @@
     "showingEvents": "Showing {count} event(s)",
     "spotsLeft": "{available} of {capacity} spots left",
     "noUpcomingEvents": "No Upcoming Events",
-    "noUpcomingEventsDesc": "Events and programs are coming soon. Check back later or ask at the front desk for information about upcoming events."
+    "noUpcomingEventsDesc": "No public events source is configured for this catalog. Contact the library for current program information."
   },
   "recommendationsPage": {
     "backToCatalog": "Back to Catalog",

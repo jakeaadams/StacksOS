@@ -28,6 +28,11 @@ const allocationsPostSchema = z
   })
   .passthrough();
 
+function isUnsupportedEvergreenMethod(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /method .*not found|osrfmethodexception|not an array reference/i.test(message);
+}
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const fundId = searchParams.get("fund_id");
@@ -44,11 +49,26 @@ export async function GET(req: NextRequest) {
     if (fundId) searchCriteria.fund = parseInt(fundId, 10);
     if (fundingSourceId) searchCriteria.funding_source = parseInt(fundingSourceId, 10);
 
-    const response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund_allocation.search", [
-      authtoken,
-      searchCriteria,
-      { flesh: 2, flesh_fields: { acqfa: ["fund", "funding_source"] } },
-    ]);
+    let response;
+    try {
+      response = await callOpenSRF("open-ils.acq", "open-ils.acq.fund_allocation.search", [
+        authtoken,
+        searchCriteria,
+        { flesh: 2, flesh_fields: { acqfa: ["fund", "funding_source"] } },
+      ]);
+    } catch (error) {
+      if (!isUnsupportedEvergreenMethod(error)) throw error;
+      logger.warn(
+        { route: "api.evergreen.acquisitions.allocations", error: String(error) },
+        "Evergreen fund allocation search is unavailable"
+      );
+      return successResponse({
+        allocations: [],
+        unsupported: true,
+        message:
+          "Fund allocation history is not available from this Evergreen server. Funds can still be viewed and managed where supported.",
+      });
+    }
     const allocPayload = response?.payload || [];
     const allocations = Array.isArray(allocPayload?.[0]) ? allocPayload[0] : allocPayload;
 

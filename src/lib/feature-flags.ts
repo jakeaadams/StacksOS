@@ -36,6 +36,7 @@ export const featureFlags = {
   opacEvents: true,
   opacDigitalLibrary: true,
   opacLibCal: Boolean(process.env.LIBCAL_CLIENT_ID),
+  opacSelfRegistration: process.env.NEXT_PUBLIC_STACKSOS_OPAC_REGISTRATION_ENABLED === "1",
 
   // Cataloging power tools
   recordBuckets: true,

@@ -39,9 +39,10 @@ const forgotPinSchema = z
   .object({
     barcode: z.string().trim().min(1).optional(),
     email: z.string().email().optional(),
+    identifier: z.string().trim().min(1).optional(),
     username: z.string().trim().min(1).optional(),
   })
-  .refine((b) => Boolean(b.barcode) || Boolean(b.email) || Boolean(b.username), {
+  .refine((b) => Boolean(b.barcode) || Boolean(b.email) || Boolean(b.username) || Boolean(b.identifier), {
     message: "barcode, email, or username required",
   });
 
@@ -65,9 +66,17 @@ export async function POST(req: NextRequest) {
     );
   }
   try {
-    const body = forgotPinSchema.parse(await req.json());
-    identifier = body.barcode || body.email || body.username;
-    const method = body.barcode ? "barcode" : body.email ? "email" : "username";
+    const parsed = forgotPinSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return errorResponse(
+        "Enter a library card number, username, or email address.",
+        400,
+        { issues: parsed.error.issues }
+      );
+    }
+    const body = parsed.data;
+    identifier = body.barcode || body.email || body.username || body.identifier;
+    const method = body.barcode || body.identifier ? "barcode" : body.email ? "email" : "username";
 
     if (!identifier) {
       return errorResponse("Please provide your library card number or username");

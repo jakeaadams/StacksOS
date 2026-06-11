@@ -84,6 +84,7 @@ audit/FEATURE_MATRIX.md
 audit/REPO_INVENTORY.md
 audit/demo_data.json
 audit/task-benchmark/
+audit/all-routes/
 
 # File-based data stores (reviews, etc.)
 .data/

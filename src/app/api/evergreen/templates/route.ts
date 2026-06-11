@@ -69,6 +69,11 @@ function normalizeRows(payload: unknown): Record<string, unknown>[] {
   return [];
 }
 
+function isUnsupportedEvergreenMethod(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /method .*not found|osrfmethodexception|not an array reference/i.test(message);
+}
+
 // ============================================================================
 // GET - Fetch templates (copy or holdings)
 // ============================================================================
@@ -223,12 +228,31 @@ export async function GET(req: NextRequest) {
         orgId,
       });
     } else if (type === "holdings") {
-      // Fetch holdings templates from org unit settings
-      const settingsRes = await callOpenSRF(
-        "open-ils.actor",
-        "open-ils.actor.org_unit.settings.retrieve",
-        [authtoken, orgId, ["ui.staff.catalog.holdings_templates"]]
-      );
+      let settingsRes;
+      try {
+        // Fetch holdings templates from org unit settings
+        settingsRes = await callOpenSRF(
+          "open-ils.actor",
+          "open-ils.actor.org_unit.settings.retrieve",
+          [authtoken, orgId, ["ui.staff.catalog.holdings_templates"]]
+        );
+      } catch (error) {
+        if (!isUnsupportedEvergreenMethod(error)) throw error;
+        logger.warn(
+          { requestId, orgId, error: String(error) },
+          "Evergreen holdings template settings are unavailable"
+        );
+        return successResponse({
+          templates: [],
+          classifications: [],
+          prefixes: [],
+          suffixes: [],
+          orgId,
+          unsupported: true,
+          message:
+            "Holdings templates are not available from this Evergreen server. Cataloging can continue without saved holdings presets.",
+        });
+      }
 
       const rawTemplates = (settingsRes?.payload?.[0] as Record<string, unknown> | null)?.[
         "ui.staff.catalog.holdings_templates"

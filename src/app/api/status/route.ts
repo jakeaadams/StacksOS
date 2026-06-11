@@ -1,11 +1,8 @@
-import { successResponse, withErrorHandling, requireAuthToken } from "@/lib/api";
+import { successResponse, withErrorHandling } from "@/lib/api";
 import { getTenantConfig } from "@/lib/tenant/config";
 import { getActiveIncident } from "@/lib/db/support";
 
 export const GET = withErrorHandling(async (_req: Request) => {
-  // Require staff authentication — this endpoint exposes tenant/infrastructure details.
-  await requireAuthToken();
-
   const tenant = getTenantConfig();
   const evergreenBase = tenant.evergreenBaseUrl;
 
@@ -29,7 +26,6 @@ export const GET = withErrorHandling(async (_req: Request) => {
     tenant: {
       tenantId: tenant.tenantId,
       displayName: tenant.displayName,
-      region: tenant.region || null,
       profile: tenant.profile?.type || "public",
     },
     evergreen: { ok: evergreenOk, status: evergreenStatus },

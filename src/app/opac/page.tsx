@@ -298,7 +298,7 @@ export default function OPACHomePage() {
     }
   }, [t]);
 
-  const fetchFeaturedContent = useCallback(async () => {
+  const fetchFeaturedContent = useCallback(async (signal?: AbortSignal) => {
     if (!browseEnabled) {
       setNewArrivals([]);
       setPopularItems([]);
@@ -312,28 +312,36 @@ export default function OPACHomePage() {
 
       // Fetch new arrivals from Evergreen catalog
       const [newResponse, popularResponse] = await Promise.all([
-        fetchWithAuth("/api/evergreen/catalog?sort=create_date&limit=8&order=desc"),
-        fetchWithAuth("/api/evergreen/catalog?sort=popularity&limit=8"),
+        fetchWithAuth("/api/evergreen/catalog?sort=create_date&limit=8&order=desc", { signal }),
+        fetchWithAuth("/api/evergreen/catalog?sort=popularity&limit=8", { signal }),
       ]);
+
+      if (signal?.aborted) return;
 
       if (newResponse.ok) {
         const data = await newResponse.json();
+        if (signal?.aborted) return;
         setNewArrivals(transformCatalogResults(data.records || []));
       }
 
       if (popularResponse.ok) {
         const data = await popularResponse.json();
+        if (signal?.aborted) return;
         setPopularItems(transformCatalogResults(data.records || []));
       }
 
       // Fetch staff picks from Evergreen public bookbags
       try {
-        const staffPicksResponse = await fetchWithAuth("/api/opac/staff-picks?limit=4");
+        const staffPicksResponse = await fetchWithAuth("/api/opac/staff-picks?limit=4", {
+          signal,
+        });
         if (staffPicksResponse.ok) {
           const picksData = await staffPicksResponse.json();
+          if (signal?.aborted) return;
           setStaffPicks(picksData.picks || []);
         }
       } catch (error) {
+        if (signal?.aborted) return;
         // Staff picks are optional - don't fail if unavailable
         clientLogger.warn("Failed to fetch staff picks", { error });
       }
@@ -341,9 +349,12 @@ export default function OPACHomePage() {
       // Fetch featured events for the home page
       if (featureFlags.opacEvents) {
         try {
-          const eventsResponse = await fetch("/api/opac/events?featured=true&limit=4");
+          const eventsResponse = await fetch("/api/opac/events?featured=true&limit=4", {
+            signal,
+          });
           if (eventsResponse.ok) {
             const eventsData = await eventsResponse.json();
+            if (signal?.aborted) return;
             setFeaturedEvents(eventsData.events || []);
           }
         } catch {
@@ -351,14 +362,17 @@ export default function OPACHomePage() {
         }
       }
     } catch (err) {
-      clientLogger.error("Error fetching featured content:", err);
+      if (signal?.aborted) return;
+      clientLogger.warn("Featured OPAC content unavailable", { error: err });
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) setIsLoading(false);
     }
   }, [browseEnabled]);
 
   useEffect(() => {
-    void fetchFeaturedContent();
+    const controller = new AbortController();
+    void fetchFeaturedContent(controller.signal);
+    return () => controller.abort();
   }, [fetchFeaturedContent]);
 
   useEffect(() => {
@@ -909,14 +923,23 @@ export default function OPACHomePage() {
                 {tenantDisplayName ? (
                   <p className="text-white/50 text-xs mb-3">{tenantDisplayName}</p>
                 ) : null}
-                <Link
-                  href="/opac/register"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 
-                         hover:brightness-110 rounded-lg font-medium transition-colors"
-                >
-                  {t("applyOnline")}
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
+                {featureFlags.opacSelfRegistration ? (
+                  <Link
+                    href="/opac/register"
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 font-medium transition-colors hover:brightness-110"
+                  >
+                    {t("applyOnline")}
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ) : (
+                  <Link
+                    href="/opac/locations"
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 font-medium transition-colors hover:brightness-110"
+                  >
+                    Find a Branch
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                )}
               </div>
             </div>
           </div>

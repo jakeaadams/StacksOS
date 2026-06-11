@@ -127,6 +127,7 @@ export default function PublicListPage() {
   if (isLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground">
+        <h1 className="sr-only">Shared list</h1>
         <Loader2 className="h-5 w-5 animate-spin mr-2" />
         Loading…
       </div>
@@ -138,7 +139,7 @@ export default function PublicListPage() {
       <div className="py-10">
         <div className="max-w-5xl mx-auto px-4">
           <div className="rounded-2xl border border-border/70 bg-card p-6">
-            <div className="text-lg font-semibold text-foreground">{error}</div>
+            <h1 className="text-lg font-semibold text-foreground">{error}</h1>
             <div className="mt-4">
               <Button asChild variant="outline" className="rounded-xl">
                 <Link href="/opac/lists">
@@ -161,7 +162,7 @@ export default function PublicListPage() {
       <div className="py-10">
         <div className="max-w-5xl mx-auto px-4">
           <div className="rounded-2xl border border-border/70 bg-card p-6">
-            <div className="text-lg font-semibold text-foreground">List unavailable</div>
+            <h1 className="text-lg font-semibold text-foreground">List unavailable</h1>
             <div className="mt-2 text-sm text-muted-foreground">
               This public list could not be loaded.
             </div>

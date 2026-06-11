@@ -165,7 +165,7 @@ export function HelpFAQ() {
   return (
     <>
       {/* Search box */}
-      <div className="max-w-xl mx-auto">
+      <div className="mx-auto max-w-xl px-4">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/70" />
           <Input
@@ -173,6 +173,7 @@ export function HelpFAQ() {
             placeholder="Search help topics..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search help topics"
             className="h-12 pl-12 pr-4"
           />
         </div>
@@ -188,7 +189,7 @@ export function HelpFAQ() {
               <Button
                 onClick={() => setActiveCategory(null)}
                 variant="ghost"
-                className={`w-full justify-start px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                className={`h-auto w-full justify-start whitespace-normal px-4 py-2 text-left rounded-lg text-sm font-medium transition-colors
                   ${!activeCategory ? "bg-primary-100 text-primary-700" : "text-foreground/80 hover:bg-muted/50"}`}
               >
                 All Topics
@@ -200,7 +201,7 @@ export function HelpFAQ() {
                     key={category}
                     onClick={() => setActiveCategory(category)}
                     variant="ghost"
-                    className={`w-full justify-start px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2
+                    className={`h-auto w-full justify-start whitespace-normal px-4 py-2 text-left rounded-lg text-sm font-medium transition-colors flex items-center gap-2
                       ${activeCategory === category ? "bg-primary-100 text-primary-700" : "text-foreground/80 hover:bg-muted/50"}`}
                   >
                     <Icon className="h-4 w-4" />
@@ -217,7 +218,8 @@ export function HelpFAQ() {
               <div className="text-center py-12 bg-card rounded-xl border border-border">
                 <AlertCircle className="h-12 w-12 text-muted-foreground/70 mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  No results found for &quot;{searchQuery}&quot;
+                  No results found for{" "}
+                  <span className="break-words">&quot;{searchQuery}&quot;</span>
                 </p>
                 <Button
                   onClick={() => setSearchQuery("")}
@@ -237,9 +239,11 @@ export function HelpFAQ() {
                     <Button
                       variant="ghost"
                       onClick={() => toggleItem(index)}
-                      className="h-auto w-full justify-between px-6 py-4 text-left flex items-center gap-4 hover:bg-muted/30 transition-colors"
+                      className="h-auto w-full justify-between whitespace-normal px-6 py-4 text-left flex items-start gap-4 hover:bg-muted/30 transition-colors"
                     >
-                      <span className="font-medium text-foreground">{faq.question}</span>
+                      <span className="min-w-0 break-words font-medium text-foreground">
+                        {faq.question}
+                      </span>
                       {expandedItems.has(index) ? (
                         <ChevronUp className="h-5 w-5 text-muted-foreground/70 shrink-0" />
                       ) : (

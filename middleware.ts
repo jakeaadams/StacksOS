@@ -84,15 +84,24 @@ function addSecurityHeaders(
     .toLowerCase();
   const strictScripts = ["1", "true", "yes"].includes(strictScriptsFlag);
 
+  const paymentScriptSrc =
+    " https://js.stripe.com https://www.paypal.com https://www.sandbox.paypal.com https://sandbox.web.squarecdn.com https://web.squarecdn.com";
+  const paymentConnectSrc =
+    " https://api.stripe.com https://*.paypal.com https://connect.squareup.com https://connect.squareupsandbox.com";
+  const paymentFrameSrc =
+    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://www.paypal.com https://www.sandbox.paypal.com https://sandbox.web.squarecdn.com https://web.squarecdn.com; ";
+
   const scriptSrc = isProd
-    ? `script-src 'self' 'nonce-${nonce}'${strictScripts ? "" : " 'unsafe-inline'"}; `
-    : `script-src 'self' 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval'; `;
+    ? `script-src 'self'${paymentScriptSrc} 'nonce-${nonce}'${strictScripts ? "" : " 'unsafe-inline'"}; `
+    : `script-src 'self'${paymentScriptSrc} 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval'; `;
   // The app and Next still emit some client-side inline styles. Keep the
   // enforced policy compatible and test nonce-only styles via Report-Only.
   // Browsers ignore `unsafe-inline` when a nonce is present in style-src, so the
   // enforced style policy intentionally omits the nonce until the UI is clean.
   const styleSrc = "style-src 'self' 'unsafe-inline'; ";
-  const connectSrc = isProd ? "connect-src 'self'; " : "connect-src 'self' ws: wss:; ";
+  const connectSrc = isProd
+    ? `connect-src 'self'${paymentConnectSrc}; `
+    : `connect-src 'self'${paymentConnectSrc} ws: wss:; `;
   response.headers.set(
     "Content-Security-Policy",
     "default-src 'self'; " +
@@ -101,6 +110,7 @@ function addSecurityHeaders(
       "img-src 'self' data: blob: https:; " +
       "font-src 'self' data:; " +
       connectSrc +
+      paymentFrameSrc +
       "frame-ancestors 'none'; " +
       "base-uri 'self'; " +
       "form-action 'self';"

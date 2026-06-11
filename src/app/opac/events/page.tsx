@@ -130,7 +130,7 @@ function EventCard({
   const reminderTime = formatReminderTime(registration?.viewerReminderScheduledFor || null, locale);
 
   return (
-    <div className="flex gap-4 md:gap-6 p-4 md:p-6 bg-card rounded-xl border border-border hover:shadow-md transition-shadow">
+    <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 transition-shadow hover:shadow-md sm:flex-row md:gap-6 md:p-6">
       <div className="shrink-0 w-16 md:w-20 text-center">
         <div className="stx-action-primary text-xs font-bold rounded-t-lg py-1 px-2">
           {dateInfo.monthAbbr}
@@ -203,10 +203,10 @@ function EventCard({
         </div>
       </div>
 
-      <div className="shrink-0 flex flex-col items-end gap-2 justify-between">
+      <div className="flex w-full shrink-0 flex-col items-start justify-between gap-2 sm:w-auto sm:items-end">
         {isRegistered || isWaitlisted ? (
           <>
-            <div className="w-[170px]">
+            <div className="w-full sm:w-[170px]">
               <label className="text-[11px] text-muted-foreground mb-1 block">
                 {t("reminder")}
               </label>
@@ -478,7 +478,7 @@ export default function EventsPage() {
   const [events, setEvents] = useState<EventWithLifecycle[]>([]);
   const [branches, setBranches] = useState<string[]>([]);
   const [types, setTypes] = useState<string[]>([]);
-  const [eventsSource, setEventsSource] = useState<"mock" | "none">("none");
+  const [eventsSource, setEventsSource] = useState<"configured" | "none">("none");
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [filterBranch, setFilterBranch] = useState<string>("all");
@@ -499,10 +499,11 @@ export default function EventsPage() {
       if (!res.ok) return;
 
       const data = await res.json();
-      setEvents(Array.isArray(data.events) ? data.events : []);
-      setBranches(Array.isArray(data.branches) ? data.branches : []);
-      setTypes(Array.isArray(data.types) ? data.types : []);
-      setEventsSource(data?.source === "mock" ? "mock" : "none");
+      const isConfigured = data?.catalogConfigured === true && data?.source !== "mock";
+      setEvents(isConfigured && Array.isArray(data.events) ? data.events : []);
+      setBranches(isConfigured && Array.isArray(data.branches) ? data.branches : []);
+      setTypes(isConfigured && Array.isArray(data.types) ? data.types : []);
+      setEventsSource(isConfigured ? "configured" : "none");
     } catch {
       // Ignore list-fetch errors; page stays interactive.
     } finally {
@@ -567,7 +568,7 @@ export default function EventsPage() {
         setBusyEventId(null);
       }
     },
-    [fetchEvents, isLoggedIn, requireLogin]
+    [fetchEvents, isLoggedIn, requireLogin, t]
   );
 
   const handleRegister = useCallback(

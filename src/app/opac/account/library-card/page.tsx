@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   Loader2,
   Download,
-  Smartphone,
   Mail,
   WalletCards,
   ExternalLink,

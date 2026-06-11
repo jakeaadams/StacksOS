@@ -189,7 +189,7 @@ export default function DigitalLibraryPage() {
         if (!cancelled && nextProviders.length > 0) {
           setProviders(nextProviders);
         }
-      } catch (error) {
+      } catch (_error) {
         if (!cancelled) {
           setProvidersError("unavailable");
           setProviders(getEContentProviders());
@@ -359,8 +359,8 @@ export default function DigitalLibraryPage() {
             <p className="text-muted-foreground mb-4">{t("needHelp")}</p>
             <div className="flex flex-wrap justify-center gap-3">
               <Button asChild>
-                <Link href="/opac/register">
-                  Get a Library Card
+                <Link href={featureFlags.opacSelfRegistration ? "/opac/register" : "/opac/locations"}>
+                  {featureFlags.opacSelfRegistration ? "Get a Library Card" : "Find a Branch"}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Link>
               </Button>

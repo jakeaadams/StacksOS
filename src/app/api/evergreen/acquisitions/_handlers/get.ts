@@ -248,6 +248,7 @@ export async function handleAcquisitionsGet(
               }
               return successResponse({
                 invoices: [],
+                unsupported: true,
                 message: "Invoices not available in this Evergreen configuration",
               });
             }

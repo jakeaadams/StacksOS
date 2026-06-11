@@ -346,7 +346,14 @@ export function CirculationDesk({ className, defaultMode = "checkout" }: Circula
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" onClick={() => setAudioEnabled((v) => !v)} className={cn(!audioEnabled && "text-muted-foreground")}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={audioEnabled ? "Mute circulation sounds" : "Enable circulation sounds"}
+                  aria-pressed={audioEnabled}
+                  onClick={() => setAudioEnabled((v) => !v)}
+                  className={cn(!audioEnabled && "text-muted-foreground")}
+                >
                   {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
                 </Button>
               </TooltipTrigger>

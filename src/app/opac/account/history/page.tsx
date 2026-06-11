@@ -57,11 +57,13 @@ interface ReadingStats {
 export default function ReadingHistoryPage() {
   const t = useTranslations("historyPage");
   const router = useRouter();
-  const { isLoggedIn } = usePatronSession();
+  const { isLoggedIn, isLoading: sessionLoading } = usePatronSession();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [stats, setStats] = useState<ReadingStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [historyEnabled, setHistoryEnabled] = useState(true);
+  const [historyMessage, setHistoryMessage] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchInput, setSearchInput] = useState("");
@@ -96,6 +98,8 @@ export default function ReadingHistoryPage() {
       const data = await response.json();
       setHistory(data.history || []);
       setStats(data.stats);
+      setHistoryEnabled(data.historyEnabled !== false);
+      setHistoryMessage(typeof data.message === "string" ? data.message : null);
       setTotalPages(Math.ceil((data.total || 0) / itemsPerPage));
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -105,12 +109,13 @@ export default function ReadingHistoryPage() {
   }, [filterYear, itemsPerPage, page, router, searchQuery, sortBy]);
 
   useEffect(() => {
+    if (sessionLoading) return;
     if (!isLoggedIn) {
       router.push("/opac/login?redirect=/opac/account/history");
       return;
     }
     fetchHistory();
-  }, [fetchHistory, isLoggedIn, router]);
+  }, [fetchHistory, isLoggedIn, router, sessionLoading]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,20 +130,33 @@ export default function ReadingHistoryPage() {
 
   const exportHistory = async (format: "csv" | "json") => {
     try {
-      const response = await fetch(`/api/opac/history/export?format=${format}`, {
-        credentials: "include",
+      const data =
+        format === "json"
+          ? JSON.stringify(history, null, 2)
+          : [
+              ["Title", "Author", "Checked Out", "Returned", "Due Date", "Renewals"],
+              ...history.map((item) => [
+                item.title,
+                item.author || "",
+                item.checkoutDate,
+                item.returnDate || "",
+                item.dueDate,
+                String(item.renewalCount),
+              ]),
+            ]
+              .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+              .join("\n");
+      const blob = new Blob([data], {
+        type: format === "json" ? "application/json" : "text/csv;charset=utf-8",
       });
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `reading-history.${format}`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        a.remove();
-      }
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reading-history-current-view.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
     } catch (err) {
       clientLogger.error("Export failed:", err);
     }
@@ -148,7 +166,7 @@ export default function ReadingHistoryPage() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
-  if (!isLoggedIn) {
+  if (sessionLoading || !isLoggedIn) {
     return null;
   }
 
@@ -182,7 +200,7 @@ export default function ReadingHistoryPage() {
                 className="flex items-center gap-2 text-foreground/80 hover:bg-muted/30 text-sm"
               >
                 <Download className="h-4 w-4" />
-                Export CSV
+                Export current view
               </Button>
             </div>
           </div>
@@ -306,6 +324,21 @@ export default function ReadingHistoryPage() {
         {isLoading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
+          </div>
+        ) : !historyEnabled ? (
+          <div className="bg-card rounded-xl border border-border p-12 text-center">
+            <History className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">Reading history is off</h2>
+            <p className="text-muted-foreground mb-6">
+              {historyMessage ||
+                "Your library has not enabled retained reading history for this account."}
+            </p>
+            <Link
+              href="/opac/account"
+              className="inline-flex items-center gap-2 px-6 py-3 stx-action-primary rounded-lg font-medium hover:brightness-110 transition-colors"
+            >
+              Back to Account
+            </Link>
           </div>
         ) : history.length === 0 ? (
           <div className="bg-card rounded-xl border border-border p-12 text-center">

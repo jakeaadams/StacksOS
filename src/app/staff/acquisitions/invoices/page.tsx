@@ -40,7 +40,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useApi } from "@/hooks";
 import { fetchWithAuth } from "@/lib/client-fetch";
 import { toast } from "sonner";
-import { Plus, Eye, Loader2, Receipt, CheckCircle2, Split, Pencil } from "lucide-react";
+import { AlertTriangle, Plus, Eye, Loader2, Receipt, CheckCircle2, Split, Pencil } from "lucide-react";
 
 interface InvoiceRow {
   id: number;
@@ -84,6 +84,10 @@ export default function InvoicesPage() {
   const { data: fundsData } = useApi<any>("/api/evergreen/acquisitions/funds", { immediate: true });
 
   const invoices: InvoiceRow[] = data?.invoices || [];
+  const invoiceUnavailable =
+    data?.unsupported === true
+      ? data?.message || "Invoices are not available in this Evergreen configuration."
+      : null;
   const vendors = Array.isArray(vendorsData?.vendors) ? vendorsData.vendors : [];
   const methods = Array.isArray(methodsData?.methods) ? methodsData.methods : [];
   const funds: FundRow[] = Array.isArray(fundsData?.funds) ? fundsData.funds : [];
@@ -365,9 +369,25 @@ export default function InvoicesPage() {
           { label: "Acquisitions", href: "/staff/acquisitions" },
           { label: "Invoices" },
         ]}
-        actions={[{ label: "Create invoice", onClick: () => setCreateOpen(true), icon: Plus }]}
+        actions={
+          invoiceUnavailable
+            ? []
+            : [{ label: "Create invoice", onClick: () => setCreateOpen(true), icon: Plus }]
+        }
       />
       <PageContent>
+        {invoiceUnavailable && (
+          <div className="mb-4 flex gap-3 rounded-lg border border-[hsl(var(--status-warning))/0.35] bg-[hsl(var(--status-warning-bg))] p-4 text-sm text-[hsl(var(--status-warning-text))]">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <div className="font-medium">Invoice tools are not available from Evergreen.</div>
+              <div className="mt-1">
+                {invoiceUnavailable} Create, edit, split, and close invoice actions are hidden until
+                the Evergreen invoice methods are configured and verified.
+              </div>
+            </div>
+          </div>
+        )}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
@@ -842,7 +862,7 @@ export default function InvoicesPage() {
               emptyState={
                 <EmptyState
                   title="No invoices"
-                  description={data?.message || "No invoices returned."}
+                  description={invoiceUnavailable || data?.message || "No invoices returned."}
                   action={{
                     label: "Evergreen setup checklist",
                     onClick: () => window.location.assign("/staff/help#evergreen-setup"),

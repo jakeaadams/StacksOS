@@ -3,6 +3,7 @@ import Link from "next/link";
 import { HelpCircle, User, CreditCard, Download, Mail, Phone, MapPin } from "lucide-react";
 import { HelpFAQ } from "@/components/opac/HelpFAQ";
 import { HelpContactPhone } from "@/components/opac/HelpContactPhone";
+import { featureFlags } from "@/lib/feature-flags";
 import { useTranslations } from "next-intl";
 
 export const metadata: Metadata = {
@@ -47,15 +48,17 @@ export default function HelpPage() {
                 My Account
               </Link>
             </li>
-            <li>
-              <Link
-                href="/opac/register"
-                className="text-primary-600 hover:underline flex items-center gap-2"
-              >
-                <CreditCard className="h-4 w-4" />
-                Get a Library Card
-              </Link>
-            </li>
+            {featureFlags.opacSelfRegistration ? (
+              <li>
+                <Link
+                  href="/opac/register"
+                  className="text-primary-600 hover:underline flex items-center gap-2"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Get a Library Card
+                </Link>
+              </li>
+            ) : null}
             <li>
               <Link
                 href="/opac/mobile"
@@ -82,7 +85,10 @@ export default function HelpPage() {
               <p className="text-muted-foreground text-sm mb-2">
                 Send us a message and we will respond within 1 business day.
               </p>
-              <a href="mailto:help@library.org" className="text-primary-600 hover:underline">
+              <a
+                href="mailto:help@library.org"
+                className="break-all text-primary-600 hover:underline"
+              >
                 help@library.org
               </a>
             </div>

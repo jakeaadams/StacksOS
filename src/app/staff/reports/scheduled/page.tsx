@@ -287,6 +287,7 @@ export default function ScheduledReportsPage() {
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
             <Switch
+              aria-label={`${row.original.enabled ? "Disable" : "Enable"} schedule ${row.original.name}`}
               checked={row.original.enabled}
               onCheckedChange={(v) => void toggleEnabled(row.original, Boolean(v))}
             />

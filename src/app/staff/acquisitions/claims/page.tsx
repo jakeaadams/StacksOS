@@ -185,6 +185,20 @@ export default function ClaimsPage() {
       });
       const json = await res.json();
       if (!res.ok || json.ok === false) throw new Error(json.error || "Request failed");
+      const errors = Array.isArray(json.errors) ? json.errors : [];
+      if (errors.length > 0) {
+        const claimed = Number(json.count || 0);
+        const total = Number(json.total || 0);
+        const description = errors.slice(0, 2).join("; ");
+        if (claimed > 0) {
+          toast.warning(`Claimed ${claimed}${total ? ` of ${total}` : ""} item(s)`, {
+            description,
+          });
+          await refresh();
+          return json;
+        }
+        throw new Error(description || "No claims were created");
+      }
       toast.success(successMsg);
       await refresh();
       return json;
@@ -320,10 +334,13 @@ export default function ClaimsPage() {
 
                 <div className="flex items-center gap-2">
                   <Checkbox
+                    id="send-vendor-email"
                     checked={sendNotification}
                     onCheckedChange={(v) => setSendNotification(Boolean(v))}
                   />
-                  <span className="text-sm">Send vendor email (best-effort)</span>
+                  <Label htmlFor="send-vendor-email" className="text-sm">
+                    Send vendor email (best-effort)
+                  </Label>
                 </div>
 
                 <div className="flex justify-end">
@@ -373,6 +390,7 @@ export default function ClaimsPage() {
                         <TableRow key={i.lineitemDetailId}>
                           <TableCell>
                             <Checkbox
+                              aria-label={`Select ${i.title} for claiming`}
                               checked={selected.has(i.lineitemDetailId)}
                               onCheckedChange={(v) =>
                                 toggleSelected(i.lineitemDetailId, Boolean(v))

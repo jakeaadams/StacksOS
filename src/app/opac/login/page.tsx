@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePatronSession } from "@/hooks/use-patron-session";
 import { useLibrary } from "@/hooks/use-library";
 import { fetchWithAuth } from "@/lib/client-fetch";
+import { featureFlags } from "@/lib/feature-flags";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +32,6 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const {
-    login,
     refreshSession,
     isLoggedIn,
     isLoading: sessionLoading,
@@ -504,7 +504,11 @@ function LoginForm() {
 
           {/* Get a card link */}
           <Button asChild variant="outline" className="w-full h-12">
-            <Link href="/opac/register">Get a Library Card</Link>
+            {featureFlags.opacSelfRegistration ? (
+              <Link href="/opac/register">Get a Library Card</Link>
+            ) : (
+              <Link href="/opac/locations">Get a Library Card</Link>
+            )}
           </Button>
         </div>
 

@@ -194,7 +194,11 @@ export function PageContent({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={cn("flex-1 overflow-auto p-4 sm:p-6 lg:p-7", className)}>{children}</div>;
+  return (
+    <div className={cn("min-w-0 flex-1 overflow-auto p-4 sm:p-6 lg:p-7", className)}>
+      {children}
+    </div>
+  );
 }
 
 /**
@@ -207,7 +211,7 @@ export function PageContainer({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={cn("h-full flex flex-col", className)}>{children}</div>;
+  return <div className={cn("flex h-full min-w-0 flex-col", className)}>{children}</div>;
 }
 
 export default PageHeader;

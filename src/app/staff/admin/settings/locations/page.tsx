@@ -339,12 +339,18 @@ export default function CopyLocationsPage() {
         header: "",
         cell: ({ row }) => (
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(row.original)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={`Edit copy location ${row.original.name}`}
+              onClick={() => handleOpenEdit(row.original)}
+            >
               <Edit className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
+              aria-label={`Delete copy location ${row.original.name}`}
               onClick={() => {
                 setDeletingLocation(row.original);
                 setDeleteConfirmOpen(true);

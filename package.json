@@ -20,6 +20,7 @@
     "test:all": "npm run test:run && npm run test:e2e",
     "audit:demo": "bash scripts/audit/find-demo-data.sh",
     "audit:ui-drift": "node scripts/audit-ui-drift.mjs",
+    "audit:all-routes": "node scripts/audit-all-routes.mjs",
     "audit:opac": "bash audit/run_opac_audit.sh",
     "audit:task-benchmark": "node scripts/task-benchmark.mjs",
     "audit:task-benchmark:update-baseline": "node scripts/task-benchmark.mjs --update-baseline",

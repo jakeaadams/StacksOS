@@ -367,16 +367,23 @@ export default function FundsPage() {
             <Button
               variant="ghost"
               size="sm"
+              aria-label={`View fund ${row.original.name}`}
               onClick={() => router.push(`/staff/acquisitions/funds/${row.original.id}`)}
             >
               <Eye className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(row.original)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={`Edit fund ${row.original.name}`}
+              onClick={() => handleOpenEdit(row.original)}
+            >
               <Edit className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
+              aria-label={`Delete fund ${row.original.name}`}
               onClick={() => {
                 setDeletingFund(row.original);
                 setDeleteConfirmOpen(true);

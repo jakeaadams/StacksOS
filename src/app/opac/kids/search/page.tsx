@@ -174,6 +174,9 @@ function KidsSearchContent() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      <h1 className="mb-5 text-2xl font-semibold tracking-normal text-foreground sm:text-3xl">
+        Kids catalog search
+      </h1>
       {/* Search Header */}
       <div className="mb-8">
         <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-6">
@@ -230,7 +233,10 @@ function KidsSearchContent() {
                   });
                 }}
               >
-                <SelectTrigger className="w-[150px] rounded-xl border-2 bg-card text-sm">
+                <SelectTrigger
+                  className="w-[150px] rounded-xl border-2 bg-card text-sm"
+                  aria-label="Sort results"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -265,6 +271,7 @@ function KidsSearchContent() {
                 type="button"
                 variant="ghost"
                 onClick={() => setViewMode("grid")}
+                aria-label="Grid view"
                 className={`rounded-none p-2 ${viewMode === "grid" ? "kids-bg-primary-light kids-text-primary-hover" : "text-muted-foreground"}`}
               >
                 <Grid className="h-5 w-5" />
@@ -273,6 +280,7 @@ function KidsSearchContent() {
                 type="button"
                 variant="ghost"
                 onClick={() => setViewMode("list")}
+                aria-label="List view"
                 className={`rounded-none p-2 ${viewMode === "list" ? "kids-bg-primary-light kids-text-primary-hover" : "text-muted-foreground"}`}
               >
                 <LayoutList className="h-5 w-5" />

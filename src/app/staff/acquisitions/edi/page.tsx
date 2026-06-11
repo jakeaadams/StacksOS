@@ -101,6 +101,7 @@ export default function EDIPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [ediUnavailable, setEdiUnavailable] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAccount, setSelectedAccount] = useState<EDIAccount | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<EDIMessage | null>(null);
@@ -119,6 +120,7 @@ export default function EDIPage() {
   const loadData = async () => {
     setLoading(true);
     setError(null);
+    setEdiUnavailable(null);
     try {
       const [accountsRes, messagesRes, typesRes, vendorsRes] = await Promise.all([
         fetchWithAuth("/api/evergreen/acquisitions/edi?action=accounts"),
@@ -136,6 +138,11 @@ export default function EDIPage() {
       if (messagesJson.ok) setMessages(messagesJson.messages || []);
       if (typesJson.ok) setMessageTypes(typesJson.types || []);
       if (vendorsJson.ok) setVendors(vendorsJson.vendors || []);
+      const unavailableMessage =
+        accountsJson.unsupported || messagesJson.unsupported
+          ? accountsJson.message || messagesJson.message || "Evergreen EDI services are unavailable."
+          : null;
+      setEdiUnavailable(unavailableMessage);
     } catch {
       setError("Failed to load EDI data");
     } finally {
@@ -310,16 +317,20 @@ export default function EDIPage() {
         title="EDI Integration"
         subtitle="Manage Electronic Data Interchange accounts and messages."
         breadcrumbs={[{ label: "Acquisitions", href: "/staff/acquisitions" }, { label: "EDI" }]}
-        actions={[
-          {
-            label: "Add Account",
-            onClick: () => {
-              setEditingAccount({});
-              setShowAccountDialog(true);
-            },
-            icon: Plus,
-          },
-        ]}
+        actions={
+          ediUnavailable
+            ? []
+            : [
+                {
+                  label: "Add Account",
+                  onClick: () => {
+                    setEditingAccount({});
+                    setShowAccountDialog(true);
+                  },
+                  icon: Plus,
+                },
+              ]
+        }
       />
       <PageContent className="p-0">
         <div className="h-full flex flex-col -m-6">
@@ -330,6 +341,7 @@ export default function EDIPage() {
                 setShowAccountDialog(true);
               }}
               size="sm"
+              disabled={Boolean(ediUnavailable)}
             >
               <Plus className="h-4 w-4 mr-1" />
               Add Account
@@ -356,6 +368,20 @@ export default function EDIPage() {
           {error && (
             <div className="p-4">
               <ErrorMessage message={error} onRetry={() => void loadData()} />
+            </div>
+          )}
+          {ediUnavailable && (
+            <div className="p-4 pb-0">
+              <div className="flex gap-3 rounded-lg border border-[hsl(var(--status-warning))/0.35] bg-[hsl(var(--status-warning-bg))] p-4 text-sm text-[hsl(var(--status-warning-text))]">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                <div>
+                  <div className="font-medium">EDI services are not available from Evergreen.</div>
+                  <div className="mt-1">
+                    {ediUnavailable} Add, test, process, retry, edit, and delete actions are disabled until
+                    the Evergreen EDI methods are configured and verified.
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           <div className="flex-1 p-4 overflow-auto">
@@ -435,6 +461,7 @@ export default function EDIPage() {
                                     size="sm"
                                     variant="ghost"
                                     aria-label="Test connection"
+                                    disabled={Boolean(ediUnavailable)}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleTestConnection(a.id);
@@ -446,6 +473,7 @@ export default function EDIPage() {
                                     size="sm"
                                     variant="ghost"
                                     aria-label="Configure account"
+                                    disabled={Boolean(ediUnavailable)}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setEditingAccount(a);
@@ -491,7 +519,7 @@ export default function EDIPage() {
                             <Button
                               size="sm"
                               onClick={() => handleProcessInbound(selectedAccount.id)}
-                              disabled={actionLoading}
+                              disabled={actionLoading || Boolean(ediUnavailable)}
                             >
                               <ArrowDownToLine className="h-4 w-4 mr-1" />
                               Process Inbound
@@ -499,6 +527,7 @@ export default function EDIPage() {
                             <Button
                               size="sm"
                               variant="outline"
+                              disabled={Boolean(ediUnavailable)}
                               onClick={() => {
                                 setEditingAccount(selectedAccount);
                                 setShowAccountDialog(true);
@@ -510,6 +539,7 @@ export default function EDIPage() {
                             <Button
                               size="sm"
                               variant="destructive"
+                              disabled={Boolean(ediUnavailable)}
                               onClick={() => setShowDeleteDialog(true)}
                             >
                               <Trash2 className="h-4 w-4 mr-1" />
@@ -615,6 +645,7 @@ export default function EDIPage() {
                                     size="sm"
                                     variant="ghost"
                                     aria-label="Retry"
+                                    disabled={actionLoading || Boolean(ediUnavailable)}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleRetryMessage(m.id);

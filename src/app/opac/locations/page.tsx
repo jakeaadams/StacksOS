@@ -57,17 +57,9 @@ const DAY_LABELS: Record<string, string> = {
   sunday: "Sun",
 };
 
-function parseHours(_hoursStr: string | undefined): LibraryLocation["hours"] | undefined {
-  // Evergreen hours format varies - this is a basic placeholder parser.
-  return {
-    monday: { open: "9:00 AM", close: "8:00 PM" },
-    tuesday: { open: "9:00 AM", close: "8:00 PM" },
-    wednesday: { open: "9:00 AM", close: "8:00 PM" },
-    thursday: { open: "9:00 AM", close: "8:00 PM" },
-    friday: { open: "9:00 AM", close: "6:00 PM" },
-    saturday: { open: "10:00 AM", close: "5:00 PM" },
-    sunday: "closed",
-  };
+function parseHours(hoursStr: string | undefined): LibraryLocation["hours"] | undefined {
+  if (!hoursStr || !hoursStr.trim()) return undefined;
+  return undefined;
 }
 
 function transformOrgTree(tree: any): LibraryLocation[] {
@@ -105,17 +97,6 @@ function transformOrgTree(tree: any): LibraryLocation[] {
 
   processNode(tree);
   return locations;
-}
-
-function isCurrentlyOpen(hours: LibraryLocation["hours"]): boolean {
-  if (!hours) return false;
-  const now = new Date();
-  const dayName = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1] as string;
-  const todayHours = hours[dayName];
-  if (todayHours === "closed" || !todayHours) return false;
-  // Simplified check - real implementation would parse times properly
-  const hour = now.getHours();
-  return hour >= 9 && hour < 20;
 }
 
 function formatAddress(address: LibraryLocation["address"]): string {
@@ -163,8 +144,7 @@ export default function LocationsPage() {
     void fetchLocations();
   }, [fetchLocations]);
 
-  const filteredLocations =
-    filter === "open" ? locations.filter((loc) => isCurrentlyOpen(loc.hours)) : locations;
+  const filteredLocations = locations;
 
   if (isLoading) {
     return (
@@ -200,19 +180,8 @@ export default function LocationsPage() {
             >
               All Locations ({locations.length})
             </Button>
-            <Button
-              type="button"
-              variant={filter === "open" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter("open")}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors
-                ${
-                  filter === "open"
-                    ? "bg-green-600 text-white"
-                    : "bg-muted/50 text-foreground/80 hover:bg-muted"
-                }`}
-            >
-              Open Now
+            <Button type="button" variant="outline" size="sm" disabled className="px-4 py-2 rounded-full text-sm font-medium">
+              Hours not configured
             </Button>
           </div>
         </div>
@@ -233,7 +202,6 @@ export default function LocationsPage() {
         ) : (
           <div className="space-y-4">
             {filteredLocations.map((location) => {
-              const isOpen = isCurrentlyOpen(location.hours);
               const isExpanded = expandedLocation === location.id;
 
               return (
@@ -271,11 +239,8 @@ export default function LocationsPage() {
                     </div>
 
                     <div className="flex items-center gap-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium
-                        ${isOpen ? "bg-green-100 text-green-700" : "bg-muted/50 text-muted-foreground"}`}
-                      >
-                        {isOpen ? "Open" : t("closed")}
+                      <span className="px-3 py-1 rounded-full text-sm font-medium bg-muted/50 text-muted-foreground">
+                        Hours unavailable
                       </span>
                       {isExpanded ? (
                         <ChevronUp className="h-5 w-5 text-muted-foreground/70" />

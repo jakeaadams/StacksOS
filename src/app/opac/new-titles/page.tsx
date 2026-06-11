@@ -175,12 +175,12 @@ export default function NewTitlesPage() {
       {/* Filters */}
       <div className="bg-card border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
             {/* Format filter */}
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Format:</span>
-              <div className="flex gap-1">
+              <div className="flex min-w-0 flex-wrap gap-2">
                 {FORMAT_FILTERS.map((filter) => (
                   <Button
                     type="button"
@@ -205,7 +205,7 @@ export default function NewTitlesPage() {
             </div>
 
             {/* Time filter */}
-            <div className="flex items-center gap-2 ml-auto">
+            <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
               <span className="text-sm text-muted-foreground">Added:</span>
               <Select
                 value={timeFilter}
@@ -214,7 +214,10 @@ export default function NewTitlesPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="h-8 w-[150px] text-sm">
+                <SelectTrigger
+                  className="h-8 w-full text-sm sm:w-[150px]"
+                  aria-label="Added date range"
+                >
                   <SelectValue placeholder="Choose range" />
                 </SelectTrigger>
                 <SelectContent>

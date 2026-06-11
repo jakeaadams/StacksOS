@@ -36,6 +36,11 @@ const fundingSourcesPostSchema = z
   })
   .passthrough();
 
+function isUnsupportedEvergreenMethod(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /method .*not found|osrfmethodexception|not an array reference/i.test(message);
+}
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const id = searchParams.get("id");
@@ -128,11 +133,30 @@ export async function GET(req: NextRequest) {
     const searchCriteria: Record<string, any> = {};
     if (orgId) searchCriteria.owner = parseInt(orgId, 10);
 
-    const response = await callOpenSRF("open-ils.acq", "open-ils.acq.funding_source.org.retrieve", [
-      authtoken,
-      searchCriteria,
-      { limit: 500, limit_perm: "VIEW_FUNDING_SOURCE" },
-    ]);
+    let response;
+    try {
+      response = await callOpenSRF(
+        "open-ils.acq",
+        "open-ils.acq.funding_source.org.retrieve",
+        [
+          authtoken,
+          searchCriteria,
+          { limit: 500, limit_perm: "VIEW_FUNDING_SOURCE" },
+        ]
+      );
+    } catch (error) {
+      if (!isUnsupportedEvergreenMethod(error)) throw error;
+      logger.warn(
+        { route: "api.evergreen.acquisitions.funding-sources", error: String(error) },
+        "Evergreen funding source listing is unavailable"
+      );
+      return successResponse({
+        fundingSources: [],
+        unsupported: true,
+        message:
+          "Funding source listing is not available from this Evergreen server. Use funds and invoices for supported acquisitions work.",
+      });
+    }
     const sourcesPayload = response?.payload || [];
     const sources = Array.isArray(sourcesPayload?.[0]) ? sourcesPayload[0] : sourcesPayload;
 

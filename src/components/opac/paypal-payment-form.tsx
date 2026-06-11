@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Loader2, Lock } from "lucide-react";
 import { fetchWithAuth } from "@/lib/client-fetch";
@@ -8,13 +8,6 @@ import { fetchWithAuth } from "@/lib/client-fetch";
 // ---------------------------------------------------------------------------
 // TypeScript declarations for PayPal JS SDK (loaded via <script>)
 // ---------------------------------------------------------------------------
-
-interface PayPalActions {
-  order: {
-    create: (data: unknown) => Promise<string>;
-    capture: () => Promise<unknown>;
-  };
-}
 
 interface PayPalButtonsConfig {
   createOrder: () => Promise<string>;

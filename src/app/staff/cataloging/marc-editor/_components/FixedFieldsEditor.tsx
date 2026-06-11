@@ -101,6 +101,7 @@ export function FixedFieldsEditor({
           onChange={(e) => onLeaderChange(e.target.value.slice(0, 24).padEnd(24, " "))}
           className="font-mono text-sm"
           maxLength={24}
+          aria-label="MARC leader fixed field"
         />
 
         <div className="grid gap-2 md:grid-cols-2">
@@ -154,6 +155,7 @@ export function FixedFieldsEditor({
           onChange={(e) => onControlFieldChange("008", e.target.value.slice(0, 40).padEnd(40, " "))}
           className="font-mono text-sm"
           maxLength={40}
+          aria-label="MARC 008 fixed-length data field"
         />
 
         <div className="grid gap-2 md:grid-cols-2">

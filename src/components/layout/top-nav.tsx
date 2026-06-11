@@ -262,7 +262,7 @@ export function TopNav({
 
   return (
     <TooltipProvider>
-      <header className="sticky top-0 z-50 border-b border-border/70 surface-glass">
+      <header className="surface-glass sticky top-0 z-50 min-w-0 overflow-x-clip border-b border-border/70">
         {showEnvBanner ? (
           <div
             className={cn(
@@ -275,14 +275,14 @@ export function TopNav({
           </div>
         ) : null}
 
-        <div className="flex items-center gap-4 px-4 py-3 md:px-5">
+        <div className="flex min-w-0 items-center gap-2 px-4 py-3 md:gap-3 md:px-5">
           {/* Left: Brand + Location */}
-          <div className="flex items-center gap-4 min-w-0 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-[hsl(var(--brand-1))] via-[hsl(var(--brand-3))] to-[hsl(var(--brand-2))] flex items-center justify-center shadow-[0_16px_24px_-16px_hsl(var(--brand-3)/0.9)]">
+          <div className="flex min-w-0 shrink items-center gap-2 md:gap-3">
+            <div className="flex min-w-0 shrink-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[hsl(var(--brand-1))] via-[hsl(var(--brand-3))] to-[hsl(var(--brand-2))] shadow-[0_16px_24px_-16px_hsl(var(--brand-3)/0.9)]">
                 <span className="text-white font-semibold text-xs tracking-[0.2em]">SO</span>
               </div>
-              <div className="hidden sm:flex flex-col leading-tight">
+              <div className="hidden min-w-0 flex-col leading-tight sm:flex">
                 <span className="text-sm font-semibold stx-brand-text">StacksOS</span>
                 <span className="text-[11px] text-muted-foreground">Library Operations</span>
               </div>
@@ -290,13 +290,13 @@ export function TopNav({
 
             <div className="h-7 w-px bg-border/80 hidden md:block" />
 
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-9 px-3 gap-2 text-foreground/80 hover:text-foreground hover:bg-muted/70 rounded-full stx-pill"
+                    className="stx-pill h-9 max-w-[170px] gap-2 rounded-full px-3 text-foreground/80 hover:bg-muted/70 hover:text-foreground"
                     aria-label={`Service location: ${currentLibrary}. Switch location`}
                   >
                     <Building2 className="h-4 w-4" />
@@ -341,18 +341,20 @@ export function TopNav({
 
             <div className="h-7 w-px bg-border/80 hidden lg:block" />
 
-            <ProfileSwitcher />
+            <div className="hidden lg:block">
+              <ProfileSwitcher />
+            </div>
           </div>
 
           {/* Center: Always-visible quick search (Polaris-style) */}
-          <div className="hidden md:block flex-1 max-w-[720px]">
+          <div className="hidden min-w-[220px] flex-1 md:block">
             <UniversalSearch variant="topbar" placeholder="Search patrons, items, records..." />
           </div>
 
           {/* Right: Actions - rendered in custom order */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex shrink-0 items-center gap-1 lg:gap-2">
             {/* Polaris-style primary actions */}
-            <div className="hidden xl:flex items-center gap-2">
+            <div className="hidden 2xl:flex items-center gap-2">
               <Button asChild size="sm" variant="outline" className="h-9 rounded-full px-4">
                 <Link href="/staff/circulation/checkin">
                   <ArrowLeftRight className="h-4 w-4 mr-2" />
@@ -367,7 +369,7 @@ export function TopNav({
               </Button>
             </div>
 
-            <div className="hidden xl:flex items-center gap-2 stx-pill px-3 py-1.5 text-[11px] text-muted-foreground">
+            <div className="hidden 2xl:flex items-center gap-2 stx-pill px-3 py-1.5 text-[11px] text-muted-foreground">
               <span
                 className={
                   "inline-flex h-2 w-2 rounded-full " +
@@ -388,7 +390,7 @@ export function TopNav({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-full hidden md:inline-flex stx-pill"
+                  className="hidden h-9 w-9 rounded-full stx-pill lg:inline-flex"
                   onClick={onCommandOpen}
                   aria-label="Open command palette"
                 >
@@ -488,7 +490,9 @@ export function TopNav({
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-xs font-medium hidden md:inline">{userName}</span>
+                  <span className="hidden max-w-[112px] truncate text-xs font-medium xl:inline">
+                    {userName}
+                  </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end">
