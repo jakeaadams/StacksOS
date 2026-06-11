@@ -217,7 +217,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                         />
                       </div>
                     ) : (
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-medium">
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[hsl(var(--status-success-bg))] text-[hsl(var(--status-success-text))] flex items-center justify-center text-xs font-medium">
                         {getInitials(patron.firstName, patron.lastName)}
                       </div>
                     )}
@@ -291,7 +291,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                         />
                       </div>
                     ) : (
-                      <div className="flex-shrink-0 w-8 h-11 rounded bg-sky-100 text-sky-600 flex items-center justify-center">
+                      <div className="flex-shrink-0 w-8 h-11 rounded bg-[hsl(var(--status-info-bg))] text-[hsl(var(--status-info-text))] flex items-center justify-center">
                         <BookOpen className="h-4 w-4" />
                       </div>
                     )}

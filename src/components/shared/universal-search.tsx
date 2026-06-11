@@ -416,7 +416,7 @@ export function UniversalSearch({
                           />
                         </div>
                       ) : (
-                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-medium text-sm">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[hsl(var(--status-success-bg))] text-[hsl(var(--status-success-text))] flex items-center justify-center font-medium text-sm">
                           {result.initials}
                         </div>
                       )
@@ -426,8 +426,8 @@ export function UniversalSearch({
                           "flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center",
 
                           result.type === "item"
-                            ? "bg-amber-100 text-amber-600"
-                            : "bg-sky-100 text-sky-600"
+                            ? "bg-[hsl(var(--status-warning-bg))] text-[hsl(var(--status-warning-text))]"
+                            : "bg-[hsl(var(--status-info-bg))] text-[hsl(var(--status-info-text))]"
                         )}
                       >
                         <Icon className="h-5 w-5" />

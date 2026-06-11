@@ -83,17 +83,23 @@ const WORKSTATION_ORG_KEY = "stacksos_workstation_org";
 const LOGIN_ORG_OVERRIDE_KEY = "stacksos_login_org_override";
 
 function getEnvToneClasses(tone?: string | null) {
+  // Quiet, token-based environment ribbon that coheres with the dark-first
+  // Linear/Vercel palette. Uses semantic status tokens (which are dark-mode
+  // aware) rather than saturated solid bars. Class strings are kept as full
+  // literals so the Tailwind v4 scanner can emit the arbitrary-value utilities.
   const t = String(tone || "").toLowerCase();
   if (t === "training" || t === "test") {
-    return "bg-rose-700 text-white";
+    return "bg-[hsl(var(--status-error-bg))] text-[hsl(var(--status-error-text))] [box-shadow:inset_0_-1px_0_hsl(var(--status-error)/0.28),inset_0_2px_0_hsl(var(--status-error)/0.5)]";
   }
   if (t === "sandbox" || t === "staging") {
-    return "bg-amber-800 text-white";
+    return "bg-[hsl(var(--status-warning-bg))] text-[hsl(var(--status-warning-text))] [box-shadow:inset_0_-1px_0_hsl(var(--status-warning)/0.28),inset_0_2px_0_hsl(var(--status-warning)/0.5)]";
   }
   if (t === "dev" || t === "development") {
-    return "bg-slate-800 text-white";
+    // Neutral surface for dev — quietest of all.
+    return "bg-muted text-muted-foreground [box-shadow:inset_0_-1px_0_hsl(var(--border)),inset_0_2px_0_hsl(var(--border))]";
   }
-  return "bg-blue-800 text-white"; // prod/default
+  // prod/default
+  return "bg-[hsl(var(--status-info-bg))] text-[hsl(var(--status-info-text))] [box-shadow:inset_0_-1px_0_hsl(var(--status-info)/0.28),inset_0_2px_0_hsl(var(--status-info)/0.5)]";
 }
 
 export function TopNav({
@@ -250,10 +256,11 @@ export function TopNav({
         {showEnvBanner ? (
           <div
             className={cn(
-              "border-b border-white/10 px-4 py-1.5 text-[11px] font-semibold tracking-[0.2em] uppercase",
+              "flex items-center justify-center gap-2 px-4 py-1 text-[10.5px] font-medium tracking-[0.18em] uppercase",
               getEnvToneClasses(envTone)
             )}
           >
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-current opacity-70" />
             {envLabel}
           </div>
         ) : null}

@@ -24,21 +24,21 @@ export function PatronContextBar() {
           </span>
 
           {patron.isBlocked && (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-100 rounded-full px-2 py-0.5">
+            <span className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-2 py-0.5 bg-[hsl(var(--status-error-bg))] text-[hsl(var(--status-error-text))]">
               <AlertTriangle className="h-3 w-3" />
               Blocked
             </span>
           )}
 
           {patron.alerts && patron.alerts.length > 0 && (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">
+            <span className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-2 py-0.5 bg-[hsl(var(--status-warning-bg))] text-[hsl(var(--status-warning-text))]">
               <AlertTriangle className="h-3 w-3" />
               {patron.alerts.length} alert{patron.alerts.length !== 1 ? "s" : ""}
             </span>
           )}
 
           {typeof patron.balance === "number" && patron.balance > 0 && (
-            <span className="text-xs font-medium text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">
+            <span className="text-xs font-medium rounded-full px-2 py-0.5 bg-[hsl(var(--status-warning-bg))] text-[hsl(var(--status-warning-text))]">
               ${patron.balance.toFixed(2)} owed
             </span>
           )}
