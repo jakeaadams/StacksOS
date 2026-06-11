@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk, IBM_Plex_Mono } from "next/font/google";
+import { Inter, IBM_Plex_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 
-const spaceGrotesk = Space_Grotesk({
+const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap",
@@ -58,7 +58,7 @@ export default async function RootLayout({
     <html lang={locale} suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${spaceGrotesk.variable} ${ibmPlexMono.variable} font-sans antialiased`}
+        className={`${inter.variable} ${ibmPlexMono.variable} font-sans antialiased`}
       >
         <a
           href="#main-content"
@@ -71,7 +71,7 @@ export default async function RootLayout({
           <ThemeProvider
             nonce={cspNonce}
             attribute="class"
-            defaultTheme="light"
+            defaultTheme="dark"
             enableSystem
             disableTransitionOnChange
           >
