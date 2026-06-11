@@ -5,7 +5,7 @@ export interface PatronDetails {
   family_name: string;
   email?: string;
   day_phone?: string;
-  home_ou?: number;
+  home_ou?: number | Record<string, unknown>;
   profile?: any;
   active: boolean;
   barred: boolean;
@@ -74,4 +74,3 @@ export function toDateLabel(value?: string) {
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString();
 }
-

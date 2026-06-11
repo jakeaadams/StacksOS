@@ -73,6 +73,14 @@ type PatronCopilotData = {
   drilldowns: Array<{ label: string; url: string }>;
 };
 
+function formatHomeLibrary(value: PatronDetails["home_ou"]) {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "number") return `Library ${value}`;
+  const label =
+    value.name || value.shortname || value.shortName || value.opac_label || value.id || value.value;
+  return label ? String(label) : "";
+}
+
 function PatronCopilotWidget({
   patronId,
   checkoutsCount,
@@ -99,7 +107,6 @@ function PatronCopilotWidget({
   const [draftId, setDraftId] = useState<string | null>(null);
   const [data, setData] = useState<PatronCopilotData | null>(null);
   const [feedback, setFeedback] = useState<null | "accepted" | "rejected">(null);
-  const autoRequested = useRef(false);
 
   const generate = useCallback(async () => {
     if (!featureFlags.ai) return;
@@ -165,12 +172,6 @@ function PatronCopilotWidget({
     },
     [draftId]
   );
-
-  useEffect(() => {
-    if (!featureFlags.ai || autoRequested.current) return;
-    autoRequested.current = true;
-    void generate();
-  }, [generate]);
 
   if (!featureFlags.ai) return null;
 
@@ -334,14 +335,8 @@ export default function PatronDetailPage() {
           fetchWithAuth(`/api/evergreen/circulation?patron_id=${patronId}`),
           fetchWithAuth(`/api/evergreen/circulation?action=holds&patron_id=${patronId}`),
           fetchWithAuth(`/api/evergreen/circulation?action=bills&patron_id=${patronId}`),
-          fetchWithAuth(`/api/evergreen/patrons`, {
-            method: "PATCH",
-            body: JSON.stringify({ action: "getNotes", patronId }),
-          }),
-          fetchWithAuth(`/api/evergreen/patrons`, {
-            method: "PATCH",
-            body: JSON.stringify({ action: "getPenaltyTypes" }),
-          }),
+          fetchWithAuth(`/api/evergreen/patrons/${patronId}/notes`),
+          fetchWithAuth(`/api/evergreen/patrons/${patronId}/penalties?includeTypes=true`),
           fetchWithAuth(`/api/patron-photos?patronId=${patronId}`),
         ]);
 
@@ -575,6 +570,7 @@ export default function PatronDetailPage() {
     try {
       const res = await fetchWithAuth(`/api/evergreen/patrons`, {
         method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: patronId,
           firstName: editForm.firstName,
@@ -587,7 +583,7 @@ export default function PatronDetailPage() {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Update failed");
-      toast.success("Patron updated - changes saved successfully.");
+      toast.success("Patron record updated.");
       setEditDialogOpen(false);
       loadPatronData();
     } catch (err: unknown) {
@@ -601,6 +597,7 @@ export default function PatronDetailPage() {
     try {
       const res = await fetchWithAuth(`/api/evergreen/patrons`, {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "addBlock",
           patronId,
@@ -610,7 +607,7 @@ export default function PatronDetailPage() {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Failed to add block");
-      toast.success("Block added - penalty applied to patron.");
+      toast.success("Block added to patron record.");
       setBlockDialogOpen(false);
       setBlockForm({ penaltyType: "", note: "" });
       loadPatronData();
@@ -625,6 +622,7 @@ export default function PatronDetailPage() {
     try {
       const res = await fetchWithAuth(`/api/evergreen/patrons`, {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "removeBlock", patronId, penaltyId }),
       });
       const data = await res.json();
@@ -642,6 +640,7 @@ export default function PatronDetailPage() {
     try {
       const res = await fetchWithAuth(`/api/evergreen/patrons`, {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "addNote",
           patronId,
@@ -667,6 +666,7 @@ export default function PatronDetailPage() {
     try {
       const res = await fetchWithAuth(`/api/evergreen/patrons`, {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "deleteNote", patronId, noteId }),
       });
       const data = await res.json();
@@ -689,7 +689,7 @@ export default function PatronDetailPage() {
       </PageContainer>
     );
   }
-  if (isLoading) return <LoadingSpinner message="Loading patron..." />;
+  if (isLoading) return <LoadingSpinner message="Loading patron record..." />;
   if (error || !patron) {
     return (
       <PageContainer>
@@ -745,24 +745,28 @@ export default function PatronDetailPage() {
           breadcrumbs={[{ label: "Patrons", href: "/staff/patrons" }, { label: "Details" }]}
           actions={[
             {
+              label: "Start checkout",
+              onClick: () => router.push(`/staff/circulation/checkout?patron=${patron.barcode}`),
+              icon: BookOpen,
+            },
+            {
+              label: "Open bills",
+              onClick: () => router.push(`/staff/circulation/bills?patron=${patron.barcode}`),
+              icon: CreditCard,
+              variant: "outline",
+            },
+            {
+              label: "Edit record",
+              onClick: () => setEditDialogOpen(true),
+              icon: Edit,
+              variant: "outline",
+            },
+            {
               label: "Refresh",
               onClick: handleManualRefresh,
               icon: RefreshCw,
               variant: "outline",
               loading: isRefreshing,
-            },
-            { label: "Edit", onClick: () => setEditDialogOpen(true), icon: Edit },
-            {
-              label: "Checkout",
-              onClick: () => router.push(`/staff/circulation/checkout?patron=${patron.barcode}`),
-              icon: BookOpen,
-              variant: "outline",
-            },
-            {
-              label: "Bills",
-              onClick: () => router.push(`/staff/circulation/bills?patron=${patron.barcode}`),
-              icon: CreditCard,
-              variant: "outline",
             },
             {
               label: isPinned("patron", String(patron.id)) ? "Unpin" : "Pin",
@@ -787,10 +791,10 @@ export default function PatronDetailPage() {
           ]}
         >
           <Badge variant="secondary" className="rounded-full">
-            ID {patron.id}
+            Patron ID {patron.id}
           </Badge>
           <Badge variant="outline" className="rounded-full text-muted-foreground">
-            Updated {lastRefresh.toLocaleTimeString()}
+            Refreshed {lastRefresh.toLocaleTimeString()}
           </Badge>
           {presence.length > 0 && (
             <Badge variant="outline" className="rounded-full inline-flex items-center gap-2">
@@ -845,7 +849,7 @@ export default function PatronDetailPage() {
               displayName,
               email: patron.email,
               phone: patron.day_phone,
-              homeLibrary: String(patron.home_ou || ""),
+              homeLibrary: formatHomeLibrary(patron.home_ou),
               profileGroup: patron.profile?.name || "Patron",
               active: patron.active,
               barred: patron.barred,

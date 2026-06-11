@@ -83,6 +83,14 @@ function parsePenaltyPayload(p: Record<string, any>, penaltyTypes: PenaltyType[]
   };
 }
 
+function isOpenSrfMethodNotFound(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error || "");
+  return (
+    message.includes("OSRF_METHOD_NOT_FOUND") ||
+    (message.includes("Method [") && message.includes("not found"))
+  );
+}
+
 /**
  * GET /api/evergreen/patrons/[id]/penalties
  * Fetch all penalties for a patron and penalty types
@@ -126,14 +134,22 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     // Fetch penalty types if requested
     let penaltyTypes: PenaltyType[] = [];
     if (includeTypes) {
-      const typesResponse = await callOpenSRF(
-        "open-ils.actor",
-        "open-ils.actor.standing_penalty.types.retrieve"
-      );
-      const rawTypes = typesResponse?.payload?.[0];
-      penaltyTypes = (Array.isArray(rawTypes) ? rawTypes : []).map((t) =>
-        parsePenaltyTypePayload(t)
-      );
+      try {
+        const typesResponse = await callOpenSRF(
+          "open-ils.actor",
+          "open-ils.actor.standing_penalty.types.retrieve"
+        );
+        const rawTypes = typesResponse?.payload?.[0];
+        penaltyTypes = (Array.isArray(rawTypes) ? rawTypes : []).map((t) =>
+          parsePenaltyTypePayload(t)
+        );
+      } catch (error) {
+        if (!isOpenSrfMethodNotFound(error)) throw error;
+        logger.info(
+          { route: "Patron Penalties GET" },
+          "Patron penalty type API unavailable on this Evergreen"
+        );
+      }
     }
 
     const rawPenalties = (patron as Record<string, any>).standing_penalties;
@@ -146,6 +162,13 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       penaltyTypes: includeTypes ? penaltyTypes : undefined,
     });
   } catch (error) {
+    if (isOpenSrfMethodNotFound(error)) {
+      logger.info(
+        { route: "Patron Penalties GET" },
+        "Patron penalties API unavailable on this Evergreen"
+      );
+      return successResponse({ penalties: [], penaltyTypes: [], unsupported: true });
+    }
     return serverErrorResponse(error, "Patron Penalties GET", req);
   }
 }

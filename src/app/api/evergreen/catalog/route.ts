@@ -113,6 +113,12 @@ function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function normalizeCatalogAuthor(value: unknown, fallback = "") {
+  const raw = typeof value === "string" ? value : String(value ?? "");
+  const normalized = normalizeWhitespace(raw.replace(/,\s*/g, ", "));
+  return normalized || fallback;
+}
+
 function buildEvergreenQuery(rawQuery: string, searchType: string) {
   const q = normalizeWhitespace(rawQuery);
   if (!q) return "#available";
@@ -656,7 +662,7 @@ export async function GET(req: NextRequest) {
           id: bibId,
           tcn: mods.tcn || `bib${bibId}`,
           title: mods.title || "Unknown Title",
-          author: mods.author || "",
+          author: normalizeCatalogAuthor(mods.author),
           pubdate: mods.pubdate || "",
           publisher: mods.publisher || "",
           isbn: mods.isbn || "",
@@ -962,7 +968,7 @@ export async function GET(req: NextRequest) {
             id,
             tcn: mods.tcn || `bib${id}`,
             title: mods.title || "Unknown Title",
-            author: mods.author || "Unknown Author",
+            author: normalizeCatalogAuthor(mods.author, "Unknown Author"),
             pubdate: mods.pubdate || "",
             publisher: mods.publisher || "",
             isbn: mods.isbn || "",

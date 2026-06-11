@@ -28,7 +28,11 @@ export function formatCurrency(value: number): string {
 
 export function formatDate(value: unknown): string {
   if (!value) return "";
-  const dt = new Date(String(value));
+  const raw = String(value);
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim());
+  const dt = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : new Date(raw);
   if (Number.isNaN(dt.getTime())) return "";
   return dt.toLocaleDateString();
 }

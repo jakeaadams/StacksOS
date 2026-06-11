@@ -14,6 +14,7 @@ const PROFILE = String(
 
 const IS_SCHOOL = PROFILE === "school";
 const IS_CHURCH = PROFILE === "church";
+const AI_UI_ENABLED = process.env.NEXT_PUBLIC_STACKSOS_AI_ENABLED === "1";
 
 export const tenantProfile = PROFILE;
 
@@ -45,7 +46,7 @@ export const featureFlags = {
   k12AssetManagement: IS_SCHOOL,
 
   // AI (must never ship demo responses in production workflows)
-  ai: EXPERIMENTAL,
+  ai: EXPERIMENTAL && AI_UI_ENABLED,
 
   // Reports submodules
   reportTemplates: true,

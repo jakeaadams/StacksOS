@@ -165,15 +165,7 @@ function CatalogSearchContent() {
         header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
         cell: ({ row }) => (
           <div className="space-y-1">
-            <div
-              className="font-medium leading-tight cursor-pointer hover:text-primary hover:underline"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenCockpit(row.original.id);
-              }}
-            >
-              {row.original.title}
-            </div>
+            <div className="font-medium leading-tight">{row.original.title}</div>
             <div className="text-xs text-muted-foreground">
               {row.original.author || "Unknown author"}
             </div>
@@ -232,31 +224,14 @@ function CatalogSearchContent() {
   return (
     <PageContainer>
       <PageHeader
-        title="Catalog Search"
-        subtitle="Search and manage bibliographic records across the catalog."
+        title="Catalog Desk"
+        subtitle="Find records, review availability, place holds, and open cataloging workflows."
         breadcrumbs={[{ label: "Catalog" }]}
         actions={[
           {
             label: "New Record",
             onClick: () => router.push("/staff/catalog/create"),
             icon: Plus,
-          },
-          {
-            label: "Place Hold",
-            onClick: () => setPlaceHoldOpen(true),
-            icon: Bookmark,
-            disabled: !selectedRecord,
-          },
-          {
-            label: "Manage Holds",
-            onClick: () =>
-              selectedRecord
-                ? router.push(
-                    `/staff/circulation/holds-management?tab=title&title_id=${selectedRecord.id}`
-                  )
-                : router.push("/staff/circulation/holds-management"),
-            icon: Bookmark,
-            variant: "outline",
           },
         ]}
       >
@@ -328,9 +303,7 @@ function CatalogSearchContent() {
       <PageContent className="space-y-6">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">
-              Search Catalog
-            </CardTitle>
+            <CardTitle className="text-sm">Search catalog</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-3 items-center">
@@ -368,23 +341,107 @@ function CatalogSearchContent() {
           </CardContent>
         </Card>
 
-        <DataTable
-          columns={columns}
-          data={records}
-          isLoading={isLoading}
-          searchable={false}
-          onRowClick={handleRowClick}
-          emptyState={
-            hasSearched ? (
-              <EmptyState
-                title="No records found"
-                description="Try a different title, author, ISBN, or keyword."
-              />
-            ) : (
-              <EmptyState title="Search the catalog" description="Run a search to see results." />
-            )
-          }
-        />
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <DataTable
+            columns={columns}
+            data={records}
+            isLoading={isLoading}
+            searchable={false}
+            onRowClick={handleRowClick}
+            columnVisibilityToggle={false}
+            compact
+            paginated={records.length >= 12}
+            emptyState={
+              hasSearched ? (
+                <EmptyState
+                  title="No records found"
+                  description="Try a different title, author, ISBN, or keyword."
+                />
+              ) : (
+                <EmptyState
+                  title="Search the catalog"
+                  description="Search by keyword, title, author, ISBN, or TCN."
+                />
+              )
+            }
+          />
+
+          <Card className="h-fit rounded-2xl border-border/70">
+            <CardContent className="space-y-4 p-4">
+              {selectedRecord ? (
+                <>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Selected record
+                    </p>
+                    <h3 className="mt-1 line-clamp-2 text-sm font-semibold">
+                      {selectedRecord.title}
+                    </h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {selectedRecord.author || "Unknown author"}
+                    </p>
+                    <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                      {selectedRecord.tcn || selectedRecord.id}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Button
+                      className="w-full justify-start gap-2"
+                      onClick={() => router.push(`/staff/catalog/record/${selectedRecord.id}`)}
+                    >
+                      <BookOpen className="h-4 w-4" />
+                      Open record
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-2"
+                      onClick={() => setPlaceHoldOpen(true)}
+                    >
+                      <Bookmark className="h-4 w-4" />
+                      Place hold
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-2"
+                      onClick={() =>
+                        router.push(
+                          `/staff/circulation/holds-management?tab=title&title_id=${selectedRecord.id}`
+                        )
+                      }
+                    >
+                      <Bookmark className="h-4 w-4" />
+                      Manage holds
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-2"
+                      onClick={() =>
+                        router.push(`/staff/cataloging/marc-editor?id=${selectedRecord.id}`)
+                      }
+                    >
+                      <FileText className="h-4 w-4" />
+                      MARC editor
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-2"
+                      onClick={() =>
+                        router.push(`/staff/cataloging/holdings?id=${selectedRecord.id}`)
+                      }
+                    >
+                      <Package className="h-4 w-4" />
+                      Holdings
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="py-2 text-sm text-muted-foreground">
+                  Select a search result to open record actions.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         <PlaceHoldDialog
           open={placeHoldOpen}

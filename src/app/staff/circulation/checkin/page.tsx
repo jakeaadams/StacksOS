@@ -1,5 +1,5 @@
 /**
- * Checkin Page - Staff circulation checkin interface
+ * Checkin Page - Staff circulation check-in desk
  */
 
 "use client";
@@ -15,6 +15,7 @@ import {
   PageContainer,
   PageHeader,
   PageContent,
+  StatusBadge,
 } from "@/components/shared";
 
 import { ApiError, useMutation, useKeyboardShortcuts } from "@/hooks";
@@ -26,17 +27,22 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
 import {
+  Archive,
+  Bell,
+  CheckCircle2,
+  ListFilter,
   Package,
   Printer,
-  Trash2,
-  Bell,
-  Truck,
-  AlertTriangle,
+  RotateCcw,
+  ScanLine,
   ThumbsDown,
   ThumbsUp,
-  HelpCircle,
+  Truck,
+  XCircle,
+  AlertTriangle,
 } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { escapeHtml, printHtml } from "@/lib/print";
 import { featureFlags } from "@/lib/feature-flags";
 import { fetchWithAuth } from "@/lib/client-fetch";
@@ -58,7 +64,11 @@ type AiPolicyExplain = {
 
 function buildSlipHtml(item: CheckinItem) {
   const heading =
-    item.status === "hold" ? "Hold Slip" : item.status === "transit" ? "Transit Slip" : "Slip";
+    item.status === "hold"
+      ? "Hold Shelf Slip"
+      : item.status === "transit"
+        ? "Transit Slip"
+        : "Routing Slip";
 
   const lines: Array<[string, string]> = [
     ["Time", item.timestamp.toLocaleString()],
@@ -103,6 +113,9 @@ export default function CheckinPage() {
   const { play: playSound } = useCirculationSound();
   const [checkedInItems, setCheckedInItems] = useState<CheckinItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<CheckinItem[]>([]);
+  const [scanQueue, setScanQueue] = useState<string[]>([]);
+  const [activeScan, setActiveScan] = useState<string | null>(null);
+  const [itemBarcode, setItemBarcode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [printSlips, setPrintSlips] = useState(true);
   const [clearOpen, setClearOpen] = useState(false);
@@ -151,7 +164,7 @@ export default function CheckinPage() {
       }
 
       const newItem: CheckinItem = {
-        id: "item-" + Date.now(),
+        id: `item-${Date.now()}-${variables.itemBarcode}`,
         barcode: variables.itemBarcode,
         title: data.title || "Item",
         author: data.author || "",
@@ -175,7 +188,6 @@ export default function CheckinPage() {
       setAiExplain(null);
       setAiExplainFeedback(null);
 
-      // Printing: use an iframe (no popups). This is "best-effort"; printers vary.
       if (printSlips && (status === "hold" || status === "transit")) {
         printHtml(buildSlipHtml(newItem), { title: "StacksOS Slip", tone: "slip" });
       }
@@ -183,9 +195,9 @@ export default function CheckinPage() {
       playSound(status === "hold" || status === "transit" ? "info" : "success");
 
       if (!bookdropMode) {
-        toast.success("Item checked in", {
+        toast.success(status === "checkedin" ? "Ready to shelve" : "Routing required", {
           description:
-            status === "hold" ? "Hold captured" : status === "transit" ? "In transit" : "Processed",
+            status === "hold" ? "Send to hold shelf" : status === "transit" ? message : "Processed",
         });
       }
     },
@@ -196,17 +208,29 @@ export default function CheckinPage() {
           : [];
         const reqId = (err.details as Record<string, any>)?.requestId;
         const desc = missing.length > 0 ? `Missing: ${missing.join(", ")}` : err.message;
+
+        const errorItem: CheckinItem = {
+          id: `item-${Date.now()}-${variables.itemBarcode}`,
+          barcode: variables.itemBarcode,
+          title: "Not checked in",
+          author: "",
+          callNumber: "",
+          status: "error",
+          message: reqId ? `${desc} (req ${reqId})` : desc,
+          timestamp: new Date(),
+        };
+
+        setCheckedInItems((prev) => [errorItem, ...prev]);
         toast.error("Permission denied", {
           description: reqId ? `${desc} (req ${reqId})` : desc,
         });
         setItemError(err.message || "Permission denied");
         setItemSuccess(false);
+        playSound("error");
         setLastErrorDetails({
           code: "PERMISSION_DENIED",
           desc: err.message || "Permission denied",
-          requestId: (err.details as Record<string, any>)?.requestId
-            ? String((err.details as Record<string, any>).requestId)
-            : undefined,
+          requestId: reqId ? String(reqId) : undefined,
         });
         return;
       }
@@ -231,25 +255,25 @@ export default function CheckinPage() {
           : undefined;
 
       const errorItem: CheckinItem = {
-        id: "item-" + Date.now(),
+        id: `item-${Date.now()}-${variables.itemBarcode}`,
         barcode: variables.itemBarcode,
-        title: "Unknown",
+        title: "Not checked in",
         author: "",
         callNumber: "",
         status: "error",
-        message: err.message || "Checkin failed",
+        message: desc || err.message || "Check-in failed",
         timestamp: new Date(),
       };
 
       setCheckedInItems((prev) => [errorItem, ...prev]);
-      setItemError(err.message || "Checkin failed");
+      setItemError(desc || err.message || "Check-in failed");
       setItemSuccess(false);
       playSound("error");
       setLastErrorDetails({
         code: code || undefined,
-        desc: desc || err.message || "Checkin failed",
+        desc: desc || err.message || "Check-in failed",
       });
-      toast.error("Checkin failed", { description: err.message });
+      toast.error("Check-in failed", { description: desc || err.message });
     },
   });
 
@@ -317,30 +341,82 @@ export default function CheckinPage() {
     [aiExplainDraftId]
   );
 
-  const handleCheckin = useCallback(
-    async (barcode: string) => {
-      if (!barcode.trim()) return;
-      setIsProcessing(true);
-      try {
-        await checkinMutation.mutateAsync("/api/evergreen/circulation", {
-          action: "checkin",
-          itemBarcode: barcode,
-        });
-      } finally {
-        setIsProcessing(false);
+  const enqueueCheckin = useCallback(
+    (barcode: string) => {
+      const cleaned = String(barcode || "").trim();
+      if (!cleaned) return;
+
+      if (
+        cleaned === activeScan ||
+        scanQueue.includes(cleaned) ||
+        checkedInItems.some((item) => item.barcode === cleaned && item.status !== "error")
+      ) {
+        toast.message("Item already scanned in this session", { description: cleaned });
         itemInputRef.current?.focus();
+        return;
       }
+
+      setItemError(undefined);
+      setItemSuccess(false);
+      setScanQueue((prev) => [...prev, cleaned]);
     },
-    [checkinMutation]
+    [activeScan, checkedInItems, scanQueue]
   );
 
-  const clearSession = () => {
+  const processNextCheckin = useCallback(async () => {
+    if (isProcessing) return;
+    const nextBarcode = scanQueue[0];
+    if (!nextBarcode) return;
+
+    setIsProcessing(true);
+    setActiveScan(nextBarcode);
+
+    try {
+      await checkinMutation.mutateAsync("/api/evergreen/circulation", {
+        action: "checkin",
+        itemBarcode: nextBarcode,
+      });
+    } finally {
+      setIsProcessing(false);
+      setActiveScan(null);
+      setScanQueue((prev) =>
+        prev[0] === nextBarcode ? prev.slice(1) : prev.filter((queued) => queued !== nextBarcode)
+      );
+      itemInputRef.current?.focus();
+    }
+  }, [checkinMutation, isProcessing, scanQueue]);
+
+  React.useEffect(() => {
+    void processNextCheckin();
+  }, [scanQueue.length, isProcessing]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const clearSession = useCallback(() => {
     setCheckedInItems([]);
+    setSelectedItems([]);
+    setScanQueue([]);
+    setActiveScan(null);
+    setItemBarcode("");
     setItemError(undefined);
     setItemSuccess(false);
     setAttentionOnly(false);
+    setLastErrorDetails(null);
+    setAiExplainLoading(false);
+    setAiExplainError(null);
+    setAiExplainDraftId(null);
+    setAiExplain(null);
+    setAiExplainFeedback(null);
     itemInputRef.current?.focus();
-  };
+  }, []);
+
+  const hasSessionWork = checkedInItems.length > 0 || scanQueue.length > 0 || activeScan !== null;
+
+  const requestClearSession = useCallback(() => {
+    if (!hasSessionWork) {
+      clearSession();
+      return;
+    }
+    setClearOpen(true);
+  }, [clearSession, hasSessionWork]);
 
   const slipItems = useMemo(
     () => checkedInItems.filter((i) => i.status === "hold" || i.status === "transit"),
@@ -361,7 +437,7 @@ export default function CheckinPage() {
 
   const handlePrintAllSlips = useCallback(() => {
     if (slipItems.length === 0) {
-      toast.message("No slips to print yet");
+      toast.message("No routing slips to print");
       return;
     }
 
@@ -375,245 +451,358 @@ export default function CheckinPage() {
   }, [slipItems]);
 
   useKeyboardShortcuts([
-    { key: "Escape", handler: () => setClearOpen(true) },
+    { key: "Escape", handler: requestClearSession },
     { key: "p", ctrl: true, handler: handlePrintAllSlips, preventDefault: true },
     { key: "b", ctrl: true, handler: () => setBookdropMode((v) => !v), preventDefault: true },
   ]);
 
-  const stats = {
-    total: checkedInItems.length,
-    holds: checkedInItems.filter((i) => i.status === "hold").length,
-    transits: checkedInItems.filter((i) => i.status === "transit").length,
-    errors: checkedInItems.filter((i) => i.status === "error").length,
-  };
+  const stats = useMemo(
+    () => ({
+      total: checkedInItems.length,
+      reshelve: checkedInItems.filter((i) => i.status === "checkedin").length,
+      holds: checkedInItems.filter((i) => i.status === "hold").length,
+      transits: checkedInItems.filter((i) => i.status === "transit").length,
+      exceptions: checkedInItems.filter((i) => i.status === "error" || i.status === "alert").length,
+    }),
+    [checkedInItems]
+  );
 
   const tableData = attentionOnly ? attentionItems : checkedInItems;
+  const queuedCount = activeScan ? Math.max(scanQueue.length - 1, 0) : scanQueue.length;
 
   return (
     <PageContainer>
       <PageHeader
-        title="Check In"
-        subtitle="Scan items to return, route, or capture holds."
+        title="Check-in Desk"
+        subtitle="Return, route, and exception-review item scans from one work surface."
         breadcrumbs={[{ label: "Circulation" }, { label: "Check In" }]}
-        actions={[
-          {
-            label: printSlips ? "Print Slips: On" : "Print Slips: Off",
-            onClick: () => setPrintSlips((p) => !p),
-            icon: Printer,
-          },
-          {
-            label: bookdropMode ? "Bookdrop: On" : "Bookdrop: Off",
-            onClick: () => setBookdropMode((v) => !v),
-            icon: Package,
-            variant: "outline",
-            shortcut: { key: "b", ctrl: true },
-          },
-          {
-            label: "Clear Session",
-            onClick: () => setClearOpen(true),
-            icon: Trash2,
-            shortcut: { key: "Escape" },
-          },
-          {
-            label: "Walkthrough",
-            onClick: () => window.location.assign("/staff/training?workflow=checkin"),
-            icon: HelpCircle,
-            variant: "outline",
-          },
-        ]}
       />
 
       <PageContent className="space-y-6">
-        <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-          <Card className="rounded-2xl border-border/70 shadow-sm">
-            <CardContent className="space-y-4 p-5">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Item Check‑In
-              </h3>
-              <BarcodeInput
-                ref={itemInputRef}
-                label="Item Barcode"
-                placeholder="Scan item to check in"
-                onSubmit={handleCheckin}
-                isLoading={isProcessing}
-                isSuccess={itemSuccess}
-                error={itemError}
-                autoFocus
-                autoClear
-              />
-              {canAi && itemError && (
-                <div className="rounded-xl border border-border/70 bg-background px-3 py-2 text-sm space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="font-medium">AI explanation (draft-only)</div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => void submitAiExplainFeedback("accepted")}
-                        disabled={!aiExplainDraftId || aiExplainFeedback !== null}
-                        title="Thumbs up"
-                      >
-                        <span className="sr-only">Thumbs up</span>
-                        <ThumbsUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => void submitAiExplainFeedback("rejected")}
-                        disabled={!aiExplainDraftId || aiExplainFeedback !== null}
-                        title="Thumbs down"
-                      >
-                        <span className="sr-only">Thumbs down</span>
-                        <ThumbsDown className="h-4 w-4" />
-                      </Button>
-                    </div>
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0 space-y-5">
+            <Card className="min-w-0 rounded-2xl border-border/70">
+              <CardContent className="space-y-4 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <StepHeader
+                    index={1}
+                    title="Scan returns"
+                    hint={bookdropMode ? "Bookdrop mode active" : "Ready for item barcodes"}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge
+                      label={bookdropMode ? "Bookdrop" : "Desk return"}
+                      status={bookdropMode ? "warning" : "success"}
+                      icon={bookdropMode ? Package : ScanLine}
+                      showIcon
+                      size="sm"
+                    />
+                    <StatusBadge
+                      label={printSlips ? "Slips on" : "Slips off"}
+                      status={printSlips ? "info" : "neutral"}
+                      icon={Printer}
+                      showIcon
+                      size="sm"
+                    />
                   </div>
+                </div>
 
-                  {aiExplainLoading ? (
-                    <div className="text-sm text-muted-foreground flex items-center gap-2">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent" />
-                      Generating explanation…
-                    </div>
-                  ) : aiExplainError ? (
-                    <div className="text-sm text-muted-foreground">
-                      AI unavailable: {aiExplainError}
-                    </div>
-                  ) : aiExplain ? (
-                    <div className="space-y-2">
-                      <div className="text-sm">{aiExplain.explanation}</div>
-                      {Array.isArray(aiExplain.nextSteps) && aiExplain.nextSteps.length > 0 ? (
-                        <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
-                          {aiExplain.nextSteps.slice(0, 6).map((step, idx) => (
-                            <li key={idx}>{step}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </div>
+                <BarcodeInput
+                  ref={itemInputRef}
+                  label="Item barcode"
+                  placeholder="Scan item barcode…"
+                  value={itemBarcode}
+                  onChange={setItemBarcode}
+                  onSubmit={enqueueCheckin}
+                  isLoading={false}
+                  isSuccess={itemSuccess}
+                  error={itemError}
+                  autoFocus
+                  autoClear
+                  size="lg"
+                />
+
+                <div
+                  className="flex min-h-[20px] flex-wrap items-center gap-2 text-xs"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  {activeScan ? (
+                    <span className="inline-flex items-center gap-2 text-muted-foreground">
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[hsl(var(--brand-1))] border-t-transparent" />
+                      Checking in <span className="font-mono text-foreground">{activeScan}</span>
+                    </span>
+                  ) : scanQueue.length > 0 ? (
+                    <span className="text-muted-foreground">{scanQueue.length} queued…</span>
+                  ) : itemSuccess ? (
+                    <span className="inline-flex items-center gap-1.5 text-[hsl(var(--status-success-text))]">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Processed. Ready for next item.
+                    </span>
+                  ) : itemError ? (
+                    <span className="inline-flex items-center gap-1.5 text-[hsl(var(--status-error-text))]">
+                      <XCircle className="h-3.5 w-3.5" /> {itemError}
+                    </span>
                   ) : (
-                    <div className="text-sm text-muted-foreground">
-                      No AI explanation available.
+                    <span className="text-muted-foreground">Ready to scan.</span>
+                  )}
+                  {activeScan && queuedCount > 0 && (
+                    <span className="text-muted-foreground">· {queuedCount} more queued</span>
+                  )}
+                </div>
+
+                {canAi && itemError && (
+                  <div className="rounded-xl border border-border/70 bg-background px-3 py-2 text-sm space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-medium">Decision support</div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => void submitAiExplainFeedback("accepted")}
+                          disabled={!aiExplainDraftId || aiExplainFeedback !== null}
+                          title="Helpful"
+                        >
+                          <span className="sr-only">Helpful</span>
+                          <ThumbsUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => void submitAiExplainFeedback("rejected")}
+                          disabled={!aiExplainDraftId || aiExplainFeedback !== null}
+                          title="Not helpful"
+                        >
+                          <span className="sr-only">Not helpful</span>
+                          <ThumbsDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {aiExplainLoading ? (
+                      <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent" />
+                        Generating explanation…
+                      </div>
+                    ) : aiExplainError ? (
+                      <div className="text-sm text-muted-foreground">
+                        AI unavailable: {aiExplainError}
+                      </div>
+                    ) : aiExplain ? (
+                      <div className="space-y-2">
+                        <div className="text-sm">{aiExplain.explanation}</div>
+                        {Array.isArray(aiExplain.nextSteps) && aiExplain.nextSteps.length > 0 ? (
+                          <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
+                            {aiExplain.nextSteps.slice(0, 4).map((step, idx) => (
+                              <li key={idx}>{step}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">No explanation available.</div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="min-w-0 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <StepHeader
+                  index={2}
+                  title={attentionOnly ? "Routing exceptions" : "Routing log"}
+                  hint={attentionOnly ? "Holds, transits, and failed scans" : "Newest scan first"}
+                  done={stats.total > 0}
+                />
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {stats.reshelve > 0 && (
+                    <SessionPill
+                      tone="success"
+                      icon={Archive}
+                      count={stats.reshelve}
+                      label="reshelve"
+                    />
+                  )}
+                  {stats.holds > 0 && (
+                    <SessionPill tone="warning" icon={Bell} count={stats.holds} label="holds" />
+                  )}
+                  {stats.transits > 0 && (
+                    <SessionPill tone="info" icon={Truck} count={stats.transits} label="transit" />
+                  )}
+                  {stats.exceptions > 0 && (
+                    <SessionPill
+                      tone="error"
+                      icon={AlertTriangle}
+                      count={stats.exceptions}
+                      label="review"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {selectedItems.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-muted/30 px-4 py-2">
+                  <span className="text-sm font-medium">{selectedItems.length} selected</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const slips = selectedItems.filter(
+                        (i) => i.status === "hold" || i.status === "transit"
+                      );
+                      if (slips.length === 0) {
+                        toast.message("No routing slips in selection");
+                        return;
+                      }
+                      const html = slips.map((item) => buildSlipHtml(item)).join("\n");
+                      printHtml(html, { title: "StacksOS Slips", tone: "slip" });
+                    }}
+                  >
+                    <Printer className="h-4 w-4 mr-1" />
+                    Print Selected
+                  </Button>
+                </div>
+              )}
+
+              <CheckinActivityTable data={tableData} onSelectionChange={setSelectedItems} />
+            </div>
+          </div>
+
+          <aside className="min-w-0 self-start xl:sticky xl:top-6">
+            <Card className="min-w-0 rounded-2xl border-border/70">
+              <CardContent className="space-y-4 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold">Check-in session</h3>
+                  <Badge variant="outline" className="rounded-full text-[11px]">
+                    {bookdropMode ? "Bookdrop" : "Desk"}
+                  </Badge>
+                </div>
+
+                <div className="rounded-2xl border border-border/70 bg-muted/30 p-4 text-center">
+                  <div className="text-4xl font-semibold tabular-nums text-foreground">
+                    {stats.total}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    item{stats.total === 1 ? "" : "s"} processed
+                  </div>
+                  {stats.exceptions > 0 && (
+                    <div className="mt-2 text-[11px] font-medium text-[hsl(var(--status-error-text))]">
+                      {stats.exceptions} need review
                     </div>
                   )}
                 </div>
-              )}
-              <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                Holds and transits will generate printable slips. Press{" "}
-                <span className="font-mono">Ctrl/⌘ + P</span> to print all queued slips.
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card className="rounded-2xl border-border/70 shadow-sm">
-            <CardContent className="p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Session Summary
-                  </p>
-                  <h3 className="text-2xl font-semibold mt-1">{stats.total}</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <RoutingMetric icon={Archive} label="Reshelve" value={stats.reshelve} />
+                  <RoutingMetric
+                    icon={Bell}
+                    label="Hold shelf"
+                    value={stats.holds}
+                    tone="warning"
+                  />
+                  <RoutingMetric icon={Truck} label="Transit" value={stats.transits} tone="info" />
+                  <RoutingMetric
+                    icon={AlertTriangle}
+                    label="Review"
+                    value={stats.exceptions}
+                    tone="error"
+                  />
                 </div>
-                <div className="h-10 w-10 rounded-full bg-[hsl(var(--brand-1))]/10 flex items-center justify-center text-[hsl(var(--brand-1))]">
-                  <Package className="h-5 w-5" />
+
+                <div className="grid gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Queue</span>
+                    <span className="font-mono text-foreground">
+                      {activeScan
+                        ? "1 active"
+                        : scanQueue.length > 0
+                          ? `${scanQueue.length} waiting`
+                          : "Idle"}
+                      {activeScan && queuedCount > 0 ? ` + ${queuedCount} waiting` : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Routing slips</span>
+                    <span className="font-mono text-foreground">{slipItems.length} queued</span>
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl bg-muted/50 p-3">
-                  <Bell className="h-4 w-4 text-emerald-600 mx-auto" />
-                  <div className="text-sm font-semibold mt-1">{stats.holds}</div>
-                  <div className="text-[11px] text-muted-foreground">Holds</div>
-                </div>
-                <div className="rounded-xl bg-muted/50 p-3">
-                  <Truck className="h-4 w-4 text-sky-500 mx-auto" />
-                  <div className="text-sm font-semibold mt-1">{stats.transits}</div>
-                  <div className="text-[11px] text-muted-foreground">Transits</div>
-                </div>
-                <div className="rounded-xl bg-muted/50 p-3">
-                  <AlertTriangle className="h-4 w-4 text-rose-500 mx-auto" />
-                  <div className="text-sm font-semibold mt-1">{stats.errors}</div>
-                  <div className="text-[11px] text-muted-foreground">Errors</div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Button
-                  variant="outline"
-                  className="w-full justify-between"
-                  onClick={handlePrintAllSlips}
-                  disabled={slipItems.length === 0}
-                >
-                  Print All Slips
-                  <span className="inline-flex items-center gap-2">
-                    {slipItems.length > 0 && (
-                      <Badge variant="secondary" className="rounded-full text-[10px]">
-                        {slipItems.length}
-                      </Badge>
-                    )}
+
+                <div className="space-y-2">
+                  <Button
+                    type="button"
+                    variant={bookdropMode ? "default" : "outline"}
+                    className="w-full justify-between"
+                    onClick={() => setBookdropMode((v) => !v)}
+                  >
+                    Bookdrop mode
+                    <Package className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={printSlips ? "outline" : "ghost"}
+                    className="w-full justify-between"
+                    onClick={() => setPrintSlips((p) => !p)}
+                  >
+                    {printSlips ? "Auto-print slips" : "Slips paused"}
                     <Printer className="h-4 w-4 text-muted-foreground" />
-                  </span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-between"
-                  onClick={() => setAttentionOnly((v) => !v)}
-                  disabled={attentionItems.length === 0}
-                >
-                  {attentionOnly ? "Show All" : "Review Alerts"}
-                  <span className="inline-flex items-center gap-2">
-                    {attentionItems.length > 0 && (
-                      <Badge variant="secondary" className="rounded-full text-[10px]">
-                        {attentionItems.length}
-                      </Badge>
-                    )}
-                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                  </span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Check‑In Activity
-            </h3>
-            <Badge variant="secondary" className="rounded-full">
-              {stats.total} items
-            </Badge>
-          </div>
-          {selectedItems.length > 0 && (
-            <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/30 px-4 py-2">
-              <span className="text-sm font-medium">{selectedItems.length} selected</span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const slips = selectedItems.filter(
-                    (i) => i.status === "hold" || i.status === "transit"
-                  );
-                  if (slips.length === 0) {
-                    toast.message("No hold/transit slips in selection");
-                    return;
-                  }
-                  const html = slips.map((item) => buildSlipHtml(item)).join("\n");
-                  printHtml(html, { title: "StacksOS Slips", tone: "slip" });
-                }}
-              >
-                <Printer className="h-4 w-4 mr-1" />
-                Print Selected Slips
-              </Button>
-            </div>
-          )}
-
-          <CheckinActivityTable data={tableData} onSelectionChange={setSelectedItems} />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={slipItems.length > 0 ? "default" : "outline"}
+                    className="w-full justify-between"
+                    onClick={handlePrintAllSlips}
+                    disabled={slipItems.length === 0}
+                  >
+                    Print routing slips
+                    <span className="inline-flex items-center gap-2">
+                      {slipItems.length > 0 && (
+                        <Badge variant="secondary" className="rounded-full text-[10px]">
+                          {slipItems.length}
+                        </Badge>
+                      )}
+                      <Printer className="h-4 w-4" />
+                    </span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between"
+                    onClick={() => setAttentionOnly((v) => !v)}
+                    disabled={attentionItems.length === 0}
+                  >
+                    {attentionOnly ? "Show all scans" : "Review routing"}
+                    <span className="inline-flex items-center gap-2">
+                      {attentionItems.length > 0 && (
+                        <Badge variant="secondary" className="rounded-full text-[10px]">
+                          {attentionItems.length}
+                        </Badge>
+                      )}
+                      <ListFilter className="h-4 w-4 text-muted-foreground" />
+                    </span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-between text-muted-foreground"
+                    onClick={requestClearSession}
+                    disabled={!hasSessionWork}
+                  >
+                    Clear / next batch
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </aside>
         </div>
       </PageContent>
 
       <ConfirmDialog
         open={clearOpen}
         onOpenChange={setClearOpen}
-        title="Clear this session?"
-        description="This will remove all checked‑in items from the current list."
+        title="Clear this check-in session?"
+        description="This removes the current scan log from the screen. It does not undo completed Evergreen check-ins."
         confirmText="Clear session"
         variant="danger"
         onConfirm={() => {
@@ -622,5 +811,100 @@ export default function CheckinPage() {
         }}
       />
     </PageContainer>
+  );
+}
+
+function StepHeader({
+  index,
+  title,
+  hint,
+  done,
+}: {
+  index: number;
+  title: string;
+  hint?: string;
+  done?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span
+        className={cn(
+          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold",
+          done
+            ? "border-[hsl(var(--status-success))/0.5] bg-[hsl(var(--status-success-bg))] text-[hsl(var(--status-success-text))]"
+            : "border-[hsl(var(--brand-1))/0.4] bg-[hsl(var(--brand-1))/0.1] text-[hsl(var(--brand-1))]"
+        )}
+      >
+        {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : index}
+      </span>
+      <div className="min-w-0">
+        <h3 className="text-sm font-semibold leading-none">{title}</h3>
+        {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+      </div>
+    </div>
+  );
+}
+
+function SessionPill({
+  tone,
+  icon: Icon,
+  count,
+  label,
+}: {
+  tone: "success" | "warning" | "error" | "info";
+  icon: React.ComponentType<{ className?: string }>;
+  count: number;
+  label: string;
+}) {
+  const cls =
+    tone === "success"
+      ? "bg-[hsl(var(--status-success-bg))] text-[hsl(var(--status-success-text))]"
+      : tone === "warning"
+        ? "bg-[hsl(var(--status-warning-bg))] text-[hsl(var(--status-warning-text))]"
+        : tone === "info"
+          ? "bg-[hsl(var(--status-info-bg))] text-[hsl(var(--status-info-text))]"
+          : "bg-[hsl(var(--status-error-bg))] text-[hsl(var(--status-error-text))]";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
+        cls
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {count} {label}
+    </span>
+  );
+}
+
+function RoutingMetric({
+  icon: Icon,
+  label,
+  value,
+  tone = "success",
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: number;
+  tone?: "success" | "warning" | "error" | "info";
+}) {
+  const toneClass =
+    tone === "warning"
+      ? "text-[hsl(var(--status-warning-text))]"
+      : tone === "error"
+        ? "text-[hsl(var(--status-error-text))]"
+        : tone === "info"
+          ? "text-[hsl(var(--status-info-text))]"
+          : "text-[hsl(var(--status-success-text))]";
+  return (
+    <div className="rounded-xl border border-border/60 bg-background/60 p-3 text-center">
+      <div
+        className={cn("flex items-center justify-center gap-1 text-lg font-semibold", toneClass)}
+      >
+        <Icon className="h-4 w-4 opacity-80" />
+        <span className="tabular-nums">{value}</span>
+      </div>
+      <div className="mt-0.5 text-[11px] text-muted-foreground">{label}</div>
+    </div>
   );
 }

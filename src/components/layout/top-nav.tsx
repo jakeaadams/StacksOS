@@ -55,13 +55,14 @@ interface OrgUnit {
 interface TopNavProps {
   onCommandOpen: () => void;
   currentLibrary?: string;
+  activeOrgId?: number;
   userId?: number;
   userName?: string;
   userInitials?: string;
   userPhotoUrl?: string;
   userTitle?: string;
   onUserPhotoUpdated?: (url: string) => void;
-  onLogout?: () => void | Promise<void>;
+  onLogout?: (redirectTo?: string) => void | Promise<void>;
   orgs?: OrgUnit[];
   evergreenOk?: boolean;
   evergreenStatus?: number;
@@ -81,6 +82,7 @@ interface PermCheckResponse {
 const WORKSTATION_KEY = "stacksos_workstation";
 const WORKSTATION_ORG_KEY = "stacksos_workstation_org";
 const LOGIN_ORG_OVERRIDE_KEY = "stacksos_login_org_override";
+const LOGIN_ORG_OVERRIDE_LABEL_KEY = "stacksos_login_org_override_label";
 
 function getEnvToneClasses(tone?: string | null) {
   // Quiet, token-based environment ribbon that coheres with the dark-first
@@ -105,6 +107,7 @@ function getEnvToneClasses(tone?: string | null) {
 export function TopNav({
   onCommandOpen,
   currentLibrary = "Library",
+  activeOrgId,
   userId,
   userName = "Staff User",
   userInitials = "SU",
@@ -225,15 +228,22 @@ export function TopNav({
     }
   };
 
-  const handleSwitchLocation = async (orgId: number) => {
+  const handleSwitchLocation = async (org: OrgUnit) => {
     if (typeof window === "undefined") return;
-    if (workstationOrgId && orgId === workstationOrgId) return;
+    const orgId = org.id;
+    const currentOrgId = workstationOrgId ?? activeOrgId ?? null;
+    if (currentOrgId && orgId === currentOrgId) return;
 
     localStorage.setItem(LOGIN_ORG_OVERRIDE_KEY, String(orgId));
+    localStorage.setItem(LOGIN_ORG_OVERRIDE_LABEL_KEY, org.name);
     localStorage.removeItem(WORKSTATION_KEY);
     localStorage.removeItem(WORKSTATION_ORG_KEY);
 
-    await onLogout?.();
+    const next = window.location.pathname + window.location.search;
+    toast.message("Switching location", {
+      description: "Sign in again to open a workstation for the selected branch.",
+    });
+    await onLogout?.(`/login?next=${encodeURIComponent(next)}`);
   };
 
   const shortcutRows = useMemo(
@@ -287,6 +297,7 @@ export function TopNav({
                     variant="ghost"
                     size="sm"
                     className="h-9 px-3 gap-2 text-foreground/80 hover:text-foreground hover:bg-muted/70 rounded-full stx-pill"
+                    aria-label={`Service location: ${currentLibrary}. Switch location`}
                   >
                     <Building2 className="h-4 w-4" />
                     <span className="text-xs font-medium truncate max-w-[140px]">
@@ -295,20 +306,19 @@ export function TopNav({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-72">
-                  <DropdownMenuLabel>Current Location</DropdownMenuLabel>
+                  <DropdownMenuLabel>Service Location</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {orgs.length > 0 ? (
                     orgs.map((org) => (
                       <DropdownMenuItem
                         key={org.id}
-                        onSelect={(e) => {
-                          e.preventDefault();
-                          void handleSwitchLocation(org.id);
+                        onSelect={() => {
+                          void handleSwitchLocation(org);
                         }}
                         className="flex items-center justify-between"
                       >
                         <span className="truncate">{org.name}</span>
-                        {workstationOrgId === org.id && (
+                        {(workstationOrgId ?? activeOrgId) === org.id && (
                           <Check className="h-4 w-4 text-emerald-600" />
                         )}
                       </DropdownMenuItem>

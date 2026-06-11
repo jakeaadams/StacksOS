@@ -151,6 +151,7 @@ export function StaffLayout({ children }: StaffLayoutProps) {
                 <TopNav
                   onCommandOpen={() => setCommandOpen(true)}
                   currentLibrary={user?.activeOrgName || user?.homeLibrary || "Library"}
+                  activeOrgId={user?.activeOrgId}
                   userId={user?.id}
                   userName={user?.displayName || "Staff User"}
                   userInitials={

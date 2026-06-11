@@ -48,6 +48,14 @@ function parseNotePayload(n: Record<string, any>): PatronNote {
   };
 }
 
+function isOpenSrfMethodNotFound(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error || "");
+  return (
+    message.includes("OSRF_METHOD_NOT_FOUND") ||
+    (message.includes("Method [") && message.includes("not found"))
+  );
+}
+
 /**
  * GET /api/evergreen/patrons/[id]/notes
  * Fetch all notes for a patron
@@ -91,6 +99,10 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     return successResponse({ notes });
   } catch (error) {
+    if (isOpenSrfMethodNotFound(error)) {
+      logger.info({ route: "Patron Notes GET" }, "Patron notes API unavailable on this Evergreen");
+      return successResponse({ notes: [], unsupported: true });
+    }
     return serverErrorResponse(error, "Patron Notes GET", req);
   }
 }

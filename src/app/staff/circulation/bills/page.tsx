@@ -14,15 +14,7 @@ import { escapeHtml, printHtml } from "@/lib/print";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Banknote,
-  CheckCircle2,
-  DollarSign,
-  HelpCircle,
-  Loader2,
-  Printer,
-  Search,
-} from "lucide-react";
+import { Banknote, CheckCircle2, DollarSign, Loader2, Printer, Search } from "lucide-react";
 import {
   BarcodeInput,
   DataTable,
@@ -463,35 +455,8 @@ function BillsContent() {
     <PageContainer>
       <PageHeader
         title="Bills & Payments"
-        subtitle="Manage patron fines, fees, payments, and refunds."
-        breadcrumbs={[{ label: "Circulation" }, { label: "Bills" }]}
-        actions={[
-          {
-            label: "Pay Selected",
-            onClick: () => openPaymentDialog("selected"),
-            icon: DollarSign,
-            disabled: !patron || view !== "outstanding" || selected.length === 0,
-          },
-          {
-            label: "Pay All",
-            onClick: () => openPaymentDialog("all"),
-            icon: Banknote,
-            disabled: !patron || view !== "outstanding" || outstanding.length === 0,
-          },
-          {
-            label: "Print Statement",
-            onClick: printStatement,
-            icon: Printer,
-            disabled: !patron,
-            variant: "outline",
-          },
-          {
-            label: "Walkthrough",
-            onClick: () => window.location.assign("/staff/training?workflow=bills"),
-            icon: HelpCircle,
-            variant: "outline",
-          },
-        ]}
+        subtitle="Review account charges, record payments, and print receipts through Evergreen."
+        breadcrumbs={[{ label: "Circulation" }, { label: "Bills & Payments" }]}
       >
         {headerBadges}
       </PageHeader>
@@ -499,30 +464,37 @@ function BillsContent() {
       <PageContent className="space-y-6">
         <Card className="rounded-2xl border-border/70 shadow-sm">
           <CardContent className="p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Patron
-            </h3>
+            <div>
+              <h3 className="text-sm font-semibold">Load patron account</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Scan a patron card to retrieve outstanding bills and account activity.
+              </p>
+            </div>
             <BarcodeInput
               label="Patron Barcode"
-              placeholder="Scan patron barcode..."
+              placeholder="Scan patron card or enter barcode..."
               value={patronBarcode}
               onChange={setPatronBarcode}
               onSubmit={handlePatronLoad}
               isLoading={isLoading}
             />
             <div className="flex gap-2">
-              <Button onClick={() => handlePatronLoad(patronBarcode)} disabled={isLoading}>
+              <Button
+                onClick={() => handlePatronLoad(patronBarcode)}
+                disabled={isLoading || !patronBarcode.trim()}
+              >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
                     <Search className="h-4 w-4 mr-1" />
-                    Load
+                    Load account
                   </>
                 )}
               </Button>
               <Button
                 variant="outline"
+                disabled={isLoading || (!patronBarcode && !patron)}
                 onClick={() => {
                   setPatronBarcode("");
                   setPatron(null);
@@ -541,8 +513,11 @@ function BillsContent() {
               columns={view === "outstanding" ? columnsOutstanding : columnsAll}
               data={view === "outstanding" ? outstanding : rows}
               isLoading={isLoading}
-              searchable
+              searchable={(view === "outstanding" ? outstanding : rows).length >= 8}
               searchPlaceholder="Search by title, barcode, or txn id..."
+              columnVisibilityToggle={false}
+              compact
+              paginated={(view === "outstanding" ? outstanding : rows).length >= 12}
               emptyState={
                 permissionDenied ? (
                   <PermissionDeniedState
@@ -553,13 +528,19 @@ function BillsContent() {
                 ) : (
                   <EmptyState
                     icon={CheckCircle2}
-                    title={patron ? "No results" : "Search for a patron"}
+                    title={
+                      patron
+                        ? view === "outstanding"
+                          ? "No outstanding balance"
+                          : "No account activity"
+                        : "Load patron account"
+                    }
                     description={
                       patron
                         ? view === "outstanding"
                           ? "This patron has no outstanding balance."
                           : "No transactions found."
-                        : "Scan a patron barcode to view bills and payments."
+                        : "Scan a patron card to view charges and payments."
                     }
                     action={
                       patron
@@ -568,17 +549,9 @@ function BillsContent() {
                             onClick: () => router.push(`/staff/patrons/${patron.id}`),
                           }
                         : {
-                            label: "Evergreen setup checklist",
-                            onClick: () => router.push("/staff/help#evergreen-setup"),
+                            label: "Search patrons",
+                            onClick: () => router.push("/staff/patrons"),
                           }
-                    }
-                    secondaryAction={
-                      patron
-                        ? {
-                            label: "How billing works",
-                            onClick: () => router.push("/staff/help#evergreen-setup"),
-                          }
-                        : { label: "Search patrons", onClick: () => router.push("/staff/patrons") }
                     }
                   />
                 )
@@ -609,26 +582,33 @@ function BillsContent() {
                     </div>
                   )}
                 </div>
-                {view === "outstanding" && (
-                  <div className="space-y-2">
-                    <Button
-                      className="w-full"
-                      onClick={() => openPaymentDialog("selected")}
-                      disabled={selected.length === 0}
-                    >
-                      <DollarSign className="h-4 w-4 mr-1" />
-                      Pay {formatCurrency(selectedTotal)}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => openPaymentDialog("all")}
-                      disabled={outstanding.length === 0}
-                    >
-                      Pay Full Balance
-                    </Button>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  {view === "outstanding" && (
+                    <>
+                      <Button
+                        className="w-full"
+                        onClick={() => openPaymentDialog("selected")}
+                        disabled={selected.length === 0}
+                      >
+                        <DollarSign className="h-4 w-4 mr-1" />
+                        Pay selected {formatCurrency(selectedTotal)}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => openPaymentDialog("all")}
+                        disabled={outstanding.length === 0}
+                      >
+                        <Banknote className="h-4 w-4 mr-1" />
+                        Pay full balance
+                      </Button>
+                    </>
+                  )}
+                  <Button variant="outline" className="w-full" onClick={printStatement}>
+                    <Printer className="h-4 w-4 mr-1" />
+                    Print statement
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}

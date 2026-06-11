@@ -33,7 +33,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (username: string, password: string, workstation?: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  logout: (redirectTo?: string) => Promise<void>;
   getOrgName: (orgId: number) => string;
   updateUser: (patch: Partial<User>) => void;
 }
@@ -220,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = async () => {
+  const logout = async (redirectTo = "/login") => {
     try {
       await fetchWithAuth("/api/evergreen/auth", { method: "DELETE" });
     } catch (err) {
@@ -228,7 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     resetCSRFToken();
     setUser(null);
-    router.push("/login");
+    router.push(redirectTo);
   };
 
   return (

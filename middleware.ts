@@ -33,7 +33,8 @@ function ipToInt(ip: string): number | null {
   if (parts.length !== 4) return null;
   const nums = parts.map((p) => Number(p));
   if (nums.some((n) => !Number.isFinite(n) || n < 0 || n > 255)) return null;
-  const [a, b, c, d] = nums; return ((a! << 24) >>> 0) + (b! << 16) + (c! << 8) + d!;
+  const [a, b, c, d] = nums;
+  return ((a! << 24) >>> 0) + (b! << 16) + (c! << 8) + d!;
 }
 
 function ipInCidr(ip: string, cidr: string): boolean {
@@ -65,7 +66,11 @@ function ipAllowed(ip: string | null): boolean {
   return false;
 }
 
-function addSecurityHeaders(request: NextRequest, response: NextResponse, nonce: string): NextResponse {
+function addSecurityHeaders(
+  request: NextRequest,
+  response: NextResponse,
+  nonce: string
+): NextResponse {
   const pathname = request.nextUrl.pathname;
   const isProd = process.env.NODE_ENV === "production";
 
@@ -74,15 +79,19 @@ function addSecurityHeaders(request: NextRequest, response: NextResponse, nonce:
   // - Dev uses eval for HMR; production should not.
   // - We include a per-request nonce now so we can progressively eliminate
   //   `unsafe-inline` as we remove inline scripts/styles.
-  const strictScriptsFlag = String(process.env.STACKSOS_CSP_STRICT_SCRIPTS || "").trim().toLowerCase();
+  const strictScriptsFlag = String(process.env.STACKSOS_CSP_STRICT_SCRIPTS || "")
+    .trim()
+    .toLowerCase();
   const strictScripts = ["1", "true", "yes"].includes(strictScriptsFlag);
 
   const scriptSrc = isProd
     ? `script-src 'self' 'nonce-${nonce}'${strictScripts ? "" : " 'unsafe-inline'"}; `
     : `script-src 'self' 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval'; `;
-  const styleSrc = isProd && strictScripts
-    ? `style-src 'self' 'nonce-${nonce}'; `
-    : `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'; `;
+  // The app and Next still emit some client-side inline styles. Keep the
+  // enforced policy compatible and test nonce-only styles via Report-Only.
+  // Browsers ignore `unsafe-inline` when a nonce is present in style-src, so the
+  // enforced style policy intentionally omits the nonce until the UI is clean.
+  const styleSrc = "style-src 'self' 'unsafe-inline'; ";
   const connectSrc = isProd ? "connect-src 'self'; " : "connect-src 'self' ws: wss:; ";
   response.headers.set(
     "Content-Security-Policy",
@@ -101,7 +110,9 @@ function addSecurityHeaders(request: NextRequest, response: NextResponse, nonce:
   // - Keep a permissive baseline that works today
   // - Optionally emit a stricter policy in REPORT-ONLY mode so production can
   //   collect violations and converge on dropping `unsafe-inline`.
-  const reportOnlyFlag = String(process.env.STACKSOS_CSP_REPORT_ONLY || "").trim().toLowerCase();
+  const reportOnlyFlag = String(process.env.STACKSOS_CSP_REPORT_ONLY || "")
+    .trim()
+    .toLowerCase();
   const enableReportOnly = ["1", "true", "yes"].includes(reportOnlyFlag);
   if (enableReportOnly) {
     // nextUrl.origin can be misleading behind reverse proxies (it may reflect the
@@ -149,11 +160,17 @@ function addSecurityHeaders(request: NextRequest, response: NextResponse, nonce:
   response.headers.set("X-XSS-Protection", "1; mode=block");
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=()"
+  );
 
   // HSTS only when we are actually running behind HTTPS.
   if (isCookieSecure(request)) {
-    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains; preload"
+    );
   }
 
   // Avoid stale HTML referencing old hashed chunks after deploys.
@@ -261,7 +278,11 @@ export function middleware(req: NextRequest) {
   // Staff session correlation (P1 security): ensure a stable session id cookie exists.
   const authtoken = req.cookies.get("authtoken")?.value;
   const sessionId = req.cookies.get("stacksos_session_id")?.value;
-  if (authtoken && !sessionId && (pathname.startsWith("/staff") || pathname.startsWith("/api/evergreen"))) {
+  if (
+    authtoken &&
+    !sessionId &&
+    (pathname.startsWith("/staff") || pathname.startsWith("/api/evergreen"))
+  ) {
     res.cookies.set("stacksos_session_id", crypto.randomUUID(), {
       httpOnly: true,
       sameSite: "lax",
@@ -275,7 +296,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };

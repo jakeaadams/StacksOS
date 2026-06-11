@@ -42,15 +42,25 @@ interface PatronRow {
   lastName: string;
   email?: string;
   phone?: string;
-  homeLibrary?: string | number;
+  homeLibrary?: string | number | Record<string, unknown>;
   patronType?: string;
   isActive: boolean;
   cardExpiry?: string;
 }
 
-function formatHomeLibrary(value?: string | number) {
+function formatHomeLibrary(value?: PatronRow["homeLibrary"]) {
   if (value === undefined || value === null) return "—";
   if (typeof value === "string") return value;
+  if (typeof value === "object") {
+    const label =
+      value.name ||
+      value.shortname ||
+      value.shortName ||
+      value.opac_label ||
+      value.id ||
+      value.value;
+    return label ? String(label) : "—";
+  }
   return `Library ${value}`;
 }
 
@@ -132,7 +142,6 @@ function PatronSearchContent() {
 
   const handleRowClick = useCallback((row: PatronRow) => {
     setSelectedPatron(row);
-    setCockpitOpen(true);
   }, []);
 
   const handleQuickView = useCallback((row: PatronRow, e: React.MouseEvent) => {
@@ -207,44 +216,14 @@ function PatronSearchContent() {
   return (
     <PageContainer>
       <PageHeader
-        title="Patron Search"
-        subtitle="Find, manage, and act on patron accounts."
+        title="Patron Desk"
+        subtitle="Find patron accounts and move directly into checkout, billing, or the full record."
         breadcrumbs={[{ label: "Patrons" }]}
         actions={[
           {
             label: "New Patron",
             onClick: () => router.push("/staff/patrons/register"),
             icon: UserPlus,
-          },
-          {
-            label: "Checkout",
-            onClick: () =>
-              selectedPatron
-                ? router.push(`/staff/circulation/checkout?patron=${selectedPatron.barcode}`)
-                : toast.message("Select a patron first"),
-            icon: BookOpen,
-            variant: "outline",
-            disabled: !selectedPatron,
-          },
-          {
-            label: "Bills",
-            onClick: () =>
-              selectedPatron
-                ? router.push(`/staff/circulation/bills?patron=${selectedPatron.barcode}`)
-                : toast.message("Select a patron first"),
-            icon: CreditCard,
-            variant: "outline",
-            disabled: !selectedPatron,
-          },
-          {
-            label: "History",
-            onClick: () =>
-              selectedPatron
-                ? router.push(`/staff/patrons/${selectedPatron.id}`)
-                : toast.message("Select a patron first"),
-            icon: History,
-            variant: "outline",
-            disabled: !selectedPatron,
           },
         ]}
       >
@@ -270,16 +249,14 @@ function PatronSearchContent() {
       <PageContent className="space-y-6">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">
-              Search Patrons
-            </CardTitle>
+            <CardTitle className="text-sm">Find patron</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-3 items-center">
               <div className="relative flex-1 min-w-[240px]">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Name, barcode, email, phone..."
+                  placeholder="Name, barcode, email, or phone..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -309,23 +286,84 @@ function PatronSearchContent() {
           </CardContent>
         </Card>
 
-        <DataTable
-          columns={columns}
-          data={patrons}
-          isLoading={isLoading}
-          searchable={false}
-          onRowClick={handleRowClick}
-          emptyState={
-            hasSearched ? (
-              <EmptyState
-                title="No patrons found"
-                description="Try a different name, barcode, email, or phone."
-              />
-            ) : (
-              <EmptyState title="Search for patrons" description="Run a search to see results." />
-            )
-          }
-        />
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <DataTable
+            columns={columns}
+            data={patrons}
+            isLoading={isLoading}
+            searchable={false}
+            onRowClick={handleRowClick}
+            columnVisibilityToggle={false}
+            compact
+            paginated={patrons.length >= 12}
+            emptyState={
+              hasSearched ? (
+                <EmptyState
+                  title="No patrons found"
+                  description="Try a different name, barcode, email, or phone."
+                />
+              ) : (
+                <EmptyState
+                  title="Find a patron"
+                  description="Search by name, card barcode, email, or phone."
+                />
+              )
+            }
+          />
+
+          <Card className="h-fit rounded-2xl border-border/70">
+            <CardContent className="space-y-4 p-4">
+              {selectedPatron ? (
+                <>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Selected patron
+                    </p>
+                    <h3 className="mt-1 text-sm font-semibold">
+                      {selectedPatron.lastName}, {selectedPatron.firstName}
+                    </h3>
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      {selectedPatron.barcode}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Button
+                      className="w-full justify-start gap-2"
+                      onClick={() =>
+                        router.push(`/staff/circulation/checkout?patron=${selectedPatron.barcode}`)
+                      }
+                    >
+                      <BookOpen className="h-4 w-4" />
+                      Start checkout
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-2"
+                      onClick={() =>
+                        router.push(`/staff/circulation/bills?patron=${selectedPatron.barcode}`)
+                      }
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      Open bills
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-2"
+                      onClick={() => router.push(`/staff/patrons/${selectedPatron.id}`)}
+                    >
+                      <History className="h-4 w-4" />
+                      Full record
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="py-2 text-sm text-muted-foreground">
+                  Select a search result to open account actions.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </PageContent>
 
       <PatronCockpit

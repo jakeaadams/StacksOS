@@ -11,7 +11,7 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { hashPassword } from "@/lib/password";
-import { checkRateLimit, recordSuccess } from "@/lib/rate-limit";
+import { checkRateLimit, clearRateLimit } from "@/lib/rate-limit";
 import { isCookieSecure } from "@/lib/csrf";
 import { getPatronPhotoUrl } from "@/lib/db/evergreen";
 import { getSaaSSessionPayloadFromActor } from "@/lib/saas-rbac";
@@ -92,9 +92,46 @@ const authPostSchema = z
 export async function POST(req: NextRequest) {
   const { ip, userAgent, requestId } = getRequestMeta(req);
 
-  // Rate limiting - 5 attempts per 15 minutes per IP
-  const rateLimit = await checkRateLimit(ip || "unknown", {
-    maxAttempts: 5,
+  let parsedBody: z.infer<typeof authPostSchema>;
+  try {
+    parsedBody = authPostSchema.parse(await req.json());
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return errorResponse("Username and password required", 400, { issues: error.issues });
+    }
+    if (error instanceof SyntaxError) {
+      return errorResponse("Invalid JSON body", 400);
+    }
+    return serverErrorResponse(error, "Auth POST", req);
+  }
+
+  const { username: rawUsername, password, workstation: rawWorkstation } = parsedBody;
+  const username = String(rawUsername || "").trim();
+  const workstation =
+    rawWorkstation !== undefined && rawWorkstation !== null
+      ? String(rawWorkstation).trim()
+      : undefined;
+  const rateLimitIdentifier = `${ip || "unknown"}:${username.toLowerCase() || "unknown"}`;
+
+  if (!username || !password) {
+    await logAuditEvent({
+      action: "auth.login",
+      status: "failure",
+      actor: { username },
+      ip,
+      userAgent,
+      requestId,
+      error: "missing_credentials",
+    });
+    return errorResponse("Username and password required", 400);
+  }
+
+  // Rate-limit failed staff logins per IP + username. The login page may make
+  // more than one successful auth call while preparing a workstation; successful
+  // staff auth clears this specific counter so valid users do not lock
+  // themselves out during normal branch/workstation setup.
+  const rateLimit = await checkRateLimit(rateLimitIdentifier, {
+    maxAttempts: 8,
     windowMs: 15 * 60 * 1000, // 15 minutes
     endpoint: "staff-auth",
   });
@@ -124,31 +161,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const {
-      username: rawUsername,
-      password,
-      workstation: rawWorkstation,
-    } = authPostSchema.parse(await req.json());
-    const username = String(rawUsername || "").trim();
-    const workstation =
-      rawWorkstation !== undefined && rawWorkstation !== null
-        ? String(rawWorkstation).trim()
-        : undefined;
-
     const cookieSecure = isCookieSecure(req);
-
-    if (!username || !password) {
-      await logAuditEvent({
-        action: "auth.login",
-        status: "failure",
-        actor: { username },
-        ip,
-        userAgent,
-        requestId,
-        error: "missing_credentials",
-      });
-      return errorResponse("Username and password required", 400);
-    }
 
     logger.info({ requestId, route: "api.evergreen.auth", username }, "Login attempt");
 
@@ -251,7 +264,7 @@ export async function POST(req: NextRequest) {
           details: { workstation, needsWorkstation: true },
         });
 
-        await recordSuccess(ip || "unknown", "staff-auth");
+        await clearRateLimit(rateLimitIdentifier, "staff-auth");
 
         return successResponse(
           {
@@ -289,7 +302,7 @@ export async function POST(req: NextRequest) {
         details: { workstation: workstation || null },
       });
 
-      await recordSuccess(ip || "unknown", "staff-auth");
+      await clearRateLimit(rateLimitIdentifier, "staff-auth");
 
       return successResponse({
         user,
@@ -311,12 +324,6 @@ export async function POST(req: NextRequest) {
 
     return errorResponse(authResult?.textcode || authResult?.desc || "Authentication failed", 401);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return errorResponse("Username and password required", 400, { issues: error.issues });
-    }
-    if (error instanceof SyntaxError) {
-      return errorResponse("Invalid JSON body", 400);
-    }
     return serverErrorResponse(error, "Auth POST", req);
   }
 }

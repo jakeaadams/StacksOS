@@ -31,15 +31,7 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     ".next.build/types/**/*.ts",
-    ".next.build/dev/types/**/*.ts",
-    ".next-buildtest/types/**/*.ts",
-    ".next-buildtest/dev/types/**/*.ts",
-    ".next-ci/types/**/*.ts",
-    ".next-ci/dev/types/**/*.ts",
-    ".next-e2e/types/**/*.ts",
-    ".next-e2e/dev/types/**/*.ts",
-    "/tmp/stacksos-build/types/**/*.ts",
-    "/tmp/stacksos-build/dev/types/**/*.ts"
+    ".next.build/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", ".next-*", ".next.build", "tmp"]
 }

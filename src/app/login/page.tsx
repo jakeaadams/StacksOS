@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,11 +53,27 @@ function depthPaddingClass(depth: number): string {
   return "pl-14";
 }
 
+function returnLabel(path: string): string {
+  const pathname = path.split("?")[0] || "/staff";
+  const labels: Record<string, string> = {
+    "/staff": "the staff dashboard",
+    "/staff/circulation/checkin": "Check In",
+    "/staff/circulation/checkout": "Checkout",
+    "/staff/circulation/renew": "Renew Items",
+    "/staff/circulation/bills": "Bills and Payments",
+    "/staff/catalog": "Catalog Search",
+    "/staff/patrons": "Patron Search",
+  };
+
+  return labels[pathname] || "your previous workspace";
+}
+
 const DEVICE_KEY = "stacksos_device_id";
 const WORKSTATION_KEY = "stacksos_workstation";
 const WORKSTATION_ORG_KEY = "stacksos_workstation_org";
 const USERNAME_KEY = "stacksos_username";
 const LOGIN_ORG_OVERRIDE_KEY = "stacksos_login_org_override";
+const LOGIN_ORG_OVERRIDE_LABEL_KEY = "stacksos_login_org_override_label";
 
 type SetupStage = "auth" | "register" | "fallback" | "relogin";
 const setupStageOrder: Array<Exclude<SetupStage, "fallback">> = ["auth", "register", "relogin"];
@@ -93,7 +109,9 @@ export default function LoginPage() {
   const [setupStage, setSetupStage] = useState<SetupStage | null>(null);
   const [orgs, setOrgs] = useState<Array<OrgUnit & { depth: number }>>([]);
   const [orgOverride, setOrgOverride] = useState("");
+  const [orgOverrideLabel, setOrgOverrideLabel] = useState("");
   const [deviceId, setDeviceId] = useState("");
+  const [nextPath, setNextPath] = useState("/staff");
 
   useEffect(() => {
     setDeviceId(getOrCreateDeviceId());
@@ -106,10 +124,15 @@ export default function LoginPage() {
     const savedUsername = localStorage.getItem(USERNAME_KEY) || "";
     if (savedUsername) setUsername(savedUsername);
 
+    const requestedNext = new URLSearchParams(window.location.search).get("next") || "";
+    setNextPath(requestedNext.startsWith("/") ? requestedNext : "/staff");
+
     const orgOverrideValue = localStorage.getItem(LOGIN_ORG_OVERRIDE_KEY);
     if (orgOverrideValue) {
       setOrgOverride(orgOverrideValue);
+      setOrgOverrideLabel(localStorage.getItem(LOGIN_ORG_OVERRIDE_LABEL_KEY) || "");
       localStorage.removeItem(LOGIN_ORG_OVERRIDE_KEY);
+      localStorage.removeItem(LOGIN_ORG_OVERRIDE_LABEL_KEY);
     }
   }, []);
 
@@ -132,6 +155,32 @@ export default function LoginPage() {
   const getOrgById = (id?: number | null) => {
     if (!id) return undefined;
     return orgs.find((o) => o.id === id);
+  };
+
+  const selectedOrgId = orgOverride ? parseInt(orgOverride, 10) : NaN;
+  const selectedOrg = Number.isFinite(selectedOrgId) ? getOrgById(selectedOrgId) : undefined;
+  const selectedOrgName = selectedOrg?.name || orgOverrideLabel || "";
+  const hasSelectedLocation = Boolean(orgOverride);
+  const loginTitle = hasSelectedLocation
+    ? `Sign in to ${selectedOrgName || "selected branch"}`
+    : "Sign in to StacksOS";
+  const loginDescription = hasSelectedLocation
+    ? `Open a workstation for ${selectedOrgName || "this branch"}, then return to ${returnLabel(nextPath)}.`
+    : "Use your Evergreen credentials to start a secure staff session.";
+  const selectedLocationMeta = useMemo(() => {
+    if (!hasSelectedLocation) return null;
+    if (selectedOrg) {
+      const orgCode = selectedOrg.shortname ? `${selectedOrg.shortname} - ` : "";
+      return `${orgCode}${selectedOrg.name}`;
+    }
+    return orgOverrideLabel || selectedOrgName || "Selected branch";
+  }, [hasSelectedLocation, orgOverrideLabel, selectedOrg, selectedOrgName]);
+
+  const handleOrgOverrideChange = (value: string) => {
+    setOrgOverride(value);
+    const orgId = parseInt(value, 10);
+    const org = Number.isFinite(orgId) ? getOrgById(orgId) : undefined;
+    setOrgOverrideLabel(org ? `${org.shortname ? `${org.shortname} - ` : ""}${org.name}` : "");
   };
 
   const getStoredWorkstation = (): { name: string; orgId: number | null } => {
@@ -448,12 +497,24 @@ export default function LoginPage() {
 
           <Card className="rounded-3xl border-border/70 shadow-2xl">
             <CardHeader className="pb-4">
-              <CardTitle className="text-xl">Sign in to your workspace</CardTitle>
-              <CardDescription>
-                Use your Evergreen credentials to start a secure session.
-              </CardDescription>
+              <CardTitle className="text-xl">{loginTitle}</CardTitle>
+              <CardDescription>{loginDescription}</CardDescription>
             </CardHeader>
             <CardContent>
+              {selectedLocationMeta && (
+                <div className="mb-4 rounded-xl border border-[hsl(var(--brand-1))]/25 bg-[hsl(var(--brand-1))]/10 px-3 py-3">
+                  <div className="flex items-start gap-3">
+                    <Building2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-[hsl(var(--brand-1))]" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">Service location</p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {selectedLocationMeta}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {(autoSetupMessage || setupStage) && (
                 <div className="mb-4 rounded-xl border border-[hsl(var(--brand-1))]/20 bg-[hsl(var(--brand-1))]/10 px-3 py-3">
                   <div className="flex items-center gap-2 text-[hsl(var(--brand-1))] text-sm">
@@ -533,10 +594,14 @@ export default function LoginPage() {
 
                 {showOrgSelector && (
                   <div className="space-y-2">
-                    <Label htmlFor="location">Location (optional)</Label>
+                    <Label htmlFor="location">Service location</Label>
                     <div className="relative">
                       <Building2 className="absolute left-4 top-2.5 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
-                      <Select value={orgOverride} onValueChange={setOrgOverride}>
+                      <Select
+                        value={orgOverride}
+                        onValueChange={handleOrgOverrideChange}
+                        disabled={isLoading}
+                      >
                         <SelectTrigger id="location" className="pl-14">
                           <SelectValue placeholder="Use your home library" />
                         </SelectTrigger>
@@ -552,7 +617,8 @@ export default function LoginPage() {
                       </Select>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Choose a location for this session if you work across branches.
+                      This controls the Evergreen workstation and permissions context for the
+                      session.
                     </p>
                   </div>
                 )}
@@ -567,8 +633,10 @@ export default function LoginPage() {
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       {loadingLabel}
                     </>
+                  ) : hasSelectedLocation ? (
+                    "Continue to selected branch"
                   ) : (
-                    "Sign In"
+                    "Sign in"
                   )}
                 </Button>
               </form>
